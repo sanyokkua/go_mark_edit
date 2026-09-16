@@ -65,8 +65,7 @@ silent. Same file/cause failures update one notification count.
 
 ## Exact binding metrics
 
-The HTML/CSS values in `docs/delivery/spec/surface/mockup.html` are direct acceptance values. At minimum the tests
-assert:
+The HTML/CSS values in the binding mockup are direct acceptance values. At minimum the tests assert:
 
 - 44 px menu row; 13 px triggers; `6px 10px`; 7 px radius;
 - monochrome 15×15 local SVGs; 1.75 px round stroke; current-color; no emoji/Unicode substitutes;
@@ -128,8 +127,7 @@ visible.
 > screen necessarily contains differences no production work can close — the mockup's own sidebar, Assistant
 > and provider readout displace every element inside it. Measured across two full runs: **0 of 1,638 passed**,
 > and 240 of 510 keys differed in the **position** of the mapped region rather than only its pixels. See
-> `spec.md` Clarifications → Session 2026-08-14 and
-> `evidence/ft-vs-08/phase-18/t035-run-after-repair.md`.
+> `spec.md` Clarifications → Session 2026-08-14.
 
 **The contract is now component-level:**
 
@@ -142,8 +140,7 @@ visible.
   status row carries a Problems badge, an AI-provider readout and a Reading pill while production carries a
   Document details disclosure, and FR-FT-049 forbids production the provider readout.
 - **Every remaining state in the tables above is verified by behaviour assertion**, not by picture. A state with
-  no covering assertion fails closed; the audit proving each has one is
-  `evidence/ft-vs-08/phase-18/t084-coverage-rescope.md`.
+  no covering assertion fails closed; an audit proved each has one.
 - **The Monaco editor pane interior is a named region exclusion owned by Feature 002.** Its bounds and computed
   styles are still asserted; its raster is not this feature's to match.
 

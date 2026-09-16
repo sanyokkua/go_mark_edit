@@ -73,11 +73,11 @@ times, `tsc` five times).
 tracked text file. Prettier runs from the repository root with a root `.prettierrc.json` (moved from
 `frontend/`) covering `md`, `yml`/`yaml`, `json`, `css`, `ts`/`tsx`, `js`/`mjs`, `html`, `svg`
 (XML via Prettier's HTML parser) and `sql` (pinned `prettier-plugin-sql`); `gofmt -l/-w` for Go;
-`shfmt -i 2 -ci` for `scripts/**`, `scripts/lib/*.sh` and any `*.sh`. The ignore list
-(`.prettierignore` at the root plus the same globs in `scripts/lib/common.sh`) names only:
-`.specify/**`, `.claude/skills/speckit-*/**`, `.agents/skills/speckit-*/**` (Spec Kit-owned),
-`frontend/wailsjs/**` (generated bindings), `frontend/dist/**`, `build/bin/**` (build output),
-`**/node_modules/**`, the lockfiles `package-lock.json`, `go.sum`, and the `justfile` (planning
+`shfmt -i 2 -ci` for `scripts/**`, `scripts/lib/*.sh` and any `*.sh`. The ignore list (held in
+`scripts/format`, with the same globs in the root `.prettierignore`) names only: `.specify/**`
+(Spec Kit-owned; the Spec Kit workflow writes the constitution), `frontend/wailsjs/**` (generated
+bindings), `frontend/dist/**`, `build/bin/**` (build output), `**/node_modules/**`, the lockfiles
+`package-lock.json`, `go.sum`, the `specs/*/evidence/**` artifacts, and the `justfile` (planning
 decision 4: its only formatter would make `just` a stage dependency). `build/darwin/*.plist`,
 `build/windows/**` and `internal/db/migrations/*.sql` are formatted like any other source because
 the migration text is source. Migration application is a runtime responsibility of `internal/db`,
@@ -85,7 +85,7 @@ not a Git-history comparison in the Lint stage. The first run is one reformat co
 
 **Rationale**: `just fmt` formats less than half the repository today (424 Markdown files, 12 YAML,
 22 shell scripts, the `justfile` and all root JSON are untouched — _verified_), and the pre-commit
-and pre-push hooks format different sets. The owner confirmed that migrations, docs and archives are
+and pre-push hooks format different sets. The owner confirmed that migrations and docs are
 source for formatting purposes and that only Spec Kit-owned paths are exempt.
 
 **Alternatives**: keeping Prettier rooted at `frontend/` with a second invocation for the root —
@@ -295,8 +295,7 @@ reporter, `golangci-lint --out-format json`, `eslint -f json`, `stylelint -f jso
 tools' own JSON). `scripts/baseline --compare` re-runs and fails closed on any missing input, marks a
 stage `unreliable` when it exited non-zero having reported no finding, and never reports green while
 any finding or failing stage remains; the record and the comparison are computed by
-`tools/verify/results.mjs`, the same script that writes every verification run. The root `.gitignore` gains `.local_tmp_files/` (the
-`.specify/.gitignore` is Spec Kit-owned and is not edited).
+`tools/verify/results.mjs`, the same script that writes every verification run. The root `.gitignore` gains `.local_tmp_files/`.
 
 **Rationale**: FR-064; the old verifier reported PASS with missing inputs (_verified_: `comm` errors
 discarded).
@@ -334,7 +333,7 @@ or 404, which the renderer shows as the existing placeholder; web images keep th
 are recorded as durable decisions in the architecture map.
 
 **Rationale**: FR-014/049; today anchors are ordinary links and a relative href navigates the page
-(_verified_; the dev-server chain is reproduced in the audit).
+(_verified_; the audit reproduced the dev-server chain).
 
 **Alternatives**: returning image bytes as base64 through a bridge call — rejected (20 MB through
 IPC per image); resolving local links purely in the frontend — rejected (the folder check needs the

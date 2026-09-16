@@ -173,8 +173,8 @@
 - Q: How should T045 resolve the retained editor-region metric that includes the mockup Assistant column even
   though CL-17 and FR-FT-049 require a zero-width Assistant? → A: Preserve the zero-width Assistant contract and
   revise the fixed reference mapping to an explicit zero-Assistant adapter region. The adapter may activate the
-  mockup's existing `.app.no-assistant` class, preserve the immutable source hash and HTML/CSS values, and map
-  the editor region to `#app.no-assistant .content`; it MUST NOT change production Assistant behavior, masks,
+  mockup's existing zero-Assistant class, preserve the immutable source hash and HTML/CSS values, and map
+  the editor region to that class's content region; it MUST NOT change production Assistant behavior, masks,
   pixel tolerance, coordinate handling, comparator, or the mockup source.
 
 ### Session 2026-08-12
@@ -189,12 +189,12 @@
 
 ### Session 2026-08-13
 
-- Q: The reviewed editor-region mapping compares `#app.no-assistant .content`, which contains the mockup's
+- Q: The reviewed editor-region mapping compares the zero-Assistant content region, which contains the mockup's
   deferred rich-rendering widgets and its hand-written editor text, while this specification requires those
   regions to be excluded rather than reproduced. How is that contradiction resolved? → A: Keep the whole mapped
   region compared and split the two pane interiors by owner. **Preview pane:** the Feature 003 reference variant
   carries the same in-scope basic-preview content the application renders, built only from the mockup's own
-  `.preview-in` primitives, and the deferred rich-rendering widgets — remote-content banner, image placeholder,
+  preview primitives, and the deferred rich-rendering widgets — remote-content banner, image placeholder,
   math, and Mermaid — are removed from the reference rather than manufactured in production. **Editor pane:**
   Monaco owns its own text raster, gutter metrics and internal layout under Feature 002, so the editor pane's
   interior is a named reviewed region exclusion rather than a pixel comparison; its position, size, and computed
@@ -219,24 +219,24 @@
   Light, that collapses 751 of the toolbar region's 965 differing pixels into an opacity difference instead of
   measuring geometry. How is that resolved? → A: Extend the same reviewed treatment FR-FT-056 already grants the
   File menu. The Feature 003 reference variant renders those four toolbar controls at the single reviewed
-  unavailable opacity used for the File menu's deferred rows, built from the mockup's own `.tbtn` primitive, so
+  unavailable opacity used for the File menu's deferred rows, built from the mockup's own toolbar-button primitive, so
   the comparison keeps measuring geometry, labels and spacing rather than collapsing into a colour difference.
   Production's deferred outcomes are unchanged — the controls stay disabled and non-activating — because Feature
   003 may not change any deferred outcome. The immutable mockup HTML/CSS and its raw source hash stay unchanged,
   no mask, tolerance, comparator, coordinate handling or manifest count changes, and this treatment is confined
   to controls the action registry marks deferred.
 - Q: FR-ED-004 requires the View menu to expose Editor, Split, and Preview "in the original mockup order and
-  grouping", but the mockup's `#m-view` has `Show Editor` and `Show Preview` instead, so the two halves of that
+  grouping", but the mockup's View menu has `Show Editor` and `Show Preview` instead, so the two halves of that
   requirement cannot both hold against the binding. Production also draws `Toggle Assistant` and
   `Distraction-free reading` visibly unavailable with no accelerator, where the mockup gives both an accelerator
   at full opacity, and formats accelerators for the host platform. How is that resolved? → A: Keep FR-ED-004's
-  inventory in production and express the difference as a Feature 003 reference variant for `#m-view`, exactly as
-  the File menu already does for `#m-file`. The variant carries the Editor, Split, and Preview rows in place of
+  inventory in production and express the difference as a Feature 003 reference variant for the View menu, exactly
+  as the File menu already does. The variant carries the Editor, Split, and Preview rows in place of
   `Show Editor` and `Show Preview`, marks the two deferred rows visibly unavailable at the single reviewed
   unavailable opacity, drops the accelerators Feature 003 does not own, and is built for the host platform — all
-  from the mockup's own `.mi`, `.tick`, `.sep`, and `.k` primitives. Binding order, grouping, indicators, and
-  switches remain production's target and stay compared. The immutable mockup HTML/CSS and its raw source hash
-  stay unchanged, and no mask, tolerance, comparator, coordinate handling, or manifest count changes.
+  from the mockup's own menu-item, tick, separator, and accelerator primitives. Binding order, grouping,
+  indicators, and switches remain production's target and stay compared. The immutable mockup HTML/CSS and its
+  raw source hash stay unchanged, and no mask, tolerance, comparator, coordinate handling, or manifest count changes.
 - Q: Several targeted slices retain a small pixel residual that no production edit can close — Chromium gradient
   dithering whose phase is set by layerisation, antialiased popup boundaries that only resolve when unrelated
   chrome converges, and backdrop compositing under the Glass palette. Tasks worded "zero unexplained pixels"
@@ -254,9 +254,8 @@
 
 ### Session 2026-08-14
 
-- Q: At the 375×480 minimum window (`main.go:104-105`) the binding stacks both panes
-  (`mockup.html:54` `.app[data-w="375"] .body{flex-direction:column}` with `:55` `.pane{flex:1}`) and keeps the
-  sidebar present as a closed slide-over (`:51-53`). Neither is what the application should do at its smallest
+- Q: At the 375×480 minimum window (`main.go:104-105`) the binding stacks both panes and keeps the
+  sidebar present as a closed slide-over. Neither is what the application should do at its smallest
   supported size. How is that resolved? → A: At widths at or below the 375-pixel minimum window the application
   shows **exactly one pane, matching the selected mode**: Editor mode shows the editor, Preview mode shows the
   viewer, and **Split collapses to the editor** — this is a Markdown editor, typing is its primary job, and a
@@ -267,25 +266,25 @@
   375 it is an overlay that covers the tab strip and makes the new-tab control unreachable, and not rendering
   it means there is no second "is it open" state to own at that size while the stored preference continues to
   govern wide layout untouched. Retained at that width: the menu row, the tab strip, the toolbar with its
-  overflow menu, and the status bar shortened in the binding's own fixed drop order (`mockup.html:82-83`).
+  overflow menu, and the status bar shortened in the binding's own fixed drop order.
   Dropped at that width: the workspace panel, the Assistant, and the Editor/Split/Preview switch — the last of
-  these already matches the binding (`mockup.html:76` `#viewseg{display:none}`), so the mode is changed through
+  these already matches the binding, which hides that switch at 375, so the mode is changed through
   the View menu, which MUST remain operable there. Every toolbar action MUST stay reachable through the
   overflow menu. **Parity consequence:** the `editor-split` family cannot show two panes at 375, so its 375
   captures — and the four additional state IDs assigned to `editor-split` at 375 (`tab-contained-overflow`,
   `tab-40-document`, `label-long-localized`, `path-hostile-disambiguated`) — use a Feature 003 reference
-  variant that hides the non-selected `.pane`, exactly as FR-FT-056 already grants the File menu, the View
+  variant that hides the non-selected pane, exactly as FR-FT-056 already grants the File menu, the View
   menu and the toolbar. The variant is built only from the mockup's own primitives, the immutable mockup
   HTML/CSS and its raw source hash stay unchanged, and no mask, tolerance, comparator, coordinate handling or
   manifest count changes.
 - Q: The `status-saved`, `status-autosaved`, `status-unsaved-changes`, `status-read-only`, `status-mixed-ending`
   and `status-large-file` IDs were granted six reviewed reference variants on 2026-08-13, but the binding's
-  status row contains exactly one condition that distinguishes them (`.sb-eol` for line ending, `.sb-count` for
-  size); the remaining four differ only in a save status the binding does not draw at all. Six paired reference
-  conditions therefore cannot be built from the mockup's own primitives. How is that resolved? → A: **This
+  status row contains exactly one condition that distinguishes them (its line-ending item for line ending, its
+  count item for size); the remaining four differ only in a save status the binding does not draw at all. Six paired
+  reference conditions therefore cannot be built from the mockup's own primitives. How is that resolved? → A: **This
   supersedes the 2026-08-13 six-variant answer**, which stated an acceptance criterion the immutable source
-  cannot satisfy. Compare only the two states the binding can express — `status-mixed-ending` through `.sb-eol`
-  and `status-large-file` through `.sb-count`. Prove the other four (`saved`, `autosaved`, `unsaved-changes`,
+  cannot satisfy. Compare only the two states the binding can express — `status-mixed-ending` through its line-ending
+  item and `status-large-file` through its count item. Prove the other four (`saved`, `autosaved`, `unsaved-changes`,
   `read-only`) with behaviour assertions on the authoritative `data-status-state` attribute and the title bar
   rather than with pictures. The manifest keeps **546 logical keys**; the honest split is **522 pixel-compared
   keys** and **24 behaviour-verified keys** (4 states × 6 palettes), and three repetitions execute **1,566
@@ -321,10 +320,10 @@
   carries a Problems badge, an AI-provider readout and a Reading pill; production carries a `Document details`
   disclosure the binding does not have. Production **may not** add the provider readout — FR-FT-049 forbids
   Assistant and provider behaviour — and writing a Details pill into the reference would be fabricating
-  binding content rather than adapting it. Separately, the binding draws `.statusbar` full-width beneath the
+  binding content rather than adapting it. Separately, the binding draws its status bar full-width beneath the
   sidebar while production draws it inside the document area, which is the approved T042 placement. The
-  resulting offsets are structural and permanent: `.sb-eol` 115.531 px and `.sb-count` 207.453 px
-  horizontally, and a 46 px frame-height difference vertically. No status item can pair on absolute bounds, so
+  resulting offsets are structural and permanent: 115.531 px for the line-ending item and 207.453 px for the count
+  item horizontally, and a 46 px frame-height difference vertically. No status item can pair on absolute bounds, so
   the criterion was unsatisfiable for all six rather than for four. The honest split is **510 pixel-compared
   keys** and **36 behaviour-verified keys** (6 states × 6 palettes); three repetitions execute **1,530 pixel
   comparisons plus 108 behaviour verifications = 1,638 verifications**, and the 546 logical keys and 1,638
@@ -335,8 +334,8 @@
 - Q: The approved minimum-window behaviour shows one pane at ≤376px while the binding stacks both, so the
   `editor-split` family cannot pair at 375. What does its reference variant change, and does the semantic
   signature still distinguish the families there? → A: The variant hides the non-selected pane using the
-  declaration the mockup already applies for that condition — `mockup.html:299`
-  `.app.only-editor #pane-preview{display:none}` — so it is the binding's own primitive, the raw source hash
+  declaration the mockup already applies for that condition — its editor-only rule that hides the preview
+  pane — so it is the binding's own primitive, the raw source hash
   is unchanged, and the arrangement segment still shows Split selected, matching what production reports while
   its panes are collapsed. The signature needed one repair: it derived the active screen from which panes are
   visible, and "editor drawn, preview not" is true of `editor-split` and `editor-only` alike once the collapse
@@ -364,14 +363,13 @@
   Settings, View and About popups, the 375 Settings overflow, the tab strip, the toolbar and the paused
   preview. Each asserts exact bounds and every compared computed style, then compares pixels at zero tolerance
   with attributed residuals. **36 behaviour-verified keys** cover the six status states across six palettes.
-  Every other state in the contract is verified by behaviour assertion rather than by picture; the audit
-  closing that is `evidence/ft-vs-08/phase-18/t084-coverage-rescope.md` (61 of 61 states covered). The palette
+  Every other state in the contract is verified by behaviour assertion rather than by picture; an audit closed
+  that with 61 of 61 states covered. The palette
   and width coverage the whole-screen sweep used to claim now rests on the token gate — 67 tokens across all
   six palettes, plus per-family elevation and typeface distinctness and a single reviewed unavailable opacity —
   and on the behavioural suites, which run every width and palette. The **Monaco editor pane interior remains a
   named region exclusion** owned by Feature 002. Whole-screen comparison, its 546/1,638 accounting, and the
-  adapter variants that exist only to serve it are out of scope, with
-  `evidence/ft-vs-08/phase-18/t035-run-after-repair.md` as the recorded reason.
+  adapter variants that exist only to serve it are out of scope.
 - Q: The 25 committed screenshot baselines are a different mechanism — they photograph the real application and
   compare it against its own past, not against the binding. All 25 were written on 2026-08-06, 48
   shell-surface commits ago, and 20 end-to-end cases fail on them. What happens to them? → A: **Delete them,
@@ -745,15 +743,14 @@ approved mockup screenshots are reference illustrations of that source; the appr
 are audit evidence, not alternative baselines. Behavior comes from this specification.
 
 All the time, when UI changes are made, they should be compared with screenshots of the Mockup to validate the
-consistency of the style, theme, widget, sizes, and other aspects of the UI/UX. Screenshots are in the
-folder: "specs/003-real-files-and-tabs/surface".
+consistency of the style, theme, widget, sizes, and other aspects of the UI/UX.
 
 The completed operating-system-managed frame supersedes the mockup's obsolete custom traffic lights, drag
 region, resize zones, and outer window shadow. It does **not** supersede the brand: the application mark and
-name remain part of the in-app row, at the binding's own `.brand` metrics, because the operating system's title
+name remain part of the in-app row, at the binding's own brand metrics, because the operating system's title
 bar is a separate row above and identifying the application inside the menu row is still this feature's. The
-reference variant removes only `.lights`, so both pages derive the rest of the row's positions from the same
-layout. The in-app row below that native frame remains in scope and inherits the mockup row's webview-owned
+reference variant removes only the traffic lights, so both pages derive the rest of the row's positions from the
+same layout. The in-app row below that native frame remains in scope and inherits the mockup row's webview-owned
 metrics and state styling. Native Open/Save dialogs are behavior evidence,
 not screenshot-parity regions.
 
@@ -1331,8 +1328,7 @@ table, safe-subject only, remediated only from that row's vocabulary.
   the About menu's deferred rows. The rest — the launcher's file-only recents, the `reload-prompt` variants, the
   `save-prompt` normalization state, the tab menu's Move rows, and the pane content — describe surfaces this
   feature no longer compares as pictures. **Those behaviours are unchanged and still required**; they are
-  verified by assertion rather than by image, and the audit proving each has a covering assertion is
-  `evidence/ft-vs-08/phase-18/t084-coverage-rescope.md`.
+  verified by assertion rather than by image, and an audit proved each has a covering assertion.
 - **FR-FT-057**: Every accepted screenshot or style-baseline change MUST map to an explicit Feature 003 visual
   requirement and MUST preserve unaffected Feature 001/002 baselines and behavior. Exact same-browser parity MUST
   be complemented by actual-control browser journeys, local real-bridge interaction, and a freshly built
@@ -1368,26 +1364,13 @@ table, safe-subject only, remediated only from that row's vocabulary.
 
 | Authority                                                                                        | Classification                 | Migrated contract                                                                                                                                                                                                                                                                                                                                                                        |
 | ------------------------------------------------------------------------------------------------ | ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `docs/delivery/plan/phase-05-real-files.md`                                                      | Owned                          | New/Open, safe Save/Save As, real tabs, dirty close protection, saved-file autosave, external-change recovery, limits, and real-build outcome are restated here with settled values.                                                                                                                                                                                                     |
-| `docs/delivery/spec/product/opening-and-saving-files.md`                                         | Owned / narrowed               | File behavior, data preservation, recents, status, errors, and edge cases are owned; recent folders, OS entry, drag-and-drop, and workspace entry are deferred.                                                                                                                                                                                                                          |
-| `docs/delivery/spec/product/working-in-tabs.md`                                                  | Owned                          | One tab per path, per-tab state, atomic switching, stale-command refusal, close/reorder/context-menu behavior, navigation, overflow, and the 40-document limit are owned.                                                                                                                                                                                                                |
-| `docs/delivery/spec/surface/mockup.html` and surface `README.md`                                 | Owned exact shape / consumed   | The HTML/CSS values and the finite parity manifest are exact for mapped webview-owned shape and styling; screenshots corroborate them. Completed OS-managed native framing and this feature's explicit behavior/deferred variants override only the named obsolete or unavailable content.                                                                                               |
 | `specs/001-gomarkedit-product` application-state, command-boundary, shell, and product contracts | Consumed / staged completion   | Backend authority, projection-only frontend state, identity-bound working copy, clean launch, responsive shell, settings, limits, accessibility, offline behavior, and native close ownership remain in force. Feature 003 activates the zero-document surface only for its real file actions; Open Folder and recent folders remain for workspace completion.                           |
-| `specs/002-editor-stage-formatting` spec, plan, tasks, and action contract                       | Consumed / visually repaired   | The real file and tab lifecycle replaces visual fixtures and deferred File/tab actions. Feature 003 also owns exact visual convergence of the shared menu, tab, toolbar, arrangement, pane, settings, and status surfaces without changing formatting semantics, canonical action identities, Table binding, editor-size behavior, responsive action placement, or any deferred outcome. |
+| `specs/002-editor-stage-formatting` spec and action contract                                     | Consumed / visually repaired   | The real file and tab lifecycle replaces visual fixtures and deferred File/tab actions. Feature 003 also owns exact visual convergence of the shared menu, tab, toolbar, arrangement, pane, settings, and status surfaces without changing formatting semantics, canonical action identities, Table binding, editor-size behavior, responsive action placement, or any deferred outcome. |
 | ADR-0014                                                                                         | Consumed                       | Backend owns canonical application/document/tab state; the visible editor holds only the active ephemeral working copy and flushes on switch, close, and save.                                                                                                                                                                                                                           |
 | ADR-0021                                                                                         | Consumed                       | Activation and reload use identity-and-revision-bound acknowledgements; patches remain content-free and the zero-document state has no phantom document.                                                                                                                                                                                                                                 |
 | ADR-0022                                                                                         | Consumed                       | A committed disk write remains committed if projection delivery fails; commands pause for rehydration and the write is never repeated.                                                                                                                                                                                                                                                   |
 | ADR-0024                                                                                         | Consumed / narrowly superseded | Open-mode precedence, supported suffixes, unsafe-byte read-only policy, mixed-ending authorization, and complete batch-close planning are restated here. The two-action editable-conflict prompt is narrowly superseded by safe Skip cancellation, which creates no persistent Compare-later state or authorization.                                                                     |
 | ADR-0032                                                                                         | Consumed                       | Close remains vetoable, Cancel writes nothing, and shutdown follows the required cancel/flush/persistence/diagnostics order.                                                                                                                                                                                                                                                             |
-
-### Explicitly Deferred Authorities
-
-The following remain read-only source material for later features and are not silently claimed here:
-`a-folder-of-notes.md`, `dragging-files-in.md`, `opening-files-from-the-desktop.md`,
-`rendering-rich-documents.md`, `exporting-a-document.md`, `finding-things.md`, all Assistant/provider
-feature files, Phase 06 rich rendering, Phase 07 workspace, Phase 08 packaging, and later search, tidy,
-export, and Assistant phases. Existing visible controls for those areas remain unavailable unless a prior
-completed feature already owns their behavior.
 
 ## Success Criteria _(mandatory)_
 
@@ -1490,8 +1473,7 @@ Two clarification clauses were recorded here rather than under a `### Session` h
 the whole of the difference between the two counts a reader can take of this document: `grep -c '^- Q:'
 spec.md` returns **44**, and the five session headings account for 42 of them (2026-08-07: 21, 2026-08-09: 5,
 2026-08-12: 1, 2026-08-13: 5, 2026-08-14: 10). They are left in place rather than relocated so that neither
-count changes silently again; `plan.md` and `evidence/ft-ev-09/coverage-ledger.md` both state the 44, and
-`TestDeclaredClarifiedClauseCountMatchesTheSpecification` re-measures it.
+count changes silently again.
 
 - Q: The About popup's `open-logs` and `view-github` rows are `laterDeferred` in the action registry, so
   production draws both visibly unavailable, and Feature 003 formats the Keyboard shortcuts accelerator for
@@ -1500,8 +1482,8 @@ count changes silently again; `plan.md` and `evidence/ft-ev-09/coverage-ledger.m
   difference instead of measuring row geometry. How is that resolved? → A: Extend the same reviewed treatment
   FR-FT-056 already grants the File and View menus. The Feature 003 reference variant renders `Open logs
 folder` and `View on GitHub (MIT)` at the single reviewed unavailable opacity, and carries the
-  host-formatted Keyboard shortcuts accelerator, all built from the mockup's own `.mi`, `.sep` and `.k`
-  primitives. Production's deferred outcomes are unchanged — the rows stay disabled and non-activating —
+  host-formatted Keyboard shortcuts accelerator, all built from the mockup's own menu-item, separator and
+  accelerator primitives. Production's deferred outcomes are unchanged — the rows stay disabled and non-activating —
   because Feature 003 may not change any deferred outcome. **A reference variant is chosen over a named
   region exclusion** because the difference is presentational, not ownership: this feature owns the About
   popup's geometry and must keep measuring it, whereas an exclusion is reserved for a component this feature
@@ -1510,16 +1492,15 @@ folder` and `View on GitHub (MIT)` at the single reviewed unavailable opacity, a
   result: 1,489 → 87 differing pixels, all of them the popup's antialiased outer boundary at a maximum
   channel delta of 4, with the interior at exactly zero.
 
-- Q: **Superseded 2026-08-14, recorded 2026-08-16.** The question and answer below are kept verbatim because
+- Q: **Superseded 2026-08-14, recorded 2026-08-16.** The question and answer below are kept because
   the decision they record — that Feature 003 does not redefine Feature 002's editor typeface, type scale or
-  scrolling model to improve its own numbers — still stands, and the measurement handed forward in
-  `evidence/ft-vs-08/phase-18/t035-run.md` is still the record of that difference. **What no longer holds is
+  scrolling model to improve its own numbers — still stands, and the measurement handed forward is still the
+  record of that difference. **What no longer holds is
   the consequence.** The "432 of the 1,638 matrix comparisons" belong to the whole-screen parity contract
   withdrawn on 2026-08-14; that contract was replaced by the 14 component keys and 36 behaviour keys, and
   T103 closed T035 against the replacement. **T035 is closed and blocks on nothing**, so the sentence
   "T035 cannot reach a full pass until Feature 002 resolves it" describes a dependency that no longer exists.
-  Read the rest of this clause as the standing decision, not as an open blocker. The original text follows
-  unaltered.
+  Read the rest of this clause as the standing decision, not as an open blocker. The original text follows.
   The editor region's computed styles differ from the binding on eight properties — the binding wants
   `JetBrains Mono 13px/23.4px` with `overflow: auto`, production draws `Inter 16px/normal` with
   `overflow: hidden` — and those eight assertions fail in 432 of the 1,638 matrix comparisons, worth roughly
@@ -1529,7 +1510,7 @@ folder` and `View on GitHub (MIT)` at the single reviewed unavailable opacity, a
   by that feature's specification; Feature 003 may not silently redefine another feature's approved surface
   to improve its own numbers, and doing so would change the shipped editing experience as a side effect of a
   parity metric. The difference is instead measured precisely and handed forward:
-  `evidence/ft-vs-08/phase-18/t035-run.md` records the eight properties with both sides' values, the 432
+  the measurement records the eight properties with both sides' values, the 432
   affected comparisons, and the per-case pixel weight, together with the preview-family control that isolates
   the editor's own raster as the cause. **T035 cannot reach a full pass until Feature 002 resolves it**, and
   that dependency is stated rather than worked around. No mask, tolerance, comparator or manifest change is
@@ -1554,16 +1535,15 @@ take.**
   six requires widening seven closed union types across six files plus the
   hand-maintained `REFERENCE_ADAPTER_HASH`. It was **not started** rather than
   half-built, per the session rule that each piece is either complete and green
-  or fully reverted. `phase-18/t075-machinery.md` records the complete map.
+  or fully reverted.
 
 ### Blocked on T075 or on the matrix
 
 - **T068** — explicitly requires T056–T067 green before running the
   three-repetition matrix. T072 and T075 are not green.
-- **T035** — the 546-case matrix was executed this session; its result is
-  recorded in `phase-18/t035-run.md`. The task requires every one of the 40
-  additional state IDs to pass, which cannot hold while T075's six status states
-  have no paired reference.
+- **T035** — the 546-case matrix was executed this session. The task requires
+  every one of the 40 additional state IDs to pass, which cannot hold while
+  T075's six status states have no paired reference.
 - **T054** — the evidence-contract task for the matrix run; it reports counts
   the matrix must first produce.
 
@@ -1581,7 +1561,7 @@ take.**
 ### Requires a full release run
 
 - **T036, T037, T038, T039, T044** — the release-evidence stack. The by-hand
-  walkthrough is **done** and recorded in `evidence/ft-ev-09/current-host-walkthrough.md`:
+  walkthrough is **done**:
   the built binary was driven through startup, edit, settings, the autosave
   toggle, the View menu, a theme switch, fifteen tabs, tab switching, closing a
   tab, the abandoned-close-plan sequence, and quit. What remains in these tasks
@@ -1594,12 +1574,11 @@ take.**
 tree, and have done so since at least four earlier convergences landed, because
 `just check` never runs Playwright. All 106 reduce to four stale locators; in
 every cluster production matches the binding and the test describes the
-pre-convergence surface. This is diagnosed in full in
-`phase-18/e2e-baseline-failures.md` and needs its own task.
+pre-convergence surface. This is diagnosed in full and needs its own task.
 
 ### Update — 2026-08-14
 
-**Sixteen of those tasks are now closed; nine remain.** The record above is kept as written; this
+**Sixteen of those tasks are now closed; nine remain.** The record above is kept; this
 supersedes its counts.
 
 Closed: T065, T066, T067, T073, T074 (the coverage sweeps, rescoped by measurement to the 17
@@ -1615,22 +1594,21 @@ coverage ledger, the editor-region geometry, and the two evidence-contract tasks
 **Four production defects were found and fixed** while closing the above, none of which any gate
 was catching: the Settings popup escaping the 375×480 minimum window by ~111px (FR-FT-052); the
 workspace panel overlaying the tab strip so the new-tab control could not be clicked; the status
-row reading `--text-muted` where the binding reads `--faint` (`mockup.html:382`), 47 per channel
+row reading `--text-muted` where the binding reads `--faint`, 47 per channel
 on every glyph; and the tab strip's arrow keys moving selection without moving focus, leaving the
 caret on a `tabindex="-1"` element.
 
 **What now blocks each remaining task is recorded, not assumed:**
 
-- `evidence/ft-vs-08/phase-18/blocking-decisions.md` — the two owner decisions: the Feature 002
-  editor term, and 25 screenshot baselines written before this feature's specification existed.
-- `evidence/ft-vs-08/phase-18/t035-run-2026-08-14.md` — where the matrix's 1,638 actually go, and
-  the finding that **31% of production captures were non-deterministic** while the reference was
-  stable in all 450 keys, so an unknown share of the recorded pixel drift was never a measurement.
-- `evidence/ft-vs-08/phase-18/t045-three-combinations.md` — the editor region measured per colour
-  family for the first time: Minimal 182 pixels, Material 72,996, Glass 309,561. Every earlier
-  conclusion rested on the best of the three.
-- `evidence/ft-vs-08/regressions/baseline-provenance.md` — Feature 003 accepted **zero** baseline
-  changes; all 25 committed images are unchanged and now stale.
+- The two owner decisions: the Feature 002 editor term, and 25 screenshot baselines written before
+  this feature's specification existed.
+- Where the matrix's 1,638 actually go, and the finding that **31% of production captures were
+  non-deterministic** while the reference was stable in all 450 keys, so an unknown share of the
+  recorded pixel drift was never a measurement.
+- The editor region measured per colour family for the first time: Minimal 182 pixels, Material
+  72,996, Glass 309,561. Every earlier conclusion rested on the best of the three.
+- Feature 003 accepted **zero** baseline changes; all 25 committed images are unchanged and now
+  stale.
 
 Two capture-integrity defects were also fixed in the harness: captures now settle before being
 compared (`captureWhenStable`), and Monaco's caret is frozen as FR-FT-054 requires. The first

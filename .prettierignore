@@ -1,6 +1,4 @@
 .specify/**
-.claude/skills/speckit-*/**
-.agents/skills/speckit-*/**
 frontend/wailsjs/**
 frontend/dist/**
 build/bin/**

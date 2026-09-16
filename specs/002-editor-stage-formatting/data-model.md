@@ -81,7 +81,7 @@ Each setting is validated before persistence, persisted through the existing add
 projected only after acknowledgement. An invalid or failed write retains the prior acknowledged value. The
 frontend adapter owns Wails binding access and the development bridge mirrors the typed result.
 
-Existing Appearance and Markdown groups remain consumed/owned according to the feature matrix: appearance
+Existing Appearance and Markdown groups remain consumed/owned: appearance
 uses the completed lifecycle and six palettes; Markdown marker preferences remain shared inputs to
 formatting; future Markdown Standard, Format-on-save, and Lint-on-save behavior remains visibly deferred.
 
@@ -117,6 +117,6 @@ formatting; future Markdown Standard, Format-on-save, and Lint-on-save behavior 
 
 ## Explicitly absent entities
 
-This plan must not introduce canonical `FileMenuCommand`, `Tab`, `WorkspaceEntry`, `AssistantPanel`,
-`ProviderCall`, `RichRendererPlugin`, `ProblemList`, or `TidyMarkdownOperation` entities. Their source
-anchors remain Deferred in the active migration matrix and belong to downstream slices.
+This feature must not introduce canonical `FileMenuCommand`, `Tab`, `WorkspaceEntry`, `AssistantPanel`,
+`ProviderCall`, `RichRendererPlugin`, `ProblemList`, or `TidyMarkdownOperation` entities. They remain
+deferred and belong to downstream slices.

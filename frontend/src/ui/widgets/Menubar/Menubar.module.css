@@ -14,11 +14,10 @@
     white-space: normal;
 }
 
-/* Binding source: mockup.html `.menu{display:flex;gap:1px}` (:228).
-   Nothing positions this element but the elements before it. The binding's
-   `.lights` are drawn by the operating system's own frame (`spec.md:599`) and
-   are removed from the reference rather than reserved for here, so both pages
-   derive the menu's position from the same layout. */
+/* The menu is `display:flex;gap:1px`.
+   Nothing positions this element but the elements before it. The design's
+   traffic lights are drawn by the operating system's own frame, so no space is
+   reserved for them here. */
 .menu {
     display: flex;
     gap: 1px;
@@ -67,18 +66,18 @@
     box-shadow: var(--focus-ring);
 }
 
-/* Binding source: mockup.html — a single `.sp{flex:1}` spacer (:231) sits
-   before `.doc-name`, and the two window-control buttons follow it on the
-   row's own 12px gap. The identity owns the auto margin; a second one here
-   would split the free space and leave the identity floating mid-row instead
-   of adjacent to these buttons. */
+/* In the design a single `flex:1` spacer sits before the document identity,
+   and the two window-control buttons follow it on the row's own 12px gap. The
+   identity owns the auto margin; a second one here would split the free space
+   and leave the identity floating mid-row instead of adjacent to these
+   buttons. */
 .menuRowActions {
     align-items: center;
     display: flex;
     gap: var(--menu-row-gap);
 }
 
-/* Binding source: mockup.html `.sp{flex:1}` (:231). */
+/* The flexible spacer before the document identity. */
 .spacer {
     flex: 1 1 auto;
     min-width: 0;

@@ -184,7 +184,7 @@ if (res.error) {
 }
 // No local dispatch of model data: the backend mutated the authoritative model and the
 // resulting change arrives as a `state:patch` event that reconciles the Redux projection
-// (DD-62/DD-63 — see .claude/rules/ts-redux-adapter.md).
+// (DD-62/DD-63 — see docs/architecture.md, Backend truth and frontend working copy).
 ```
 
 Never let the caller `.catch()` on a GoMarkEdit bound method — errors are in `res.error`, not

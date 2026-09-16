@@ -5,9 +5,9 @@ import { parseError, type WireError } from '../utils/parseError';
 import type { RootState } from './index';
 
 /*
- * Binding source: mockup.html `.sidebar{width:216px…}` (:254). The shell already
- * falls back to this when no width has ever been acknowledged; it lives here so
- * the fallback and the restore below cannot drift apart.
+ * The design's workspace sidebar is 216px wide. The shell already falls back to
+ * this when no width has ever been acknowledged; it lives here so the fallback
+ * and the restore below cannot drift apart.
  */
 export const WORKSPACE_BINDING_WIDTH = 216;
 

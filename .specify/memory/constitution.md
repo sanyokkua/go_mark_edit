@@ -1,21 +1,19 @@
 <!--
 Sync Impact Report
-- Version change: 2.0.0 -> 2.1.0 (MINOR: Principle VII materially expanded)
-- Modified principles:
-  - VII. Evidence Before Completion: (a) a behaviour unreachable through public interfaces may keep
-    an in-package `_test.go` test beside the code, listed with its reason in the feature plan and
-    enforced by the lint stage, with no export shim or test-only parameter (carries Feature 004
-    FR-023, owner decision D3); (b) the feature that creates `scripts/baseline` runs it immediately
-    after creating the entry-point scripts, before any other implementation edit (Feature 004
-    FR-064) — mirrored in Specification-Driven Delivery Workflow step 3
+- Version change: 2.1.0 -> 2.1.1 (PATCH: governance wording clarified)
+- Modified principles: none
+- Modified sections:
+  - Governance: the normative material is named as `specs/<feature>/` and `docs/architecture.md`
+    only, with no reference-only material beside them
 - Added principles: none
 - Added sections: none
 - Removed sections: none
-- Templates: Spec Kit templates are owned by the Spec Kit CLI and untouched. AGENTS.md and
-  CLAUDE.md are rewritten by Feature 004 (FR-077); until then they conflict with I, II and VII.
+- Templates: Spec Kit templates are owned by the Spec Kit CLI and untouched.
 - Follow-up TODOs: none
-- Previous report (1.0.0 -> 2.0.0, 2026-09-08): authority, anchor and baseline governance redefined;
-  Principle VIII added; see git history.
+- Previous reports: 2.0.0 -> 2.1.0 (2026-09-09): Principle VII allows listed in-package white-box
+  tests and runs `scripts/baseline` right after the entry-point scripts are created;
+  1.0.0 -> 2.0.0 (2026-09-08): authority, anchor and baseline governance redefined, Principle VIII
+  added; see git history.
 -->
 # GoMarkEdit Constitution
 
@@ -218,10 +216,10 @@ owner per behaviour keeps the product coherent and makes the next feature cheape
 
 This constitution governs all Spec Kit specifications, plans, tasks, implementation, reviews and
 delivery evidence for GoMarkEdit. The normative material is `specs/<feature>/` and
-`docs/architecture.md`; archived trees under `docs/_archive-*` are reference only. If a workflow
-document, task, implementation shortcut or descriptive document conflicts with this constitution,
-this constitution wins; a more specific normative product or architecture rule wins where it adds
-constraints without contradicting a constitutional principle.
+`docs/architecture.md`. If a workflow document, task, implementation shortcut or descriptive
+document conflicts with this constitution, this constitution wins; a more specific normative
+product or architecture rule wins where it adds constraints without contradicting a
+constitutional principle.
 
 Amendments require a written proposal that identifies the affected principles, the reason,
 migration impact and evidence that no normative requirement was silently dropped. Approval MUST
@@ -237,4 +235,4 @@ repository working instructions, and the active Spec Kit commands define artifac
 neither may override this constitution. The constitution itself is updated only through the
 constitution workflow.
 
-**Version**: 2.1.0 | **Ratified**: 2026-07-30 | **Last Amended**: 2026-09-09
+**Version**: 2.1.1 | **Ratified**: 2026-07-30 | **Last Amended**: 2026-09-16

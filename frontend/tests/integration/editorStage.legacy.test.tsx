@@ -398,17 +398,16 @@ it('matches the split-view structure', () => {
  * moves no compared pixel has nothing for a test to prove, so the assertions
  * pinned their own text and no behaviour.
  *
- * The measurement is in
- * `evidence/ft-vs-08/phase-18/shell-attribute-css-classification.md`, which also
- * records the opposite verdict for `FormattingToolbar.module.css`'s 34 rules — those
- * move an attributed residual from 181 to 184 pixels and stay.
+ * The same measurement gave the opposite verdict for
+ * `FormattingToolbar.module.css`'s 34 rules — those move an attributed residual
+ * from 181 to 184 pixels and stay.
  */
 /*
  * . `presents the reviewed selection metadata on the parity editor
  * route` was removed with the readout it described.
  *
- * The mockup's pane header carries `· sel 42w` (mockup.html:726) and Feature 003
- * builds no selection readout, so `EditorView` rendered a hardcoded `sel 42w`
+ * The design's pane header carries a selection word-count readout and Feature 003
+ * builds no selection readout, so `EditorView` rendered a hardcoded copy of it
  * on `?parity-case` to make the two sides agree. The 2026-08-13 clarification
  * recorded against this exact region requires the opposite: out-of-scope
  * reference content is "removed from the reference rather than manufactured in

@@ -162,16 +162,29 @@ write_skipped_stage() {
         --output "$RUN_DIR/$1.json"
 }
 
+# The active feature is the one specs/<NNN>-<name>/ directory whose number the checked-out
+# branch carries (feature/<NNN>-<name>…, or <NNN>-<name>…).
 feature_directory() {
-    node -e '
-        const fs = require("node:fs");
-        const feature = JSON.parse(fs.readFileSync(".specify/feature.json", "utf8"));
-        process.stdout.write(feature.feature_directory);
-    '
+    local branch pattern number candidate match='' count=0
+    branch="$(git -C "$REPO_ROOT" symbolic-ref --quiet HEAD)" ||
+        die 'no branch is checked out; expected feature/<NNN>-<name>'
+    branch="${branch#refs/heads/}"
+    pattern='^(feature/)?([0-9]{3})-'
+    [[ "$branch" =~ $pattern ]] || die "branch $branch names no feature; expected feature/<NNN>-<name>"
+    number="${BASH_REMATCH[2]}"
+    for candidate in "$REPO_ROOT/specs/$number"-*; do
+        [[ -f "$candidate/spec.md" ]] || continue
+        match="$candidate"
+        count=$((count + 1))
+    done
+    [[ "$count" -eq 1 ]] || die "expected one specs/$number-*/spec.md for branch $branch, found $count"
+    printf 'specs/%s\n' "${match##*/}"
 }
 
 feature_name() {
-    basename "$(feature_directory)"
+    local directory
+    directory="$(feature_directory)" || exit 1
+    basename "$directory"
 }
 
 restore_tracked_modes() {

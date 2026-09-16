@@ -1,9 +1,8 @@
 # GoMarkEdit architecture map
 
 This is the concise architecture map for GoMarkEdit. Together with the active feature tree in
-`specs/004-codebase-refactoring/`, it is the authority for the current product and its boundaries.
-The old delivery records are historical evidence; this file states the decisions that current work
-must follow.
+`specs/004-codebase-refactoring/`, it is the authority for the current product and its boundaries;
+this file states the decisions that current work must follow.
 
 ## Product intent
 
@@ -237,7 +236,10 @@ dev and setup. Hooks and CI call the scripts directly. A developer may use the f
   stage record, and `scripts/baseline --compare` fails closed when findings remain or a new finding
   appears. Verification run artifacts live under `.local_tmp_files/runs/`; the explicit baseline
   record lives under `.local_tmp_files/baseline/` and is created or compared only by
-  `scripts/baseline`. Required reports that are missing or malformed are UNAVAILABLE or UNRELIABLE,
+  `scripts/baseline`. The record is named after the `specs/<NNN>-<name>/` directory whose number the
+  checked-out `feature/<NNN>-<name>` branch carries (the `feature/` prefix is optional); on a branch
+  without exactly one matching feature, or with no branch checked out, `scripts/baseline` stops
+  before running a stage. Required reports that are missing or malformed are UNAVAILABLE or UNRELIABLE,
   never zero; warning counts do not fail a stage. `specs/*/evidence/` is disposable generated
   output, ignored by Git and formatting checks, and is not recreated by verification.
 - CI failure uploads allowlist stage JSON records, logs, stderr captures, normalized and raw reports,
@@ -465,8 +467,7 @@ The owner decisions that shaped this refactor are recorded here so they are not 
 - **D3 — Black-box Go tests:** tests live in external unit and integration roots; only the three
   documented unreachable behaviours remain as in-package white-box tests.
 - **D4 — Parity removal:** the pixel-parity harness goes after the real-backend E2E stage is green.
-- **D5 — One authority:** the active `specs/` tree and this map are normative; delivery material is
-  archived.
+- **D5 — One authority:** the active `specs/` tree and this map are normative.
 - **D6 — Mock removal:** the mock bridge and native evidence driver go after the real-backend E2E stage.
 - **D7 — Remote content wording:** the current app remains offline without background requests; a
   future rendering feature owns the user-controlled remote-content policy.
@@ -481,13 +482,25 @@ The owner decisions that shaped this refactor are recorded here so they are not 
   protocol and never introduces session restore.
 - **D13 — Scroll synchronization restored:** synchronized scrolling between the editor and the preview
   is restored at block granularity; the View menu's Synchronized scrolling preference defaults to on.
+- **D14 — Versioned material:** the repository versions product code with its build and release
+  configuration, tests, verification tooling, the README and agent instructions, the developer
+  reference under `docs/reference/`, the Spec Kit constitution, this map, every feature's product
+  definitions under `specs/` and this refactor's plan, tasks, research and quickstart. Spec Kit
+  installs and their state, agent working documents, audits, archives, generated run records, Wails
+  scaffolding that the Wails CLI regenerates, reference-only mockups, every feature's checklists and
+  the planning records of earlier features are not versioned; Git history keeps their earlier
+  copies. This decision supersedes D5's statement that delivery material is archived, planning
+  decision 1's inclusion of archived material in the formatter scope, planning decision 7's
+  retention of planning material (its reference material stays) and the legacy-source requirements
+  of earlier feature specs; the superseded wording was removed from D5 and planning decisions 1
+  and 7.
 
 ## Planning decisions retained
 
 The seven planning decisions are part of the implementation record:
 
-1. The formatter covers tracked source and documents, including SQL and archived material; migration
-   application is owned by `internal/db` and is not compared against Git history by verification.
+1. The formatter covers tracked source and documents, including SQL; migration application is owned
+   by `internal/db` and is not compared against Git history by verification.
 2. The unused icon-processing helper is removed while the canonical source and generated icon assets
    remain.
 3. The late-completion test lever is a second process holding an exclusive transaction on the harness
@@ -497,8 +510,8 @@ The seven planning decisions are part of the implementation record:
    they do not add stages or aliases.
 6. The two archive-only race cases use throwaway tests in the archived worktree and public-interface
    tests in the refactored tree.
-7. `docs/superpowers/` and `docs/reference/` remain because they are retained planning/reference
-   material, not the legacy workflow or Spec Kit core.
+7. `docs/reference/` remains because it is retained reference material, not the legacy workflow or
+   Spec Kit core.
 
 ## Open decisions
 

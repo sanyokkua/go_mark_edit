@@ -273,8 +273,8 @@ it('attempts zero runtime requests and keeps higher tiers literal (EC-RENDER-6)'
  * so the one size the requirement names was the one size never run.
  *
  * This measures the pipeline, which is the part the requirement can hold to a
- * budget. It is deliberately NOT a claim about the 2 MiB host wedge recorded in
- * `evidence/ft-ev-09/host-walkthrough-2026-08-19/`: that stall was measured at
+ * budget. It is deliberately NOT a claim about the 2 MiB host wedge seen in the
+ * 2026-08-19 host walkthrough: that stall was measured at
  * minutes while this pipeline handles the very same file in 579 ms under JSC
  * and 1,411 ms under V8, and its profile points at quadratic array writes in
  * application code, not at markdown. A test that asserted otherwise would

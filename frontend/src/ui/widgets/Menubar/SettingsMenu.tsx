@@ -50,7 +50,7 @@ const themeOptions: readonly SegmentedOption<Theme>[] = [
 ];
 
 /**
- * The compact popup reproduces the binding mockup's `#m-settings` label text,
+ * The compact popup uses the design's short label text for these choices,
  * which differs from the full Settings dialog wording for the same choices.
  * Both come from the catalogue; neither is written into the component.
  */

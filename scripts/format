@@ -40,7 +40,7 @@ while IFS= read -r path; do
     [[ -z "$path" ]] && continue
     [[ -f "$REPO_ROOT/$path" && ! -L "$REPO_ROOT/$path" ]] || continue
     case "$path" in
-        .specify/* | .claude/skills/speckit-*/* | .agents/skills/speckit-*/* | frontend/wailsjs/* | frontend/dist/* | build/bin/* | */node_modules/* | */package-lock.json | package-lock.json | */go.sum | go.sum | specs/*/evidence/* | justfile) continue ;;
+        .specify/* | frontend/wailsjs/* | frontend/dist/* | build/bin/* | */node_modules/* | */package-lock.json | package-lock.json | */go.sum | go.sum | specs/*/evidence/* | justfile) continue ;;
     esac
     case "$path" in
         *.md | *.yml | *.yaml | *.json | *.css | *.ts | *.tsx | *.js | *.mjs | *.cjs | *.html | *.sql) prettier_files+=("$path") ;;
@@ -52,7 +52,7 @@ shell_files=("scripts/build" "scripts/test" "scripts/verify" "scripts/format" "s
 while IFS= read -r path; do
     [[ -n "$path" && -f "$REPO_ROOT/$path" && ! -L "$REPO_ROOT/$path" ]] || continue
     case "$path" in
-        .specify/* | .claude/skills/speckit-*/* | .agents/skills/speckit-*/*) continue ;;
+        .specify/*) continue ;;
     esac
     shell_files+=("$path")
 done < <(git ls-files --cached --others --exclude-standard '*.sh')

@@ -10,9 +10,11 @@ future provider request must be explicitly initiated by the user and governed by
 
 ## Authority
 
-The active feature is selected by `.specify/feature.json`. Read that feature's complete artifact set
-under `specs/<feature>/` before deciding what to change. In the current checkout the active set is
-`specs/004-codebase-refactoring/`, including `spec.md`, `plan.md`, `tasks.md` and `contracts/`.
+The active feature is the `specs/<NNN>-<name>/` directory whose number the checked-out
+`feature/<NNN>-<name>` branch carries; a branch without a feature number, such as `master`, has no
+active feature. Read that feature's complete artifact set before deciding what to change. On this
+branch the active set is `specs/004-codebase-refactoring/`, including `spec.md`, `plan.md`,
+`tasks.md` and `contracts/`.
 
 The two current authorities are:
 
@@ -21,14 +23,15 @@ The two current authorities are:
 - `docs/architecture.md` — repository-wide owners, consumer inventories, lifecycle, persistence,
   verification walkthrough and durable decisions.
 
-`docs/_archive-2026-09-delivery/` is historical evidence only. `README.md`, `CLAUDE.md` and
-`.github/copilot-instructions.md` point readers toward the current authorities; do not restore the
-archived delivery tree as a competing specification.
+`README.md`, `CLAUDE.md` and `.github/copilot-instructions.md` point readers toward the current
+authorities. The project principles are in `.specify/memory/constitution.md`. Spec Kit installs,
+their `speckit-*` agent skills and agent working documents are local tool output that Git ignores
+(decision D14 in the architecture map); do not commit them.
 
 If an active artifact is silent or ambiguous, stop and surface the question with a recommended
 default. Do not invent behaviour, weaken a requirement, or edit a specification merely to make an
-implementation or gate pass. Do not edit `.specify/`, the active feature artifacts, or the archived
-material unless the task explicitly owns that artifact.
+implementation or gate pass. Do not edit the constitution outside the Spec Kit constitution workflow,
+or the active feature artifacts, unless the task explicitly owns that artifact.
 
 ## Ownership first
 
@@ -45,8 +48,8 @@ receive props or primitive context and do not reach into the store, adapter or a
 
 ## Development loop
 
-1. Orient from `.specify/feature.json`, then read the active feature's `spec.md`, `plan.md`,
-   `tasks.md` and the contracts named by the task.
+1. Orient from the branch name, then read the active feature's `spec.md`, `plan.md`, `tasks.md` and
+   the contracts named by the task.
 2. Before the first implementation edit, run `scripts/baseline` and confirm that every stage ran.
    A non-zero stage that collected nothing, or a required test count that is unavailable, is
    unreliable, not clean; fix that runner before using the record. `scripts/baseline` refuses to

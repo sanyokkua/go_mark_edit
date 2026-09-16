@@ -161,7 +161,7 @@ it('keeps the binding popup labels, roles, and acknowledged state', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Settings' }));
     const menu = screen.getByRole('menu', { name: 'Settings menu' });
 
-    // Binding source: docs/delivery/spec/surface/mockup.html #m-settings.
+    // The labels the design draws in the Settings popup.
     for (const label of [
         'Theme',
         'Appearance',

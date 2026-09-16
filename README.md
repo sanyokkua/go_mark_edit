@@ -21,17 +21,14 @@ just verify
 
 ## Read first
 
-The active feature is selected by `.specify/feature.json`. Its current artifacts are in
+The active feature is the `specs/<NNN>-<name>/` directory whose number the checked-out
+`feature/<NNN>-<name>` branch carries. On this branch its artifacts are in
 [`specs/004-codebase-refactoring/`](specs/004-codebase-refactoring/): read `spec.md`, `plan.md`,
 `tasks.md` and the relevant files under `contracts/` before changing behaviour.
 
 The repository-wide architecture authority is [`docs/architecture.md`](docs/architecture.md). It
 records owners, shared-component consumers, document lifecycle, persistence, shutdown, verification
 walkthrough steps and durable decisions.
-
-The former delivery tree is preserved as historical evidence in
-[`docs/_archive-2026-09-delivery/`](docs/_archive-2026-09-delivery/). It is not a competing
-specification; new work follows the active feature artifacts and the architecture map.
 
 ## Contributing
 

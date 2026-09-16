@@ -60,13 +60,7 @@ function relativePath(root, path) {
 }
 
 function isExcluded(path) {
-    return (
-        path === '' ||
-        path.startsWith('specs/') ||
-        path.startsWith('.specify/') ||
-        path.startsWith('docs/audits/') ||
-        path.startsWith('docs/_archive-')
-    );
+    return path === '' || path.startsWith('specs/') || path.startsWith('.specify/');
 }
 
 function isTestFile(path) {

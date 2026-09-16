@@ -103,7 +103,7 @@ it('keeps Markdown Standard visible but unavailable without persistence', async 
     render(<AppearanceHarness />);
 
     fireEvent.click(await screen.findByRole('button', { name: 'Settings' }));
-    // The converged popup follows the binding mockup, which lists the three
+    // The converged popup follows the design, which lists the three
     // Markdown standard choices directly instead of one combined row. All three
     // remain visible and unavailable while persistence is deferred.
     for (const name of ['Minimal (CommonMark)', 'GFM', 'Full (+ math, footnotes…)']) {

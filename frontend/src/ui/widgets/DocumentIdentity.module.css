@@ -1,9 +1,9 @@
-/* Binding source: mockup.html `.doc-name{font-size:12px;color:var(--faint);
-   display:flex;align-items:center;gap:7px}` (:232) with
-   `white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:40ch`
-   (:70). The binding gives it no background of its own — it sits directly on
-   the title bar — and the preceding `.sp{flex:1}` spacer (:231) is what pushes
-   it to the trailing edge, ahead of the two window-control buttons. */
+/* The document identity is `font-size:12px;color:var(--faint);display:flex;
+   align-items:center;gap:7px` with
+   `white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:40ch`.
+   The design gives it no background of its own — it sits directly on the title
+   bar — and the preceding `flex:1` spacer is what pushes it to the trailing
+   edge, ahead of the two window-control buttons. */
 .identity {
     align-items: center;
     background: none;
@@ -42,8 +42,8 @@
     white-space: nowrap;
 }
 
-/* Binding source: mockup.html `.save-dot{width:7px;height:7px;border-radius:50%;
-   background:var(--accent);box-shadow:0 0 7px var(--accent)}` (:233). */
+/* The save dot is `width:7px;height:7px;border-radius:50%;
+   background:var(--accent);box-shadow:0 0 7px var(--accent)`. */
 .saveDot {
     background: var(--accent);
     block-size: var(--identity-dot-size);

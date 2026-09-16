@@ -46,8 +46,8 @@ beforeEach((): void => {
  * render 2 MiB of ordinary short-line prose under WebKit. Paying that per
  * keystroke is the difference between an editor and a stopwatch.
  *
- * This does NOT claim to close the multi-minute host stall recorded in
- * `evidence/ft-ev-09/host-walkthrough-2026-08-19/`. That has a different
+ * This does NOT claim to close the multi-minute host stall seen in the
+ * 2026-08-19 host walkthrough. That has a different
  * profile — inside a timer-dispatched event listener, not a render — and it was
  * never reproduced outside the packaged app. This removes a separately measured
  * cost.

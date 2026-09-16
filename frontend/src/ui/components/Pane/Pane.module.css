@@ -45,19 +45,19 @@
     min-width: 0;
 }
 
-/* Binding source: `body[data-theme="minimal"] .pane{background:transparent}`. */
+/* In Minimal a pane has no fill, border or radius of its own. */
 :global(:root[data-theme='minimal']) .pane {
     background: transparent;
     border: 0;
     border-radius: 0;
 }
 
-/* Binding source: `body[data-theme="minimal"] .pane+.pane{border-left:1px solid var(--stroke)}`. */
+/* In Minimal a one-pixel stroke on the inline start separates adjacent panes. */
 :global(:root[data-theme='minimal']) .pane + .pane {
     border-inline-start: var(--control-border-width) solid var(--stroke);
 }
 
-/* Binding source: `.pane-h{border-bottom:1px solid var(--stroke-soft)}`. */
+/* In Minimal the pane header keeps only a soft bottom stroke. */
 :global(:root[data-theme='minimal']) .paneHeader {
     background: transparent;
     border-bottom-color: var(--stroke-soft);

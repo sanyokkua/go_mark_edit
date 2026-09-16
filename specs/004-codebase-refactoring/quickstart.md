@@ -52,8 +52,8 @@ scripts/format --check
 
 Expected: exit 0 on a formatted tree; after touching the formatting of one file of each type
 (`.md`, `.yml`, `.json`, `.css`, `.ts`, `.go`, `.sh`, `.sql`) the check exits 1 naming that file;
-the ignore list is exactly the root `.prettierignore` plus the defense-in-depth
-`specs/*/evidence/` exclusion in `scripts/format`. Evidence directories are disposable and are not
+the ignore list is exactly the skip list held in `scripts/format`, and the root `.prettierignore`
+lists the same globs, `specs/*/evidence/` included. Evidence directories are disposable and are not
 recreated by this command.
 
 ## 4. Baseline and comparison (FR-064)

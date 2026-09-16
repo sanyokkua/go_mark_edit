@@ -164,7 +164,7 @@ Before the agent events below: GoMarkEdit's primary Go→frontend event is **`st
 the authoritative application state (docs metadata, tabs, workspace ref, UI/layout); the adapter applies
 it to the Redux projection (hydrated once via the bound `GetState` query). The backend **never** emits
 buffer text for the currently focused editor (DD-64) — only derived fields (dirty, counts). Contract:
-`specification/02_Architecture/02_BACKEND_GO.md#application-model` and `.claude/rules/ts-redux-adapter.md`.
+`docs/architecture.md` (Backend truth and frontend working copy).
 
 ## GoMarkEdit Agent Events
 

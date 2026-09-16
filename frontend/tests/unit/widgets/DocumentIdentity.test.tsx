@@ -87,7 +87,7 @@ it('keeps the title-bar status to the bare state, without the reason', () => {
      * wrong and was tried. Appending 's reason to this status rendered
      * correctly from the real Go `capability` on the packaged binary and then
      * ellipsised to `Read-only · over t…` at full window width: `.identity` is
-     * capped at the binding's own `max-width: 40ch` (`mockup.html:70`), which the
+     * capped at the design's own `max-width: 40ch`, which the
      * filename and parent already compete for, and the cap drops to `16ch` at
      * ≤376px — narrow enough to truncate `Read-only` itself. The reason lives in
      * the status bar's `Document details` region; this surface must keep showing

@@ -201,8 +201,8 @@ it('renders File, Settings, View, About in binding order with exact deferred inv
         'New Window',
         'Open File…',
         'Open Folder…',
-        // Binding source: mockup.html renders the reopen row as `↺ Reopen last
-        // file`; the accessible name stays the plain action label.
+        // The design renders the reopen row as `↺ Reopen last file`; the
+        // accessible name stays the plain action label.
         '↺ Reopen last file',
         'Save',
         'Save As…',

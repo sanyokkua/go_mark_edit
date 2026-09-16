@@ -124,7 +124,7 @@ change.
 
 ## Surface contract
 
-The following surfaces derive from the registry and the binding mockup shape:
+The following surfaces derive from the registry and the original mockup shape:
 
 - Menu row directly below the native title bar: File, Settings, View, About.
 - File menu inventory is visual-only: New File, New Window, Open File, Open Folder, Open Recent, Reopen,
@@ -144,7 +144,7 @@ The following surfaces derive from the registry and the binding mockup shape:
   buttons and arrangement relocate too. No control disappears or creates horizontal scrolling.
 - The editor context menu is exactly: Cut, Copy, Paste, Paste as plain text, separator, Bold, Italic,
   Link, separator, Format document, Compact, separator, Command palette. Lint is not added to this menu
-  because the active surface contract does not list it there.
+  because FR-ED-019 does not list it there.
 
 All labels, unavailable states, tooltips, focus, reduced-motion behavior, and colors use the existing
 translation and token systems across all six palettes.

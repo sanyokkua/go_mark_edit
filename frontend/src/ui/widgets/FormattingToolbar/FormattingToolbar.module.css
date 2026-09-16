@@ -38,10 +38,10 @@
     flex: none;
 }
 
-/* Binding source: mockup.html `.tsp{flex:1}` (:289), the empty element sitting
-   between the overflow group and the arrangement segment (:672–:673). It is what
-   holds the segment against the toolbar's trailing edge; without it the segment
-   packs against the Format/Compact/Lint buttons. */
+/* The design's `flex:1` spacer, the empty element sitting between the overflow
+   group and the arrangement segment. It is what holds the segment against the
+   toolbar's trailing edge; without it the segment packs against the
+   Format/Compact/Lint buttons. */
 .spacer {
     flex: 1;
 }
