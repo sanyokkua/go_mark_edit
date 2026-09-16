@@ -633,6 +633,26 @@ the six stages are green against the G11 baseline.
 
 ---
 
+## Phase 12: Close follow-up — editor round-trip E2E repair
+
+**Purpose**: repair the real-backend E2E case that has failed on every run since it arrived with the
+context-action formatting fix `d0b548c`, so the feature closes with all six stages green. An
+investigation classified the failure as a test defect, not a product defect. The task runs on
+`feature/004-codebase-refactoring-e2e-round-trip` through the same flow as G11 (a fresh implementer,
+test auditor and reviewer) and is squash-merged back into the feature branch.
+
+- [ ] T058 Repair the E2E case "uses the native clipboard for every editor popup action and keeps Monaco formatting focus stable" in `frontend/tests/e2e/editor-round-trip.test.ts`
+    - **Implements**: FR-025 (the real-backend E2E stage); the case arrived with `d0b548c`, and no earlier task lists it.
+    - **Scope**: that test file only. Remove the `ArrowRight` before the context-menu Italic step: toolbar Bold leaves the cursor inside the closing marker after the word, so the key press moves it between the closing asterisks, where no word is found and Italic inserts an empty pair. Correct the comment that describes that step. At the step that presses `Control+I`, press the application's Italic shortcut for the host platform (the investigation recommends `ControlOrMeta+I`). No production code changes; the case keeps asserting the native clipboard round trip, each formatting result and editor focus.
+    - **Evidence**: the case passes on repeated isolated runs and fails again when either change is reverted; the full E2E stage passes with no failure; `scripts/verify lint` and `scripts/format --check` are green.
+    - **Depends on**: T057.
+    - **Branch**: `feature/004-codebase-refactoring-e2e-round-trip`; `test(e2e): align the editor round-trip case with toolbar formatting and platform shortcuts`.
+
+**Checkpoint**: the full E2E stage passes with no failure, so all six stages are green for the feature
+close.
+
+---
+
 ## Dependencies & Execution Order
 
 ### Phase Dependencies (the plan's binding group order)
@@ -650,6 +670,7 @@ the six stages are green against the G11 baseline.
 | 9     | G9 repository cleanup                  | Phase 10                                        |
 | 10    | G10 close                              | feature close                                   |
 | 11    | G11 synchronized scrolling             | the re-verified close (T057)                    |
+| 12    | Close follow-up                        | the feature close                               |
 
 ### Hard ordering rules
 
@@ -678,6 +699,7 @@ the six stages are green against the G11 baseline.
 - Phase 10: T044 → T045 and T046 → T047.
 - Phase 11: T049 → T050 → T051 → T052 → T053 → T054 → T055 → T056 → the final whole-branch review →
   T057.
+- Phase 12: T058, after T057.
 
 ## Parallel Opportunities
 
