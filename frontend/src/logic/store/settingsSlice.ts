@@ -5,6 +5,7 @@ import type { EditorSettings, FileSettings, MarkdownSettings, Settings } from '.
 export const defaultEditorSettings: EditorSettings = {
     lineNumbers: true,
     wordWrap: false,
+    scrollSync: true,
     fontSize: 14,
 };
 

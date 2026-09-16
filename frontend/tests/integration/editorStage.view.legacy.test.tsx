@@ -54,6 +54,7 @@ interface MockMonacoRuntime {
     editor: editor.IStandaloneCodeEditor;
     model: {
         getFullModelRange: jest.Mock<IRange, []>;
+        getLineCount: jest.Mock<number, []>;
         setValue: jest.Mock<void, [string]>;
     };
     props: EditorProps | null;
@@ -80,6 +81,7 @@ function resetMockMonaco(): void {
             endLineNumber: 1,
             endColumn: 1,
         })),
+        getLineCount: jest.fn<number, []>(() => 0),
         setValue: jest.fn<void, [string]>(),
     };
     mockRuntime.viewState = {
@@ -90,6 +92,12 @@ function resetMockMonaco(): void {
         executeEdits: jest.fn(),
         getModel: jest.fn(() => mockRuntime.model as unknown as editor.ITextModel),
         getSelection: jest.fn(() => mockRuntime.selection),
+        // The scroll and line geometry synchronized scrolling reads; this suite asserts nothing about it.
+        getBottomForLineNumber: jest.fn(() => 0),
+        getLayoutInfo: jest.fn(() => ({ height: 0 }) as editor.EditorLayoutInfo),
+        getScrollTop: jest.fn(() => 0),
+        getTopForLineNumber: jest.fn(() => 0),
+        setScrollTop: jest.fn(),
         layout: jest.fn(),
         setSelection: jest.fn((selection: IRange): void => {
             mockRuntime.selection = {
@@ -109,6 +117,11 @@ function resetMockMonaco(): void {
             mockRuntime.cursorSelectionListener = listener;
             return { dispose: jest.fn() };
         }),
+        onDidChangeConfiguration: jest.fn(() => ({ dispose: jest.fn() })),
+        onDidChangeHiddenAreas: jest.fn(() => ({ dispose: jest.fn() })),
+        onDidChangeModelContent: jest.fn(() => ({ dispose: jest.fn() })),
+        onDidContentSizeChange: jest.fn(() => ({ dispose: jest.fn() })),
+        onDidLayoutChange: jest.fn(() => ({ dispose: jest.fn() })),
         onDidScrollChange: jest.fn(() => ({ dispose: jest.fn() })),
         pushUndoStop: jest.fn(),
         restoreViewState: jest.fn((viewState: editor.ICodeEditorViewState | null): void => {

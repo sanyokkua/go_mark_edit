@@ -70,12 +70,14 @@ receive commands through props and contexts.
 | `frontend/src/logic/actions/editorActionExecutor.ts` | The sole editor-action owner for dispatch, clipboard, formatting, selection snapshots and focus restoration.      |
 | `frontend/src/logic/format/formatting.ts`            | The inline wrapper-stack resolver and formatting runner called by the editor-action executor.                     |
 | `frontend/src/logic/markdown/linkPolicy.ts`          | Link classification before a preview action is dispatched.                                                        |
+| `frontend/src/logic/scrollSync/`                     | The block-level scroll map, the synchronization controller, the scroll-port types and the preview scroll port.    |
+| `frontend/src/logic/hooks/useScrollSync.ts`          | Synchronized-scrolling activation and which pane the other aligns to when it starts.                              |
 | `frontend/src/ui/widgets/editorSession.ts`           | The document-identity-bound active editor command seam, including Monaco focus restoration.                       |
 | `frontend/src/ui/widgets/useEditorActionExecutor.ts` | Binds the central editor-action executor to toolbar, popup and editor-shortcut UI surfaces.                       |
 | `frontend/src/ui/widgets/Menubar/`                   | File, Settings, View, About and narrow overflow menu composition.                                                 |
 | `frontend/src/ui/widgets/DocumentTabs/`              | The DocumentTabs consumer of TabBar and tab-specific commands.                                                    |
 | `frontend/src/ui/widgets/FormattingToolbar/`         | Formatting groups, arrangement control and Bar overflow.                                                          |
-| `frontend/src/ui/widgets/EditorStage/`               | Editor/preview panes, arrangement and preview accessory state.                                                    |
+| `frontend/src/ui/widgets/EditorStage/`               | Editor/preview panes, arrangement, preview accessory state and synchronized scrolling.                            |
 | `frontend/src/ui/widgets/dialogs/`                   | Settings, About, Shortcuts, close, conflict and normalization dialogs.                                            |
 | `frontend/src/ui/widgets/StartupFailure/`            | Per-step startup failure, Retry and Quit.                                                                         |
 
@@ -196,10 +198,11 @@ this one mount.
 
 ### Rendering and theme owners
 
-`frontend/src/ui/components/CodeEditor.tsx` owns the visible Monaco working copy. It is paired with
-`frontend/src/ui/components/MarkdownView.tsx`, which owns sanitized preview rendering. The frontend theme
-generator produces the editor and highlight output from the token families in
-`frontend/src/ui/styles/tokens.css`.
+`frontend/src/ui/components/CodeEditor.tsx` owns the visible Monaco working copy and publishes its scroll
+port for synchronized scrolling. It is paired with `frontend/src/ui/components/MarkdownView.tsx`, which owns
+sanitized preview rendering; each rendered block carries a numeric `data-source-line` annotation that the
+sanitization allowlist admits only as a positive integer. The frontend theme generator produces the editor
+and highlight output from the token families in `frontend/src/ui/styles/tokens.css`.
 
 All appearance values come from `frontend/src/ui/styles/tokens.css`. The three themes and light/dark
 values are selected on the document root. Widget stylesheets do not select themes and portalled
@@ -401,6 +404,11 @@ CI does not automate native dialogs or OS-level window interaction.
     a working application.
 14. Request quit with everything saved and confirm the application exits.
 15. Relaunch and confirm recent files and window layout are restored without a false unsaved state.
+16. Open a long document with headings, a code block, a table, a local image and footnotes in Split;
+    scroll the editor and the preview by pointer and keyboard, and follow a preview anchor, then type
+    near the end; confirm the other pane always follows to the same block without oscillating and that
+    both panes reach the top and bottom together; turn Synchronized scrolling off in the View menu and
+    confirm the panes scroll independently and that the choice survives a relaunch.
 
 ## Durable decisions
 
@@ -471,6 +479,8 @@ The owner decisions that shaped this refactor are recorded here so they are not 
   normal bridge/open flow described above.
 - **D12 — Lost-screen handling:** a close request before readiness follows the same no-data-loss
   protocol and never introduces session restore.
+- **D13 — Scroll synchronization restored:** synchronized scrolling between the editor and the preview
+  is restored at block granularity; the View menu's Synchronized scrolling preference defaults to on.
 
 ## Planning decisions retained
 

@@ -32,6 +32,7 @@ type ContentPrivacySettings struct {
 type EditorSettings struct {
 	LineNumbers bool `json:"lineNumbers"`
 	WordWrap    bool `json:"wordWrap"`
+	ScrollSync  bool `json:"scrollSync"`
 	FontSize    int  `json:"fontSize"`
 }
 

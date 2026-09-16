@@ -1,4 +1,13 @@
-import { forwardRef, useCallback, useContext, useEffect, useImperativeHandle, useLayoutEffect, useRef } from 'react';
+import {
+    forwardRef,
+    useCallback,
+    useContext,
+    useEffect,
+    useImperativeHandle,
+    useLayoutEffect,
+    useRef,
+    useState,
+} from 'react';
 
 import type { EditorPosition } from '../../components/CodeEditor';
 import CodeEditor from '../../components/CodeEditor';
@@ -10,7 +19,9 @@ import {
     useLivePreviewSnapshot,
 } from '../../../logic/hooks/useLivePreview';
 import { dispatchAction } from '../../../logic/actions/actionDispatcher';
+import { useScrollSync } from '../../../logic/hooks/useScrollSync';
 import { type EditorSynchronizationAdapter, useSyncedBuffer } from '../../../logic/hooks/useSyncedBuffer';
+import type { EditorScrollPort } from '../../../logic/scrollSync/scrollSyncTypes';
 import type { ActiveBuffer, DocumentMetadata, DocumentView } from '../../../logic/store/appModelTypes';
 import EditorContextMenu from '../EditorContextMenu';
 import { EditorSessionEpochContext, useEditorSessionAttachment } from '../editorSession';
@@ -46,6 +57,7 @@ interface ActiveEditorProps {
     adapter: EditorStageAdapter;
     onLiveCursorChange: (cursor: EditorPosition) => void;
     onPreviewScrollHandler: (handler: ((scrollTop: number) => void) | null) => void;
+    onScrollPortReady: (port: EditorScrollPort | null) => void;
     readOnly: boolean;
     view: DocumentView;
     visible: boolean;
@@ -56,7 +68,16 @@ interface ActiveEditorHandle {
 }
 
 const ActiveEditor = forwardRef<ActiveEditorHandle, ActiveEditorProps>(function ActiveEditor(
-    { activeBuffer, adapter, onLiveCursorChange, onPreviewScrollHandler, readOnly, view, visible }: ActiveEditorProps,
+    {
+        activeBuffer,
+        adapter,
+        onLiveCursorChange,
+        onPreviewScrollHandler,
+        onScrollPortReady,
+        readOnly,
+        view,
+        visible,
+    }: ActiveEditorProps,
     ref,
 ): React.JSX.Element {
     const editorSettings = useEditorSettings().settings;
@@ -145,6 +166,7 @@ const ActiveEditor = forwardRef<ActiveEditorHandle, ActiveEditorProps>(function 
             onChange={synchronizedBuffer.onChange}
             onCursorPositionChange={synchronizedBuffer.onCursorPositionChange}
             onScrollChange={synchronizedBuffer.onEditorScrollChange}
+            onScrollPortReady={onScrollPortReady}
             onSelectionChange={synchronizedBuffer.onSelectionChange}
             onEditorMounted={synchronizeMountedEditorTheme}
         />
@@ -159,7 +181,9 @@ interface LivePreviewProps {
     onPreviewRefresh?: (accepted: LivePreviewSnapshot) => Promise<LivePreviewSnapshot>;
     onPreviewWarning: (target: string, reason: string) => void;
     onScrollChange: (scrollTop: number) => void;
+    onScrollContainerChange: (container: HTMLElement | null) => void;
     savedScrollTop: number;
+    scrollSyncActive: boolean;
     visible: boolean;
 }
 
@@ -171,7 +195,9 @@ const LivePreview: React.FC<LivePreviewProps> = ({
     onPreviewRefresh,
     onPreviewWarning,
     onScrollChange,
+    onScrollContainerChange,
     savedScrollTop,
+    scrollSyncActive,
     visible,
 }: LivePreviewProps): React.JSX.Element | null => {
     const accepted = useLivePreviewSnapshot(activeBuffer, adapter);
@@ -198,6 +224,25 @@ const LivePreview: React.FC<LivePreviewProps> = ({
         node.scrollTop = savedScrollTop;
     }, [activeBuffer.documentId, claimScrollRestore, savedScrollTop]);
 
+    /*
+     * Published after the restore above, so whoever synchronizes the panes
+     * starts from the offset this document was left at. A paused preview
+     * renders nothing to scroll, and reports no container at all.
+     *
+     * `visible` is load-bearing in the dependencies although the body never
+     * reads it: a hidden pane renders no body, so the ref is emptied and later
+     * refilled with a fresh node as the arrangement changes. Drop the
+     * dependency and this effect stops re-running across that change, leaving
+     * a withdrawn container published and nothing synchronized again.
+     */
+    useLayoutEffect((): (() => void) => {
+        onScrollContainerChange(controller.isPaused ? null : contentRef.current);
+
+        return (): void => {
+            onScrollContainerChange(null);
+        };
+    }, [controller.isPaused, onScrollContainerChange, visible]);
+
     if (!visible) {
         return null;
     }
@@ -218,6 +263,7 @@ const LivePreview: React.FC<LivePreviewProps> = ({
                 <div
                     ref={contentRef}
                     className={styles.previewContent}
+                    data-scroll-sync={scrollSyncActive ? 'on' : undefined}
                     onScroll={(event): void => {
                         onScrollChange(event.currentTarget.scrollTop);
                     }}
@@ -264,6 +310,16 @@ const EditorStage = forwardRef<EditorStageHandle, EditorStageProps>(function Edi
     const registerPreviewScrollHandler = useCallback((handler: ((scrollTop: number) => void) | null): void => {
         previewScrollHandlerRef.current = handler;
     }, []);
+    const scrollSyncEnabled = useEditorSettings().settings.scrollSync;
+    const [editorPort, setEditorPort] = useState<EditorScrollPort | null>(null);
+    const [previewContainer, setPreviewContainer] = useState<HTMLElement | null>(null);
+    const scrollSyncActive = useScrollSync({
+        enabled: scrollSyncEnabled,
+        editorPort,
+        editorVisible,
+        previewContainer,
+        previewVisible,
+    });
     const restoredPreviewDocumentRef = useRef<string | null>(null);
     const claimPreviewScrollRestore = useCallback((documentId: string): boolean => {
         if (restoredPreviewDocumentRef.current === documentId) return false;
@@ -302,6 +358,7 @@ const EditorStage = forwardRef<EditorStageHandle, EditorStageProps>(function Edi
                             visible={editorVisible}
                             onLiveCursorChange={onLiveCursorChange}
                             onPreviewScrollHandler={registerPreviewScrollHandler}
+                            onScrollPortReady={setEditorPort}
                         />
                     </EditorContextMenu>
                 }
@@ -330,7 +387,9 @@ const EditorStage = forwardRef<EditorStageHandle, EditorStageProps>(function Edi
                 onScrollChange={(scrollTop: number): void => {
                     previewScrollHandlerRef.current?.(scrollTop);
                 }}
+                onScrollContainerChange={setPreviewContainer}
                 savedScrollTop={view.scroll.preview}
+                scrollSyncActive={scrollSyncActive}
                 visible={previewVisible}
             />
         </div>

@@ -5,6 +5,8 @@ import remarkGfm from 'remark-gfm';
 import type { Schema } from 'hast-util-sanitize';
 import type { PluggableList } from 'unified';
 
+import { rehypeSourceLines, withSourceLineAttributes } from './sourceLines';
+
 /**
  * The preview keeps the sanitized image source available to MarkdownView's
  * props-only policy seam. The component never spreads it into the DOM unless
@@ -15,10 +17,10 @@ export const baseGfmSanitizeSchema: Schema = {
     // remark-gfm already prefixes generated footnote IDs with `user-content-`.
     // Re-prefixing them here breaks their matching internal href targets.
     clobberPrefix: '',
-    attributes: {
+    attributes: withSourceLineAttributes({
         ...defaultSchema.attributes,
         img: ['alt', 'src'],
-    },
+    }),
     // `file:` is retained only so the preview link policy can refuse it with a
     // visible reason. MarkdownView prevents the anchor's default action, while
     // javascript/data remain stripped before they reach the renderer.
@@ -41,7 +43,7 @@ export function previewUrlTransform(value: string): string {
 /** Fixed Phase 01 GFM renderer configuration; sanitization must stay last. */
 export const baseGfmRemarkPlugins: PluggableList = [remarkGfm];
 
-export const baseGfmRehypePlugins: PluggableList = [[rehypeSanitize, baseGfmSanitizeSchema]];
+export const baseGfmRehypePlugins: PluggableList = [rehypeSourceLines, [rehypeSanitize, baseGfmSanitizeSchema]];
 
 /**
  * Image sources are passed to MarkdownView only as sanitized data. Never

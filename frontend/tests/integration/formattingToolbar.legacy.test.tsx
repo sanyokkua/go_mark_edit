@@ -337,7 +337,7 @@ it('passes acknowledged marker preferences into toolbar formatting', async () =>
                 headingStyle: 'atx',
             },
             contentPrivacy: { remotePolicy: 'ask' },
-            editor: { lineNumbers: true, wordWrap: false, fontSize: 14 },
+            editor: { lineNumbers: true, wordWrap: false, scrollSync: true, fontSize: 14 },
         }),
     );
     render(

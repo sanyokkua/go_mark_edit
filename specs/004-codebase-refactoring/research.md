@@ -371,6 +371,37 @@ one implementation and adds no code for behaviour the library owns.
 is the drift the spec removes); Radix `ContextMenu` for point anchors — rejected (a second
 primitive with its own keyboard model).
 
+## R20 — Synchronized scrolling basis
+
+**Decision**: map the two panes through rendered blocks. A rehype plugin placed before sanitization
+writes each block's Markdown start line (`node.position.start.line`) as `data-source-line`, which the
+sanitization allowlist admits only as a positive integer on block tags. At scroll time the preview's
+anchors (their offsets inside the scroll container) pair with Monaco's `getTopForLineNumber` for the
+same lines; framed by both panes' top and maximum, the pairs form a strictly increasing
+piecewise-linear map used in both directions. A leader lock (released 100 ms after the leading pane's
+last event), an echo guard (a follower event within 1 px of the controller's own write, forgotten
+once that pane reports an offset more than 1 px away), a two-frame
+settle and at most one write per frame keep the panes from oscillating; scroll anchoring is disabled
+on the preview while synchronization runs.
+
+**Rationale**: FR-085. react-markdown 10 keeps unist positions on hast elements and
+hast-util-sanitize 5 re-applies them after sanitizing; react-markdown 9 removed `sourcePos` in favour
+of exactly such a plugin. Monaco 0.52 reports line tops that include padding, wrapping and folding
+and fires `onDidScrollChange` synchronously inside `setScrollTop`, while DOM `scroll` events arrive
+on the next frame, so the guard handles both timings. The same shape is proven by VS Code's Markdown
+preview (`data-line` anchors, interpolation, a 50 ms scroll-disable counter) and by the markdown-it
+demo (a per-line scroll map). WebView2 (Chromium) anchors scroll on re-render and WKWebView does not,
+so disabling anchoring makes a re-render behave the same on both and never look like a user scroll.
+The whole-document re-render after each scroll-driven view save (the `MarkdownView` memo that never
+holds, and inline renderers that remount) is fixed first, because it would otherwise move the preview
+during synchronization.
+
+**Alternatives**: heading-only synchronization, the archived design — rejected by the owner (no
+synchronization in a document without headings, jumps inside long sections); proportional scrolling
+— rejected (it drifts as soon as images, tables or code give the panes different relative heights);
+renderer overrides reading `node.position` on every block tag — rejected (one override per tag
+instead of one plugin); a plugin after sanitization — rejected (sanitization must stay last).
+
 ## Facts that changed a clarification's assumption
 
 - **The FIFO lever is inert.** `CanonicalizeDocumentPath` refuses non-regular files before any read,

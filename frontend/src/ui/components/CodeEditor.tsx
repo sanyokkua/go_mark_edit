@@ -1,6 +1,7 @@
 import { forwardRef, lazy, Suspense, useCallback, useEffect, useImperativeHandle, useRef } from 'react';
-import type { editor, IPosition, IRange, ISelection } from 'monaco-editor';
+import type { editor, IDisposable, IPosition, IRange, ISelection } from 'monaco-editor';
 
+import type { EditorScrollPort, ScrollGeometryChange } from '../../logic/scrollSync/scrollSyncTypes';
 import styles from './CodeEditor.module.css';
 
 export interface EditorPosition {
@@ -49,6 +50,18 @@ export interface CodeEditorProps {
     onScrollChange?: (scrollTop: number) => void;
     onEditorMounted?: (editor: editor.IStandaloneCodeEditor) => void;
     onViewStateCaptureReady?: (capture: (() => void) | null) => void;
+    /**
+     * Receives each mounted Monaco editor's scroll port once, and `null` when
+     * that editor's activation ends: a new activation identity or document, or
+     * this component unmounting.
+     *
+     * The withdrawal is not an ordering guarantee — Monaco may already have
+     * disposed the editor underneath it — and a withdrawn port is inert rather
+     * than live: every call is ignored and every read returns 0. A consumer
+     * therefore releases whatever it built on the port when it sees `null`,
+     * without reaching back through the port to do it.
+     */
+    onScrollPortReady?: (port: EditorScrollPort | null) => void;
 }
 
 const MonacoEditor = lazy(async () => {
@@ -136,6 +149,73 @@ function applyEdit(
     return true;
 }
 
+/** The editor's padding in pixels; Monaco's line offsets include the top padding but not the bottom one. */
+const EDITOR_PADDING = { top: 12, bottom: 12 } as const;
+
+/**
+ * Builds the scroll port of one Monaco editor instance.
+ *
+ * Once `isMounted` reports that the instance is no longer the mounted editor,
+ * every call is ignored and every read returns 0.
+ */
+function createEditorScrollPort(
+    editorInstance: editor.IStandaloneCodeEditor,
+    isMounted: () => boolean,
+): EditorScrollPort {
+    const read = (measure: () => number): number => (isMounted() ? measure() : 0);
+    const subscribe = (listen: () => IDisposable[]): (() => void) => {
+        if (!isMounted()) {
+            return (): void => undefined;
+        }
+        const subscriptions = listen();
+
+        return (): void => {
+            subscriptions.forEach((subscription): void => {
+                subscription.dispose();
+            });
+        };
+    };
+    const lineCount = (): number => editorInstance.getModel()?.getLineCount() ?? 0;
+
+    return {
+        getScrollTop: (): number => read(() => editorInstance.getScrollTop()),
+        setScrollTop: (scrollTop: number): void => {
+            if (isMounted()) {
+                editorInstance.setScrollTop(scrollTop);
+            }
+        },
+        getViewportHeight: (): number => read(() => editorInstance.getLayoutInfo().height),
+        getLineCount: (): number => read(lineCount),
+        getLineTop: (lineNumber: number): number => read(() => editorInstance.getTopForLineNumber(lineNumber)),
+        getDocumentBottom: (): number =>
+            read(() => editorInstance.getBottomForLineNumber(lineCount()) + EDITOR_PADDING.bottom),
+        onScroll: (listener: (scrollTop: number) => void): (() => void) =>
+            subscribe(() => [
+                editorInstance.onDidScrollChange((event): void => {
+                    if (event.scrollTopChanged) {
+                        // Read at delivery, so a listener always hears where the pane is now.
+                        listener(editorInstance.getScrollTop());
+                    }
+                }),
+            ]),
+        onGeometryChange: (listener: (change: ScrollGeometryChange) => void): (() => void) => {
+            const report =
+                (change: ScrollGeometryChange): (() => void) =>
+                (): void => {
+                    listener(change);
+                };
+
+            return subscribe(() => [
+                editorInstance.onDidContentSizeChange(report('content')),
+                editorInstance.onDidChangeModelContent(report('content')),
+                editorInstance.onDidLayoutChange(report('layout')),
+                editorInstance.onDidChangeConfiguration(report('layout')),
+                editorInstance.onDidChangeHiddenAreas(report('layout')),
+            ]);
+        },
+    };
+}
+
 const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(function CodeEditor(
     {
         documentId,
@@ -155,6 +235,7 @@ const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(function CodeEd
         onScrollChange,
         onEditorMounted,
         onViewStateCaptureReady,
+        onScrollPortReady,
     }: CodeEditorProps,
     ref,
 ): React.JSX.Element {
@@ -166,6 +247,9 @@ const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(function CodeEd
     const onScrollChangeRef = useRef(onScrollChange);
     const onEditorMountedRef = useRef(onEditorMounted);
     const onViewStateCaptureReadyRef = useRef(onViewStateCaptureReady);
+    const onScrollPortReadyRef = useRef(onScrollPortReady);
+    /** The Monaco editor that owns the scroll port currently published through `onScrollPortReady`. */
+    const scrollPortEditorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
     const restoreViewStateFrameRef = useRef<number | undefined>(undefined);
     const viewStateRef = useRef<editor.ICodeEditorViewState | null>(null);
     const wasVisibleRef = useRef(visible);
@@ -177,6 +261,7 @@ const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(function CodeEd
     onScrollChangeRef.current = onScrollChange;
     onEditorMountedRef.current = onEditorMounted;
     onViewStateCaptureReadyRef.current = onViewStateCaptureReady;
+    onScrollPortReadyRef.current = onScrollPortReady;
 
     const captureViewState = useCallback((): void => {
         viewStateRef.current = editorRef.current?.saveViewState?.() ?? null;
@@ -206,6 +291,10 @@ const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(function CodeEd
 
     useEffect((): (() => void) => {
         return (): void => {
+            if (scrollPortEditorRef.current !== null) {
+                scrollPortEditorRef.current = null;
+                onScrollPortReadyRef.current?.(null);
+            }
             const model = editorRef.current?.getModel();
             if (typeof model?.dispose === 'function') {
                 model.dispose();
@@ -301,6 +390,12 @@ const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(function CodeEd
                 onScrollChangeRef.current?.(event.scrollTop);
             });
         }
+        if (scrollPortEditorRef.current !== editorInstance) {
+            scrollPortEditorRef.current = editorInstance;
+            onScrollPortReadyRef.current?.(
+                createEditorScrollPort(editorInstance, (): boolean => editorRef.current === editorInstance),
+            );
+        }
         onEditorMountedRef.current?.(editorInstance);
     };
 
@@ -320,7 +415,7 @@ const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(function CodeEd
                         minimap: { enabled: minimap },
                         readOnly,
                         fontSize: fontSize ?? getEditorFontSize(),
-                        padding: { top: 12, bottom: 12 },
+                        padding: EDITOR_PADDING,
                     }}
                     onChange={(value: string | undefined): void => {
                         onChangeRef.current?.(value ?? '');

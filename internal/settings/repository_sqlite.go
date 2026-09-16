@@ -23,6 +23,7 @@ const (
 	contentRemotePolicyKey = "content.remotePolicy"
 	editorLineNumbersKey   = "editor.lineNumbers"
 	editorWordWrapKey      = "editor.wordWrap"
+	editorScrollSyncKey    = "editor.scrollSync"
 	editorFontSizeKey      = "editor.fontSize"
 	fileAutosaveKey        = "file.autosave"
 	settingTypeString      = "string"
@@ -120,11 +121,15 @@ func (repository *SqliteSettingsRepository) GetEditor(ctx context.Context) (appe
 	if err != nil {
 		return apperr.EditorSettings{}, err
 	}
+	scrollSync, err := repository.getBool(ctx, editorScrollSyncKey, defaults.ScrollSync)
+	if err != nil {
+		return apperr.EditorSettings{}, err
+	}
 	fontSize, err := repository.getInt(ctx, editorFontSizeKey, defaults.FontSize)
 	if err != nil {
 		return apperr.EditorSettings{}, err
 	}
-	return apperr.EditorSettings{LineNumbers: lineNumbers, WordWrap: wordWrap, FontSize: fontSize}, nil
+	return apperr.EditorSettings{LineNumbers: lineNumbers, WordWrap: wordWrap, ScrollSync: scrollSync, FontSize: fontSize}, nil
 }
 
 // GetFile reads the persisted file-automation group with scalar defaults.
@@ -178,6 +183,7 @@ func (repository *SqliteSettingsRepository) UpdateEditor(ctx context.Context, ed
 	return repository.updateGroup(ctx, []kv.KVEntry{
 		{Key: editorLineNumbersKey, Value: strconv.FormatBool(editor.LineNumbers), Type: settingTypeBool},
 		{Key: editorWordWrapKey, Value: strconv.FormatBool(editor.WordWrap), Type: settingTypeBool},
+		{Key: editorScrollSyncKey, Value: strconv.FormatBool(editor.ScrollSync), Type: settingTypeBool},
 		{Key: editorFontSizeKey, Value: strconv.Itoa(editor.FontSize), Type: settingTypeString},
 	})
 }

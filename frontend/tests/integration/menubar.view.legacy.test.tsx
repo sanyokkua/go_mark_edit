@@ -82,6 +82,89 @@ it('routes legacy editor and preview view toggles through the dispatcher', async
     dispatch.mockRestore();
 });
 
+it('toggles synchronized scrolling from the View menu through the window action', async () => {
+    const dispatch = jest.spyOn(actionDispatcher, 'dispatchAction');
+    const onScrollSyncChange = jest.fn();
+    render(
+        <ViewMenu
+            editorVisible
+            previewVisible
+            scrollSync
+            onEditorVisibilityChange={jest.fn()}
+            onPreviewVisibilityChange={jest.fn()}
+            onScrollSyncChange={onScrollSyncChange}
+        />,
+    );
+
+    fireEvent.keyDown(screen.getByRole('button', { name: 'View' }), {
+        key: 'ArrowDown',
+    });
+    expect(screen.getByRole('menuitemcheckbox', { name: 'Synchronized scrolling' })).toHaveAttribute(
+        'data-state',
+        'checked',
+    );
+    fireEvent.click(screen.getByRole('menuitemcheckbox', { name: 'Synchronized scrolling' }));
+
+    await expect(dispatch).toHaveBeenCalledWith(
+        'scroll-sync',
+        expect.objectContaining({
+            invoke: expect.any(Function),
+            modalOpen: false,
+            windowFocused: true,
+        }),
+    );
+    expect(onScrollSyncChange).toHaveBeenCalledWith(false);
+    dispatch.mockRestore();
+});
+
+it('shows synchronized scrolling unchecked when the preference is off', (): void => {
+    render(
+        <ViewMenu
+            editorVisible
+            previewVisible
+            scrollSync={false}
+            onEditorVisibilityChange={jest.fn()}
+            onPreviewVisibilityChange={jest.fn()}
+            onScrollSyncChange={jest.fn()}
+        />,
+    );
+
+    fireEvent.keyDown(screen.getByRole('button', { name: 'View' }), {
+        key: 'ArrowDown',
+    });
+
+    expect(screen.getByRole('menuitemcheckbox', { name: 'Synchronized scrolling' })).toHaveAttribute(
+        'data-state',
+        'unchecked',
+    );
+});
+
+it('renders the synchronized scrolling row directly after Word wrap', (): void => {
+    render(
+        <ViewMenu
+            editorVisible
+            previewVisible
+            lineNumbers
+            scrollSync
+            wordWrap
+            onEditorVisibilityChange={jest.fn()}
+            onLineNumbersChange={jest.fn()}
+            onPreviewVisibilityChange={jest.fn()}
+            onScrollSyncChange={jest.fn()}
+            onWordWrapChange={jest.fn()}
+        />,
+    );
+
+    fireEvent.keyDown(screen.getByRole('button', { name: 'View' }), {
+        key: 'ArrowDown',
+    });
+
+    const checkboxNames = screen.getAllByRole('menuitemcheckbox').map((item) => item.textContent);
+    const wordWrapIndex = checkboxNames.indexOf('Word wrap');
+    expect(wordWrapIndex).toBeGreaterThanOrEqual(0);
+    expect(checkboxNames[wordWrapIndex + 1]).toBe('Synchronized scrolling');
+});
+
 // The whole View menu used to disappear when no document was open, which left
 // the user nothing to read and no way to see what View contains. It is now
 // always offered, with only the document-backed rows unavailable.
@@ -117,6 +200,28 @@ it('offers the View menu with no document open and marks the arrangement rows un
 
     // The rows that do not read the active document keep working.
     expect(screen.getByRole('menuitemcheckbox', { name: /Line numbers/u })).not.toHaveAttribute('data-disabled');
+});
+
+it('keeps the synchronized scrolling row available with no document open', (): void => {
+    render(
+        <ViewMenu
+            documentOpen={false}
+            editorVisible
+            previewVisible
+            scrollSync
+            onEditorVisibilityChange={jest.fn()}
+            onPreviewVisibilityChange={jest.fn()}
+            onScrollSyncChange={jest.fn()}
+        />,
+    );
+
+    fireEvent.keyDown(screen.getByRole('button', { name: 'View' }), {
+        key: 'ArrowDown',
+    });
+
+    expect(screen.getByRole('menuitemcheckbox', { name: 'Synchronized scrolling' })).not.toHaveAttribute(
+        'data-disabled',
+    );
 });
 
 it('leaves the arrangement rows available once a document is open', (): void => {

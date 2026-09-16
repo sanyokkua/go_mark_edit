@@ -18,7 +18,7 @@ const settings: Settings = {
         headingStyle: 'atx',
     },
     contentPrivacy: { remotePolicy: 'ask' },
-    editor: { lineNumbers: false, wordWrap: true, fontSize: 16 },
+    editor: { lineNumbers: false, wordWrap: true, scrollSync: false, fontSize: 16 },
     file: { autosave: false },
 };
 
@@ -33,11 +33,16 @@ it('hydrates acknowledged editor and Markdown settings into Redux projection', (
     });
 });
 
+it('defaults synchronized scrolling on until settings hydrate', () => {
+    expect(initialSettingsState.editor.scrollSync).toBe(true);
+});
+
 it('keeps the last acknowledged values until an adapter write is acknowledged', () => {
     const initial = settingsReducer(undefined, hydrateSettings(settings));
     const editor: EditorSettings = {
         lineNumbers: true,
         wordWrap: false,
+        scrollSync: true,
         fontSize: 13,
     };
     const markdown: MarkdownSettings = {

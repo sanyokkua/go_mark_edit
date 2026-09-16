@@ -144,3 +144,12 @@ it('routes only the resolver-approved local image and keeps web images as placeh
     expect(resolveImage).toHaveBeenCalledWith('./local.png');
     expect(resolveImage).toHaveBeenCalledWith('https://example.test/preview.png');
 });
+
+it('keeps an unchanged heading element when the document text changes after it', () => {
+    const { rerender } = render(<MarkdownView source={'# Title\n\nFirst paragraph.\n'} />);
+    const heading = screen.getByRole('heading', { level: 1 });
+
+    rerender(<MarkdownView source={'# Title\n\nFirst paragraph.\n\nSecond paragraph.\n'} />);
+
+    expect(screen.getByRole('heading', { level: 1 })).toBe(heading);
+});

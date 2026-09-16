@@ -1,10 +1,12 @@
 import { createSettingsAdapter, type SettingsBindings } from '../../../src/logic/adapter/services';
 
 it('keeps EditorSettings DTO and binding arity parity', async () => {
-    const updateEditor = jest.fn(async (settings: { lineNumbers: boolean; wordWrap: boolean; fontSize: number }) => {
-        void settings;
-        return {};
-    });
+    const updateEditor = jest.fn(
+        async (settings: { lineNumbers: boolean; wordWrap: boolean; scrollSync: boolean; fontSize: number }) => {
+            void settings;
+            return {};
+        },
+    );
     const bindings: SettingsBindings = {
         getSettings: jest.fn(async () => ({
             data: {
@@ -22,7 +24,7 @@ it('keeps EditorSettings DTO and binding arity parity', async () => {
                     headingStyle: 'atx',
                 },
                 contentPrivacy: { remotePolicy: 'ask' },
-                editor: { lineNumbers: true, wordWrap: false, fontSize: 14 },
+                editor: { lineNumbers: true, wordWrap: false, scrollSync: true, fontSize: 14 },
             },
         })),
         updateAppearance: jest.fn(),
@@ -35,12 +37,15 @@ it('keeps EditorSettings DTO and binding arity parity', async () => {
     const adapter = createSettingsAdapter(bindings);
 
     await expect(adapter.getSettings()).resolves.toMatchObject({
-        editor: { lineNumbers: true, wordWrap: false, fontSize: 14 },
+        editor: { lineNumbers: true, wordWrap: false, scrollSync: true, fontSize: 14 },
     });
-    await expect(adapter.updateEditor({ lineNumbers: false, wordWrap: true, fontSize: 16 })).resolves.toBeUndefined();
+    await expect(
+        adapter.updateEditor({ lineNumbers: false, wordWrap: true, scrollSync: false, fontSize: 16 }),
+    ).resolves.toBeUndefined();
     expect(updateEditor).toHaveBeenCalledWith({
         lineNumbers: false,
         wordWrap: true,
+        scrollSync: false,
         fontSize: 16,
     });
 });

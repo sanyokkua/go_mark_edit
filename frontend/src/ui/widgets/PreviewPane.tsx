@@ -69,6 +69,10 @@ function openResultRefusal(result: OpenResult): string | undefined {
     return result.status === 'refused' ? (result.error?.message ?? t('preview.linkRefused.reason.open')) : undefined;
 }
 
+function notifyRefusal(owner: PreviewNotificationOwner | undefined, target: string, reason: string): void {
+    owner?.warn(target, reason);
+}
+
 export function usePreviewPaneState(
     accepted: PreviewSnapshot,
     onRefresh: () => Promise<PreviewSnapshot>,
@@ -187,9 +191,16 @@ export const PreviewPaneContent: React.FC<PreviewPaneContentProps> = ({
     notificationOwner,
     showPausedStatus = true,
 }: PreviewPaneContentProps): React.JSX.Element => {
-    const warn = (target: string, reason: string): void => {
-        notificationOwner?.warn(target, reason);
-    };
+    const linkAdapterRef = useRef(linkAdapter);
+    const notificationOwnerRef = useRef(notificationOwner);
+
+    useEffect((): void => {
+        linkAdapterRef.current = linkAdapter;
+    }, [linkAdapter]);
+
+    useEffect((): void => {
+        notificationOwnerRef.current = notificationOwner;
+    }, [notificationOwner]);
 
     const resolveImageSource = useCallback(
         (source: string): string | undefined => {
@@ -202,40 +213,54 @@ export const PreviewPaneContent: React.FC<PreviewPaneContentProps> = ({
         [documentId, documentPath, linkAdapter],
     );
 
-    const activateLink = (sourceDocumentId: string, target: LinkTarget): void => {
+    /*
+     * Stable forever (`useCallback` with no dependency): identity survives a
+     * re-render triggered by an unrelated prop, such as a fresh notification
+     * owner, so the memoized `MarkdownView` below does not treat it as new.
+     * `linkAdapter` and `notificationOwner` are read through the refs kept
+     * current above (the same pattern as `acceptedRef` in
+     * `usePreviewPaneState`), so a click always reaches whichever owner or
+     * adapter is current, never the one captured when this closure was
+     * built.
+     */
+    const activateLink = useCallback((sourceDocumentId: string, target: LinkTarget): void => {
         switch (target.kind) {
             case 'anchor': {
                 const element = document.getElementById(target.fragment);
                 element?.scrollIntoView?.({ block: 'start' });
                 return;
             }
-            case 'external':
-                if (linkAdapter?.openExternalLink === undefined) {
-                    warn(target.href, t('preview.linkRefused.reason.browser'));
+            case 'external': {
+                const adapter = linkAdapterRef.current;
+                if (adapter?.openExternalLink === undefined) {
+                    notifyRefusal(notificationOwnerRef.current, target.href, t('preview.linkRefused.reason.browser'));
                     return;
                 }
-                linkAdapter.openExternalLink(target.href);
+                adapter.openExternalLink(target.href);
                 return;
+            }
             case 'refused':
-                warn(target.href, refusalReason(target.reason));
+                notifyRefusal(notificationOwnerRef.current, target.href, refusalReason(target.reason));
                 return;
-            case 'localDocument':
-                if (linkAdapter?.openPreviewLink === undefined) {
-                    warn(target.href, t('preview.linkRefused.reason.open'));
+            case 'localDocument': {
+                const adapter = linkAdapterRef.current;
+                if (adapter?.openPreviewLink === undefined) {
+                    notifyRefusal(notificationOwnerRef.current, target.href, t('preview.linkRefused.reason.open'));
                     return;
                 }
-                void linkAdapter
+                void adapter
                     .openPreviewLink(sourceDocumentId, target.href)
                     .then((result): void => {
                         const reason = openResultRefusal(result);
-                        if (reason !== undefined) warn(target.href, reason);
+                        if (reason !== undefined) notifyRefusal(notificationOwnerRef.current, target.href, reason);
                     })
                     .catch((): void => {
-                        warn(target.href, t('preview.linkRefused.reason.open'));
+                        notifyRefusal(notificationOwnerRef.current, target.href, t('preview.linkRefused.reason.open'));
                     });
                 return;
+            }
         }
-    };
+    }, []);
 
     return (
         <section

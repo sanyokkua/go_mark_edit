@@ -5,7 +5,7 @@ import { bootstrapSettingsProjection, disposeSettingsProjection } from '../../sr
 const settings: Settings = {
     appearance: { defaultOpenMode: 'editor', mode: 'auto', theme: 'material' },
     contentPrivacy: { remotePolicy: 'ask' },
-    editor: { fontSize: 14, lineNumbers: true, wordWrap: false },
+    editor: { fontSize: 14, lineNumbers: true, scrollSync: true, wordWrap: false },
     file: { autosave: true },
     markdown: {
         bulletMarker: '-',

@@ -128,6 +128,11 @@ func TestAppearanceAndMarkdownGroupsRoundTripDottedTypedKV(t *testing.T) {
 // Evidence: EC-THEME-3, EC-SET-2
 // Per-scalar missing, invalid, and wrong-type persisted rows fall back independently while valid siblings remain intact.
 func TestStoredSettingsFallbackMatrix(t *testing.T) {
+	// Diverges from the documented default (on) so a fallback triggered by an
+	// unrelated corrupted key is distinguishable from this valid, persisted choice.
+	editorValid := DefaultSettings().Editor
+	editorValid.ScrollSync = false
+
 	valid := apperr.Settings{
 		Appearance: apperr.AppearanceSettings{Theme: ThemeGlass, Mode: ModeDark, DefaultOpenMode: OpenModeViewer},
 		Markdown: apperr.MarkdownSettings{
@@ -139,7 +144,7 @@ func TestStoredSettingsFallbackMatrix(t *testing.T) {
 			HeadingStyle:   HeadingStyleSetext,
 		},
 		ContentPrivacy: apperr.ContentPrivacySettings{RemotePolicy: RemotePolicyAllow},
-		Editor:         DefaultSettings().Editor,
+		Editor:         editorValid,
 		File:           DefaultSettings().File,
 	}
 
@@ -181,6 +186,9 @@ func TestStoredSettingsFallbackMatrix(t *testing.T) {
 		{name: "missing remote policy", key: "content.remotePolicy", omit: true},
 		{name: "unsupported remote policy", key: "content.remotePolicy", value: "sometimes", type_: "string"},
 		{name: "remote policy type mismatch", key: "content.remotePolicy", value: RemotePolicyBlock, type_: "bool"},
+		{name: "missing synchronized scrolling", key: "editor.scrollSync", omit: true},
+		{name: "malformed synchronized scrolling", key: "editor.scrollSync", value: "sometimes", type_: "bool"},
+		{name: "synchronized scrolling type mismatch", key: "editor.scrollSync", value: "false", type_: "string"},
 		{name: "missing autosave", key: "file.autosave", omit: true},
 		{name: "malformed autosave", key: "file.autosave", value: "sometimes", type_: "bool"},
 		{name: "autosave type mismatch", key: "file.autosave", value: "false", type_: "string"},
@@ -553,6 +561,7 @@ func settingsKVRows(settings apperr.Settings) []kv.KVEntry {
 		{Key: "content.remotePolicy", Value: settings.ContentPrivacy.RemotePolicy, Type: "string"},
 		{Key: "editor.lineNumbers", Value: boolString(settings.Editor.LineNumbers), Type: "bool"},
 		{Key: "editor.wordWrap", Value: boolString(settings.Editor.WordWrap), Type: "bool"},
+		{Key: "editor.scrollSync", Value: boolString(settings.Editor.ScrollSync), Type: "bool"},
 		{Key: "editor.fontSize", Value: strconv.Itoa(settings.Editor.FontSize), Type: "string"},
 		{Key: "file.autosave", Value: boolString(settings.File.Autosave), Type: "bool"},
 	}
@@ -606,6 +615,8 @@ func setSettingsScalar(t *testing.T, settings *apperr.Settings, key, value strin
 		settings.Markdown.HeadingStyle = value
 	case "content.remotePolicy":
 		settings.ContentPrivacy.RemotePolicy = value
+	case "editor.scrollSync":
+		settings.Editor.ScrollSync = value == "true"
 	case "file.autosave":
 		settings.File.Autosave = value == "true"
 	default:

@@ -16,7 +16,7 @@ func TestEditorSettingsDefaultsAndAcceptedFontSizes(t *testing.T) {
 	if err != nil {
 		t.Fatalf("get editor settings: %v", err)
 	}
-	if got.Editor != (apperr.EditorSettings{LineNumbers: true, WordWrap: false, FontSize: 14}) {
+	if got.Editor != (apperr.EditorSettings{LineNumbers: true, WordWrap: false, ScrollSync: true, FontSize: 14}) {
 		t.Fatalf("default editor settings = %+v", got.Editor)
 	}
 
@@ -24,6 +24,22 @@ func TestEditorSettingsDefaultsAndAcceptedFontSizes(t *testing.T) {
 		want := apperr.EditorSettings{LineNumbers: false, WordWrap: true, FontSize: fontSize}
 		if err := service.UpdateEditor(context.Background(), want); err != nil {
 			t.Fatalf("update editor settings %d: %v", fontSize, err)
+		}
+		if repository.editor != want {
+			t.Fatalf("stored editor settings = %+v, want %+v", repository.editor, want)
+		}
+	}
+}
+
+// Either synchronized-scrolling choice, on or off, is accepted and stored exactly as given.
+func TestEditorSettingsRoundTripScrollSyncChoice(t *testing.T) {
+	repository := &editorSettingsTestRepository{}
+	service := NewSettingsService(repository)
+
+	for _, scrollSync := range []bool{false, true} {
+		want := apperr.EditorSettings{LineNumbers: true, WordWrap: false, FontSize: 14, ScrollSync: scrollSync}
+		if err := service.UpdateEditor(context.Background(), want); err != nil {
+			t.Fatalf("update editor settings scrollSync=%v: %v", scrollSync, err)
 		}
 		if repository.editor != want {
 			t.Fatalf("stored editor settings = %+v, want %+v", repository.editor, want)

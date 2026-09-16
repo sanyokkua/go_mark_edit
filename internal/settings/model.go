@@ -63,6 +63,7 @@ func DefaultSettings() apperr.Settings {
 		Editor: apperr.EditorSettings{
 			LineNumbers: true,
 			WordWrap:    false,
+			ScrollSync:  true,
 			FontSize:    EditorFontSizeMedium,
 		},
 		File: apperr.FileSettings{Autosave: DefaultAutosave},

@@ -8,6 +8,7 @@ import {
 const currentEditor: EditorSettings = {
     lineNumbers: true,
     wordWrap: false,
+    scrollSync: true,
     fontSize: 14,
 };
 const currentMarkdown: MarkdownSettings = {

@@ -1,5 +1,5 @@
-import { Children, isValidElement, memo, useState, type ReactNode } from 'react';
-import Markdown from 'react-markdown';
+import { Children, isValidElement, memo, useMemo, useState, type ReactNode } from 'react';
+import Markdown, { type Components, type ExtraProps } from 'react-markdown';
 
 import { classifyLink, type LinkTarget } from '../../logic/markdown/linkPolicy';
 import {
@@ -66,6 +66,13 @@ function headingId(children: ReactNode): string | undefined {
     return value === '' ? undefined : value;
 }
 
+/**
+ * `react-markdown` forwards a sanitized `data-source-line` (see
+ * `logic/markdown/sourceLines.ts`) as this hyphenated prop; it is not part of
+ * `ExtraProps`, which only covers the `node` field.
+ */
+type HeadingProps = React.JSX.IntrinsicElements['h1'] & ExtraProps & { 'data-source-line'?: number };
+
 /*
  * Memoized on `source` because rendering it is not cheap and the pane above is
  * re-rendered for reasons that have nothing to do with the document.
@@ -87,56 +94,93 @@ const MarkdownView: React.FC<MarkdownViewProps> = memo(function MarkdownView({
     onActivateLink,
     imageSourceResolver,
 }: MarkdownViewProps): React.JSX.Element {
-    const activateLink = (href: string | undefined): void => {
-        if (href === undefined || documentId === undefined) return;
-        onActivateLink?.(documentId, classifyLink(href, documentPath));
-    };
+    /*
+     * Memoized on the props its renderers close over. `Markdown` treats each
+     * key here as a component type, so a fresh object on every render — even
+     * one where only unrelated pane state changed — gives every heading,
+     * link and image a new type and remounts them instead of reconciling in
+     * place. Holding this identity steady is what lets an unrelated
+     * re-render (or a source change elsewhere in the document) reuse the
+     * existing elements.
+     */
+    const components = useMemo<Components>(() => {
+        const activateLink = (href: string | undefined): void => {
+            if (href === undefined || documentId === undefined) return;
+            onActivateLink?.(documentId, classifyLink(href, documentPath));
+        };
+
+        return {
+            ...markdownComponents,
+            img({ alt, node: _node, src, title }): React.JSX.Element {
+                void _node;
+                const source = src === undefined ? undefined : imageSourceResolver?.(src);
+                return <PreviewImage alt={alt} source={source} title={title} />;
+            },
+            a({ children, href, node: _node, title, ...linkProps }): React.JSX.Element {
+                void _node;
+                return (
+                    <a
+                        {...linkProps}
+                        href={href}
+                        title={title}
+                        onClick={(event): void => {
+                            event.preventDefault();
+                            activateLink(href);
+                        }}
+                    >
+                        {children}
+                    </a>
+                );
+            },
+            h1({ children, 'data-source-line': dataSourceLine }: HeadingProps): React.JSX.Element {
+                return (
+                    <h1 data-source-line={dataSourceLine} id={headingId(children)}>
+                        {children}
+                    </h1>
+                );
+            },
+            h2({ children, 'data-source-line': dataSourceLine }: HeadingProps): React.JSX.Element {
+                return (
+                    <h2 data-source-line={dataSourceLine} id={headingId(children)}>
+                        {children}
+                    </h2>
+                );
+            },
+            h3({ children, 'data-source-line': dataSourceLine }: HeadingProps): React.JSX.Element {
+                return (
+                    <h3 data-source-line={dataSourceLine} id={headingId(children)}>
+                        {children}
+                    </h3>
+                );
+            },
+            h4({ children, 'data-source-line': dataSourceLine }: HeadingProps): React.JSX.Element {
+                return (
+                    <h4 data-source-line={dataSourceLine} id={headingId(children)}>
+                        {children}
+                    </h4>
+                );
+            },
+            h5({ children, 'data-source-line': dataSourceLine }: HeadingProps): React.JSX.Element {
+                return (
+                    <h5 data-source-line={dataSourceLine} id={headingId(children)}>
+                        {children}
+                    </h5>
+                );
+            },
+            h6({ children, 'data-source-line': dataSourceLine }: HeadingProps): React.JSX.Element {
+                return (
+                    <h6 data-source-line={dataSourceLine} id={headingId(children)}>
+                        {children}
+                    </h6>
+                );
+            },
+        };
+    }, [documentId, documentPath, onActivateLink, imageSourceResolver]);
 
     return (
         <article className={`${styles.preview} gme-preview`}>
             <Markdown
-                components={{
-                    ...markdownComponents,
-                    img({ alt, node: _node, src, title }): React.JSX.Element {
-                        void _node;
-                        const source = src === undefined ? undefined : imageSourceResolver?.(src);
-                        return <PreviewImage alt={alt} source={source} title={title} />;
-                    },
-                    a({ children, href, node: _node, title, ...linkProps }): React.JSX.Element {
-                        void _node;
-                        return (
-                            <a
-                                {...linkProps}
-                                href={href}
-                                title={title}
-                                onClick={(event): void => {
-                                    event.preventDefault();
-                                    activateLink(href);
-                                }}
-                            >
-                                {children}
-                            </a>
-                        );
-                    },
-                    h1({ children }): React.JSX.Element {
-                        return <h1 id={headingId(children)}>{children}</h1>;
-                    },
-                    h2({ children }): React.JSX.Element {
-                        return <h2 id={headingId(children)}>{children}</h2>;
-                    },
-                    h3({ children }): React.JSX.Element {
-                        return <h3 id={headingId(children)}>{children}</h3>;
-                    },
-                    h4({ children }): React.JSX.Element {
-                        return <h4 id={headingId(children)}>{children}</h4>;
-                    },
-                    h5({ children }): React.JSX.Element {
-                        return <h5 id={headingId(children)}>{children}</h5>;
-                    },
-                    h6({ children }): React.JSX.Element {
-                        return <h6 id={headingId(children)}>{children}</h6>;
-                    },
-                }}
+                components={components}
                 rehypePlugins={baseGfmRehypePlugins}
                 remarkPlugins={baseGfmRemarkPlugins}
                 skipHtml

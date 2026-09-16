@@ -94,7 +94,7 @@ scripts/test e2e
 ```
 
 Expected: a `wails dev` child process starts with `HOME`/`XDG_CONFIG_HOME` under a temporary
-directory; `ps` shows one Go process per run; the eight cases of
+directory; `ps` shows one Go process per run; the nine cases of
 [contracts/e2e-harness.md](contracts/e2e-harness.md) run once each with zero retries; the seeded
 Recents entries open the temporary files; assertions read bytes on disk and state after restart.
 
@@ -154,3 +154,17 @@ gh workflow run release.yml -f version=9.9.9 --ref feature/004-codebase-refactor
 
 Expected: the macOS job runs all six stages and uploads `GoMarkEdit-9.9.9-macos-arm64.zip` as a
 workflow artifact; no GitHub Release is created; the unzipped app's About dialog reports `9.9.9`.
+
+## 13. Synchronized scrolling (FR-085, FR-086, SC-016)
+
+```bash
+scripts/test unit
+scripts/test integration
+scripts/test e2e
+```
+
+Expected: the source-line, scroll map, controller, pane port and settings suites pass; E2E case 9 of
+[contracts/e2e-harness.md](contracts/e2e-harness.md) keeps both panes on the same block within four
+source lines, reaches top and bottom together, stays still after input stops and keeps the
+View-menu choice across a relaunch. On the packaged app, walkthrough step 16 checks the same
+behaviour in WKWebView with trackpad momentum.

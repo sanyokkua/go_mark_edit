@@ -3,7 +3,7 @@ import { resolve } from 'node:path';
 
 import { fireEvent, render, screen } from '@testing-library/react';
 import type { EditorProps } from '@monaco-editor/react';
-import type { editor, IPosition, IRange, ISelection } from 'monaco-editor';
+import type { editor, IDisposable, IPosition, IRange, IScrollEvent, ISelection } from 'monaco-editor';
 
 import CodeEditor, {
     type CodeEditorHandle,
@@ -12,12 +12,30 @@ import CodeEditor, {
 } from '../../../src/ui/components/CodeEditor';
 import { applyMonacoThemeFromRoot } from '../../../src/ui/components/monacoSetup';
 import { createDocumentCommands } from '../../../src/logic/hooks/useDocumentCommands';
+import type { EditorScrollPort, ScrollGeometryChange } from '../../../src/logic/scrollSync/scrollSyncTypes';
 
 interface MockModel {
     dispose: jest.Mock<void, []>;
     getFullModelRange: jest.Mock<IRange, []>;
+    getLineCount: jest.Mock<number, []>;
     getValue: jest.Mock<string, []>;
     setValue: jest.Mock<void, [string]>;
+}
+
+interface MockEvent<T> {
+    fire(value: T): void;
+    listenerCount(): number;
+    subscribe: jest.Mock<IDisposable, [(value: T) => void]>;
+}
+
+/** The Monaco events of one fake editor instance. */
+interface MockEditorEvents {
+    configuration: MockEvent<editor.ConfigurationChangedEvent>;
+    contentSize: MockEvent<editor.IContentSizeChangedEvent>;
+    hiddenAreas: MockEvent<void>;
+    layout: MockEvent<editor.EditorLayoutInfo>;
+    modelContent: MockEvent<editor.IModelContentChangedEvent>;
+    scroll: MockEvent<IScrollEvent>;
 }
 
 interface MockMonacoRuntime {
@@ -25,7 +43,11 @@ interface MockMonacoRuntime {
     content: string;
     cursorListener: ((event: { position: IPosition }) => void) | null;
     editor: editor.IStandaloneCodeEditor;
+    /** The events of the current fake editor instance. */
+    events: MockEditorEvents;
     model: MockModel;
+    /** How many times the fake Monaco component has called `onMount`. */
+    mountCount: number;
     props: EditorProps | null;
     scrollTop: number;
     selection: ISelection | null;
@@ -41,6 +63,126 @@ const fullModelRange: IRange = {
 
 const mockRuntime = {} as MockMonacoRuntime;
 
+/** The fake lays Monaco out with 20 px lines under the editor's 12 px padding in a 300 px viewport. */
+const mockLineHeight = 20;
+const mockPadding = 12;
+const mockViewportHeight = 300;
+
+function mockLineCount(): number {
+    return mockRuntime.content.split('\n').length;
+}
+
+/** Monaco's scroll height: the content plus the slack that lets the last line scroll up to the viewport top. */
+function mockScrollHeight(): number {
+    const contentHeight = mockPadding + mockLineCount() * mockLineHeight + mockPadding;
+
+    return contentHeight + Math.max(0, mockViewportHeight - mockLineHeight - mockPadding);
+}
+
+function scrollEvent(change: Partial<IScrollEvent>): IScrollEvent {
+    return {
+        scrollTop: mockRuntime.scrollTop,
+        scrollLeft: 0,
+        scrollWidth: 640,
+        scrollHeight: mockScrollHeight(),
+        scrollTopChanged: false,
+        scrollLeftChanged: false,
+        scrollWidthChanged: false,
+        scrollHeightChanged: false,
+        ...change,
+    };
+}
+
+function createMockEvent<T>(): MockEvent<T> {
+    const subscriptions = new Set<{ listener: (value: T) => void }>();
+
+    return {
+        fire(value: T): void {
+            for (const { listener } of [...subscriptions]) {
+                listener(value);
+            }
+        },
+        listenerCount: (): number => subscriptions.size,
+        subscribe: jest.fn((listener: (value: T) => void): IDisposable => {
+            const subscription = { listener };
+            subscriptions.add(subscription);
+
+            return {
+                dispose: (): void => {
+                    subscriptions.delete(subscription);
+                },
+            };
+        }),
+    };
+}
+
+function listenerCounts(events: MockEditorEvents): Record<keyof MockEditorEvents, number> {
+    return {
+        configuration: events.configuration.listenerCount(),
+        contentSize: events.contentSize.listenerCount(),
+        hiddenAreas: events.hiddenAreas.listenerCount(),
+        layout: events.layout.listenerCount(),
+        modelContent: events.modelContent.listenerCount(),
+        scroll: events.scroll.listenerCount(),
+    };
+}
+
+/** Replaces the fake Monaco editor with a new instance, which the next editor activation mounts. */
+function installMockEditor(): void {
+    const events: MockEditorEvents = {
+        configuration: createMockEvent(),
+        contentSize: createMockEvent(),
+        hiddenAreas: createMockEvent(),
+        layout: createMockEvent(),
+        modelContent: createMockEvent(),
+        scroll: createMockEvent(),
+    };
+
+    mockRuntime.events = events;
+    mockRuntime.editor = {
+        executeEdits: jest.fn(),
+        focus: jest.fn(),
+        getBottomForLineNumber: jest.fn((lineNumber: number): number => mockPadding + lineNumber * mockLineHeight),
+        getLayoutInfo: jest.fn(() => ({ height: mockViewportHeight }) as editor.EditorLayoutInfo),
+        getModel: jest.fn(() => mockRuntime.model as unknown as editor.ITextModel),
+        getScrollHeight: jest.fn(mockScrollHeight),
+        getScrollTop: jest.fn(() => mockRuntime.scrollTop),
+        getSelection: jest.fn(() => mockRuntime.selection),
+        getTopForLineNumber: jest.fn((lineNumber: number): number => mockPadding + (lineNumber - 1) * mockLineHeight),
+        setScrollTop: jest.fn((scrollTop: number): void => {
+            if (scrollTop !== mockRuntime.scrollTop) {
+                mockRuntime.scrollTop = scrollTop;
+                events.scroll.fire(scrollEvent({ scrollTop, scrollTopChanged: true }));
+            }
+        }),
+        setSelection: jest.fn(),
+        deltaDecorations: jest.fn(() => []),
+        onDidBlurEditorText: jest.fn((listener: () => void) => {
+            mockRuntime.blurListener = listener;
+
+            return { dispose: jest.fn() };
+        }),
+        onDidChangeConfiguration: events.configuration.subscribe,
+        onDidChangeCursorPosition: jest.fn((listener: (event: { position: IPosition }) => void) => {
+            mockRuntime.cursorListener = listener;
+
+            return { dispose: jest.fn() };
+        }),
+        onDidChangeCursorSelection: jest.fn((listener: (event: { selection: ISelection }) => void) => {
+            mockRuntime.selectionListener = listener;
+
+            return { dispose: jest.fn() };
+        }),
+        onDidChangeHiddenAreas: events.hiddenAreas.subscribe,
+        onDidChangeModelContent: events.modelContent.subscribe,
+        onDidContentSizeChange: events.contentSize.subscribe,
+        onDidLayoutChange: events.layout.subscribe,
+        onDidScrollChange: events.scroll.subscribe,
+        pushUndoStop: jest.fn(),
+        dispose: jest.fn(),
+    } as unknown as editor.IStandaloneCodeEditor;
+}
+
 function resetMockMonaco(): void {
     mockRuntime.blurListener = null;
     mockRuntime.content = '';
@@ -55,35 +197,12 @@ function resetMockMonaco(): void {
     mockRuntime.model = {
         dispose: jest.fn<void, []>(),
         getFullModelRange: jest.fn<IRange, []>(() => fullModelRange),
+        getLineCount: jest.fn<number, []>(mockLineCount),
         getValue: jest.fn<string, []>(() => mockRuntime.content),
         setValue: jest.fn<void, [string]>(),
     };
-    mockRuntime.editor = {
-        executeEdits: jest.fn(),
-        focus: jest.fn(),
-        getModel: jest.fn(() => mockRuntime.model as unknown as editor.ITextModel),
-        getScrollTop: jest.fn(() => mockRuntime.scrollTop),
-        getSelection: jest.fn(() => mockRuntime.selection),
-        setSelection: jest.fn(),
-        deltaDecorations: jest.fn(() => []),
-        onDidBlurEditorText: jest.fn((listener: () => void) => {
-            mockRuntime.blurListener = listener;
-
-            return { dispose: jest.fn() };
-        }),
-        onDidChangeCursorPosition: jest.fn((listener: (event: { position: IPosition }) => void) => {
-            mockRuntime.cursorListener = listener;
-
-            return { dispose: jest.fn() };
-        }),
-        onDidChangeCursorSelection: jest.fn((listener: (event: { selection: ISelection }) => void) => {
-            mockRuntime.selectionListener = listener;
-
-            return { dispose: jest.fn() };
-        }),
-        pushUndoStop: jest.fn(),
-        dispose: jest.fn(),
-    } as unknown as editor.IStandaloneCodeEditor;
+    installMockEditor();
+    mockRuntime.mountCount = 0;
     mockRuntime.props = null;
     mockRuntime.scrollTop = 0;
 }
@@ -98,6 +217,7 @@ jest.mock('@monaco-editor/react', () => {
         mockRuntime.props = props;
 
         React.useEffect(() => {
+            mockRuntime.mountCount += 1;
             onMount?.(editorInstance, {} as unknown as Parameters<NonNullable<EditorProps['onMount']>>[1]);
         }, [editorInstance, onMount]);
 
@@ -596,3 +716,196 @@ it('keeps replacement undo groups and complete-buffer callbacks at the Monaco bo
  * whatever glyphs are behind it. An excluded *region* can still be load-bearing
  * for a comparison outside it — re-measure before trusting the exclusion.
  */
+
+it('publishes one scroll port per Monaco instance and withdraws it when the activation ends', async () => {
+    const onScrollPortReady = jest.fn<void, [EditorScrollPort | null]>();
+    const editorFor = (activationId: string, lineNumbers: 'on' | 'off' = 'on'): React.JSX.Element => (
+        <CodeEditor
+            documentId="document-1"
+            activationId={activationId}
+            initialValue="scrolled"
+            lineNumbers={lineNumbers}
+            onScrollPortReady={onScrollPortReady}
+        />
+    );
+    const { rerender, unmount } = render(editorFor('activation-1'));
+    await screen.findByRole('textbox', { name: 'Markdown source' });
+
+    rerender(editorFor('activation-1', 'off'));
+
+    expect(mockRuntime.mountCount).toBe(2);
+    expect(onScrollPortReady).toHaveBeenCalledTimes(1);
+    const firstPort = onScrollPortReady.mock.calls[0][0];
+    expect(firstPort).not.toBeNull();
+
+    // The fake mounts the same editor object for the next activation, which still receives a fresh port.
+    rerender(editorFor('activation-2'));
+
+    expect(mockRuntime.mountCount).toBe(3);
+    expect(onScrollPortReady).toHaveBeenCalledTimes(3);
+    expect(onScrollPortReady.mock.calls[1][0]).toBeNull();
+    const withdrawnAt = onScrollPortReady.mock.invocationCallOrder[1];
+    expect(withdrawnAt).toBeLessThan(mockRuntime.model.dispose.mock.invocationCallOrder[0]);
+    expect(withdrawnAt).toBeLessThan((mockRuntime.editor.dispose as jest.Mock).mock.invocationCallOrder[0]);
+    const secondPort = onScrollPortReady.mock.calls[2][0];
+    expect(secondPort).not.toBeNull();
+    expect(secondPort).not.toBe(firstPort);
+
+    unmount();
+
+    expect(onScrollPortReady).toHaveBeenCalledTimes(4);
+    expect(onScrollPortReady).toHaveBeenLastCalledWith(null);
+});
+
+async function renderWithScrollPort(): Promise<EditorScrollPort> {
+    const onScrollPortReady = jest.fn<void, [EditorScrollPort | null]>();
+    render(
+        <CodeEditor documentId="document-1" initialValue={mockRuntime.content} onScrollPortReady={onScrollPortReady} />,
+    );
+    await screen.findByRole('textbox', { name: 'Markdown source' });
+    const port = onScrollPortReady.mock.lastCall?.[0];
+    if (port === null || port === undefined) {
+        throw new Error('expected a published scroll port');
+    }
+
+    return port;
+}
+
+it('measures line tops and the document bottom without the scroll-beyond-last-line slack', async () => {
+    mockRuntime.content = Array.from({ length: 40 }, (_, index) => `line ${index + 1}`).join('\n');
+    const port = await renderWithScrollPort();
+
+    expect(port.getViewportHeight()).toBe(300);
+    expect(port.getLineCount()).toBe(40);
+    expect(port.getLineTop(1)).toBe(12);
+    expect(port.getLineTop(3)).toBe(52);
+    // The fake's Monaco scroll height is 1092 px: this 824 px document plus 268 px of slack below it.
+    expect(port.getDocumentBottom()).toBe(824);
+});
+
+it('reports only vertical scroll changes through the scroll port', async () => {
+    const port = await renderWithScrollPort();
+    const events = mockRuntime.events;
+    const onScroll = jest.fn<void, [number]>();
+
+    expect(events.scroll.listenerCount()).toBe(0);
+    const unsubscribe = port.onScroll(onScroll);
+
+    events.scroll.fire(scrollEvent({ scrollLeft: 30, scrollLeftChanged: true }));
+    events.scroll.fire(scrollEvent({ scrollHeight: 1400, scrollHeightChanged: true }));
+    mockRuntime.scrollTop = 140;
+    events.scroll.fire(scrollEvent({ scrollTop: 140, scrollTopChanged: true }));
+
+    expect(onScroll.mock.calls).toEqual([[140]]);
+
+    port.setScrollTop(260);
+
+    expect(mockRuntime.editor.setScrollTop).toHaveBeenCalledWith(260);
+    expect(onScroll.mock.calls).toEqual([[140], [260]]);
+    expect(port.getScrollTop()).toBe(260);
+
+    unsubscribe();
+    events.scroll.fire(scrollEvent({ scrollTop: 300, scrollTopChanged: true }));
+
+    expect(events.scroll.listenerCount()).toBe(0);
+    expect(onScroll).toHaveBeenCalledTimes(2);
+});
+
+it('reports where the editor is when a scroll event is delivered, not where it was queued', async () => {
+    const port = await renderWithScrollPort();
+    const events = mockRuntime.events;
+    const onScroll = jest.fn<void, [number]>();
+    port.onScroll(onScroll);
+
+    // Monaco captured 90 px when it queued this event; the editor is at 220 px by the time it arrives.
+    mockRuntime.scrollTop = 220;
+    events.scroll.fire(scrollEvent({ scrollTop: 90, scrollTopChanged: true }));
+
+    expect(onScroll.mock.calls).toEqual([[220]]);
+});
+
+it('reports content and layout geometry changes through the scroll port', async () => {
+    const port = await renderWithScrollPort();
+    const events = mockRuntime.events;
+    const onGeometryChange = jest.fn<void, [ScrollGeometryChange]>();
+    const noListeners = { configuration: 0, contentSize: 0, hiddenAreas: 0, layout: 0, modelContent: 0, scroll: 0 };
+
+    expect(listenerCounts(events)).toEqual(noListeners);
+    const unsubscribe = port.onGeometryChange(onGeometryChange);
+    expect(listenerCounts(events)).toEqual({
+        configuration: 1,
+        contentSize: 1,
+        hiddenAreas: 1,
+        layout: 1,
+        modelContent: 1,
+        scroll: 0,
+    });
+
+    events.contentSize.fire({
+        contentHeight: 1040,
+        contentWidth: 640,
+        contentHeightChanged: true,
+        contentWidthChanged: false,
+    });
+    events.modelContent.fire({} as editor.IModelContentChangedEvent);
+    events.layout.fire({ height: 360 } as editor.EditorLayoutInfo);
+    events.configuration.fire({} as editor.ConfigurationChangedEvent);
+    events.hiddenAreas.fire();
+
+    expect(onGeometryChange.mock.calls).toEqual([['content'], ['content'], ['layout'], ['layout'], ['layout']]);
+
+    unsubscribe();
+    events.modelContent.fire({} as editor.IModelContentChangedEvent);
+    events.layout.fire({ height: 420 } as editor.EditorLayoutInfo);
+
+    expect(listenerCounts(events)).toEqual(noListeners);
+    expect(onGeometryChange).toHaveBeenCalledTimes(5);
+});
+
+it('ignores scroll port calls after its editor is disposed', async () => {
+    const onScrollPortReady = jest.fn<void, [EditorScrollPort | null]>();
+    const editorFor = (activationId: string): React.JSX.Element => (
+        <CodeEditor
+            documentId="document-1"
+            activationId={activationId}
+            initialValue={mockRuntime.content}
+            onScrollPortReady={onScrollPortReady}
+        />
+    );
+    const noListeners = { configuration: 0, contentSize: 0, hiddenAreas: 0, layout: 0, modelContent: 0, scroll: 0 };
+    mockRuntime.content = 'first line\nsecond line';
+    mockRuntime.scrollTop = 40;
+    const { rerender } = render(editorFor('activation-1'));
+    await screen.findByRole('textbox', { name: 'Markdown source' });
+    const disposedPort = onScrollPortReady.mock.calls[0][0];
+    if (disposedPort === null) {
+        throw new Error('expected a published scroll port');
+    }
+    const disposedEditor = mockRuntime.editor;
+    const disposedEvents = mockRuntime.events;
+
+    installMockEditor();
+    rerender(editorFor('activation-2'));
+
+    expect(mockRuntime.mountCount).toBe(2);
+    expect(disposedEditor.dispose).toHaveBeenCalled();
+
+    const stopScroll = disposedPort.onScroll(jest.fn());
+    const stopGeometry = disposedPort.onGeometryChange(jest.fn());
+    disposedPort.setScrollTop(200);
+
+    expect(disposedPort.getScrollTop()).toBe(0);
+    expect(disposedPort.getViewportHeight()).toBe(0);
+    expect(disposedPort.getLineCount()).toBe(0);
+    expect(disposedPort.getLineTop(2)).toBe(0);
+    expect(disposedPort.getDocumentBottom()).toBe(0);
+    expect(mockRuntime.scrollTop).toBe(40);
+    expect(disposedEditor.setScrollTop).not.toHaveBeenCalled();
+    expect(mockRuntime.editor.setScrollTop).not.toHaveBeenCalled();
+    expect(listenerCounts(disposedEvents)).toEqual(noListeners);
+    expect(listenerCounts(mockRuntime.events)).toEqual(noListeners);
+    expect((): void => {
+        stopScroll();
+        stopGeometry();
+    }).not.toThrow();
+});

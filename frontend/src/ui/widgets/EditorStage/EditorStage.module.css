@@ -21,6 +21,11 @@
     padding: 6px 0;
 }
 
+/* Scroll anchoring would move the preview under a synchronized write and fight it. */
+.previewContent[data-scroll-sync='on'] {
+    overflow-anchor: none;
+}
+
 @media (max-width: 376px) {
     .stage {
         flex-direction: column;

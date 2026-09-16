@@ -819,6 +819,7 @@ export namespace apperr {
 	export class EditorSettings {
 	    lineNumbers: boolean;
 	    wordWrap: boolean;
+	    scrollSync: boolean;
 	    fontSize: number;
 	
 	    static createFrom(source: any = {}) {
@@ -829,6 +830,7 @@ export namespace apperr {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.lineNumbers = source["lineNumbers"];
 	        this.wordWrap = source["wordWrap"];
+	        this.scrollSync = source["scrollSync"];
 	        this.fontSize = source["fontSize"];
 	    }
 	}

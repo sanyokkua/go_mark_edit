@@ -53,6 +53,7 @@ export type ActionId =
     | 'toggle-assistant'
     | 'line-numbers'
     | 'word-wrap'
+    | 'scroll-sync'
     | 'distraction-free-reading'
     | 'fullscreen'
     | 'keyboard-shortcuts'
@@ -269,6 +270,7 @@ export const actionRegistry: readonly ActionEntry[] = Object.freeze([
     }),
     entry('line-numbers', 'window', ['view-menu', 'overflow']),
     entry('word-wrap', 'window', ['view-menu', 'overflow']),
+    entry('scroll-sync', 'window', ['view-menu', 'overflow']),
     entry('distraction-free-reading', 'window', ['view-menu'], {
         availability: laterDeferred,
     }),

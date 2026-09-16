@@ -262,6 +262,7 @@
     "action.toggle-assistant.label": "Toggle Assistant",
     "action.line-numbers.label": "Line numbers",
     "action.word-wrap.label": "Word wrap",
+    "action.scroll-sync.label": "Synchronized scrolling",
     "action.distraction-free-reading.label": "Distraction-free reading",
     "action.fullscreen.label": "Full screen",
     "action.keyboard-shortcuts.label": "Keyboard shortcuts",

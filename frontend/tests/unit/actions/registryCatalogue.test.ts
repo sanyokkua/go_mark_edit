@@ -1,4 +1,4 @@
-import { actionRegistry, getActionAvailability } from '../../../src/logic/actions/actionRegistry';
+import { actionRegistry, getAction, getActionAvailability } from '../../../src/logic/actions/actionRegistry';
 
 it('keeps the canonical action catalogue stable', () => {
     expect(actionRegistry.map(({ id }) => id)).toEqual([
@@ -37,6 +37,7 @@ it('keeps the canonical action catalogue stable', () => {
         'toggle-assistant',
         'line-numbers',
         'word-wrap',
+        'scroll-sync',
         'distraction-free-reading',
         'fullscreen',
         'keyboard-shortcuts',
@@ -68,6 +69,10 @@ it('keeps the canonical action catalogue stable', () => {
         'next-tab',
         'previous-tab',
     ]);
+});
+
+it('gives synchronized scrolling no keyboard shortcut', () => {
+    expect(getAction('scroll-sync').shortcut).toBeUndefined();
 });
 
 it('answers every surface from the same projected availability policy', () => {

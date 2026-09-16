@@ -22,6 +22,7 @@ export interface MarkdownSettings {
 export interface EditorSettings {
     lineNumbers: boolean;
     wordWrap: boolean;
+    scrollSync: boolean;
     fontSize: number;
 }
 

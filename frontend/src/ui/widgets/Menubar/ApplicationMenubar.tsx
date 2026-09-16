@@ -127,10 +127,14 @@ export default function ApplicationMenubar({ menuState }: ApplicationMenubarProp
                 onPreviewVisibilityChange: (visible): void => {
                     void dispatch(setPreviewPaneVisible(visible));
                 },
+                onScrollSyncChange: (enabled): void => {
+                    void editorSettings.update({ scrollSync: enabled });
+                },
                 onWordWrapChange: (enabled): void => {
                     void editorSettings.update({ wordWrap: enabled });
                 },
                 previewVisible: activeDocument?.view.previewVisible ?? true,
+                scrollSync: editorSettings.settings.scrollSync,
                 wordWrap: editorSettings.settings.wordWrap,
                 workspaceVisible,
                 onWorkspaceVisibilityChange: (visible): void => {

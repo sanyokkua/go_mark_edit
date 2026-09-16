@@ -23,7 +23,7 @@ it('hydrates Redux settings once from the acknowledged adapter authority', async
                 headingStyle: 'atx',
             },
             contentPrivacy: { remotePolicy: 'ask' },
-            editor: { lineNumbers: false, wordWrap: true, fontSize: 13 },
+            editor: { lineNumbers: false, wordWrap: true, scrollSync: false, fontSize: 13 },
             file: { autosave: false },
         })),
         updateAppearance: jest.fn(),
@@ -40,7 +40,7 @@ it('hydrates Redux settings once from the acknowledged adapter authority', async
     expect(adapter.getSettings).toHaveBeenCalledTimes(1);
     expect(store.getState().settings).toMatchObject({
         hydrated: true,
-        editor: { lineNumbers: false, wordWrap: true, fontSize: 13 },
+        editor: { lineNumbers: false, wordWrap: true, scrollSync: false, fontSize: 13 },
         file: { autosave: false },
         markdown: { bulletMarker: '+', emphasisMarker: '_' },
     });

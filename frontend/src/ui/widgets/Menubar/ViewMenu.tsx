@@ -39,6 +39,8 @@ export interface ViewMenuProps {
     onLineNumbersChange?: (enabled: boolean) => void;
     wordWrap?: boolean;
     onWordWrapChange?: (enabled: boolean) => void;
+    scrollSync?: boolean;
+    onScrollSyncChange?: (enabled: boolean) => void;
     onFullscreen?: () => void;
 }
 
@@ -66,6 +68,8 @@ const ViewMenu: React.FC<ViewMenuProps> = ({
     onLineNumbersChange,
     wordWrap,
     onWordWrapChange,
+    scrollSync,
+    onScrollSyncChange,
     onFullscreen,
 }: ViewMenuProps): React.JSX.Element => {
     const [internalOpen, setInternalOpen] = useState(false);
@@ -231,6 +235,16 @@ const ViewMenu: React.FC<ViewMenuProps> = ({
                         label={t(getAction('word-wrap').labelKey)}
                         trailing={toggle(wordWrap)}
                         onSelect={(): void => dispatchWindowAction('word-wrap', () => onWordWrapChange(!wordWrap))}
+                    />
+                )}
+                {scrollSync === undefined || onScrollSyncChange === undefined ? null : (
+                    <MenuItem
+                        checked={scrollSync}
+                        label={t(getAction('scroll-sync').labelKey)}
+                        trailing={toggle(scrollSync)}
+                        onSelect={(): void =>
+                            dispatchWindowAction('scroll-sync', () => onScrollSyncChange(!scrollSync))
+                        }
                     />
                 )}
                 <PopupSeparator />
