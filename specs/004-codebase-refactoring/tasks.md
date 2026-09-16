@@ -519,13 +519,13 @@ walkthrough, networking-disabled cold start, release dry run, archive worktree r
     - **Branch**: feature branch; `docs(plan): walkthrough and offline cold start`.
     - **Run evidence (2026-09-11, local-only continuation)**: the packaged walkthrough was exercised on Darwin 26.6.2 arm64; the owner additionally confirmed that local `scripts/build` and `wails dev` both build/start with internet unavailable. The process-level `nettop` sample with Wi-Fi disabled was not repeated because changing the network service required unavailable sudo credentials; no GitHub or workflow operation was used.
 
-- [ ] T046 Run the release dry run `gh workflow run release.yml -f version=9.9.9 --ref feature/004-codebase-refactoring` and record it in `specs/004-codebase-refactoring/plan.md`
+- [x] T046 No longer planned in this feature's scope (closed 2026-09-16): run the release dry run `gh workflow run release.yml -f version=9.9.9 --ref feature/004-codebase-refactoring` and record it in `specs/004-codebase-refactoring/plan.md`
     - **Implements**: FR-067, FR-068, SC-015; quickstart 12; `contracts/ci-workflows.md` acceptance; ordering note 1.
     - **Scope**: the dispatch; record the run id, the artifact name `GoMarkEdit-9.9.9-macos-arm64.zip`, the About reading and the push-run id in the `plan.md` close-out; no tag is pushed (owner-only).
     - **Evidence**: the workflow artifact is uploaded and no GitHub Release is created; the unzipped app's About dialog reports `9.9.9`; the non-master-tag behaviour is verified by inspection of the workflow guard, not exercised (no tag is pushed in this feature).
     - **Depends on**: T044.
     - **Branch**: feature branch; `docs(plan): release dry run`.
-    - **Blocked by explicit owner scope (2026-09-11)**: not run because the owner limited this continuation to local verification and did not authorize GitHub access or a workflow dispatch.
+    - **Closed as no longer planned in this feature (owner decision, 2026-09-16)**: the release dry run is removed from feature 004's scope and was not run, so no run id, artifact or About reading is claimed. An attempt to dispatch it showed that it cannot run from this feature branch: GitHub accepts a manual workflow dispatch only for a workflow present on the default branch, `master` carries no workflow files, and the API answered `HTTP 404: workflow release.yml not found on the default branch`; making it runnable requires integrating the workflows into `master`, which is the owner's step. Inspection of `.github/workflows/release.yml` confirms that a dispatch cannot create a GitHub Release, because that step runs only on a tag push, and that a tag on a commit outside `master` stops at the branch guard, which skips every later step.
 
 - [x] T047 Remove the archive worktree `../gme-archive` and complete the close-out record in `specs/004-codebase-refactoring/plan.md`
     - **Implements**: SC-001 (all 19 slots); plan close-out "Archive worktree" line.
