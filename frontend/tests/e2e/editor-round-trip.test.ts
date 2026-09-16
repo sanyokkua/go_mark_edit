@@ -228,14 +228,13 @@ test('uses the native clipboard for every editor popup action and keeps Monaco f
     await expect.poll(() => activeBufferContent(page)).toBe('**Word**');
     await expect(editor).toBeFocused();
 
-    // A selected word with another style would nest the next style. Collapse
-    // first to exercise the caret-specific replacement path: **Word** -> _Word_.
-    await editor.press('ArrowRight');
+    // Toolbar Bold leaves a collapsed caret at the end of **Word|**, which
+    // exercises the caret-specific replacement path: **Word** -> _Word_.
     await invokeEditorContextAction(page, 'Italic');
     await expect.poll(() => activeBufferContent(page)).toBe('_Word_');
     await expect(editor).toBeFocused();
 
-    await editor.press(`${modifier}+I`);
+    await editor.press('ControlOrMeta+I');
     await expect.poll(() => activeBufferContent(page)).toBe('Word');
     await expect(editor).toBeFocused();
 });
