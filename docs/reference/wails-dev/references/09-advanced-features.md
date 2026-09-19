@@ -70,7 +70,7 @@ The CSS custom property name must **exactly match** `CSSDropProperty` (default: 
 
 ```css
 .drop-zone {
-    --wails-drop-target: drop;  /* value must match CSSDropValue */
+    --wails-drop-target: drop; /* value must match CSSDropValue */
 }
 ```
 
@@ -99,7 +99,7 @@ CSSDragValue:    "drag",
 ```css
 .titlebar {
     --wails-draggable: drag;
-    -webkit-app-region: drag;  /* also add this for WebKit */
+    -webkit-app-region: drag; /* also add this for WebKit */
 }
 ```
 
@@ -108,6 +108,7 @@ CSSDragValue:    "drag",
 ```
 
 Elements inside the drag region that need to be clickable should override:
+
 ```css
 .titlebar button {
     --wails-draggable: no-drag;

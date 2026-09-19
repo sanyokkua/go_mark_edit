@@ -1,163 +1,146 @@
 import { createSlice } from '@reduxjs/toolkit';
 
-import {
-  applyStatePatch,
-  hydrateProjection,
-  resetProjection,
-} from './appModelProjectionActions';
+import { applyStatePatch, hydrateProjection, resetProjection } from './appModelProjectionActions';
 import type { DocumentMetadata } from './appModelTypes';
 
 export interface DocumentsState {
-  revision: number;
-  tabSetRevision: number;
-  orderedIds: string[];
-  byId: Record<string, DocumentMetadata>;
-  activeDocumentId: string | null;
-  recentFiles?: string[];
-  canReopenLastFile?: boolean;
+    revision: number;
+    tabSetRevision: number;
+    orderedIds: string[];
+    byId: Record<string, DocumentMetadata>;
+    activeDocumentId: string | null;
+    recentFiles?: string[];
+    canReopenLastFile?: boolean;
 }
 
 const initialState: DocumentsState = {
-  revision: -1,
-  tabSetRevision: -1,
-  orderedIds: [],
-  byId: {},
-  activeDocumentId: '',
+    revision: -1,
+    tabSetRevision: -1,
+    orderedIds: [],
+    byId: {},
+    activeDocumentId: '',
 };
 
-function normalizeDocumentMetadata(
-  document: DocumentMetadata,
-): DocumentMetadata {
-  return {
-    documentId: document.documentId,
-    title: document.title,
-    path: document.path,
-    dirty: document.dirty,
-    encoding: document.encoding,
-    lineEnding: document.lineEnding,
-    wordCount: document.wordCount,
-    displayName: document.displayName,
-    parentName: document.parentName,
-    contentRevision: document.contentRevision,
-    capability: document.capability,
-    sizeClass: document.sizeClass,
-    detached: document.detached,
-    conflictBlocked: document.conflictBlocked,
-    writeInFlight: document.writeInFlight,
-    status: document.status,
-    view: {
-      arrangement: document.view.arrangement,
-      editorVisible: document.view.editorVisible,
-      previewVisible: document.view.previewVisible,
-      cursor: {
-        line: document.view.cursor.line,
-        column: document.view.cursor.column,
-      },
-      selection: {
-        start: {
-          line: document.view.selection.start.line,
-          column: document.view.selection.start.column,
+function normalizeDocumentMetadata(document: DocumentMetadata): DocumentMetadata {
+    return {
+        documentId: document.documentId,
+        title: document.title,
+        path: document.path,
+        dirty: document.dirty,
+        encoding: document.encoding,
+        lineEnding: document.lineEnding,
+        wordCount: document.wordCount,
+        displayName: document.displayName,
+        parentName: document.parentName,
+        contentRevision: document.contentRevision,
+        capability: document.capability,
+        sizeClass: document.sizeClass,
+        detached: document.detached,
+        conflictBlocked: document.conflictBlocked,
+        writeInFlight: document.writeInFlight,
+        status: document.status,
+        view: {
+            arrangement: document.view.arrangement,
+            editorVisible: document.view.editorVisible,
+            previewVisible: document.view.previewVisible,
+            cursor: {
+                line: document.view.cursor.line,
+                column: document.view.cursor.column,
+            },
+            selection: {
+                start: {
+                    line: document.view.selection.start.line,
+                    column: document.view.selection.start.column,
+                },
+                end: {
+                    line: document.view.selection.end.line,
+                    column: document.view.selection.end.column,
+                },
+            },
+            scroll: {
+                editor: document.view.scroll.editor,
+                preview: document.view.scroll.preview,
+            },
         },
-        end: {
-          line: document.view.selection.end.line,
-          column: document.view.selection.end.column,
-        },
-      },
-      scroll: {
-        editor: document.view.scroll.editor,
-        preview: document.view.scroll.preview,
-      },
-    },
-  };
+    };
 }
 
-function normalizeDocuments(
-  documents: Record<string, DocumentMetadata>,
-): Record<string, DocumentMetadata> {
-  return Object.fromEntries(
-    Object.entries(documents).map(([documentId, document]) => [
-      documentId,
-      normalizeDocumentMetadata(document),
-    ]),
-  );
+function normalizeDocuments(documents: Record<string, DocumentMetadata>): Record<string, DocumentMetadata> {
+    return Object.fromEntries(
+        Object.entries(documents).map(([documentId, document]) => [documentId, normalizeDocumentMetadata(document)]),
+    );
 }
 
 const documentsSlice = createSlice({
-  name: 'documents',
-  initialState,
-  reducers: {},
-  extraReducers: (builder) => {
-    builder
-      .addCase(hydrateProjection, (state, action): void => {
-        if (action.payload.revision <= state.revision) {
-          return;
-        }
+    name: 'documents',
+    initialState,
+    reducers: {},
+    extraReducers: (builder) => {
+        builder
+            .addCase(hydrateProjection, (state, action): void => {
+                if (action.payload.revision <= state.revision) {
+                    return;
+                }
 
-        state.revision = action.payload.revision;
-        state.tabSetRevision =
-          action.payload.tabSetRevision ?? action.payload.revision;
-        state.orderedIds =
-          action.payload.orderedDocumentIds ??
-          Object.keys(action.payload.documents);
-        state.byId = normalizeDocuments(action.payload.documents);
-        state.activeDocumentId = action.payload.activeDocumentId;
-        if (action.payload.activeDocument !== undefined) {
-          state.activeDocumentId = action.payload.activeDocument;
-        }
-        if (state.orderedIds.length === 0) {
-          state.activeDocumentId = null;
-        }
-        state.recentFiles = [...(action.payload.recentFiles ?? [])];
-        state.canReopenLastFile = action.payload.canReopenLastFile ?? false;
-      })
-      .addCase(applyStatePatch, (state, action): void => {
-        const patch = action.payload;
-        if (patch.revision <= state.revision) {
-          return;
-        }
+                state.revision = action.payload.revision;
+                state.tabSetRevision = action.payload.tabSetRevision ?? action.payload.revision;
+                state.orderedIds = action.payload.orderedDocumentIds ?? Object.keys(action.payload.documents);
+                state.byId = normalizeDocuments(action.payload.documents);
+                state.activeDocumentId = action.payload.activeDocumentId;
+                if (action.payload.activeDocument !== undefined) {
+                    state.activeDocumentId = action.payload.activeDocument;
+                }
+                if (state.orderedIds.length === 0) {
+                    state.activeDocumentId = null;
+                }
+                state.recentFiles = [...(action.payload.recentFiles ?? [])];
+                state.canReopenLastFile = action.payload.canReopenLastFile ?? false;
+            })
+            .addCase(applyStatePatch, (state, action): void => {
+                const patch = action.payload;
+                if (patch.revision <= state.revision) {
+                    return;
+                }
 
-        state.revision = patch.revision;
-        if (patch.tabSetRevision !== undefined) {
-          state.tabSetRevision = patch.tabSetRevision;
-        }
-        /*
-         * Tested against the shape, not against `undefined`. The bridge already
-         * drops a wire null, and this reducer shares a dispatch with every other
-         * slice: were a malformed tab order to reach it, throwing here would
-         * discard the `ui` section of the same patch rather than just this field.
-         */
-        if (Array.isArray(patch.orderedDocumentIds)) {
-          state.orderedIds = [...patch.orderedDocumentIds];
-        }
-        if (patch.documents !== undefined) {
-          for (const documentId of patch.documents.remove ?? []) {
-            delete state.byId[documentId];
-          }
-          Object.assign(
-            state.byId,
-            normalizeDocuments(patch.documents.upsert ?? {}),
-          );
-        }
-        if (patch.activeDocumentId !== undefined) {
-          state.activeDocumentId = patch.activeDocumentId;
-        }
-        if (patch.activeDocument !== undefined) {
-          state.activeDocumentId = patch.activeDocument.present
-            ? (patch.activeDocument.documentId ?? null)
-            : null;
-        }
-        if (state.orderedIds.length === 0) {
-          state.activeDocumentId = null;
-        }
-        if (patch.recentFiles !== undefined) {
-          state.recentFiles = [...patch.recentFiles];
-        }
-        if (patch.canReopenLastFile !== undefined) {
-          state.canReopenLastFile = patch.canReopenLastFile;
-        }
-      })
-      .addCase(resetProjection, (): DocumentsState => initialState);
-  },
+                state.revision = patch.revision;
+                if (patch.tabSetRevision !== undefined) {
+                    state.tabSetRevision = patch.tabSetRevision;
+                }
+                /*
+                 * Tested against the shape, not against `undefined`. The bridge already
+                 * drops a wire null, and this reducer shares a dispatch with every other
+                 * slice: were a malformed tab order to reach it, throwing here would
+                 * discard the `ui` section of the same patch rather than just this field.
+                 */
+                if (Array.isArray(patch.orderedDocumentIds)) {
+                    state.orderedIds = [...patch.orderedDocumentIds];
+                }
+                if (patch.documents !== undefined) {
+                    for (const documentId of patch.documents.remove ?? []) {
+                        delete state.byId[documentId];
+                    }
+                    Object.assign(state.byId, normalizeDocuments(patch.documents.upsert ?? {}));
+                }
+                if (patch.activeDocumentId !== undefined) {
+                    state.activeDocumentId = patch.activeDocumentId;
+                }
+                if (patch.activeDocument !== undefined) {
+                    state.activeDocumentId = patch.activeDocument.present
+                        ? (patch.activeDocument.documentId ?? null)
+                        : null;
+                }
+                if (state.orderedIds.length === 0) {
+                    state.activeDocumentId = null;
+                }
+                if (patch.recentFiles !== undefined) {
+                    state.recentFiles = [...patch.recentFiles];
+                }
+                if (patch.canReopenLastFile !== undefined) {
+                    state.canReopenLastFile = patch.canReopenLastFile;
+                }
+            })
+            .addCase(resetProjection, (): DocumentsState => initialState);
+    },
 });
 
 export const documentsReducer = documentsSlice.reducer;

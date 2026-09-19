@@ -13,7 +13,7 @@ import (
 
 	"github.com/rs/zerolog"
 	"github.com/sanyokkua/go_mark_edit/internal/apperr"
-	"github.com/sanyokkua/go_mark_edit/internal/bootstrap"
+	"github.com/sanyokkua/go_mark_edit/internal/bridge"
 	"github.com/sanyokkua/go_mark_edit/internal/file"
 )
 
@@ -21,45 +21,43 @@ var nextDocumentID uint64
 
 // AppModelService is the mutex-guarded owner of live document and layout state.
 type AppModelService struct {
-	mu                  sync.RWMutex
-	state               applicationState
-	commands            DocumentCommandAPI
-	content             DocumentContentAccessor
-	emitter             StatePatchEmitter
-	layout              LayoutRepositoryAPI
-	sequence            uint64
-	writerID            string
-	timer               LayoutTimer
-	autosaveTimer       AutosaveTimerFactory
-	autosaveEnabled     bool
-	autosaveTimers      map[string]*autosaveTimerEntry
-	autosaveInFlight    map[string]chan struct{}
-	autosaveGeneration  uint64
-	pending             *pendingLayout
-	pendingFlushDone    chan struct{}
-	startupErr          error
-	reservations        map[string]*openReservation
-	saveReservations    map[string]*saveReservation
-	normalizations      map[string]*normalizationAuthorization
-	writeCoordinators   map[string]*DocumentWriteCoordinator
-	closePlans          map[string]*closePlan
-	activeClosePlan     string
-	writeExecutor       WriteExecutor
-	writeCommitObserver WriteCommitObserver
-	runtimeContext      context.Context
-	conflicts           map[string]*documentConflict
-	conflictQueue       *conflictQueue
-	keepMine            map[string]*keepMineAuthorization
-	beforeSaveAsRecheck func(string)
-	metadata            FileMetadataRepository
-	recentFiles         RecentFilesRepository
-	defaultOpenMode     string
-	openDialog          DocumentOpenDialog
-	saveDialog          DocumentSaveDialog
-	clipboard           file.ClipboardWriter
-	reveal              file.RevealPort
-	stableRead          func(string, int64) (file.StableClassifiedRead, error)
-	diskVersion         func(string) (file.DiskVersion, error)
+	mu                             sync.RWMutex
+	state                          applicationState
+	commands                       DocumentCommandAPI
+	content                        DocumentContentAccessor
+	emitter                        StatePatchEmitter
+	layout                         LayoutRepositoryAPI
+	sequence                       uint64
+	writerID                       string
+	timer                          LayoutTimer
+	autosaveTimer                  AutosaveTimerFactory
+	autosaveEnabled                bool
+	pending                        *pendingLayout
+	pendingFlushDone               chan struct{}
+	startupErr                     error
+	pendingClose                   *apperr.PendingClose
+	reservations                   map[string]*openReservation
+	closePlans                     map[string]*closePlan
+	activeClosePlan                string
+	writeExecutor                  WriteExecutor
+	writeCommitObserver            WriteCommitObserver
+	runtimeContext                 context.Context
+	conflictQueue                  *conflictQueue
+	shutdownDraining               bool
+	metadata                       FileMetadataRepository
+	recentFiles                    RecentFilesRepository
+	defaultOpenMode                string
+	openDialog                     DocumentOpenDialog
+	saveDialog                     DocumentSaveDialog
+	clipboard                      file.ClipboardWriter
+	reveal                         file.RevealPort
+	stableRead                     func(string, int64) (file.StableClassifiedRead, error)
+	diskVersion                    func(string) (file.DiskVersion, error)
+	applicationVersion             string
+	logger                         zerolog.Logger
+	publicationMu                  sync.Mutex
+	publicationSequence            uint64
+	applicationPublicationCommitID uint64
 }
 
 // LayoutTimer is the clock the layout debounce schedules against. It is
@@ -80,73 +78,13 @@ type pendingLayout struct {
 	values     map[string]VersionedLayoutValue
 }
 
-// NewAppModelService creates one clean, never-saved document for this process.
-// It leaves the host ports unset and is therefore a test and harness constructor:
-// a production host must use NewAppModelServiceForHost.
-func NewAppModelService(emitter StatePatchEmitter) *AppModelService {
-	return newAppModelService(emitter, nil, systemLayoutTimer{})
+// NewAppModelServiceForHost is the production constructor. Host ports and the
+// application version are supplied explicitly through constructor options.
+func NewAppModelServiceForHost(options ...AppModelOption) *AppModelService {
+	return newAppModelService(options...)
 }
 
-// NewAppModelServiceForHost is the production constructor. The host ports are
-// positional parameters rather than optional setters, so adding a port here
-// breaks every host at compile time instead of leaving it nil.
-//
-// That distinction is the whole point of this function. SetClipboardWriter and
-// SetRevealPort existed and worked, but nothing outside a test ever called them,
-// so Copy path and Reveal in file manager returned system-command-failure in
-// every shipped binary from the day they were written. An optional setter cannot
-// report that it was not called; a parameter list can.
-func NewAppModelServiceForHost(emitter StatePatchEmitter, clipboard file.ClipboardWriter, reveal file.RevealPort) *AppModelService {
-	service := newAppModelService(emitter, nil, systemLayoutTimer{})
-	service.clipboard = clipboard
-	service.reveal = reveal
-	return service
-}
-
-// NewAppModelServiceWithLayoutRepository constructs the production layout seam
-// used after startup has opened the local SQLite database.
-func NewAppModelServiceWithLayoutRepository(emitter StatePatchEmitter, layout LayoutRepositoryAPI) *AppModelService {
-	return newAppModelService(emitter, layout, systemLayoutTimer{})
-}
-
-// NewAppModelServiceWithLayoutRepositoryAndTimer is a test and harness
-// constructor. It leaves the host ports unset, so no production host may use it;
-// the evidence driver used to, which is how Copy path and Reveal reached a nil
-// port in the one binary built to measure real behaviour (T167).
-func NewAppModelServiceWithLayoutRepositoryAndTimer(emitter StatePatchEmitter, layout LayoutRepositoryAPI, timer LayoutTimer) *AppModelService {
-	return newAppModelService(emitter, layout, timer)
-}
-
-/*
- * SetLayoutTimer replaces the layout debounce clock on an already-constructed
- * service.
- *
- * This exists so a harness host can take the model the composition root built —
- * with its host ports and its settings joins intact — and change only the clock,
- * instead of constructing a second model and assigning it over the first. The
- * evidence driver did the latter, and it silently cost both host ports plus the
- * autosave and default-open-mode observers the root had already bound.
- *
- * It is deliberately not the pattern used for host ports. A missing clock is
- * benign — the constructor installs systemLayoutTimer and production never calls
- * this — whereas a missing port is a command that cannot work, which is why
- * those stay positional parameters on NewAppModelServiceForHost that break the
- * build when one is added. Read the comment there before turning either into the
- * other.
- *
- * Call before the model schedules anything. It swaps the clock for subsequent
- * scheduling only and does not reschedule work already pending on the old one.
- */
-func (service *AppModelService) SetLayoutTimer(timer LayoutTimer) {
-	if timer == nil {
-		return
-	}
-	service.mu.Lock()
-	defer service.mu.Unlock()
-	service.timer = timer
-}
-
-func newAppModelService(emitter StatePatchEmitter, layout LayoutRepositoryAPI, timer LayoutTimer) *AppModelService {
+func newAppModelService(options ...AppModelOption) *AppModelService {
 	documentID := mintDocumentID()
 	initialDocument := &openDocument{
 		metadata: apperr.DocumentMetadata{
@@ -169,10 +107,10 @@ func newAppModelService(emitter StatePatchEmitter, layout LayoutRepositoryAPI, t
 		},
 	}
 
-	if timer == nil {
-		timer = systemLayoutTimer{}
-	}
-	service := &AppModelService{emitter: emitter, layout: layout, timer: timer, autosaveTimer: systemAutosaveTimerFactory{}, autosaveEnabled: true, autosaveTimers: make(map[string]*autosaveTimerEntry), autosaveInFlight: make(map[string]chan struct{}), writerID: newLayoutWriterID(), reservations: make(map[string]*openReservation), saveReservations: make(map[string]*saveReservation), normalizations: make(map[string]*normalizationAuthorization), writeCoordinators: make(map[string]*DocumentWriteCoordinator), closePlans: make(map[string]*closePlan), conflicts: make(map[string]*documentConflict), conflictQueue: newConflictQueue(), keepMine: make(map[string]*keepMineAuthorization), stableRead: file.ReadClassifiedStable, diskVersion: file.CurrentDiskVersion, defaultOpenMode: OpenModeEditor, state: applicationState{
+	initialDocument.id = documentID
+	initialDocument.canonicalPath = ""
+	initialDocument.setBufferRevision(initialDocument.metadata.ContentRevision)
+	service := &AppModelService{timer: systemLayoutTimer{}, autosaveTimer: systemAutosaveTimerFactory{}, autosaveEnabled: true, writerID: newLayoutWriterID(), reservations: make(map[string]*openReservation), closePlans: make(map[string]*closePlan), conflictQueue: newConflictQueue(), stableRead: file.ReadClassifiedStable, diskVersion: file.CurrentDiskVersion, defaultOpenMode: OpenModeEditor, applicationVersion: "dev", logger: zerolog.Nop(), state: applicationState{
 		orderedDocumentIDs: []string{documentID},
 		documents:          map[string]*openDocument{documentID: initialDocument},
 		activeDocumentID:   documentID,
@@ -182,34 +120,11 @@ func newAppModelService(emitter StatePatchEmitter, layout LayoutRepositoryAPI, t
 			SidebarVisible: pointerTo(true),
 		},
 	}}
+	for _, option := range options {
+		option.apply(service)
+	}
 	service.commands = documentCommands{service: service}
 	service.content = documentContentAccessor{service: service}
-	return service
-}
-
-// SetConflictReadersForTesting injects deterministic version/read races without
-// changing the production foreground-only policy.
-func (service *AppModelService) SetConflictReadersForTesting(stableRead func(string, int64) (file.StableClassifiedRead, error), diskVersion func(string) (file.DiskVersion, error)) {
-	service.mu.Lock()
-	defer service.mu.Unlock()
-	if stableRead != nil {
-		service.stableRead = stableRead
-	}
-	if diskVersion != nil {
-		service.diskVersion = diskVersion
-	}
-}
-
-// NewEmptyAppModelService constructs the same backend state with no open
-// documents. It is used by the zero-document launcher and keeps the optional
-// active identity explicit instead of manufacturing a placeholder.
-func NewEmptyAppModelService(emitter StatePatchEmitter) *AppModelService {
-	service := newAppModelService(emitter, nil, systemLayoutTimer{})
-	service.mu.Lock()
-	service.state.documents = map[string]*openDocument{}
-	service.state.orderedDocumentIDs = nil
-	service.state.activeDocumentID = ""
-	service.mu.Unlock()
 	return service
 }
 
@@ -238,68 +153,6 @@ func (service *AppModelService) SetDefaultOpenMode(mode string) {
 	service.mu.Unlock()
 }
 
-// DefaultOpenMode reports the acknowledged setting Open applies before it resolves
-// a path's arrangement. It exists so the composition-root join can be asserted:
-// until T119 SetDefaultOpenMode had no production caller at all, and nothing could
-// observe that the stored preference never arrived.
-func (service *AppModelService) DefaultOpenMode() string {
-	service.mu.RLock()
-	defer service.mu.RUnlock()
-	return service.defaultOpenMode
-}
-
-// SetDocumentOpenDialog injects the composition-root native picker without importing Wails here.
-func (service *AppModelService) SetDocumentOpenDialog(dialog DocumentOpenDialog) {
-	service.mu.Lock()
-	defer service.mu.Unlock()
-	service.openDialog = dialog
-}
-
-// SetDocumentSaveDialog injects the composition-root save chooser and native overwrite prompt.
-func (service *AppModelService) SetDocumentSaveDialog(dialog DocumentSaveDialog) {
-	service.mu.Lock()
-	defer service.mu.Unlock()
-	service.saveDialog = dialog
-}
-
-// SetClipboardWriter injects the host clipboard without coupling appmodel to Wails.
-func (service *AppModelService) SetClipboardWriter(writer file.ClipboardWriter) {
-	service.mu.Lock()
-	defer service.mu.Unlock()
-	service.clipboard = writer
-}
-
-// SetRevealPort injects the host file-manager reveal command.
-func (service *AppModelService) SetRevealPort(port file.RevealPort) {
-	service.mu.Lock()
-	defer service.mu.Unlock()
-	service.reveal = port
-}
-
-// SetBeforeSaveAsRecheck is a narrow deterministic test seam for target drift between
-// confirmation and the final version/hash comparison.
-func (service *AppModelService) SetBeforeSaveAsRecheck(hook func(string)) {
-	service.mu.Lock()
-	defer service.mu.Unlock()
-	service.beforeSaveAsRecheck = hook
-}
-
-// SetWriteExecutorForTesting injects a deterministic replacement seam before
-// the first write coordinator for a document is created.
-func (service *AppModelService) SetWriteExecutorForTesting(executor WriteExecutor) {
-	service.mu.Lock()
-	defer service.mu.Unlock()
-	service.writeExecutor = executor
-}
-
-// SetWriteCommitObserver installs an optional read-only observation seam for
-// current-host evidence. It does not alter coordination, timing, or disk I/O.
-func (service *AppModelService) SetWriteCommitObserver(observer WriteCommitObserver) {
-	service.mu.Lock()
-	defer service.mu.Unlock()
-	service.writeCommitObserver = observer
-}
-
 // SetRuntimeContext supplies the Wails lifecycle context used by timer-driven
 // state patches. Foreground handlers still pass their request context directly.
 func (service *AppModelService) SetRuntimeContext(ctx context.Context) {
@@ -323,11 +176,13 @@ func (service *AppModelService) OpenFromDialog(ctx context.Context, expectedTabS
 	dialog := service.openDialog
 	service.mu.RUnlock()
 	if dialog == nil {
-		return apperr.OpenResult{Status: apperr.OpenStatusRefused, Error: classifiedOpenError(apperr.ClassifiedSystemCommandFailure, "The Open dialog is unavailable.", apperr.RemediationRetry)}
+		classified := bridge.ClassifiedWithID(apperr.ClassifiedSystemCommandFailure, "document", "The Open dialog is unavailable.", apperr.RemediationRetry, "")
+		return bridge.FromClassified[apperr.OpenResult](classified, apperr.OpenStatusRefused)
 	}
 	path, err := dialog.ChooseOpenFile(ctx)
 	if err != nil {
-		return apperr.OpenResult{Status: apperr.OpenStatusRefused, Error: classifiedOpenError(apperr.ClassifiedSystemCommandFailure, "The Open dialog could not be opened.", apperr.RemediationRetry)}
+		classified := bridge.ClassifiedWithID(apperr.ClassifiedSystemCommandFailure, "document", "The Open dialog could not be opened.", apperr.RemediationRetry, "")
+		return bridge.FromClassified[apperr.OpenResult](classified, apperr.OpenStatusRefused)
 	}
 	if path == "" {
 		return apperr.OpenResult{Status: apperr.OpenStatusCancelled}
@@ -341,6 +196,75 @@ func newLayoutWriterID() string {
 		return fmt.Sprintf("process-%d", time.Now().UnixNano())
 	}
 	return hex.EncodeToString(bytes)
+}
+
+// CloseStatus reports the document names that still need a native discard
+// decision and whether any accepted work remains in flight or queued. It reads
+// the authoritative model state even while startup is recovering, so shutdown
+// can decide safely before the frontend reaches ready.
+func (service *AppModelService) CloseStatus() (dirtyDocuments []string, pendingWork bool) {
+	service.mu.RLock()
+	defer service.mu.RUnlock()
+
+	for _, documentID := range service.state.orderedDocumentIDs {
+		document := service.state.documents[documentID]
+		if document == nil {
+			continue
+		}
+		metadata := service.effectiveDocumentMetadataLocked(document)
+		if metadata.Dirty {
+			name := metadata.DisplayName
+			if name == "" {
+				name = metadata.Title
+			}
+			if name == "" {
+				name = documentID
+			}
+			dirtyDocuments = append(dirtyDocuments, name)
+		}
+		pendingWork = pendingWork || document.writeInFlight
+	}
+	for _, document := range service.state.documents {
+		pendingWork = pendingWork || document.autosave != nil || document.autosaveInFlight != nil
+	}
+	pendingWork = pendingWork || service.pending != nil || service.pendingFlushDone != nil
+	return dirtyDocuments, pendingWork
+}
+
+// BeginShutdownDrain prevents new explicit or debounced writes from starting
+// while accepted work is drained. Work already running remains allowed to
+// finish, which preserves atomic replacement semantics.
+func (service *AppModelService) BeginShutdownDrain() {
+	service.mu.Lock()
+	service.shutdownDraining = true
+	service.mu.Unlock()
+}
+
+// EndShutdownDrain reopens the write boundary after a user cancels shutdown.
+func (service *AppModelService) EndShutdownDrain() {
+	service.mu.Lock()
+	service.shutdownDraining = false
+	service.mu.Unlock()
+}
+
+// SetPendingClose records a close request for a frontend that hydrates after
+// the native request was emitted.
+func (service *AppModelService) SetPendingClose(id string) {
+	if id == "" {
+		return
+	}
+	service.mu.Lock()
+	service.pendingClose = &apperr.PendingClose{ID: id}
+	service.mu.Unlock()
+}
+
+// ClearPendingClose removes only the matching native close request.
+func (service *AppModelService) ClearPendingClose(id string) {
+	service.mu.Lock()
+	if service.pendingClose != nil && service.pendingClose.ID == id {
+		service.pendingClose = nil
+	}
+	service.mu.Unlock()
 }
 
 // GetState returns a metadata-only snapshot plus the active canonical buffer.
@@ -374,7 +298,7 @@ func (service *AppModelService) GetState(ctx context.Context) (apperr.AppState, 
 		Snapshot: apperr.AppStateSnapshot{
 			Revision:           service.state.revision,
 			TabSetRevision:     service.state.tabSetRevision,
-			ApplicationVersion: bootstrap.Version(),
+			ApplicationVersion: service.applicationVersion,
 			Documents:          documents,
 			ActiveDocumentID:   service.state.activeDocumentID,
 			ActiveDocument:     activeDocumentID,
@@ -382,6 +306,7 @@ func (service *AppModelService) GetState(ctx context.Context) (apperr.AppState, 
 			RecentFiles:        append([]string(nil), service.state.recentFiles...),
 			CanReopenLastFile:  service.state.canReopenLastFile,
 			UI:                 cloneUILayout(service.state.ui),
+			PendingClose:       clonePendingClose(service.pendingClose),
 		},
 		ActiveBuffer: activeBuffer,
 	}, nil
@@ -407,17 +332,14 @@ func (service *AppModelService) DocumentCommands() DocumentCommandAPI {
 }
 
 // SetLayoutRepository completes persistence wiring after application startup.
+// A constructor-injected repository wins so hosts can provide a durable test
+// or recovery port without it being replaced when SQLite opens.
 func (service *AppModelService) SetLayoutRepository(repository LayoutRepositoryAPI) {
 	service.mu.Lock()
 	defer service.mu.Unlock()
-	service.layout = repository
-}
-
-// LayoutRepository exposes the configured persistence seam for composition checks.
-func (service *AppModelService) LayoutRepository() LayoutRepositoryAPI {
-	service.mu.RLock()
-	defer service.mu.RUnlock()
-	return service.layout
+	if service.layout == nil {
+		service.layout = repository
+	}
 }
 
 // RestoreUILayout reads each durable layout field independently. A corrupt or
@@ -432,6 +354,7 @@ func (service *AppModelService) RestoreUILayout(ctx context.Context) error {
 	}
 
 	restored := apperr.UILayout{}
+	var firstReadErr error
 	for _, field := range []string{
 		LayoutWindowWidth,
 		LayoutWindowHeight,
@@ -441,7 +364,13 @@ func (service *AppModelService) RestoreUILayout(ctx context.Context) error {
 		LayoutArrangementBackup,
 	} {
 		value, found, err := repository.Read(ctx, field)
-		if err != nil || !found {
+		if err != nil {
+			if firstReadErr == nil {
+				firstReadErr = classifyLayoutReadError(field, err)
+			}
+			continue
+		}
+		if !found {
 			continue
 		}
 		switch field {
@@ -475,7 +404,7 @@ func (service *AppModelService) RestoreUILayout(ctx context.Context) error {
 	service.mu.Lock()
 	mergeUILayout(&service.state.ui, restored)
 	service.mu.Unlock()
-	return nil
+	return firstReadErr
 }
 
 func validArrangement(arrangement string) bool {
@@ -519,13 +448,7 @@ func (service *AppModelService) SetDocView(ctx context.Context, documentID strin
 }
 
 func (service *AppModelService) effectiveDocumentMetadataLocked(document *openDocument) apperr.DocumentMetadata {
-	metadata := document.metadata
-	status := saveStatusForDocument(document)
-	metadata.Status = string(status)
-	metadata.Dirty = status == SaveStatusUnsavedChanges
-	metadata.Detached = document.detached
-	metadata.ConflictBlocked = document.conflictBlocked
-	metadata.WriteInFlight = document.writeInFlight
+	metadata := document.effectiveMetadata()
 	if document.hasSavedView || service.state.ui.ViewArrangement == nil {
 		return metadata
 	}
@@ -745,17 +668,59 @@ func classifyLayoutPersistenceError(err error) error {
 	return apperr.IO("update layout", err)
 }
 
+func classifyLayoutReadError(field string, err error) error {
+	if err == nil {
+		return nil
+	}
+
+	var appError *apperr.AppError
+	if errors.As(err, &appError) {
+		return err
+	}
+
+	return apperr.IO("read layout "+field, err)
+}
+
 func (service *AppModelService) emitAsyncLayoutError(ctx context.Context, err error) {
 	if err == nil {
 		return
 	}
 
-	emitter, ok := service.emitter.(AsyncErrorEmitter)
-	if !ok {
-		return
-	}
+	classified := bridge.ClassifiedWithID(
+		apperr.ClassifiedIOFailure,
+		"layout",
+		"The application layout could not be saved.",
+		apperr.RemediationRetry,
+		"",
+	)
+	wire := apperr.ClassifiedToWire(classified)
+	wire.Details["operation"] = "update layout"
+	service.emitAsyncError(ctx, wire, "layout persistence failure could not be surfaced")
+}
 
-	_ = emitter.EmitAsyncError(ctx, apperr.ToWire(zerolog.Nop(), err))
+func (service *AppModelService) emitAsyncError(ctx context.Context, wire apperr.WireError, reason string) {
+	emitter, ok := service.emitter.(AsyncErrorEmitter)
+	if ok {
+		if err := emitter.EmitAsyncError(ctx, wire); err == nil {
+			return
+		} else {
+			service.logAsyncError(wire, reason, err)
+			return
+		}
+	}
+	service.logAsyncError(wire, reason, nil)
+}
+
+func (service *AppModelService) logAsyncError(wire apperr.WireError, reason string, deliveryErr error) {
+	event := service.logger.Error().
+		Str("code", string(wire.Code)).
+		Str("category", string(wire.Category)).
+		Str("subject", wire.SafeSubject).
+		Str("document_id", wire.DocumentID)
+	if deliveryErr != nil {
+		event = event.Err(deliveryErr)
+	}
+	event.Msg(reason)
 }
 
 func (service *AppModelService) completePendingLayoutFlush(pending *pendingLayout, flushDone chan struct{}) error {
@@ -915,28 +880,17 @@ func (service *AppModelService) snapshotLocked() applicationState {
 	}
 	for documentID, document := range service.state.documents {
 		documentCopy := *document
+		if document.keepMine != nil {
+			documentCopy.keepMine = make(map[string]*keepMineAuthorization, len(document.keepMine))
+			for token, authorization := range document.keepMine {
+				authorizationCopy := *authorization
+				documentCopy.keepMine[token] = &authorizationCopy
+			}
+		}
 		snapshot.documents[documentID] = &documentCopy
 	}
 	snapshot.recentlyClosed = append([]recentlyClosedDocument(nil), service.state.recentlyClosed...)
 	return snapshot
-}
-
-func (service *AppModelService) publishLocked(ctx context.Context, before applicationState, patch apperr.AppStatePatch) (err error) {
-	defer func() {
-		if recovered := recover(); recovered != nil {
-			service.state = before
-			err = apperr.Internal(fmt.Errorf("state patch emitter panic: %v", recovered))
-		}
-	}()
-	if service.emitter == nil {
-		service.state = before
-		return apperr.Internal(errors.New("state patch emitter is required"))
-	}
-	if emitErr := service.emitter.EmitStatePatch(ctx, patch); emitErr != nil {
-		service.state = before
-		return apperr.Internal(fmt.Errorf("emit state patch: %w", emitErr))
-	}
-	return nil
 }
 
 func arrangementFor(editorVisible, previewVisible bool) string {
@@ -1019,6 +973,14 @@ func cloneUILayout(layout apperr.UILayout) apperr.UILayout {
 	clone := apperr.UILayout{}
 	mergeUILayout(&clone, layout)
 	return clone
+}
+
+func clonePendingClose(pending *apperr.PendingClose) *apperr.PendingClose {
+	if pending == nil {
+		return nil
+	}
+	clone := *pending
+	return &clone
 }
 
 func pointerTo[T any](value T) *T {

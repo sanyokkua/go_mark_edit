@@ -1,0 +1,156 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "gomarkedit/baseline-record",
+    "title": "Baseline record written by scripts/baseline to .local_tmp_files/baseline/<feature>.json",
+    "type": "object",
+    "required": [
+        "schemaVersion",
+        "feature",
+        "capturedAt",
+        "commit",
+        "dirtyDiffSha256",
+        "untrackedPaths",
+        "host",
+        "tools",
+        "stages"
+    ],
+    "additionalProperties": false,
+    "properties": {
+        "schemaVersion": { "const": 1 },
+        "feature": {
+            "type": "string",
+            "description": "feature directory name, e.g. 004-codebase-refactoring"
+        },
+        "capturedAt": { "type": "string", "format": "date-time" },
+        "commit": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+        "dirtyDiffSha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$",
+            "description": "sha256 of `git diff HEAD` output; the hash of the empty string when the tree is clean"
+        },
+        "untrackedPaths": { "type": "array", "items": { "type": "string" } },
+        "host": {
+            "type": "object",
+            "required": ["os", "arch"],
+            "properties": { "os": { "type": "string" }, "arch": { "type": "string" } }
+        },
+        "tools": {
+            "type": "object",
+            "required": ["go", "node", "npm", "wails", "golangciLint"],
+            "properties": {
+                "go": { "type": "string" },
+                "node": { "type": "string" },
+                "npm": { "type": "string" },
+                "wails": { "type": "string" },
+                "golangciLint": { "type": "string" },
+                "shfmt": { "type": "string" },
+                "prettier": { "type": "string" },
+                "playwright": { "type": "string" }
+            }
+        },
+        "stages": {
+            "type": "array",
+            "minItems": 6,
+            "maxItems": 6,
+            "items": {
+                "type": "object",
+                "required": ["name", "commands", "exitCode", "durationMs", "verdict", "findings"],
+                "additionalProperties": false,
+                "properties": {
+                    "name": {
+                        "enum": ["lint", "format", "build", "unit", "integration", "e2e"]
+                    },
+                    "commands": { "type": "array", "items": { "type": "string" } },
+                    "exitCode": { "type": "integer" },
+                    "durationMs": { "type": "integer", "minimum": 0 },
+                    "verdict": {
+                        "enum": ["clean", "findings", "failing", "unreliable", "skipped"],
+                        "description": "clean: exit 0 and no findings; findings: non-zero with parsed findings; failing: non-zero for a pass/fail stage (format, build); unreliable: non-zero and nothing parsed — refused as a baseline; skipped: only for e2e under --skip e2e"
+                    },
+                    "collected": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "description": "number of tests or files the stage analysed"
+                    },
+                    "testCounts": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                            "backend": { "$ref": "#/$defs/testCountGroup" },
+                            "frontend": { "$ref": "#/$defs/testCountGroup" }
+                        }
+                    },
+                    "findings": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "required": ["id", "tool", "location", "message"],
+                            "additionalProperties": false,
+                            "properties": {
+                                "id": {
+                                    "type": "string",
+                                    "description": "stable identity: <tool>:<location without line numbers>:<rule or test name>; line numbers are excluded so a moved line is not a new finding"
+                                },
+                                "tool": {
+                                    "enum": [
+                                        "golangci-lint",
+                                        "archlint",
+                                        "tsc",
+                                        "eslint",
+                                        "stylelint",
+                                        "tokens",
+                                        "repo-rules",
+                                        "gofmt",
+                                        "prettier",
+                                        "shfmt",
+                                        "go-test",
+                                        "jest",
+                                        "playwright",
+                                        "build"
+                                    ]
+                                },
+                                "location": {
+                                    "type": "string",
+                                    "description": "file path or test name"
+                                },
+                                "message": { "type": "string" }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "$defs": {
+        "testCountGroup": {
+            "type": "object",
+            "required": ["total", "passed", "failed", "skipped", "todo", "status"],
+            "additionalProperties": false,
+            "properties": {
+                "total": {
+                    "type": ["integer", "null"],
+                    "minimum": 0
+                },
+                "passed": {
+                    "type": ["integer", "null"],
+                    "minimum": 0
+                },
+                "failed": {
+                    "type": ["integer", "null"],
+                    "minimum": 0
+                },
+                "skipped": {
+                    "type": ["integer", "null"],
+                    "minimum": 0
+                },
+                "todo": {
+                    "type": ["integer", "null"],
+                    "minimum": 0
+                },
+                "status": {
+                    "enum": ["available", "unavailable", "unreliable", "skipped"]
+                }
+            }
+        }
+    }
+}

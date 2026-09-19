@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/sanyokkua/go_mark_edit/internal/apperr"
+	"github.com/sanyokkua/go_mark_edit/internal/bridge"
 	"github.com/sanyokkua/go_mark_edit/internal/file"
 )
 
@@ -45,14 +46,14 @@ func (service *AppModelService) NewDocument(ctx context.Context, expectedTabSetR
 	defer service.mu.Unlock()
 
 	if service.state.tabSetRevision != expectedTabSetRevision {
-		return documentTransitionFailure(
+		return bridge.Refused[apperr.DocumentTransitionResult](
 			apperr.ClassifiedConflict,
 			"The tab set changed; New must be retried.",
 			apperr.RemediationRetry,
 		)
 	}
 	if len(service.state.orderedDocumentIDs) >= maxOpenDocuments {
-		return documentTransitionFailure(
+		return bridge.Refused[apperr.DocumentTransitionResult](
 			apperr.ClassifiedCapacityLimit,
 			"The window already contains 40 documents.",
 			// Message-only, naming the limit: no action makes a 41st document fit.
@@ -69,7 +70,7 @@ func (service *AppModelService) NewDocument(ctx context.Context, expectedTabSetR
 	service.state.tabSetRevision++
 	patch := service.documentPatchLocked(documentID)
 	if err := service.publishLocked(ctx, before, patch); err != nil {
-		return documentTransitionFailure(
+		return bridge.Refused[apperr.DocumentTransitionResult](
 			apperr.ClassifiedIOFailure,
 			"The new document could not be published.",
 			apperr.RemediationRetry,
@@ -86,6 +87,8 @@ func (service *AppModelService) NewDocument(ctx context.Context, expectedTabSetR
 
 func newUntitledEditorDocument(documentID string) *openDocument {
 	return &openDocument{
+		id:            documentID,
+		canonicalPath: "",
 		metadata: apperr.DocumentMetadata{
 			DocumentID:  documentID,
 			Title:       "Untitled",
@@ -109,11 +112,6 @@ func newUntitledEditorDocument(documentID string) *openDocument {
 	}
 }
 
-func documentTransitionFailure(category apperr.ClassifiedErrorCategory, message string, remediation apperr.ClassifiedRemediation) apperr.DocumentTransitionOutcome {
-	errorValue := apperr.NewClassifiedError(category, "Untitled", message, remediation, "")
-	return apperr.DocumentTransitionOutcome{Error: &errorValue}
-}
-
 // OpenPath is the synchronous convenience command used by tests and the later handler wiring. It
 // still runs through the prepare/commit reservation boundary so selection itself cannot mutate tabs.
 func (service *AppModelService) OpenPath(ctx context.Context, path string, expectedTabSetRevision uint64) apperr.OpenOutcome {
@@ -122,7 +120,7 @@ func (service *AppModelService) OpenPath(ctx context.Context, path string, expec
 	}
 	preparation, classified := service.PrepareOpen(ctx, path, expectedTabSetRevision)
 	if classified != nil {
-		return apperr.OpenOutcome{Status: apperr.OpenStatusRefused, Error: classified}
+		return bridge.FromClassified[apperr.OpenOutcome](classified, apperr.OpenStatusRefused)
 	}
 	return service.CommitPreparedOpen(ctx, preparation.ReservationID)
 }
@@ -133,7 +131,7 @@ func (service *AppModelService) PrepareOpen(ctx context.Context, path string, ex
 	service.mu.RLock()
 	if service.state.tabSetRevision != expectedTabSetRevision {
 		service.mu.RUnlock()
-		return OpenPreparation{}, classifiedOpenError(apperr.ClassifiedConflict, "The tab set changed; Open must be retried.", apperr.RemediationRetry)
+		return OpenPreparation{}, bridge.ClassifiedWithID(apperr.ClassifiedConflict, "document", "The tab set changed; Open must be retried.", apperr.RemediationRetry, "")
 	}
 	metadataRepository := service.metadata
 	defaultMode := service.defaultOpenMode
@@ -146,21 +144,21 @@ func (service *AppModelService) PrepareOpen(ctx context.Context, path string, ex
 	stable, readErr := file.ReadClassifiedStable(path, file.MaxClassifiedReadBytes)
 	if readErr != nil {
 		if errors.Is(readErr, file.ErrUnstableRead) {
-			return OpenPreparation{}, classifiedOpenError(apperr.ClassifiedConflict, "The document changed while it was being read; try again.", apperr.RemediationRetry)
+			return OpenPreparation{}, bridge.ClassifiedWithID(apperr.ClassifiedConflict, "document", "The document changed while it was being read; try again.", apperr.RemediationRetry, "")
 		}
-		return OpenPreparation{}, classifiedOpenError(apperr.ClassifiedIOFailure, "The document could not be read.", apperr.RemediationRetry)
+		return OpenPreparation{}, bridge.ClassifiedWithID(apperr.ClassifiedIOFailure, "document", "The document could not be read.", apperr.RemediationRetry, "")
 	}
 	// A missing path is not an error at either layer below, by design:
 	// `CurrentDiskVersion` reports absence as `DiskVersion{}, nil` so a permission
 	// or IO failure cannot be mistaken for deletion (`disk_version.go:31-32`), and
 	// `ReadClassifiedStable` short-circuits on `!before.Exists` so the conflict path
-	// can mark an open document detached without raising (`conflict.go:121,297`,
-	// FR-FT-023). Neither `readErr` nor `read.Error` therefore fires here, `identity`
+	// can mark an open document detached without raising. Neither `readErr` nor
+	// `read.Error` therefore fires here, `identity`
 	// stays "", and the match loop below is satisfied by any untitled document — so
 	// an explicit stale choice focused an unrelated tab instead of refusing.
-	// FR-FT-040 requires the refusal, and it has to happen before identity is read.
+	// the refusal has to happen before identity is read.
 	if !stable.Version.Exists {
-		return OpenPreparation{}, classifiedOpenError(apperr.ClassifiedNotFound, "The file no longer exists.", apperr.RemediationNone)
+		return OpenPreparation{}, bridge.ClassifiedWithID(apperr.ClassifiedNotFound, "document", "The file no longer exists.", apperr.RemediationNone, "")
 	}
 	read := stable.Read
 	if read.Error != nil {
@@ -176,7 +174,7 @@ func (service *AppModelService) PrepareOpen(ctx context.Context, path string, ex
 	service.mu.Lock()
 	defer service.mu.Unlock()
 	if service.state.tabSetRevision != expectedTabSetRevision {
-		return OpenPreparation{}, classifiedOpenError(apperr.ClassifiedConflict, "The tab set changed; Open must be retried.", apperr.RemediationRetry)
+		return OpenPreparation{}, bridge.ClassifiedWithID(apperr.ClassifiedConflict, "document", "The tab set changed; Open must be retried.", apperr.RemediationRetry, "")
 	}
 	identity := read.CanonicalPath.Identity
 	for _, reservation := range service.reservations {
@@ -186,14 +184,14 @@ func (service *AppModelService) PrepareOpen(ctx context.Context, path string, ex
 	}
 	existingDocumentID := ""
 	for documentID, document := range service.state.documents {
-		if document.canonicalIdentity == identity || (identity == "path:"+document.metadata.Path && document.metadata.Path != "") {
+		if document.identity.Equal(identity) || (document.identity.IsZero() && document.metadata.Path == identity.Path && identity.Path != "") {
 			existingDocumentID = documentID
 			break
 		}
 	}
 	novelReservations := countNovelReservations(service.reservations)
 	if existingDocumentID == "" && len(service.state.documents)+novelReservations >= maxOpenDocuments {
-		return OpenPreparation{}, classifiedOpenError(apperr.ClassifiedCapacityLimit, "The window already contains 40 documents.", apperr.RemediationNone)
+		return OpenPreparation{}, bridge.ClassifiedWithID(apperr.ClassifiedCapacityLimit, "document", "The window already contains 40 documents.", apperr.RemediationNone, "")
 	}
 	reservationID := mintDocumentID()
 	service.reservations[reservationID] = &openReservation{
@@ -204,22 +202,10 @@ func (service *AppModelService) PrepareOpen(ctx context.Context, path string, ex
 }
 
 /*
- * There is deliberately no CancelPreparedOpen.
- *
- * FR-FT-004 names four events that end a reservation — "until activation,
- * commit, cancellation, or failure" — and the 2026-08-17 amendment records the
- * third as satisfied vacuously by this single-call design rather than as an
- * arm needing an implementation. OpenPath calls PrepareOpen and
- * CommitPreparedOpen in adjacent statements, every PrepareOpen refusal returns
- * before a reservation exists, and CommitPreparedOpen deletes the reservation
- * on every branch, so no reservation can outlive a prepare and there is nothing
- * to cancel between the two.
- *
- * T137 kept a CancelPreparedOpen so as not to delete a clause of the
- * requirement; T174 resolved the clause instead, and the function went with it.
- * Re-adding one means re-opening that decision, not filling a gap: it would
- * need the prepare/commit boundary exposed across the bridge first, which is
- * what would make the arm reachable and what the amendment declined.
+ * There is deliberately no CancelPreparedOpen. PrepareOpen and
+ * CommitPreparedOpen are adjacent operations: every refusal occurs before a
+ * reservation exists, and every commit path removes its reservation. Exposing
+ * a cancellation arm would require a new bridge-visible prepare/commit boundary.
  */
 
 // CommitPreparedOpen revalidates the tab revision and applies exactly one Open transition.
@@ -228,12 +214,14 @@ func (service *AppModelService) CommitPreparedOpen(ctx context.Context, reservat
 	reservation, ok := service.reservations[reservationID]
 	if !ok {
 		service.mu.Unlock()
-		return apperr.OpenOutcome{Status: apperr.OpenStatusRefused, Error: classifiedOpenError(apperr.ClassifiedConflict, "The Open request is no longer valid.", apperr.RemediationRetry)}
+		classified := bridge.ClassifiedWithID(apperr.ClassifiedConflict, "document", "The Open request is no longer valid.", apperr.RemediationRetry, "")
+		return bridge.FromClassified[apperr.OpenOutcome](classified, apperr.OpenStatusRefused)
 	}
 	delete(service.reservations, reservationID)
 	if service.state.tabSetRevision != reservation.expectedTabRevision {
 		service.mu.Unlock()
-		return apperr.OpenOutcome{Status: apperr.OpenStatusRefused, Error: classifiedOpenError(apperr.ClassifiedConflict, "The tab set changed; Open must be retried.", apperr.RemediationRetry)}
+		classified := bridge.ClassifiedWithID(apperr.ClassifiedConflict, "document", "The tab set changed; Open must be retried.", apperr.RemediationRetry, "")
+		return bridge.FromClassified[apperr.OpenOutcome](classified, apperr.OpenStatusRefused)
 	}
 	before := service.snapshotLocked()
 	documentID := reservation.existingDocumentID
@@ -284,8 +272,7 @@ func (service *AppModelService) CommitPreparedOpen(ctx context.Context, reservat
 		entries, err := repository.Promote(ctx, reservation.canonical.Path)
 		service.mu.Lock()
 		if err != nil {
-			warning := apperr.NewClassifiedError(apperr.ClassifiedPersistenceWarning, reservation.canonical.Path, "The file opened successfully, but recent-file history could not be updated.", apperr.RemediationNone, "recent-files")
-			promotionWarning = &warning
+			promotionWarning = bridge.ClassifiedWithID(apperr.ClassifiedPersistenceWarning, reservation.canonical.Path, "The file opened successfully, but recent-file history could not be updated.", apperr.RemediationNone, "recent-files")
 		} else {
 			service.state.recentFiles = append([]string(nil), entries...)
 			if service.state.recentFilesChanged(before.recentFiles) {
@@ -296,11 +283,12 @@ func (service *AppModelService) CommitPreparedOpen(ctx context.Context, reservat
 	if !changed {
 		result := openOutcomeForDocument(status, documentID, service.state.revision, service.state.documents[documentID])
 		result.Error = promotionWarning
+		result.Failure = bridge.FailureFromClassified(promotionWarning)
 		service.mu.Unlock()
 		return result
 	}
 	service.state.revision++
-	metadata := service.state.documents[documentID].metadata
+	metadata := service.effectiveDocumentMetadataLocked(service.state.documents[documentID])
 	patch := apperr.AppStatePatch{
 		Revision:           service.state.revision,
 		TabSetRevision:     pointerTo(service.state.tabSetRevision),
@@ -315,10 +303,12 @@ func (service *AppModelService) CommitPreparedOpen(ctx context.Context, reservat
 	}
 	if err := service.publishLocked(ctx, before, patch); err != nil {
 		service.mu.Unlock()
-		return apperr.OpenOutcome{Status: apperr.OpenStatusRefused, Error: classifiedOpenError(apperr.ClassifiedIOFailure, "The opened document could not be published.", apperr.RemediationRetry)}
+		classified := bridge.ClassifiedWithID(apperr.ClassifiedIOFailure, "document", "The opened document could not be published.", apperr.RemediationRetry, "")
+		return bridge.FromClassified[apperr.OpenOutcome](classified, apperr.OpenStatusRefused)
 	}
 	result := openOutcomeForDocument(status, documentID, service.state.revision, service.state.documents[documentID])
 	result.Error = promotionWarning
+	result.Failure = bridge.FailureFromClassified(promotionWarning)
 	service.mu.Unlock()
 	return result
 }
@@ -330,18 +320,21 @@ func (service *AppModelService) ReopenLastFile(ctx context.Context, expectedTabS
 	service.mu.RLock()
 	if service.state.tabSetRevision != expectedTabSetRevision {
 		service.mu.RUnlock()
-		return apperr.OpenOutcome{Status: apperr.OpenStatusRefused, Error: classifiedOpenError(apperr.ClassifiedConflict, "The tab set changed; Reopen must be retried.", apperr.RemediationRetry)}
+		classified := bridge.ClassifiedWithID(apperr.ClassifiedConflict, "document", "The tab set changed; Reopen must be retried.", apperr.RemediationRetry, "")
+		return bridge.FromClassified[apperr.OpenOutcome](classified, apperr.OpenStatusRefused)
 	}
 	if len(service.state.recentlyClosed) == 0 {
 		service.mu.RUnlock()
-		return apperr.OpenOutcome{Status: apperr.OpenStatusRefused, Error: classifiedOpenError(apperr.ClassifiedNotFound, "There is no recently closed file to reopen.", apperr.RemediationNone)}
+		classified := bridge.ClassifiedWithID(apperr.ClassifiedNotFound, "document", "There is no recently closed file to reopen.", apperr.RemediationNone, "")
+		return bridge.FromClassified[apperr.OpenOutcome](classified, apperr.OpenStatusRefused)
 	}
 	entry := service.state.recentlyClosed[0]
 	service.mu.RUnlock()
 
 	if _, err := os.Stat(entry.path); errors.Is(err, os.ErrNotExist) {
 		service.consumeClosedEntry(ctx, entry.path)
-		return apperr.OpenOutcome{Status: apperr.OpenStatusRefused, Error: classifiedOpenError(apperr.ClassifiedNotFound, "The recently closed file no longer exists.", apperr.RemediationNone)}
+		classified := bridge.ClassifiedWithID(apperr.ClassifiedNotFound, "document", "The recently closed file no longer exists.", apperr.RemediationNone, "")
+		return bridge.FromClassified[apperr.OpenOutcome](classified, apperr.OpenStatusRefused)
 	}
 
 	result := service.OpenPath(ctx, entry.path, expectedTabSetRevision)
@@ -349,13 +342,24 @@ func (service *AppModelService) ReopenLastFile(ctx context.Context, expectedTabS
 		return result
 	}
 	if result.DocumentID != "" {
-		_ = service.SetDocView(ctx, result.DocumentID, apperr.DocViewInput{
+		viewErr := service.SetDocView(ctx, result.DocumentID, apperr.DocViewInput{
 			EditorVisible:  entry.view.EditorVisible,
 			PreviewVisible: entry.view.PreviewVisible,
 			Cursor:         entry.view.Cursor,
 			Selection:      entry.view.Selection,
 			Scroll:         entry.view.Scroll,
 		})
+		if viewErr != nil {
+			warning := bridge.ClassifiedWithID(
+				apperr.ClassifiedPersistenceWarning,
+				"view",
+				"The file reopened, but its saved view could not be restored.",
+				apperr.RemediationNone,
+				result.DocumentID,
+			)
+			result.Error = warning
+			result.Failure = bridge.FailureFromClassified(warning)
+		}
 	}
 	service.consumeClosedEntry(ctx, entry.path)
 	return result
@@ -375,7 +379,8 @@ func documentFromClassifiedRead(documentID string, read file.ClassifiedRead, arr
 			LineEnding: string(read.Characteristics.LineEnding), Capability: string(read.Capability), SizeClass: sizeClass,
 			WordCount: len(strings.Fields(read.Content)), View: openView(arrangement),
 		},
-		content: read.Content, baseline: read.Content, baselineVersion: version, baselineCharacteristics: read.Characteristics, baselineRawHash: rawHash, baselineOrigin: SaveOriginOpen, committedRevision: 0, normalizationEnding: normalizationEnding, canonicalIdentity: read.CanonicalPath.Identity,
+		id: documentID, identity: read.CanonicalPath.Identity, canonicalPath: read.CanonicalPath.Path,
+		content: read.Content, baseline: read.Content, baselineVersion: version, baselineCharacteristics: read.Characteristics, baselineRawHash: rawHash, baselineOrigin: SaveOriginOpen, committedRevision: 0, bufferRevision: 0, normalizationEnding: normalizationEnding,
 	}
 }
 
@@ -443,9 +448,4 @@ func (state applicationState) recentFilesChanged(before []string) bool {
 
 func openOutcomeForDocument(status apperr.OpenStatus, documentID string, projectionRevision uint64, document *openDocument) apperr.OpenOutcome {
 	return apperr.OpenOutcome{Status: status, DocumentID: documentID, ProjectionRevision: projectionRevision, ActiveBuffer: &apperr.ActiveBufferAcknowledgement{DocumentID: documentID, DocumentRevision: document.metadata.ContentRevision, ProjectionRevision: projectionRevision, Content: document.content}}
-}
-
-func classifiedOpenError(category apperr.ClassifiedErrorCategory, message string, remediation apperr.ClassifiedRemediation) *apperr.ClassifiedError {
-	errorValue := apperr.NewClassifiedError(category, "document", message, remediation, "")
-	return &errorValue
 }

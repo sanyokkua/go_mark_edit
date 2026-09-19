@@ -49,6 +49,7 @@ type Middleware func(handler http.Handler) http.Handler
 ```
 
 Chain multiple middlewares:
+
 ```go
 assetserver.ChainMiddleware(middleware1, middleware2, middleware3)
 ```
@@ -88,7 +89,7 @@ Configure in `wails.json`:
 
 ```json
 {
-  "frontend:dev:serverUrl": "auto"
+    "frontend:dev:serverUrl": "auto"
 }
 ```
 
@@ -101,23 +102,23 @@ Configure in `wails.json`:
 
 ```json
 {
-  "name": "My App",
-  "outputfilename": "myapp",
-  "frontend:install": "npm install",
-  "frontend:build": "npm run build",
-  "frontend:dev:watcher": "npm run dev",
-  "frontend:dev:serverUrl": "auto",
-  "frontend:dev:args": ""
+    "name": "My App",
+    "outputfilename": "myapp",
+    "frontend:install": "npm install",
+    "frontend:build": "npm run build",
+    "frontend:dev:watcher": "npm run dev",
+    "frontend:dev:serverUrl": "auto",
+    "frontend:dev:args": ""
 }
 ```
 
-| Field | Purpose |
-|---|---|
-| `frontend:install` | Command to install deps (`npm install`) |
-| `frontend:build` | Command to build assets for production |
-| `frontend:dev:watcher` | Command that runs the dev server with hot reload |
-| `frontend:dev:serverUrl` | `"auto"` or explicit URL of the dev server |
-| `outputfilename` | Final binary name in `build/bin/` |
+| Field                    | Purpose                                          |
+| ------------------------ | ------------------------------------------------ |
+| `frontend:install`       | Command to install deps (`npm install`)          |
+| `frontend:build`         | Command to build assets for production           |
+| `frontend:dev:watcher`   | Command that runs the dev server with hot reload |
+| `frontend:dev:serverUrl` | `"auto"` or explicit URL of the dev server       |
+| `outputfilename`         | Final binary name in `build/bin/`                |
 
 ---
 
@@ -130,6 +131,7 @@ wails build   →   build/bin/<outputfilename>
 The binary includes embedded frontend assets. No separate web server is needed.
 
 For platform packages (`.app`, `.exe`, installer):
+
 ```bash
 wails build -platform darwin/universal   # universal macOS binary
 wails build -platform windows/amd64

@@ -52,7 +52,7 @@ and Assistant behavior remain downstream and absent.
   independently and fall back independently.
 - Position and full-screen state are not restored. OS/Wails placement remains authoritative.
 - An oversized size is clamped using the current/primary logical display exposed by the public Wails
-  screen API, then placed/centered by Wails/OS. The plan does not claim unavailable work-area coordinates.
+  screen API, then placed/centered by Wails/OS. The contract does not claim unavailable work-area coordinates.
 - Apply native restore and hydrate the acknowledged frontend shell independently. Show the normal shell
   exactly once only after both readiness signals are true.
 - Restore never opens a prior document or tab set.

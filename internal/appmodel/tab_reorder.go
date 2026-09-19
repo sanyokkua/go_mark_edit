@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/sanyokkua/go_mark_edit/internal/apperr"
+	"github.com/sanyokkua/go_mark_edit/internal/bridge"
 )
 
 // ReorderDocument accepts one-position moves only. Edge requests are explicit
@@ -13,17 +14,17 @@ func (service *AppModelService) ReorderDocument(ctx context.Context, documentID 
 	defer service.mu.Unlock()
 
 	if service.state.tabSetRevision != expectedTabSetRevision {
-		return tabTransitionFailure(apperr.ClassifiedConflict, documentID, "The tab set changed; reorder must be retried.", apperr.RemediationRetry)
+		return bridge.Refused[apperr.TabTransitionResult](apperr.ClassifiedConflict, documentID, "The tab set changed; reorder must be retried.", apperr.RemediationRetry)
 	}
 	index := indexOfDocument(service.state.orderedDocumentIDs, documentID)
 	if index < 0 {
-		return tabTransitionFailure(apperr.ClassifiedNotFound, documentID, "The document is no longer open.", apperr.RemediationNone)
+		return bridge.Refused[apperr.TabTransitionResult](apperr.ClassifiedNotFound, documentID, "The document is no longer open.", apperr.RemediationNone)
 	}
 	if targetIndex == index || (index == 0 && targetIndex == -1) || (index == len(service.state.orderedDocumentIDs)-1 && targetIndex == len(service.state.orderedDocumentIDs)) {
 		return service.tabTransitionSuccess(apperr.TabTransitionNoop, documentID)
 	}
 	if targetIndex < 0 || targetIndex >= len(service.state.orderedDocumentIDs) || targetIndex < index-1 || targetIndex > index+1 {
-		return tabTransitionFailure(apperr.ClassifiedUnsupportedInput, documentID, "The requested tab position is invalid.", apperr.RemediationNone)
+		return bridge.Refused[apperr.TabTransitionResult](apperr.ClassifiedUnsupportedInput, documentID, "The requested tab position is invalid.", apperr.RemediationNone)
 	}
 
 	before := service.snapshotLocked()
@@ -35,7 +36,7 @@ func (service *AppModelService) ReorderDocument(ctx context.Context, documentID 
 	service.state.tabSetRevision++
 	service.state.revision++
 	if err := service.publishLocked(ctx, before, service.tabStatePatchLocked()); err != nil {
-		return tabTransitionFailure(apperr.ClassifiedIOFailure, documentID, "The tab order could not be published.", apperr.RemediationRetry)
+		return bridge.Refused[apperr.TabTransitionResult](apperr.ClassifiedIOFailure, documentID, "The tab order could not be published.", apperr.RemediationRetry)
 	}
 	return service.tabTransitionSuccess(apperr.TabTransitionReordered, documentID)
 }
@@ -64,9 +65,4 @@ func (service *AppModelService) tabTransitionSuccess(status apperr.TabTransition
 		}
 	}
 	return result
-}
-
-func tabTransitionFailure(category apperr.ClassifiedErrorCategory, subject, message string, remediation apperr.ClassifiedRemediation) apperr.TabTransitionOutcome {
-	classified := apperr.NewClassifiedError(category, subject, message, remediation, subject)
-	return apperr.TabTransitionOutcome{Status: apperr.TabTransitionRefused, DocumentID: subject, Error: &classified}
 }

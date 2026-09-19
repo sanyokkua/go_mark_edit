@@ -2,7 +2,7 @@
  * How long to let the operating system hand the foreground to another
  * application before concluding that it never will.
  *
- * FR-FT-037 defers focus restoration until "the application regains foreground
+ * Focus restoration waits until "the application regains foreground
  * focus, since the file manager may briefly own it". A browser cannot observe
  * the file manager's window; all it sees is its own `focus` event. If the host
  * accepted the Reveal but never actually raised anything — a Finder window
@@ -23,41 +23,39 @@ const FOREGROUND_HANDOVER_GRACE_MS = 1_000;
  * keeps a deferred restoration from leaking a `focus` handler per invocation.
  * The canceller is safe to call after the restoration has already run.
  */
-export function whenApplicationRegainsForegroundFocus(
-  restore: () => void,
-): () => void {
-  if (typeof window === 'undefined') {
-    restore();
-    return (): void => undefined;
-  }
+export function whenApplicationRegainsForegroundFocus(restore: () => void): () => void {
+    if (typeof window === 'undefined') {
+        restore();
+        return (): void => undefined;
+    }
 
-  // The abort signal is both the listener's own removal mechanism and the
-  // single "already settled" flag, so the two cannot disagree.
-  const controller = new AbortController();
-  let graceTimer: number | undefined;
-  const settle = (run: boolean): void => {
-    if (controller.signal.aborted) return;
-    controller.abort();
-    if (graceTimer !== undefined) window.clearTimeout(graceTimer);
-    if (run) restore();
-  };
+    // The abort signal is both the listener's own removal mechanism and the
+    // single "already settled" flag, so the two cannot disagree.
+    const controller = new AbortController();
+    let graceTimer: number | undefined;
+    const settle = (run: boolean): void => {
+        if (controller.signal.aborted) return;
+        controller.abort();
+        if (graceTimer !== undefined) window.clearTimeout(graceTimer);
+        if (run) restore();
+    };
 
-  window.addEventListener('focus', (): void => settle(true), {
-    signal: controller.signal,
-  });
-  graceTimer = window.setTimeout((): void => {
-    graceTimer = undefined;
-    if (globalThis.document.hasFocus()) settle(true);
-  }, FOREGROUND_HANDOVER_GRACE_MS);
+    window.addEventListener('focus', (): void => settle(true), {
+        signal: controller.signal,
+    });
+    graceTimer = window.setTimeout((): void => {
+        graceTimer = undefined;
+        if (globalThis.document.hasFocus()) settle(true);
+    }, FOREGROUND_HANDOVER_GRACE_MS);
 
-  return (): void => settle(false);
+    return (): void => settle(false);
 }
 
 /**
  * Run `enter` every time the application comes back to the foreground, for as
  * long as the returned canceller has not been called.
  *
- * FR-FT-020 requires a foreground version check on "window focus or resume" and
+ * A foreground version check runs on "window focus or resume" and
  * forbids Feature 003 from introducing "a background file watcher or polling
  * timer", so both halves are events and neither is a clock: `focus` is the
  * window regaining focus, and `visibilitychange` settling on `visible` is the
@@ -74,21 +72,21 @@ export function whenApplicationRegainsForegroundFocus(
  * the only party that knows whether its work is re-entrant.
  */
 export function onApplicationForeground(enter: () => void): () => void {
-  if (typeof window === 'undefined') {
-    return (): void => undefined;
-  }
+    if (typeof window === 'undefined') {
+        return (): void => undefined;
+    }
 
-  const controller = new AbortController();
-  window.addEventListener('focus', (): void => enter(), {
-    signal: controller.signal,
-  });
-  globalThis.document.addEventListener(
-    'visibilitychange',
-    (): void => {
-      if (globalThis.document.visibilityState === 'visible') enter();
-    },
-    { signal: controller.signal },
-  );
+    const controller = new AbortController();
+    window.addEventListener('focus', (): void => enter(), {
+        signal: controller.signal,
+    });
+    globalThis.document.addEventListener(
+        'visibilitychange',
+        (): void => {
+            if (globalThis.document.visibilityState === 'visible') enter();
+        },
+        { signal: controller.signal },
+    );
 
-  return (): void => controller.abort();
+    return (): void => controller.abort();
 }

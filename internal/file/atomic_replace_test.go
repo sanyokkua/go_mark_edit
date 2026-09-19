@@ -39,7 +39,6 @@ func (temp *atomicReplaceTestTemp) Chmod(fs.FileMode) error { return temp.chmodE
 func (temp *atomicReplaceTestTemp) Sync() error             { return temp.syncErr }
 func (temp *atomicReplaceTestTemp) Close() error            { return temp.closeErr }
 
-// Proves: FR-FT-009
 func TestAtomicReplace(t *testing.T) {
 	t.Run("existing target preserves bytes and mode", func(t *testing.T) {
 		root := t.TempDir()

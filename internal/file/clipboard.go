@@ -25,10 +25,3 @@ type ClipboardWriter interface {
 func NewPlatformClipboardWriter() ClipboardWriter {
 	return platformClipboardWriter{}
 }
-
-// ClipboardWriterFunc adapts a function to ClipboardWriter in tests and hosts.
-type ClipboardWriterFunc func(string) error
-
-func (writer ClipboardWriterFunc) WriteText(text string) error {
-	return writer(text)
-}

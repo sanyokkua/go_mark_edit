@@ -3,8 +3,7 @@
 > **Authority:** This file is the SpecKit copy of the complete delivered appearance rules consumed by
 > the current native-shell slice. The sibling [`surface/mockup.html`](surface/mockup.html) is the binding
 > visual source: if a token value, control label, layout, or visible state conflicts with prose,
-> the mockup wins. The copied legacy wording below is retained so implementation never has to
-> consult `docs/delivery/` for a decisive palette value.
+> the mockup wins.
 
 ## What it's for
 
@@ -39,7 +38,7 @@ styling. There is no separate editor theme.
 - There is no theme editor, no imported theme file, and no custom accent colour.
 
 Examples: a persisted theme of `material` → Material · a persisted theme of `dracula` → falls back to
-Material, see `#invalid-settings-fall-back`.
+Material.
 
 _Why no custom accent:_ each theme's accent is part of its identity and is chosen to stay legible
 against that theme's own surfaces. A user-chosen hue would have to be validated against six backgrounds,
@@ -267,12 +266,12 @@ theme from the database after the webview boots → a guaranteed light-to-dark f
 
 ## What it looks like
 
-- The theme swatches in the Settings menu — `surface/mockup.html#material-light/menu-settings`
-- Settings → Appearance — `surface/mockup.html#material-light/settings-appearance`
-- The full token reference — `surface/mockup.html#material-light/tokens`
-- Each theme at its native appearance — `#glass-dark/editor-split`,
-  `#material-light/editor-split`, `#minimal-light/editor-split`
-- The focus ring on every control type — `surface/mockup.html#material-light/focus`
+In `surface/mockup.html`:
+
+- The theme swatches in the Settings menu
+- Settings → Appearance
+- Each theme at its native appearance
+- The focus ring
 
 ## When things go wrong
 
@@ -329,10 +328,9 @@ theme from the database after the webview boots → a guaranteed light-to-dark f
   cannot take a token colour and it renders differently, or not at all, on each platform. Icons are one
   monochrome SVG sprite tinted from `currentColor`.
 - _2026-07-25_ — Editor and preview colours are generated at build time from one syntax-token family
-  rather than hand-tuned per theme. Recorded in `../../adr/0029-generated-editor-themes.md`.
+  rather than hand-tuned per theme.
 - _2026-07-28_ — Phase ownership was made explicit. This feature owns the core token, persistence,
   Auto, Monaco and first-paint infrastructure delivered in Phase 02. Preview syntax activation,
-  Mermaid, KaTeX and reading-mode theme reactions live in `rendering-rich-documents.md` for Phase 06;
-  print styling lives in `exporting-a-document.md` for Phase 10.
+  Mermaid, KaTeX and reading-mode theme reactions belong to Phase 06; print styling belongs to Phase 10.
 
 ## Open questions

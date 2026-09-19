@@ -17,20 +17,17 @@ const MINIMUM_WINDOW_QUERY = `(max-width: ${MINIMUM_WINDOW_MAX_WIDTH}px)`;
  * a resize uses `useMinimumWindow`.
  */
 export function isMinimumWindow(): boolean {
-  return (
-    typeof window !== 'undefined' &&
-    window.innerWidth <= MINIMUM_WINDOW_MAX_WIDTH
-  );
+    return typeof window !== 'undefined' && window.innerWidth <= MINIMUM_WINDOW_MAX_WIDTH;
 }
 
 function minimumWindowNow(): boolean {
-  if (typeof window === 'undefined') {
-    return false;
-  }
-  if (typeof window.matchMedia !== 'function') {
-    return isMinimumWindow();
-  }
-  return window.matchMedia(MINIMUM_WINDOW_QUERY).matches;
+    if (typeof window === 'undefined') {
+        return false;
+    }
+    if (typeof window.matchMedia !== 'function') {
+        return isMinimumWindow();
+    }
+    return window.matchMedia(MINIMUM_WINDOW_QUERY).matches;
 }
 
 /*
@@ -41,27 +38,27 @@ function minimumWindowNow(): boolean {
  * collapsed layout on a window that is no longer narrow.
  */
 export function useMinimumWindow(): boolean {
-  const [minimumWindow, setMinimumWindow] = useState(minimumWindowNow);
+    const [minimumWindow, setMinimumWindow] = useState(minimumWindowNow);
 
-  useEffect((): (() => void) => {
-    if (typeof window === 'undefined') {
-      return (): void => undefined;
-    }
-    const sync = (): void => setMinimumWindow(minimumWindowNow());
-    sync();
-    if (typeof window.matchMedia !== 'function') {
-      /*
-       * No media queries at all here — jsdom is the environment this ships
-       * against that has none. `resize` re-reads `window.innerWidth`, which is
-       * the same fact by the only route left.
-       */
-      window.addEventListener('resize', sync);
-      return (): void => window.removeEventListener('resize', sync);
-    }
-    const query = window.matchMedia(MINIMUM_WINDOW_QUERY);
-    query.addEventListener('change', sync);
-    return (): void => query.removeEventListener('change', sync);
-  }, []);
+    useEffect((): (() => void) => {
+        if (typeof window === 'undefined') {
+            return (): void => undefined;
+        }
+        const sync = (): void => setMinimumWindow(minimumWindowNow());
+        sync();
+        if (typeof window.matchMedia !== 'function') {
+            /*
+             * No media queries at all here — jsdom is the environment this ships
+             * against that has none. `resize` re-reads `window.innerWidth`, which is
+             * the same fact by the only route left.
+             */
+            window.addEventListener('resize', sync);
+            return (): void => window.removeEventListener('resize', sync);
+        }
+        const query = window.matchMedia(MINIMUM_WINDOW_QUERY);
+        query.addEventListener('change', sync);
+        return (): void => query.removeEventListener('change', sync);
+    }, []);
 
-  return minimumWindow;
+    return minimumWindow;
 }

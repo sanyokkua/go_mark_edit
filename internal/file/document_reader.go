@@ -11,6 +11,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/sanyokkua/go_mark_edit/internal/apperr"
+	"github.com/sanyokkua/go_mark_edit/internal/bridge"
 )
 
 const (
@@ -28,11 +29,11 @@ const (
 	CapabilityRefused        ReadCapability = "refused"
 )
 
-type ReadOutcome string
+type readOutcome string
 
 const (
-	ReadOutcomeOpened  ReadOutcome = "opened"
-	ReadOutcomeRefused ReadOutcome = "refused"
+	readOutcomeOpened  readOutcome = "opened"
+	readOutcomeRefused readOutcome = "refused"
 )
 
 type LineEnding string
@@ -70,10 +71,6 @@ const (
 // must not retry the write against either half of this read.
 var ErrUnstableRead = errors.New("document changed while being read")
 
-// stableReadBeforeHashHook is nil in production. Tests use it to make a
-// growth race deterministic between classification and the bounded hash read.
-var stableReadBeforeHashHook func(string)
-
 // StableClassifiedRead is the complete, version-bound source snapshot used by
 // Open, Reload, and external-change decisions.
 type StableClassifiedRead struct {
@@ -103,7 +100,7 @@ type ClassifiedRead struct {
 	Content         string
 	Characteristics FileCharacteristics
 	Capability      ReadCapability
-	Outcome         ReadOutcome
+	Outcome         readOutcome
 	Warning         string
 	BytesRead       int64
 	Error           *apperr.ClassifiedError
@@ -111,7 +108,7 @@ type ClassifiedRead struct {
 
 // ReadClassifiedStable captures a disk version before classification and after
 // the raw-byte hash. A result is usable only when both versions are equal.
-// The read itself remains bounded by ReadClassified's configured limit.
+// The read itself remains bounded by readClassified's configured limit.
 func ReadClassifiedStable(path string, maxBytes int64) (StableClassifiedRead, error) {
 	maxBytes = normalizedReadLimit(maxBytes)
 	before, err := CurrentDiskVersion(path)
@@ -121,10 +118,19 @@ func ReadClassifiedStable(path string, maxBytes int64) (StableClassifiedRead, er
 	if !before.Exists {
 		return StableClassifiedRead{Version: before}, nil
 	}
-	read, err := ReadClassified(path, maxBytes)
+	read, err := readClassified(path, maxBytes)
 	if err != nil {
 		return StableClassifiedRead{Read: read, Version: before}, err
 	}
+	return verifyStableClassifiedRead(path, before, read, maxBytes)
+}
+
+// verifyStableClassifiedRead completes a classified read that already captured
+// its starting disk version. Keeping this step explicit lets the in-package
+// bounded-read test exercise the otherwise unreachable change-between-read-and-
+// hash race without adding a production callback or test setter.
+func verifyStableClassifiedRead(path string, before DiskVersion, read ClassifiedRead, maxBytes int64) (StableClassifiedRead, error) {
+	maxBytes = normalizedReadLimit(maxBytes)
 	if read.Error != nil {
 		after, err := CurrentDiskVersion(path)
 		if err != nil {
@@ -139,9 +145,6 @@ func ReadClassifiedStable(path string, maxBytes int64) (StableClassifiedRead, er
 			return result, ErrUnstableRead
 		}
 		return result, nil
-	}
-	if stableReadBeforeHashHook != nil {
-		stableReadBeforeHashHook(path)
 	}
 	raw, err := readRawBytesBounded(path, maxBytes)
 	if err != nil {
@@ -159,44 +162,44 @@ func ReadClassifiedStable(path string, maxBytes int64) (StableClassifiedRead, er
 	return result, nil
 }
 
-// ReadClassified reads no more than the configured cap and refuses an over-limit file before
+// readClassified reads no more than the configured cap and refuses an over-limit file before
 // allocating or inserting any document state.
-func ReadClassified(path string, maxBytes int64) (ClassifiedRead, error) {
+func readClassified(path string, maxBytes int64) (ClassifiedRead, error) {
 	maxBytes = normalizedReadLimit(maxBytes)
 	canonical, err := CanonicalizeDocumentPath(path)
 	if err != nil {
-		return ClassifiedRead{Outcome: ReadOutcomeRefused, Capability: CapabilityRefused, Error: classifiedReadError(path, apperr.ClassifiedNotFound, "The document could not be found.", apperr.RemediationNone)}, nil
+		return ClassifiedRead{Outcome: readOutcomeRefused, Capability: CapabilityRefused, Error: bridge.Classified(path, apperr.ClassifiedNotFound, "The document could not be found.", apperr.RemediationNone)}, nil
 	}
 	if !IsSupportedDocumentSuffix(canonical.Path) {
 		return ClassifiedRead{
 			CanonicalPath: canonical,
-			Outcome:       ReadOutcomeRefused,
+			Outcome:       readOutcomeRefused,
 			Capability:    CapabilityRefused,
-			Error:         classifiedReadError(canonical.DisplayName, apperr.ClassifiedUnsupportedInput, "The selected file type is not supported.", apperr.RemediationNone),
+			Error:         bridge.Classified(canonical.DisplayName, apperr.ClassifiedUnsupportedInput, "The selected file type is not supported.", apperr.RemediationNone),
 		}, nil
 	}
 	info, err := os.Stat(canonical.Path)
 	if err != nil {
-		return ClassifiedRead{CanonicalPath: canonical, Outcome: ReadOutcomeRefused, Capability: CapabilityRefused, Error: classifiedReadError(canonical.DisplayName, apperr.ClassifiedNotFound, "The document could not be found.", apperr.RemediationNone)}, nil
+		return ClassifiedRead{CanonicalPath: canonical, Outcome: readOutcomeRefused, Capability: CapabilityRefused, Error: bridge.Classified(canonical.DisplayName, apperr.ClassifiedNotFound, "The document could not be found.", apperr.RemediationNone)}, nil
 	}
 	if info.Size() > maxBytes || info.Size() > MaxSupportedDocumentBytes {
 		return ClassifiedRead{
 			CanonicalPath:   canonical,
 			Characteristics: FileCharacteristics{RawSizeBytes: info.Size(), Capability: CapabilityRefused, Mode: info.Mode()},
-			Outcome:         ReadOutcomeRefused,
+			Outcome:         readOutcomeRefused,
 			Capability:      CapabilityRefused,
-			Error:           classifiedReadError(canonical.DisplayName, apperr.ClassifiedCapacityLimit, "The document exceeds the 50 MiB limit.", apperr.RemediationNone),
+			Error:           bridge.Classified(canonical.DisplayName, apperr.ClassifiedCapacityLimit, "The document exceeds the 50 MiB limit.", apperr.RemediationNone),
 		}, nil
 	}
 
 	file, err := os.Open(canonical.Path)
 	if err != nil {
-		return ClassifiedRead{CanonicalPath: canonical, Outcome: ReadOutcomeRefused, Capability: CapabilityRefused, Error: classifiedReadError(canonical.DisplayName, apperr.ClassifiedIOFailure, "The document could not be read.", apperr.RemediationRetry)}, err
+		return ClassifiedRead{CanonicalPath: canonical, Outcome: readOutcomeRefused, Capability: CapabilityRefused, Error: bridge.Classified(canonical.DisplayName, apperr.ClassifiedIOFailure, "The document could not be read.", apperr.RemediationRetry)}, err
 	}
 	defer func() { _ = file.Close() }()
 	data, err := readBounded(file, maxBytes)
 	if err != nil {
-		return ClassifiedRead{CanonicalPath: canonical, Outcome: ReadOutcomeRefused, Capability: CapabilityRefused, BytesRead: int64(len(data)), Error: classifiedReadError(canonical.DisplayName, apperr.ClassifiedIOFailure, "The document could not be read.", apperr.RemediationRetry)}, err
+		return ClassifiedRead{CanonicalPath: canonical, Outcome: readOutcomeRefused, Capability: CapabilityRefused, BytesRead: int64(len(data)), Error: bridge.Classified(canonical.DisplayName, apperr.ClassifiedIOFailure, "The document could not be read.", apperr.RemediationRetry)}, err
 	}
 	classified := classifyDocumentBytes(canonical, info, data)
 	classified.BytesRead = int64(len(data))
@@ -264,7 +267,7 @@ func classifyDocumentBytes(canonical CanonicalDocumentPath, info os.FileInfo, ra
 			RawSizeBytes: info.Size(), Capability: capability, Warning: warning, Mode: info.Mode(),
 		},
 		Capability: capability,
-		Outcome:    ReadOutcomeOpened,
+		Outcome:    readOutcomeOpened,
 		Warning:    warning,
 	}
 }
@@ -310,9 +313,4 @@ func normalizeCRLF(content string) string {
 
 func tolerantDisplay(data []byte) string {
 	return strings.ToValidUTF8(string(data), "\ufffd")
-}
-
-func classifiedReadError(subject string, category apperr.ClassifiedErrorCategory, message string, remediation apperr.ClassifiedRemediation) *apperr.ClassifiedError {
-	classified := apperr.NewClassifiedError(category, subject, message, remediation, "")
-	return &classified
 }

@@ -1,12 +1,5 @@
 # Contract: Migration Authority and Slice Readiness
 
-## Authority transfer
-
-`docs/delivery/` is the initial requirements source. A requirement transfers to Spec Kit only after
-its complete behavior, exact values, edge cases, and proving evidence are mapped without loss and the
-mapping is explicitly approved. Approval is per requirement; unmapped clauses in the same source file
-remain authoritative.
-
 ## Current-code classification
 
 Before a task changes a production seam, direct code and tests classify it as conforming,
@@ -36,10 +29,9 @@ comparison point used by the active slice.
 
 The migration-foundation and appearance batch is delivered. The approved native window shell transfer
 contains exactly `FR-WS-001` through `FR-WS-020`, copied into `window-launcher-shell.md`. Each key has
-one `OWS-*` plan owner in `plan.md` and exactly one matching primary implementation owner in the
-regenerated 36-task `tasks.md`. Tests, documentation, and evidence tasks support an owner without
-duplicating it. Every implementation task must still classify each touched seam from current code and
-direct tests.
+one `OWS-*` plan owner and exactly one matching primary implementation owner. Tests, documentation,
+and evidence tasks support an owner without duplicating it. Every implementation task must still
+classify each touched seam from current code and direct tests.
 
 The product-wide launcher requirement is not transferred by the shell-only batch. Its complete behavior
 moves only with real New/Open/Open-folder/recent commands in the safe file lifecycle. Rendering a
@@ -49,11 +41,10 @@ surfaces to remain absent.
 This planning boundary ends after the framed native shell, acknowledged layout, Settings/notification
 shell, keyboard/focus, automated responsive evidence, and one current-host real-build walkthrough.
 Launcher activation, File commands, real tabs, file lifecycle, rendering expansion, packaging, Editor
-expansion, and Assistant behavior remain downstream. The regenerated 36-task file dated 2026-08-01 is
-the current implementation candidate for this slice. Implementation may begin only after cross-artifact
+expansion, and Assistant behavior remain downstream. Implementation may begin only after cross-artifact
 analysis reports no unresolved CRITICAL or HIGH issue and T001 captures a trustworthy baseline.
 
-The current task file satisfies, and before implementation must continue to satisfy, all of these checks:
+Before implementation, the slice's tasks must satisfy all of these checks:
 
 - every `FR-WS-001` through `FR-WS-020` appears in exactly one `Owns:` field;
 - every test or evidence task uses `Supports:` and names its primary implementation owner;

@@ -19,7 +19,7 @@ type AutosaveObserver func(enabled bool)
 // written. Same reason as AutosaveObserver, and the same defect one setting over:
 // SetDefaultOpenMode had zero production callers, so the preference reached the
 // database and the Settings menu's tick and never the document model, which kept
-// opening every file in Editor for the process lifetime (FR-FT-003).
+// opening every file in Editor for the process lifetime.
 //
 // One observer per setting rather than a generic registry, matching the shape
 // already established here.
@@ -185,7 +185,7 @@ func (service *SettingsService) ResetAppearance(ctx context.Context) error {
 	// the default ever changes.
 	restored, err := repository.GetAppearance(nonNilContext(ctx))
 	if err != nil {
-		return nil
+		return apperr.IO("read reset appearance", err)
 	}
 	service.notifyDefaultOpenMode(restored.DefaultOpenMode)
 	return nil

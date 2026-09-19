@@ -60,16 +60,19 @@ func (commands documentCommands) UpdateBuffer(ctx context.Context, documentID, c
 		commands.service.mu.Unlock()
 		return apperr.NotFound(documentID)
 	}
+	if document.closing {
+		commands.service.mu.Unlock()
+		return apperr.Busy()
+	}
 	acceptedRevision := uint64(0)
 	if document.content != content {
 		document.metadata.ContentRevision++
+		document.setBufferRevision(document.metadata.ContentRevision)
 		acceptedRevision = document.metadata.ContentRevision
-		for token, authorization := range commands.service.normalizations {
-			if authorization.documentID == documentID {
-				delete(commands.service.normalizations, token)
-			}
+		if document.normalization != nil && document.normalization.documentID == documentID {
+			document.normalization = nil
 		}
-		deleteTokensForDocument(commands.service.keepMine, documentID)
+		document.keepMine = nil
 		commands.service.removeConflictLocked(documentID)
 	}
 	document.content = content

@@ -1,0 +1,98 @@
+name: release
+
+on:
+    push:
+        tags:
+            - 'v*'
+    workflow_dispatch:
+        inputs:
+            version:
+                description: 'Release version (X.Y.Z)'
+                required: true
+                type: string
+
+permissions:
+    contents: write
+
+jobs:
+    release:
+        runs-on: macos-latest
+        timeout-minutes: 60
+        steps:
+            - uses: actions/checkout@v7
+              with:
+                  fetch-depth: 0
+            - name: Derive version
+              id: version
+              env:
+                  REF_NAME: ${{ github.ref_name }}
+                  INPUT_VERSION: ${{ inputs.version }}
+              run: |
+                  if [ "${GITHUB_EVENT_NAME}" = "workflow_dispatch" ]; then
+                    VERSION="$INPUT_VERSION"
+                  else
+                    VERSION="${REF_NAME#v}"
+                  fi
+                  printf '%s\n' "$VERSION" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'
+                  echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+            - name: Ensure tag is on master
+              id: branch-guard
+              run: |
+                  if [ "${GITHUB_EVENT_NAME}" = "push" ] && ! git merge-base --is-ancestor "$GITHUB_SHA" origin/master; then
+                    echo "Tag ${GITHUB_REF_NAME} is not on master; no artifact or release will be produced."
+                    echo 'on_master=false' >> "$GITHUB_OUTPUT"
+                  else
+                    echo 'on_master=true' >> "$GITHUB_OUTPUT"
+                  fi
+            - uses: actions/setup-go@v7
+              if: steps.branch-guard.outputs.on_master == 'true'
+              with:
+                  go-version-file: go.mod
+            - uses: actions/setup-node@v7
+              if: steps.branch-guard.outputs.on_master == 'true'
+              with:
+                  node-version-file: .nvmrc
+                  cache: npm
+                  cache-dependency-path: frontend/package-lock.json
+            - name: Install dependencies
+              if: steps.branch-guard.outputs.on_master == 'true'
+              run: scripts/build setup --with-browser
+            - name: Verify
+              if: steps.branch-guard.outputs.on_master == 'true'
+              run: scripts/verify
+            - name: Upload verification artifacts on failure
+              if: failure() && steps.branch-guard.outputs.on_master == 'true'
+              uses: actions/upload-artifact@v7
+              with:
+                  name: verification-runs-${{ github.run_id }}
+                  path: |
+                      .local_tmp_files/runs/**/summary.json
+                      .local_tmp_files/runs/**/lint.json
+                      .local_tmp_files/runs/**/format.json
+                      .local_tmp_files/runs/**/build.json
+                      .local_tmp_files/runs/**/unit.json
+                      .local_tmp_files/runs/**/integration.json
+                      .local_tmp_files/runs/**/e2e.json
+                      .local_tmp_files/runs/**/reports/**
+                      .local_tmp_files/runs/**/*.log
+                      .local_tmp_files/runs/**/*.stderr
+                      .local_tmp_files/runs/**/frontend-*.json
+                  include-hidden-files: true
+                  if-no-files-found: ignore
+            - name: Build release
+              if: steps.branch-guard.outputs.on_master == 'true'
+              run: scripts/build --version "${{ steps.version.outputs.version }}"
+            - name: Package app
+              if: steps.branch-guard.outputs.on_master == 'true'
+              run: ditto -c -k --keepParent build/bin/GoMarkEdit.app "GoMarkEdit-${{ steps.version.outputs.version }}-macos-arm64.zip"
+            - name: Create GitHub Release
+              if: steps.branch-guard.outputs.on_master == 'true' && github.event_name == 'push'
+              env:
+                  GH_TOKEN: ${{ github.token }}
+              run: gh release create "$GITHUB_REF_NAME" "GoMarkEdit-${{ steps.version.outputs.version }}-macos-arm64.zip" --title "GoMarkEdit ${{ steps.version.outputs.version }}" --notes-from-tag
+            - name: Upload dry-run artifact
+              if: steps.branch-guard.outputs.on_master == 'true' && github.event_name == 'workflow_dispatch'
+              uses: actions/upload-artifact@v7
+              with:
+                  name: GoMarkEdit-${{ steps.version.outputs.version }}-macos-arm64
+                  path: GoMarkEdit-${{ steps.version.outputs.version }}-macos-arm64.zip

@@ -31,15 +31,15 @@ func NewLogger(logDirectory string, isDev bool) (*Logger, error) {
 	}
 
 	logger := &Logger{}
-	if err := logger.Reconfigure(logDirectory, level); err != nil {
+	if err := logger.reconfigure(logDirectory, level); err != nil {
 		return nil, err
 	}
 
 	return logger, nil
 }
 
-// Reconfigure replaces the local sink and log level without racing active writers.
-func (logger *Logger) Reconfigure(logDirectory string, level zerolog.Level) error {
+// reconfigure replaces the local sink and log level without racing active writers.
+func (logger *Logger) reconfigure(logDirectory string, level zerolog.Level) error {
 	if err := os.MkdirAll(logDirectory, 0o750); err != nil {
 		return err
 	}

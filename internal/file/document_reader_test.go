@@ -9,6 +9,15 @@ import (
 	"testing"
 )
 
+const (
+	fixtureSize2MiB       int64 = 2_097_152
+	fixtureSize2MiBPlus1  int64 = 2_097_153
+	fixtureSize10MiB      int64 = 10_485_760
+	fixtureSize10MiBPlus1 int64 = 10_485_761
+	fixtureSize50MiB      int64 = 52_428_800
+	fixtureSize50MiBPlus1 int64 = 52_428_801
+)
+
 func TestReadClassifiedStableBoundsRawHashAndDetectsGrowth(t *testing.T) {
 	root := t.TempDir()
 	path := filepath.Join(root, "stable.md")
@@ -24,33 +33,35 @@ func TestReadClassifiedStableBoundsRawHashAndDetectsGrowth(t *testing.T) {
 		t.Fatalf("stable read = %+v, want stable bounded hash", stable)
 	}
 
-	previousHook := stableReadBeforeHashHook
-	stableReadBeforeHashHook = func(path string) {
-		if err := os.WriteFile(path, []byte("abcde"), 0o644); err != nil {
-			t.Fatalf("grow file during stable read: %v", err)
-		}
+	before, err := CurrentDiskVersion(path)
+	if err != nil {
+		t.Fatalf("version before direct stable verification: %v", err)
 	}
-	defer func() { stableReadBeforeHashHook = previousHook }()
-
-	unstable, err := ReadClassifiedStable(path, 4)
+	classified, err := readClassified(path, 4)
+	if err != nil {
+		t.Fatalf("classified read before direct stable verification: %v", err)
+	}
+	if err := os.WriteFile(path, []byte("abcde"), 0o644); err != nil {
+		t.Fatalf("grow file between stable-read steps: %v", err)
+	}
+	unstable, err := verifyStableClassifiedRead(path, before, classified, 4)
 	if !errors.Is(err, ErrUnstableRead) || unstable.Stable {
 		t.Fatalf("growth race = result=%+v err=%v, want ErrUnstableRead and unstable", unstable, err)
 	}
 }
 
-// Proves: FR-FT-023
 func TestReadClassifiedStableReportsAbsenceWithoutAnError(t *testing.T) {
 	/*
-	 * Absence is deliberately not an error here, and this pins that contract so a
-	 * later caller does not "fix" it. The conflict path relies on it to mark an
-	 * open document detached while keeping its buffer (`appmodel/conflict.go:121,297`,
-	 * FR-FT-023), which an error return would break.
-	 *
-	 * The consequence is that callers MUST read `Version.Exists` themselves: the
-	 * returned `Read` is zero-valued, so `Read.Error` is nil and
-	 * `Read.CanonicalPath.Identity` is "". `appmodel.PrepareOpen` failing to check it
-	 * is the FR-FT-040 defect this test's sibling covers.
-	 */
+		 * Absence is deliberately not an error here, and this pins that contract so a
+		 * later caller does not "fix" it. The conflict path relies on it to mark an
+			 * open document detached while keeping its buffer, which an error return
+			 * would break.
+		 *
+		 * The consequence is that callers MUST read `Version.Exists` themselves: the
+			 * returned `Read` is zero-valued, so `Read.Error` is nil and
+			 * `Read.CanonicalPath.Identity` is "". Callers must check the version's
+			 * Exists bit before using the classified read for an open operation.
+	*/
 	missing := filepath.Join(t.TempDir(), "never-written.md")
 
 	absent, err := ReadClassifiedStable(missing, MaxClassifiedReadBytes)
@@ -60,7 +71,7 @@ func TestReadClassifiedStableReportsAbsenceWithoutAnError(t *testing.T) {
 	if absent.Version.Exists {
 		t.Fatalf("stable read of a missing path reports Exists = true: %+v", absent.Version)
 	}
-	if absent.Read.Error != nil || absent.Read.CanonicalPath.Identity != "" {
+	if absent.Read.Error != nil || !absent.Read.CanonicalPath.Identity.IsZero() {
 		t.Fatalf("stable read of a missing path = %+v, want a zero-valued read that carries no classification", absent.Read)
 	}
 }
@@ -77,16 +88,12 @@ func TestReadBoundedDoesNotConsumeBeyondLimit(t *testing.T) {
 	}
 }
 
-// readClassifiedAtDefaultLimit is what file.ReadClassifiedDocument used to be:
-// ReadClassified at the configured maximum. T137 deleted the exported alias —
-// nothing in production called it, and production calls ReadClassified with the
-// limit directly — but the classification behaviour these cases prove is real
-// and reachable, so they now drive the same function production does.
+// readClassifiedAtDefaultLimit exercises the bounded reader used by the
+// production entry point, with its configured maximum.
 func readClassifiedAtDefaultLimit(path string) (ClassifiedRead, error) {
-	return ReadClassified(path, MaxClassifiedReadBytes)
+	return readClassified(path, MaxClassifiedReadBytes)
 }
 
-// Proves: FR-FT-005 (partial — the size thresholds and refusal; the preview pause is proven by PreviewPane.test.tsx)
 func TestReadClassifiedDocument(t *testing.T) {
 	root := t.TempDir()
 	write := func(name string, content []byte) string {
@@ -151,7 +158,7 @@ func TestReadClassifiedDocument(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unsupported suffix should return a classified result: %v", err)
 	}
-	if unsupportedRead.Outcome != ReadOutcomeRefused || unsupportedRead.Error == nil || unsupportedRead.Error.Category != "unsupported-input" {
+	if unsupportedRead.Outcome != readOutcomeRefused || unsupportedRead.Error == nil || unsupportedRead.Error.Category != "unsupported-input" {
 		t.Fatalf("unsupported suffix result = %+v", unsupportedRead)
 	}
 	if strings.Contains(unsupportedRead.Error.Message, root) {
@@ -162,14 +169,14 @@ func TestReadClassifiedDocument(t *testing.T) {
 		name       string
 		size       int64
 		capability ReadCapability
-		outcome    ReadOutcome
+		outcome    readOutcome
 	}{
-		{name: "2MiB", size: fixtureSize2MiB, capability: CapabilityWritable, outcome: ReadOutcomeOpened},
-		{name: "2MiB+1", size: fixtureSize2MiBPlus1, capability: CapabilityWritable, outcome: ReadOutcomeOpened},
-		{name: "10MiB", size: fixtureSize10MiB, capability: CapabilityWritable, outcome: ReadOutcomeOpened},
-		{name: "10MiB+1", size: fixtureSize10MiBPlus1, capability: CapabilityLargeReadOnly, outcome: ReadOutcomeOpened},
-		{name: "50MiB", size: fixtureSize50MiB, capability: CapabilityLargeReadOnly, outcome: ReadOutcomeOpened},
-		{name: "50MiB+1", size: fixtureSize50MiBPlus1, capability: CapabilityRefused, outcome: ReadOutcomeRefused},
+		{name: "2MiB", size: fixtureSize2MiB, capability: CapabilityWritable, outcome: readOutcomeOpened},
+		{name: "2MiB+1", size: fixtureSize2MiBPlus1, capability: CapabilityWritable, outcome: readOutcomeOpened},
+		{name: "10MiB", size: fixtureSize10MiB, capability: CapabilityWritable, outcome: readOutcomeOpened},
+		{name: "10MiB+1", size: fixtureSize10MiBPlus1, capability: CapabilityLargeReadOnly, outcome: readOutcomeOpened},
+		{name: "50MiB", size: fixtureSize50MiB, capability: CapabilityLargeReadOnly, outcome: readOutcomeOpened},
+		{name: "50MiB+1", size: fixtureSize50MiBPlus1, capability: CapabilityRefused, outcome: readOutcomeRefused},
 	} {
 		t.Run(row.name, func(t *testing.T) {
 			path := filepath.Join(root, row.name+".md")
@@ -187,7 +194,7 @@ func TestReadClassifiedDocument(t *testing.T) {
 			if classified.Characteristics.RawSizeBytes != row.size {
 				t.Fatalf("raw size = %d, want %d", classified.Characteristics.RawSizeBytes, row.size)
 			}
-			if row.outcome == ReadOutcomeRefused {
+			if row.outcome == readOutcomeRefused {
 				if classified.Error == nil || !strings.Contains(classified.Error.Message, "50 MiB") {
 					t.Fatalf("large refusal error = %+v", classified.Error)
 				}
@@ -199,7 +206,6 @@ func TestReadClassifiedDocument(t *testing.T) {
 	}
 }
 
-// Proves: FR-FT-007
 func TestLineEndingClassification(t *testing.T) {
 	root := t.TempDir()
 	cases := []struct {

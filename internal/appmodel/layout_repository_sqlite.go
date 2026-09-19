@@ -2,13 +2,14 @@ package appmodel
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
 
 	"github.com/sanyokkua/go_mark_edit/internal/db"
+	"github.com/sanyokkua/go_mark_edit/internal/kv"
 )
 
 const layoutSettingPrefix = "layout."
@@ -16,26 +17,28 @@ const layoutSettingPrefix = "layout."
 // SqliteLayoutRepository stores versioned layout envelopes in the existing
 // additive settings KV table. Each durable field arbitrates independently.
 type SqliteLayoutRepository struct {
-	database          *sql.DB
+	store             *kv.Store
 	afterReadDecision func()
 }
 
 func NewSqliteLayoutRepository(database *db.Database) *SqliteLayoutRepository {
-	return &SqliteLayoutRepository{database: database.DB}
+	if database == nil {
+		return &SqliteLayoutRepository{store: kv.New(nil)}
+	}
+	return &SqliteLayoutRepository{store: kv.New(database.DB)}
 }
 
 func (repository *SqliteLayoutRepository) Read(ctx context.Context, field string) (VersionedLayoutValue, bool, error) {
-	var encoded string
-	err := repository.database.QueryRowContext(ctx, "SELECT value FROM settings WHERE key = ?", layoutKey(field)).Scan(&encoded)
-	if err == sql.ErrNoRows {
-		return VersionedLayoutValue{}, false, nil
-	}
+	entry, found, err := repository.store.Get(ctx, layoutKey(field))
 	if err != nil {
 		return VersionedLayoutValue{}, false, fmt.Errorf("read layout field: %w", err)
 	}
-	value, err := decodeLayoutValue(encoded)
-	if err != nil {
-		return VersionedLayoutValue{}, false, err
+	if !found {
+		return VersionedLayoutValue{}, false, nil
+	}
+	value, valid, err := decodeLayoutValue(entry.Value)
+	if err != nil || !valid {
+		return VersionedLayoutValue{}, false, nil
 	}
 	return value, true, nil
 }
@@ -44,79 +47,77 @@ func (repository *SqliteLayoutRepository) Write(ctx context.Context, field strin
 	if err := validateVersionedLayoutValue(field, candidate); err != nil {
 		return LayoutWriteResult{}, err
 	}
-	encodedBytes, err := json.Marshal(candidate)
+	encoded, err := kv.EncodeVersionedJSON(1, map[string]any{
+		"value":             candidate.Value,
+		"changedAtUnixNano": candidate.ChangedAtUnixNano,
+		"writerId":          candidate.WriterID,
+		"sequence":          candidate.Sequence,
+	})
 	if err != nil {
 		return LayoutWriteResult{}, fmt.Errorf("encode layout value: %w", err)
 	}
-	if repository.afterReadDecision != nil {
-		repository.afterReadDecision()
+
+	for attempt := 0; attempt < 3; attempt++ {
+		result := LayoutWriteResult{}
+		err := repository.store.Tx(ctx, func(transaction *kv.Tx) error {
+			storedEntry, found, err := transaction.Get(ctx, layoutKey(field))
+			if err != nil {
+				return err
+			}
+			if repository.afterReadDecision != nil {
+				hook := repository.afterReadDecision
+				repository.afterReadDecision = nil
+				hook()
+			}
+			if found {
+				stored, valid, decodeErr := decodeLayoutValue(storedEntry.Value)
+				if decodeErr == nil && valid && !layoutValueIsNewer(candidate, stored) {
+					result.Value = stored
+					return nil
+				}
+			}
+			if err := transaction.Upsert(ctx, kv.KVEntry{Key: layoutKey(field), Value: encoded, Type: "layout.versioned"}); err != nil {
+				return err
+			}
+			result = LayoutWriteResult{Applied: true, Value: candidate}
+			return nil
+		})
+		if err == nil {
+			return result, nil
+		}
+		if !isSQLiteBusy(err) {
+			return LayoutWriteResult{}, fmt.Errorf("write layout value: %w", err)
+		}
 	}
-	result, err := repository.database.ExecContext(ctx, `
-INSERT INTO settings (key, value, type)
-VALUES (?, ?, ?)
-ON CONFLICT(key) DO UPDATE SET
-	value = excluded.value,
-	type = excluded.type
-WHERE
-	settings.type != 'layout.versioned'
-	OR COALESCE(CAST(json_extract(settings.value, '$.changedAtUnixNano') AS INTEGER), -9223372036854775808) < ?
-	OR (
-		COALESCE(CAST(json_extract(settings.value, '$.changedAtUnixNano') AS INTEGER), -9223372036854775808) = ?
-		AND COALESCE(CAST(json_extract(settings.value, '$.writerId') AS TEXT), '') < ?
-	)
-	OR (
-		COALESCE(CAST(json_extract(settings.value, '$.changedAtUnixNano') AS INTEGER), -9223372036854775808) = ?
-		AND COALESCE(CAST(json_extract(settings.value, '$.writerId') AS TEXT), '') = ?
-		AND COALESCE(CAST(json_extract(settings.value, '$.sequence') AS INTEGER), 0) < ?
-	)
-`, layoutKey(field), string(encodedBytes), "layout.versioned",
-		candidate.ChangedAtUnixNano,
-		candidate.ChangedAtUnixNano, candidate.WriterID,
-		candidate.ChangedAtUnixNano, candidate.WriterID, int64(candidate.Sequence))
-	if err != nil {
-		return LayoutWriteResult{}, fmt.Errorf("write layout value: %w", err)
-	}
-	rowsAffected, err := result.RowsAffected()
-	if err != nil {
-		return LayoutWriteResult{}, fmt.Errorf("inspect layout write result: %w", err)
-	}
-	if rowsAffected > 0 {
-		return LayoutWriteResult{Applied: true, Value: candidate}, nil
-	}
-	stored, found, err := repository.Read(ctx, field)
-	if err != nil {
-		return LayoutWriteResult{}, err
-	}
-	if !found {
-		return LayoutWriteResult{}, fmt.Errorf("read stored layout winner: no row after stale write")
-	}
-	return LayoutWriteResult{Value: stored}, nil
+	return LayoutWriteResult{}, errors.New("layout transaction remained busy")
 }
 
 func layoutKey(field string) string { return layoutSettingPrefix + field }
 
-func decodeLayoutValue(encoded string) (VersionedLayoutValue, error) {
+func decodeLayoutValue(encoded string) (VersionedLayoutValue, bool, error) {
 	var value VersionedLayoutValue
-	decoder := json.NewDecoder(strings.NewReader(encoded))
-	decoder.UseNumber()
-	if err := decoder.Decode(&value); err != nil {
-		legacyWidth, legacyErr := strconv.Atoi(encoded)
+	found, err := kv.DecodeVersionedJSON(encoded, 1, &value)
+	if err != nil {
+		legacyWidth, legacyErr := strconv.Atoi(strings.TrimSpace(encoded))
 		if legacyErr == nil {
-			return VersionedLayoutValue{Version: 1, Value: legacyWidth}, nil
+			return VersionedLayoutValue{Version: 1, Value: legacyWidth}, true, nil
 		}
-		return VersionedLayoutValue{}, fmt.Errorf("decode layout value: %w", err)
+		return VersionedLayoutValue{}, false, err
+	}
+	if !found {
+		return VersionedLayoutValue{}, false, nil
 	}
 	if number, ok := value.Value.(json.Number); ok {
 		integer, err := number.Int64()
 		if err != nil {
-			return VersionedLayoutValue{}, fmt.Errorf("decode integer layout value: %w", err)
+			return VersionedLayoutValue{}, false, fmt.Errorf("decode integer layout value: %w", err)
 		}
 		value.Value = int(integer)
 	}
-	if value.Version < 1 || value.WriterID == "" || value.Sequence == 0 {
-		return VersionedLayoutValue{}, fmt.Errorf("invalid versioned layout value")
+	if value.Version != 1 || value.WriterID == "" || value.Sequence == 0 {
+		return VersionedLayoutValue{}, false, nil
 	}
-	return value, nil
+	return value, true, nil
 }
 
 func validateVersionedLayoutValue(field string, value VersionedLayoutValue) error {
@@ -150,6 +151,24 @@ func validateVersionedLayoutValue(field string, value VersionedLayoutValue) erro
 		return fmt.Errorf("unknown layout field")
 	}
 	return nil
+}
+
+func layoutValueIsNewer(candidate, stored VersionedLayoutValue) bool {
+	if candidate.ChangedAtUnixNano != stored.ChangedAtUnixNano {
+		return candidate.ChangedAtUnixNano > stored.ChangedAtUnixNano
+	}
+	if candidate.WriterID != stored.WriterID {
+		return candidate.WriterID > stored.WriterID
+	}
+	return candidate.Sequence > stored.Sequence
+}
+
+func isSQLiteBusy(err error) bool {
+	if err == nil {
+		return false
+	}
+	message := strings.ToLower(err.Error())
+	return strings.Contains(message, "busy") || strings.Contains(message, "locked")
 }
 
 var _ LayoutRepositoryAPI = (*SqliteLayoutRepository)(nil)

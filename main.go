@@ -13,26 +13,33 @@ import (
 	"github.com/sanyokkua/go_mark_edit/internal/application"
 	"github.com/sanyokkua/go_mark_edit/internal/appmodel"
 	"github.com/sanyokkua/go_mark_edit/internal/bootstrap"
+	"github.com/sanyokkua/go_mark_edit/internal/bridge"
 	"github.com/sanyokkua/go_mark_edit/internal/file"
 	"github.com/sanyokkua/go_mark_edit/internal/logging"
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/menu"
 	"github.com/wailsapp/wails/v2/pkg/options"
-	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
-	"github.com/wailsapp/wails/v2/pkg/options/mac"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 //go:embed all:frontend/dist
 var assets embed.FS
 
-var (
-	showStartupRecoveryWindow = runtime.WindowShow
-	emitNativeCloseRequest    = func(ctx context.Context) {
-		runtime.EventsEmit(ctx, application.NativeCloseRequestEvent)
+type nativeRuntimePorts struct {
+	showStartupRecoveryWindow func(context.Context)
+	emitNativeCloseRequest    func(context.Context, string)
+	quitNativeApplication     func(context.Context)
+}
+
+func productionNativeRuntimePorts() nativeRuntimePorts {
+	return nativeRuntimePorts{
+		showStartupRecoveryWindow: runtime.WindowShow,
+		emitNativeCloseRequest: func(ctx context.Context, id string) {
+			runtime.EventsEmit(ctx, application.NativeCloseRequestEvent, map[string]string{"id": id})
+		},
+		quitNativeApplication: runtime.Quit,
 	}
-	quitNativeApplication = runtime.Quit
-)
+}
 
 func main() {
 	bootstrapLogger := bootstrap.NewLogger()
@@ -54,7 +61,7 @@ func main() {
 		}
 	}()
 
-	applicationContext := application.NewApplicationContextHolder(fileUtils, appLogger)
+	outcomes := bridge.NewOutcomeCache()
 	dialogs := application.NewDocumentDialogs(func(ctx context.Context) (string, error) {
 		return runtime.OpenFileDialog(ctx, runtime.OpenDialogOptions{
 			Title:   "Open Markdown or text file",
@@ -80,15 +87,16 @@ func main() {
 		})
 		return result == "Overwrite", err
 	})
-	applicationContext.SetDocumentDialogs(dialogs)
+	applicationContext := application.NewApplicationContextHolderWithOptions(fileUtils, appLogger, application.ApplicationContextOptions{
+		AppModelOptions: []appmodel.AppModelOption{appmodel.WithDialogs(dialogs, dialogs)},
+	}, outcomes)
 	if err := wails.Run(newAppOptionsWithLogger(applicationContext, appLogger)); err != nil {
 		bootstrapLogger.Error().Err(err).Msg("run application")
 	}
 }
 
 // supportedDocumentSuffixes is the one list of suffixes both native pickers
-// offer. FR-FT-002 names these four for Open and FR-FT-012 names the same four
-// for Save As.
+// offer. The picker uses these four suffixes for both Open and Save As.
 //
 // It was two identical literals, one per picker, which is how a filter set can
 // drift from the suffixes the backend accepts without anything noticing. The
@@ -103,7 +111,7 @@ func documentFileFilters() []runtime.FileFilter {
 
 // documentFileFiltersFor builds the picker filter for one host.
 //
-// FR-FT-002 requires the picker to filter *case-insensitively*, and only one of
+// The picker filters *case-insensitively*, and only one of
 // the three hosts needs help with that. macOS matches an `NSOpenPanel`'s
 // allowed types case-insensitively, and the Windows common item dialog matches
 // its filter spec case-insensitively, so on those hosts the four lowercase
@@ -154,37 +162,58 @@ func newAppOptions(applicationContext *application.ApplicationContextHolder) *op
 	return newAppOptionsWithLogger(applicationContext, nil)
 }
 
-func newAppOptionsWithLogger(applicationContext *application.ApplicationContextHolder, appLogger *logging.Logger) *options.App {
+func newAppOptionsWithLogger(applicationContext *application.ApplicationContextHolder, appLogger *logging.Logger, overrides ...nativeRuntimePorts) *options.App {
+	ports := productionNativeRuntimePorts()
+	if len(overrides) > 0 {
+		if overrides[0].showStartupRecoveryWindow != nil {
+			ports.showStartupRecoveryWindow = overrides[0].showStartupRecoveryWindow
+		}
+		if overrides[0].emitNativeCloseRequest != nil {
+			ports.emitNativeCloseRequest = overrides[0].emitNativeCloseRequest
+		}
+		if overrides[0].quitNativeApplication != nil {
+			ports.quitNativeApplication = overrides[0].quitNativeApplication
+		}
+	}
 	applicationContext.SetNativeWindow(wailsNativeWindow{})
-	applicationContext.SetCloseCoordinator(application.NewCloseCoordinator(emitNativeCloseRequest, quitNativeApplication))
-	return &options.App{
-		Title:         "GoMarkEdit",
-		Width:         1024,
-		Height:        768,
-		MinWidth:      375,
-		MinHeight:     480,
-		Frameless:     false,
-		DisableResize: false,
-		StartHidden:   true,
-		Mac:           &mac.Options{DisableZoom: false},
-		Menu:          nativeMenuForPlatform(goruntime.GOOS),
-		AssetServer: &assetserver.Options{
-			Assets: assets,
-		},
+	applicationContext.ConfigureShutdown(
+		application.WithCloseRequestedEmitter(ports.emitNativeCloseRequest),
+		application.WithNativeQuit(ports.quitNativeApplication),
+		application.WithNativeConfirmation(func(ctx context.Context, documents []string) (bool, error) {
+			message := "There are unsaved changes."
+			if len(documents) > 0 {
+				message = "The following documents have unsaved changes:\n\n" + strings.Join(documents, "\n")
+			}
+			result, err := runtime.MessageDialog(ctx, runtime.MessageDialogOptions{
+				Type:          runtime.QuestionDialog,
+				Title:         "Quit with unsaved changes?",
+				Message:       message,
+				Buttons:       []string{"Quit and discard", "Cancel"},
+				DefaultButton: "Cancel",
+				CancelButton:  "Cancel",
+			})
+			return result == "Quit and discard", err
+		}),
+		application.WithShutdownLogger(appLogger),
+	)
+	return application.NewOptions(application.Options{
+		Assets:         assets,
+		PreviewHandler: application.NewPreviewImageHandler(applicationContext.AppModelService),
+		Menu:           nativeMenuForPlatform(goruntime.GOOS),
 		OnStartup: func(ctx context.Context) {
 			applicationContext.SetContext(ctx)
 			if err := applicationContext.Init(ctx); err != nil {
 				if appLogger != nil {
 					appLogger.Error(err.Error())
 				}
-				showStartupRecoveryWindow(ctx)
+				ports.showStartupRecoveryWindow(ctx)
 				return
 			}
 			if err := applicationContext.RestoreNativeWindow(ctx); err != nil {
 				if appLogger != nil {
 					appLogger.Error(err.Error())
 				}
-				showStartupRecoveryWindow(ctx)
+				ports.showStartupRecoveryWindow(ctx)
 				return
 			}
 		},
@@ -200,7 +229,7 @@ func newAppOptionsWithLogger(applicationContext *application.ApplicationContextH
 		Bind:     []interface{}{applicationContext.AppModelHandler, applicationContext.SettingsHandler, applicationContext.ApplicationHandler},
 		EnumBind: []interface{}{apperr.AllErrorCodes},
 		Logger:   appLogger,
-	}
+	})
 }
 
 type wailsNativeWindow struct{}

@@ -1,323 +1,161 @@
-import {
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-  type CSSProperties,
-} from 'react';
+import { useState } from 'react';
 
-import { t } from '../../i18n';
-import { useAppDispatch, useAppSelector } from '../../logic/store';
-import {
-  WORKSPACE_BINDING_WIDTH,
-  setWorkspaceWidth,
-} from '../../logic/store/uiLayoutCommands';
+import { formatNumber, t } from '../../i18n';
+import { useAppSelector } from '../../logic/store';
 import { useEditorSettings } from '../../logic/settings/editorSettings';
 import type {
-  ClosePlanKind,
-  DocumentTransitionResult,
-  TabTransitionResult,
+    ClosePlanKind,
+    ConflictPreview,
+    DocumentTransitionResult,
+    TabTransitionResult,
 } from '../../logic/store/appModelTypes';
-import styles from './AppShell.module.css';
-
+import StatusBar, { type StatusFact } from '../components/StatusBar';
 import EditorView from './EditorView';
-import { useMinimumWindow } from './minimumWindow';
-import StatusBar from '../components/StatusBar';
 import Launcher from './Launcher';
+import WorkspaceLayout from './WorkspaceLayout';
 
 export interface AppShellProps {
-  onNewDocument?: (expectedTabSetRevision: number) => Promise<unknown>;
-  onOpenDocument?: (expectedTabSetRevision: number) => Promise<unknown>;
-  onActivateDocument?: (
-    documentId: string,
-    expectedTabSetRevision: number,
-  ) => Promise<DocumentTransitionResult>;
-  onCloseDocument?: (
-    documentId: string,
-    expectedTabSetRevision: number,
-    kind?: ClosePlanKind,
-    targetDocumentIds?: string[],
-  ) => Promise<TabTransitionResult>;
-  onOpenRecentFile?: (
-    path: string,
-    expectedTabSetRevision: number,
-  ) => Promise<unknown>;
+    onNewDocument?: (expectedTabSetRevision: number) => Promise<unknown>;
+    onOpenDocument?: (expectedTabSetRevision: number) => Promise<unknown>;
+    onActivateDocument?: (documentId: string, expectedTabSetRevision: number) => Promise<DocumentTransitionResult>;
+    onCloseDocument?: (
+        documentId: string,
+        expectedTabSetRevision: number,
+        kind?: ClosePlanKind,
+        targetDocumentIds?: string[],
+    ) => Promise<TabTransitionResult>;
+    onExternalConflict?: (preview: ConflictPreview) => void;
+    onOpenRecentFile?: (path: string, expectedTabSetRevision: number) => Promise<unknown>;
 }
 
 const AppShell: React.FC<AppShellProps> = ({
-  onNewDocument,
-  onOpenDocument,
-  onActivateDocument,
-  onCloseDocument,
-  onOpenRecentFile,
+    onNewDocument,
+    onOpenDocument,
+    onActivateDocument,
+    onCloseDocument,
+    onExternalConflict,
+    onOpenRecentFile,
 }: AppShellProps): React.JSX.Element => {
-  const parityRoute =
-    typeof window !== 'undefined' &&
-    new URLSearchParams(window.location.search).has('parity-case');
-  const parityCase =
-    typeof window !== 'undefined'
-      ? new URLSearchParams(window.location.search).get('parity-case')
-      : null;
-  const parityFamily = parityCase?.startsWith('primary:toolbar-overflow:')
-    ? 'toolbar-overflow'
-    : undefined;
-  const dispatch = useAppDispatch();
-  const { fileSettings, markdownSettings } = useEditorSettings();
-  const workspaceVisible = useAppSelector(
-    (state) => state.ui.layout.sidebarVisible ?? true,
-  );
-  /*
-   * At the native minimum window there is no room for a workspace column, so
-   * the panel and its divider are not rendered at all. Two other shapes were
-   * tried and reverted: overriding `workspaceVisible` here splits the source of
-   * truth, because App.tsx hands the raw preference to the View menu's toggle
-   * and the two then disagree; dispatching a hide on mount writes a persisted
-   * preference, so one narrow launch would hide the workspace on every later
-   * wide one. Not rendering owns no second "is it open" state and writes
-   * nothing — `data-workspace-visible` below still reports the stored
-   * preference, which keeps governing the wide layout untouched.
-   */
-  const minimumWindow = useMinimumWindow();
-  const hasActiveDocument = useAppSelector(
-    (state) =>
-      state.documents.activeDocumentId !== null &&
-      state.documents.activeDocumentId !== '',
-  );
-  const activeDocument = useAppSelector((state) =>
-    hasActiveDocument && state.documents.activeDocumentId !== null
-      ? state.documents.byId[state.documents.activeDocumentId]
-      : undefined,
-  );
-  const [liveCursor, setLiveCursor] = useState({
-    lineNumber: activeDocument?.view.cursor.line ?? 1,
-    column: activeDocument?.view.cursor.column ?? 1,
-  });
-  const recentFiles = useAppSelector(
-    (state) => state.documents.recentFiles ?? [],
-  );
-  const showLauncher =
-    onNewDocument !== undefined ||
-    onOpenDocument !== undefined ||
-    recentFiles.length > 0;
-
-  const tabSetRevision = useAppSelector(
-    (state) => state.documents.tabSetRevision,
-  );
-  const acknowledgedWorkspaceWidth = useAppSelector(
-    (state) => state.ui.layout.sidebarWidth ?? WORKSPACE_BINDING_WIDTH,
-  );
-  const latestLayoutFailure = useAppSelector((state) => {
-    const layoutFailures = [
-      ...state.notifications.items,
-      ...state.notifications.queuedErrors,
-    ].filter(
-      (notification) =>
-        notification.error?.details?.operation === 'update layout',
+    const { fileSettings, markdownSettings } = useEditorSettings();
+    const hasActiveDocument = useAppSelector(
+        (state) => state.documents.activeDocumentId !== null && state.documents.activeDocumentId !== '',
     );
-    const latest = layoutFailures.at(-1);
-    return latest === undefined
-      ? undefined
-      : `${latest.id}:${latest.refreshGeneration}`;
-  });
-  const [pendingWorkspaceWidth, setPendingWorkspaceWidth] = useState<
-    number | undefined
-  >(undefined);
-  const pendingWorkspaceWidthRef = useRef<number | undefined>(undefined);
-  const handledLayoutFailureRef = useRef<string | undefined>(undefined);
-  const workspaceWidth =
-    pendingWorkspaceWidth === acknowledgedWorkspaceWidth
-      ? acknowledgedWorkspaceWidth
-      : (pendingWorkspaceWidth ?? acknowledgedWorkspaceWidth);
-  const drag = useRef<{
-    pointerId: number;
-    startWidth: number;
-    startX: number;
-  } | null>(null);
+    const activeDocument = useAppSelector((state) =>
+        hasActiveDocument && state.documents.activeDocumentId !== null
+            ? state.documents.byId[state.documents.activeDocumentId]
+            : undefined,
+    );
+    const [liveCursor, setLiveCursor] = useState({
+        lineNumber: activeDocument?.view.cursor.line ?? 1,
+        column: activeDocument?.view.cursor.column ?? 1,
+    });
+    const recentFiles = useAppSelector((state) => state.documents.recentFiles ?? []);
+    const showLauncher = onNewDocument !== undefined || onOpenDocument !== undefined || recentFiles.length > 0;
+    const tabSetRevision = useAppSelector((state) => state.documents.tabSetRevision);
+    const statusFacts: readonly StatusFact[] =
+        activeDocument === undefined
+            ? []
+            : [
+                  {
+                      id: 'standard-kind',
+                      rowLabel: t('status.markdown', {
+                          standard: t(`status.markdownStandard.${markdownSettings.standard}`),
+                      }),
+                      detailLabel: t('status.markdown', {
+                          standard: t(`status.markdownStandard.${markdownSettings.standard}`),
+                      }),
+                      value: '',
+                      dropPriority: 0,
+                      marker: 'accent-dot',
+                  },
+                  {
+                      id: 'cursor',
+                      rowLabel: t('status.cursor', {
+                          column: liveCursor.column,
+                          line: liveCursor.lineNumber,
+                      }),
+                      detailLabel: t('status.cursor', {
+                          column: liveCursor.column,
+                          line: liveCursor.lineNumber,
+                      }),
+                      value: '',
+                      dropPriority: 1,
+                  },
+                  {
+                      id: 'count',
+                      rowLabel: t('status.words', {
+                          count: formatNumber(activeDocument.wordCount),
+                      }),
+                      detailLabel: t('status.words', {
+                          count: formatNumber(activeDocument.wordCount),
+                      }),
+                      value: '',
+                      dropPriority: 2,
+                  },
+                  {
+                      id: 'encoding',
+                      rowLabel: t(`status.encoding.${activeDocument.encoding.toLowerCase()}`),
+                      detailLabel: t(`status.encoding.${activeDocument.encoding.toLowerCase()}`),
+                      value: '',
+                      dropPriority: 3,
+                      placement: 'trailing',
+                  },
+                  {
+                      id: 'line-ending',
+                      rowLabel: t(`status.lineEnding.${activeDocument.lineEnding.toLowerCase()}`),
+                      detailLabel: t(`status.lineEnding.${activeDocument.lineEnding.toLowerCase()}`),
+                      value: '',
+                      dropPriority: 4,
+                      placement: 'trailing',
+                  },
+                  {
+                      id: 'autosave',
+                      rowLabel: t(fileSettings.autosave ? 'status.autosave.on' : 'status.autosave.off'),
+                      detailLabel: t(fileSettings.autosave ? 'status.autosave.on' : 'status.autosave.off'),
+                      value: '',
+                      dropPriority: 5,
+                      placement: 'trailing',
+                  },
+              ];
 
-  const requestWorkspaceWidth = useCallback(
-    (width: number): void => {
-      const nextWidth = Math.max(0, Math.round(width));
-      pendingWorkspaceWidthRef.current = nextWidth;
-      setPendingWorkspaceWidth(nextWidth);
-      void dispatch(setWorkspaceWidth(nextWidth))
-        .unwrap()
-        .catch((): void => {
-          setPendingWorkspaceWidth((pending) =>
-            pending === nextWidth ? undefined : pending,
-          );
-          if (pendingWorkspaceWidthRef.current === nextWidth) {
-            pendingWorkspaceWidthRef.current = undefined;
-          }
-        });
-    },
-    [dispatch],
-  );
-
-  /*
-   * A hidden workspace has no in-flight width intent. Without this, the last
-   * optimistic value from the drag that collapsed it — 0, or whatever the
-   * pointer passed through on the way — outranks the acknowledged width when it
-   * is shown again, and the restored binding width would never render.
-   */
-  useEffect((): void => {
-    if (workspaceVisible) {
-      return;
-    }
-    /*
-     * The divider unmounts with the workspace, but the drag listens on the
-     * window: without releasing it here a pointer still held down after
-     * collapsing to zero keeps issuing the same hide command on every move.
-     */
-    drag.current = null;
-    if (pendingWorkspaceWidthRef.current === undefined) {
-      return;
-    }
-    pendingWorkspaceWidthRef.current = undefined;
-    setPendingWorkspaceWidth(undefined);
-  }, [workspaceVisible]);
-
-  useEffect((): void => {
-    if (
-      latestLayoutFailure === undefined ||
-      latestLayoutFailure === handledLayoutFailureRef.current
-    ) {
-      return;
-    }
-    handledLayoutFailureRef.current = latestLayoutFailure;
-    if (pendingWorkspaceWidthRef.current !== undefined) {
-      pendingWorkspaceWidthRef.current = undefined;
-      setPendingWorkspaceWidth(undefined);
-    }
-  }, [latestLayoutFailure]);
-
-  useEffect((): (() => void) => {
-    const onPointerMove = (event: PointerEvent): void => {
-      const activeDrag = drag.current;
-      if (
-        activeDrag === null ||
-        (event.pointerId !== 0 && event.pointerId !== activeDrag.pointerId)
-      ) {
-        return;
-      }
-      requestWorkspaceWidth(
-        activeDrag.startWidth + event.clientX - activeDrag.startX,
-      );
-    };
-    const onPointerUp = (event: PointerEvent): void => {
-      if (
-        drag.current !== null &&
-        (event.pointerId === 0 || event.pointerId === drag.current.pointerId)
-      ) {
-        drag.current = null;
-      }
-    };
-    window.addEventListener('pointermove', onPointerMove);
-    window.addEventListener('pointerup', onPointerUp);
-    window.addEventListener('pointercancel', onPointerUp);
-    return (): void => {
-      window.removeEventListener('pointermove', onPointerMove);
-      window.removeEventListener('pointerup', onPointerUp);
-      window.removeEventListener('pointercancel', onPointerUp);
-    };
-  }, [requestWorkspaceWidth]);
-
-  const shellStyle = {
-    '--shell-left-width': `${workspaceWidth}px`,
-  } as CSSProperties;
-
-  return (
-    <div
-      className={styles.shell}
-      data-testid="application-shell"
-      data-document-state={hasActiveDocument ? 'active' : 'empty'}
-      data-parity-family={parityFamily}
-      data-parity-shell={parityRoute ? 'true' : undefined}
-      data-workspace-visible={String(workspaceVisible)}
-      style={shellStyle}
-    >
-      {minimumWindow ? null : (
-        <aside
-          aria-label={t('shell.workspace')}
-          className={styles.workspace}
-          hidden={!workspaceVisible}
-        />
-      )}
-      {workspaceVisible && !minimumWindow ? (
-        <div
-          aria-label={t('shell.workspace.resize')}
-          aria-orientation="vertical"
-          aria-valuemin={0}
-          aria-valuenow={workspaceWidth}
-          className={styles.divider}
-          role="separator"
-          tabIndex={0}
-          onKeyDown={(event): void => {
-            if (event.key === 'ArrowLeft') {
-              event.preventDefault();
-              requestWorkspaceWidth(
-                (pendingWorkspaceWidthRef.current ?? workspaceWidth) - 16,
-              );
-            } else if (event.key === 'ArrowRight') {
-              event.preventDefault();
-              requestWorkspaceWidth(
-                (pendingWorkspaceWidthRef.current ?? workspaceWidth) + 16,
-              );
-            }
-          }}
-          onPointerDown={(event): void => {
-            drag.current = {
-              pointerId: event.pointerId,
-              startWidth: workspaceWidth,
-              startX: event.clientX,
-            };
-            event.currentTarget.setPointerCapture?.(event.pointerId);
-          }}
-        />
-      ) : null}
-      <main aria-label={t('shell.document')} className={styles.document}>
-        {!hasActiveDocument && showLauncher ? (
-          <Launcher
-            recentFiles={recentFiles}
-            onNewDocument={
-              onNewDocument === undefined
-                ? undefined
-                : (): Promise<unknown> => onNewDocument(tabSetRevision)
-            }
-            onOpenDocument={
-              onOpenDocument === undefined
-                ? undefined
-                : (): Promise<unknown> => onOpenDocument(tabSetRevision)
-            }
-            onOpenRecentFile={
-              onOpenRecentFile === undefined
-                ? undefined
-                : (path): Promise<unknown> =>
-                    onOpenRecentFile(path, tabSetRevision)
-            }
-          />
-        ) : null}
-        <EditorView
-          onNewDocument={onNewDocument}
-          onActivateDocument={onActivateDocument}
-          onCloseDocument={onCloseDocument}
-          onLiveCursorChange={setLiveCursor}
-        />
-        {hasActiveDocument && activeDocument !== undefined ? (
-          <StatusBar
-            cursor={liveCursor}
-            encoding={activeDocument.encoding}
-            lineEnding={activeDocument.lineEnding}
-            status={activeDocument.status}
-            capability={activeDocument.capability}
-            writeInFlight={activeDocument.writeInFlight}
-            wordCount={activeDocument.wordCount}
-            autosave={fileSettings.autosave}
-            markdownStandard={markdownSettings.standard}
-          />
-        ) : null}
-      </main>
-    </div>
-  );
+    return (
+        <WorkspaceLayout documentState={hasActiveDocument ? 'active' : 'empty'}>
+            {!hasActiveDocument && showLauncher ? (
+                <Launcher
+                    recentFiles={recentFiles}
+                    onNewDocument={
+                        onNewDocument === undefined ? undefined : (): Promise<unknown> => onNewDocument(tabSetRevision)
+                    }
+                    onOpenDocument={
+                        onOpenDocument === undefined
+                            ? undefined
+                            : (): Promise<unknown> => onOpenDocument(tabSetRevision)
+                    }
+                    onOpenRecentFile={
+                        onOpenRecentFile === undefined
+                            ? undefined
+                            : (path): Promise<unknown> => onOpenRecentFile(path, tabSetRevision)
+                    }
+                />
+            ) : null}
+            <EditorView
+                onNewDocument={onNewDocument}
+                onActivateDocument={onActivateDocument}
+                onCloseDocument={onCloseDocument}
+                onExternalConflict={onExternalConflict}
+                onLiveCursorChange={setLiveCursor}
+            />
+            {hasActiveDocument && activeDocument !== undefined ? (
+                <StatusBar
+                    facts={statusFacts}
+                    saveIdentity={t(`status.saveStatus.${activeDocument.status ?? 'not-saved'}`)}
+                    status={activeDocument.status}
+                    capability={activeDocument.capability}
+                    transient={activeDocument.writeInFlight ? t('status.writeInFlight') : undefined}
+                />
+            ) : null}
+        </WorkspaceLayout>
+    );
 };
 
 export default AppShell;

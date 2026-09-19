@@ -30,16 +30,16 @@ roles, including clipboard and undo ownership, are not duplicated.
 
 The registry contains the Editor-stage bindings from FR-ED-020:
 
-| Action family | Platform-neutral binding |
-|---|---|
-| Bold, Italic | `Ctrl/Cmd+B`, `Ctrl/Cmd+I` |
-| Strikethrough, Inline code, Link, Image | `Ctrl/Cmd+Shift+X`, `Ctrl/Cmd+E`, `Ctrl/Cmd+K`, `Ctrl/Cmd+Shift+I` |
-| Heading 1/2/3 | `Ctrl/Cmd+1`, `Ctrl/Cmd+2`, `Ctrl/Cmd+3` |
-| Bullet/Numbered/Task list | `Ctrl/Cmd+Shift+8`, `Ctrl/Cmd+Shift+7`, `Ctrl/Cmd+Shift+9` |
-| Quote, Table | `Ctrl/Cmd+Shift+.`, `Ctrl/Cmd+Shift+T` |
-| Format, Compact, Lint | `Alt/Option+Shift+F`, `Alt/Option+Shift+C`, `Alt/Option+Shift+L` |
-| Toggle sidebar, Settings, Keyboard shortcuts | `Ctrl/Cmd+\\`, `Ctrl/Cmd+,`, `Ctrl/Cmd+?` |
-| Full screen | `F11` |
+| Action family                                | Platform-neutral binding                                           |
+| -------------------------------------------- | ------------------------------------------------------------------ |
+| Bold, Italic                                 | `Ctrl/Cmd+B`, `Ctrl/Cmd+I`                                         |
+| Strikethrough, Inline code, Link, Image      | `Ctrl/Cmd+Shift+X`, `Ctrl/Cmd+E`, `Ctrl/Cmd+K`, `Ctrl/Cmd+Shift+I` |
+| Heading 1/2/3                                | `Ctrl/Cmd+1`, `Ctrl/Cmd+2`, `Ctrl/Cmd+3`                           |
+| Bullet/Numbered/Task list                    | `Ctrl/Cmd+Shift+8`, `Ctrl/Cmd+Shift+7`, `Ctrl/Cmd+Shift+9`         |
+| Quote, Table                                 | `Ctrl/Cmd+Shift+.`, `Ctrl/Cmd+Shift+T`                             |
+| Format, Compact, Lint                        | `Alt/Option+Shift+F`, `Alt/Option+Shift+C`, `Alt/Option+Shift+L`   |
+| Toggle sidebar, Settings, Keyboard shortcuts | `Ctrl/Cmd+\\`, `Ctrl/Cmd+,`, `Ctrl/Cmd+?`                          |
+| Full screen                                  | `F11`                                                              |
 
 Reserved existing Monaco/find/replace and native platform bindings are not shadowed.
 
@@ -124,7 +124,7 @@ change.
 
 ## Surface contract
 
-The following surfaces derive from the registry and the binding mockup shape:
+The following surfaces derive from the registry and the original mockup shape:
 
 - Menu row directly below the native title bar: File, Settings, View, About.
 - File menu inventory is visual-only: New File, New Window, Open File, Open Folder, Open Recent, Reopen,
@@ -144,16 +144,15 @@ The following surfaces derive from the registry and the binding mockup shape:
   buttons and arrangement relocate too. No control disappears or creates horizontal scrolling.
 - The editor context menu is exactly: Cut, Copy, Paste, Paste as plain text, separator, Bold, Italic,
   Link, separator, Format document, Compact, separator, Command palette. Lint is not added to this menu
-  because the active surface contract does not list it there.
+  because FR-ED-019 does not list it there.
 
 All labels, unavailable states, tooltips, focus, reduced-motion behavior, and colors use the existing
 translation and token systems across all six palettes.
 
 ## Traceability disposition
 
-| Source category | Classification in this feature | Contract boundary |
-|---|---|---|
-| Phase 04 inline formatting, editor settings, toolbar, context menu, shortcuts, and About | Owned | This contract plus FR-ED-009, FR-ED-012–016, FR-ED-019–023 and named tests. |
-| Existing appearance, appmodel projection, document command seam, arrangement/sidebar, native frame, focus, tokens, and offline policy | Consumed | The completed Feature 001 contracts remain the sole owner. |
-| File opening/saving/export, real tabs, workspace enumeration, image/paste file lifecycle, rich rendering, Assistant/provider, Format/Compact/Lint document behavior, lint/problems, and tidy-markdown gates | Deferred | Visible shape may be projected only where required; no fake success or hidden dependency is added. |
-
+| Source category                                                                                                                                                                                             | Classification in this feature | Contract boundary                                                                                  |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------ | -------------------------------------------------------------------------------------------------- |
+| Phase 04 inline formatting, editor settings, toolbar, context menu, shortcuts, and About                                                                                                                    | Owned                          | This contract plus FR-ED-009, FR-ED-012–016, FR-ED-019–023 and named tests.                        |
+| Existing appearance, appmodel projection, document command seam, arrangement/sidebar, native frame, focus, tokens, and offline policy                                                                       | Consumed                       | The completed Feature 001 contracts remain the sole owner.                                         |
+| File opening/saving/export, real tabs, workspace enumeration, image/paste file lifecycle, rich rendering, Assistant/provider, Format/Compact/Lint document behavior, lint/problems, and tidy-markdown gates | Deferred                       | Visible shape may be projected only where required; no fake success or hidden dependency is added. |

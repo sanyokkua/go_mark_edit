@@ -91,11 +91,11 @@ Go authoritatively projects exactly one status per document using this precedenc
 
 | Condition                                                                                                  | Status            |
 | ---------------------------------------------------------------------------------------------------------- | ----------------- |
-| Read-only capability (unsafe bytes, oversize, or filesystem)                                                | `read-only`       |
-| Empty untitled document                                                                                     | `not-saved`       |
-| Dirty, detached, nonempty untitled, failed write, or a revision newer than an in-flight/committed snapshot   | `unsaved-changes` |
-| Clean after Open, Reload, explicit Save, or Save As                                                          | `saved`           |
-| Clean after autosave                                                                                         | `autosaved`       |
+| Read-only capability (unsafe bytes, oversize, or filesystem)                                               | `read-only`       |
+| Empty untitled document                                                                                    | `not-saved`       |
+| Dirty, detached, nonempty untitled, failed write, or a revision newer than an in-flight/committed snapshot | `unsaved-changes` |
+| Clean after Open, Reload, explicit Save, or Save As                                                        | `saved`           |
+| Clean after autosave                                                                                       | `autosaved`       |
 
 Each committed baseline retains its originating kind (`open`, `reload`, `explicit-save`, `save-as`, `autosave`),
 so returning exactly to that baseline restores the correct clean label. A successful stale-revision write updates

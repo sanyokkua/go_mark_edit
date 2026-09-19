@@ -14,7 +14,7 @@ type WriteSnapshot struct {
 	CanonicalContent    string
 	TargetPath          string
 	ExpectedDiskVersion *file.DiskVersion
-	encodedData         []byte
+	EncodedData         []byte
 }
 
 // committedWriteError lets the coordinator preserve disk truth when the
@@ -35,7 +35,7 @@ type CommittedWriteResult struct {
 }
 
 type WriteExecutor func(WriteSnapshot) (file.DiskVersion, error)
-type WritePublisher func(CommittedWriteResult) error
+type writePublisher func(CommittedWriteResult) error
 
 // WriteCommitObserver observes the coordinator's disk-commit acknowledgement.
 // It is intentionally separate from publication so evidence cannot substitute
@@ -46,15 +46,12 @@ type WriteCommitObserver func(CommittedWriteResult, SaveOrigin)
 type DocumentWriteCoordinator struct {
 	mu            sync.Mutex
 	executor      WriteExecutor
-	publisher     WritePublisher
+	publisher     writePublisher
 	lastCommitted *CommittedWriteResult
 }
 
-// WriteCoordinator is the concise contract-level name for a document coordinator.
-type WriteCoordinator = DocumentWriteCoordinator
-
-func NewDocumentWriteCoordinator(executor WriteExecutor, publishers ...WritePublisher) *DocumentWriteCoordinator {
-	var publisher WritePublisher
+func NewDocumentWriteCoordinator(executor WriteExecutor, publishers ...writePublisher) *DocumentWriteCoordinator {
+	var publisher writePublisher
 	if len(publishers) > 0 {
 		publisher = publishers[0]
 	}
@@ -70,8 +67,8 @@ func (coordinator *DocumentWriteCoordinator) Commit(snapshot WriteSnapshot) (Com
 		version := *snapshot.ExpectedDiskVersion
 		immutable.ExpectedDiskVersion = &version
 	}
-	if snapshot.encodedData != nil {
-		immutable.encodedData = append([]byte(nil), snapshot.encodedData...)
+	if snapshot.EncodedData != nil {
+		immutable.EncodedData = append([]byte(nil), snapshot.EncodedData...)
 	}
 	if coordinator.lastCommitted != nil && reusableCommit(*coordinator.lastCommitted, immutable) {
 		return cloneCommittedWriteResult(*coordinator.lastCommitted), nil
@@ -139,8 +136,8 @@ func cloneWriteSnapshot(snapshot WriteSnapshot) WriteSnapshot {
 		version := *snapshot.ExpectedDiskVersion
 		cloned.ExpectedDiskVersion = &version
 	}
-	if snapshot.encodedData != nil {
-		cloned.encodedData = append([]byte(nil), snapshot.encodedData...)
+	if snapshot.EncodedData != nil {
+		cloned.EncodedData = append([]byte(nil), snapshot.EncodedData...)
 	}
 	return cloned
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/sanyokkua/go_mark_edit/internal/apperr"
+	"github.com/sanyokkua/go_mark_edit/internal/bridge"
 )
 
 // ActivateDocument changes only the backend-owned active identity. The returned
@@ -13,12 +14,12 @@ func (service *AppModelService) ActivateDocument(ctx context.Context, documentID
 
 	if service.state.tabSetRevision != expectedTabSetRevision {
 		service.mu.Unlock()
-		return documentTransitionClassified(apperr.ClassifiedConflict, documentID, "The tab set changed; activation must be retried.", apperr.RemediationRetry)
+		return bridge.Refused[apperr.DocumentTransitionResult](apperr.ClassifiedConflict, documentID, "The tab set changed; activation must be retried.", apperr.RemediationRetry)
 	}
 	document, exists := service.state.documents[documentID]
 	if !exists {
 		service.mu.Unlock()
-		return documentTransitionClassified(apperr.ClassifiedNotFound, documentID, "The document is no longer open.", apperr.RemediationNone)
+		return bridge.Refused[apperr.DocumentTransitionResult](apperr.ClassifiedNotFound, documentID, "The document is no longer open.", apperr.RemediationNone)
 	}
 	if service.state.activeDocumentID == documentID {
 		outcome := activeDocumentTransition(documentID, service.state.revision, document)
@@ -32,14 +33,14 @@ func (service *AppModelService) ActivateDocument(ctx context.Context, documentID
 	patch := service.documentPatchLocked(documentID)
 	if err := service.publishLocked(ctx, before, patch); err != nil {
 		service.mu.Unlock()
-		return documentTransitionClassified(apperr.ClassifiedIOFailure, documentID, "The active document could not be published.", apperr.RemediationRetry)
+		return bridge.Refused[apperr.DocumentTransitionResult](apperr.ClassifiedIOFailure, documentID, "The active document could not be published.", apperr.RemediationRetry)
 	}
 	outcome := activeDocumentTransition(documentID, service.state.revision, document)
 	service.mu.Unlock()
 	return service.attachForegroundConflict(ctx, documentID, outcome)
 }
 
-// attachForegroundConflict is FR-FT-020's tab-activation occasion, which is why
+// attachForegroundConflict is the tab-activation occasion, which is why
 // it goes through CheckDocumentDisk: the requirement lists "tab activation and
 // window focus or resume" as separate events, and the two aliases exist so each
 // occasion reads as itself at its call site. Window focus and resume cannot be
@@ -60,26 +61,21 @@ func activeDocumentTransition(documentID string, projectionRevision uint64, docu
 	}}
 }
 
-func documentTransitionClassified(category apperr.ClassifiedErrorCategory, subject, message string, remediation apperr.ClassifiedRemediation) apperr.DocumentTransitionOutcome {
-	classified := apperr.NewClassifiedError(category, subject, message, remediation, subject)
-	return apperr.DocumentTransitionOutcome{Error: &classified}
-}
-
 // CloseDocument removes one backend-owned tab and selects the next tab at the
 // same insertion point, or the previous tab when the closed tab was last.
 func (service *AppModelService) CloseDocument(ctx context.Context, documentID string, expectedTabSetRevision uint64) apperr.TabTransitionOutcome {
 	service.mu.Lock()
 	if service.state.tabSetRevision != expectedTabSetRevision {
 		service.mu.Unlock()
-		return tabTransitionFailure(apperr.ClassifiedConflict, documentID, "The tab set changed; close must be retried.", apperr.RemediationRetry)
+		return bridge.Refused[apperr.TabTransitionResult](apperr.ClassifiedConflict, documentID, "The tab set changed; close must be retried.", apperr.RemediationRetry)
 	}
 	if _, exists := service.state.documents[documentID]; !exists {
 		service.mu.Unlock()
-		return tabTransitionFailure(apperr.ClassifiedNotFound, documentID, "The document is no longer open.", apperr.RemediationNone)
+		return bridge.Refused[apperr.TabTransitionResult](apperr.ClassifiedNotFound, documentID, "The document is no longer open.", apperr.RemediationNone)
 	}
 	service.mu.Unlock()
 
-	// FR-FT-024: a pending working-copy flush must complete before the document
+	// A pending working-copy flush must complete before the document
 	// is removed. Evaluating Dirty first refused a tab whose autosave debounce
 	// was still pending, prompting for work the application had already accepted
 	// and was about to write. Running it synchronously is what turns that into a
@@ -89,12 +85,12 @@ func (service *AppModelService) CloseDocument(ctx context.Context, documentID st
 	service.mu.Lock()
 	if service.state.tabSetRevision != expectedTabSetRevision {
 		service.mu.Unlock()
-		return tabTransitionFailure(apperr.ClassifiedConflict, documentID, "The tab set changed; close must be retried.", apperr.RemediationRetry)
+		return bridge.Refused[apperr.TabTransitionResult](apperr.ClassifiedConflict, documentID, "The tab set changed; close must be retried.", apperr.RemediationRetry)
 	}
 	document, exists := service.state.documents[documentID]
 	if !exists {
 		service.mu.Unlock()
-		return tabTransitionFailure(apperr.ClassifiedNotFound, documentID, "The document is no longer open.", apperr.RemediationNone)
+		return bridge.Refused[apperr.TabTransitionResult](apperr.ClassifiedNotFound, documentID, "The document is no longer open.", apperr.RemediationNone)
 	}
 	// Still dirty after the flush means there was nothing accepted to write, or
 	// the write did not clean the document — either way it needs a close plan.
@@ -103,19 +99,19 @@ func (service *AppModelService) CloseDocument(ctx context.Context, documentID st
 	// still refuses.
 	if service.effectiveDocumentMetadataLocked(document).Dirty || document.writeInFlight {
 		service.mu.Unlock()
-		return tabTransitionFailure(apperr.ClassifiedConflict, documentID, "The document has unsaved changes; prepare a close plan first.", apperr.RemediationRetry)
+		return bridge.Refused[apperr.TabTransitionResult](apperr.ClassifiedConflict, documentID, "The document has unsaved changes; prepare a close plan first.", apperr.RemediationRetry)
 	}
 	service.mu.Unlock()
 	return service.closeDocuments(ctx, []string{documentID}, &expectedTabSetRevision)
 }
 
 func (service *AppModelService) rememberClosedLocked(path string, document *openDocument) {
-	identity := document.canonicalIdentity
+	identity := document.identity
 	entry := recentlyClosedDocument{path: path, identity: identity, view: document.metadata.View}
 	filtered := make([]recentlyClosedDocument, 0, 41)
 	filtered = append(filtered, entry)
 	for _, existing := range service.state.recentlyClosed {
-		if existing.path == path || (identity != "" && existing.identity == identity) {
+		if existing.path == path || (!identity.IsZero() && existing.identity.Equal(identity)) {
 			continue
 		}
 		if len(filtered) == 40 {

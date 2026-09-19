@@ -1,3 +1,0 @@
-npm --prefix frontend run typecheck
-> frontend@0.0.0 typecheck
-> tsc --noEmit

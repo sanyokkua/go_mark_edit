@@ -17,7 +17,6 @@ const (
 type SaveOrigin string
 
 const (
-	SaveOriginNone         SaveOrigin = ""
 	SaveOriginOpen         SaveOrigin = "open"
 	SaveOriginReload       SaveOrigin = "reload"
 	SaveOriginExplicitSave SaveOrigin = "explicit-save"

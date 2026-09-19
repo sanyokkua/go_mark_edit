@@ -1,1 +1,0 @@
-fetch(a.href,b);fetch('https://example.invalid/outbound');navigator.sendBeacon('https://example.invalid/telemetry');

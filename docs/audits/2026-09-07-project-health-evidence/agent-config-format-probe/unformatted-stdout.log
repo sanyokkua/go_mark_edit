@@ -1,5 +1,0 @@
-main.go:2:1: File is not properly formatted (gofmt)
-func main(){println("format probe")}
-^
-1 issues:
-* gofmt: 1
