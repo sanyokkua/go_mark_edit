@@ -377,14 +377,21 @@ func (service *AppModelService) executeWrite(ctx context.Context, snapshot write
 	}
 	before := service.snapshotLocked()
 	document.writeInFlight = false
+	// AtomicReplace commits every write via rename-over-target, which gives the
+	// target path a new on-disk identity each time and frees the old one for
+	// filesystem reuse. document.identity must track that on every save, not
+	// only when the path itself changes, or a later Open of an unrelated file
+	// that happens to receive the freed inode falsely matches this document.
+	candidate, candidateErr := file.CanonicalizeCandidateDocumentPath(snapshot.path)
+	if candidateErr == nil {
+		document.identity = candidate.Identity
+		document.canonicalPath = candidate.Path
+	}
 	if snapshot.targetPathAdopted {
-		candidate, candidateErr := file.CanonicalizeCandidateDocumentPath(snapshot.path)
 		if candidateErr == nil {
 			document.metadata.Path = candidate.Path
 			document.metadata.DisplayName = candidate.DisplayName
 			document.metadata.ParentName = candidate.ParentName
-			document.identity = candidate.Identity
-			document.canonicalPath = candidate.Path
 		}
 		document.metadata.Capability = string(file.CapabilityWritable)
 		document.metadata.SizeClass = "small"

@@ -8,6 +8,7 @@ const whiteBoxTests = new Set([
     'internal/file/atomic_replace_test.go',
     'internal/file/document_reader_test.go',
     'internal/appmodel/lifecycle_retention_test.go',
+    'internal/appmodel/save_identity_test.go',
 ]);
 const productionCodeExtensions = new Set(['.go', '.ts', '.tsx']);
 const referenceRoots = [
