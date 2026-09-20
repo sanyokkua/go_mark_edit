@@ -13,8 +13,8 @@ future provider request must be explicitly initiated by the user and governed by
 The active feature is the `specs/<NNN>-<name>/` directory whose number the checked-out
 `feature/<NNN>-<name>` branch carries; a branch without a feature number, such as `master`, has no
 active feature. Read that feature's complete artifact set before deciding what to change. On this
-branch the active set is `specs/004-codebase-refactoring/`, including `spec.md`, `plan.md`,
-`tasks.md` and `contracts/`.
+branch the active feature is `specs/005-folder-workspace/`; its `spec.md`, `plan.md`, `research.md`,
+`data-model.md`, `quickstart.md`, `contracts/` and `tasks.md` are in place.
 
 The two current authorities are:
 
@@ -46,6 +46,23 @@ projection. Generated Wails bindings under `frontend/wailsjs/` are regenerated b
 `frontend/src/logic/adapter/` crosses from the frontend into those bindings. Shared UI components
 receive props or primitive context and do not reach into the store, adapter or action registry.
 
+Apply YAGNI, KISS, DRY and SOLID at every decision point: prefer the smallest change that satisfies the
+approved scope, do not build for hypothetical future needs, and do not duplicate a component, hook,
+handler or utility that already exists. Before adding a new UI widget, hook, Go type or utility, search
+`frontend/src/ui/` and the relevant `internal/` package for an existing one that can be reused or
+extended with a prop, variant or parameter; only create a new one when none fits.
+
+## Working style
+
+Keep the orchestrating context focused on decisions, not execution. Delegate coding, testing, review,
+research and other context-heavy work to sub-agents; sub-agent-driven execution is the default way this
+project's work gets implemented, not an optional optimization. When a loaded skill's workflow matches
+the task at hand (brainstorming before creative or ambiguous work, systematic-debugging before a fix,
+test-driven-development before writing code, code-review or requesting-code-review before calling work
+done, and so on), use that workflow instead of an ad hoc sequence of steps. Re-check
+`.specify/memory/constitution.md` for principles bearing on the task before making a design or scope
+decision — it can define constraints that neither `spec.md` nor this file restates.
+
 ## Development loop
 
 1. Orient from the branch name, then read the active feature's `spec.md`, `plan.md`, `tasks.md` and
@@ -57,9 +74,16 @@ receive props or primitive context and do not reach into the store, adapter or a
 3. Work on a task-sized branch, implement only the approved scope, and keep tests in `tests/go/` or
    `frontend/tests/` unless the task explicitly names a white-box test under its production package.
 4. Run the narrowest relevant checks while working, then run the full six-stage verification before
-   calling a task complete. Compare the result with
-   `.local_tmp_files/baseline/004-codebase-refactoring.json` only through the explicit
-   `scripts/baseline --compare` command.
+   calling a task complete. Compare the result with the active feature's baseline record under
+   `.local_tmp_files/baseline/<feature-slug>.json` (for example `005-folder-workspace.json`) only
+   through the explicit `scripts/baseline --compare` command. A green stage is necessary but not
+   sufficient: confirm each acceptance criterion is satisfied by tracing it to the code path that
+   implements it, that its edge cases have tests exercising them and not just the happy path, and that
+   the real application behaves as specified — start it and exercise the feature rather than trusting
+   test output alone. When running outside a Claude or Codex app session (CLI, IDE extension, headless),
+   check whether computer-use tooling is available before relying on it for this verification; if it
+   isn't available, ask the user to open or start a session in the app and perform the real-app check
+   there instead of skipping it.
 5. Review the diff for ownership, public-surface documentation, generated-file drift and unrelated
    changes. Commit one task with a Conventional Commit message and squash-merge it into the feature
    parent; the feature parent is not merged into `master` by this workflow.

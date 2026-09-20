@@ -1,16 +1,21 @@
 <!--
 Sync Impact Report
-- Version change: 2.1.0 -> 2.1.1 (PATCH: governance wording clarified)
-- Modified principles: none
+- Version change: 2.1.1 -> 2.1.2 (PATCH: stale wording clarified)
+- Modified principles: none (wording only)
 - Modified sections:
-  - Governance: the normative material is named as `specs/<feature>/` and `docs/architecture.md`
-    only, with no reference-only material beside them
+  - Principle VII (Evidence Before Completion): removed the one-time bootstrapping parenthetical
+    tying `scripts/baseline`'s first run to "the feature that creates `scripts/baseline`" (that
+    already happened; feature 004 is merged) and restated the rule in general, timeless form —
+    `scripts/baseline` MUST be run once before the first implementation edit of a feature that does
+    not yet have a recorded baseline.
+  - Specification-Driven Delivery Workflow (step 3): same wording fix, same rationale.
 - Added principles: none
 - Added sections: none
 - Removed sections: none
 - Templates: Spec Kit templates are owned by the Spec Kit CLI and untouched.
 - Follow-up TODOs: none
-- Previous reports: 2.0.0 -> 2.1.0 (2026-09-09): Principle VII allows listed in-package white-box
+- Previous reports: 2.1.0 -> 2.1.1 (2026-09-16): governance wording clarified;
+  2.0.0 -> 2.1.0 (2026-09-09): Principle VII allows listed in-package white-box
   tests and runs `scripts/baseline` right after the entry-point scripts are created;
   1.0.0 -> 2.0.0 (2026-09-08): authority, anchor and baseline governance redefined, Principle VIII
   added; see git history.
@@ -128,10 +133,9 @@ correctness, not optional polish.
 ### VII. Evidence Before Completion
 Verification is six stages (Lint, Format check, Build, Unit, Integration, End-to-end) run through
 the shared entry-point scripts; hooks, CI and local runs MUST call the same scripts. Before the
-first implementation edit of a feature, `scripts/baseline` MUST be run once to record the commit,
-tool versions and every stage's exit code (the feature that creates `scripts/baseline` runs it
-immediately after creating the entry-point scripts, before any other implementation edit); before
-the feature closes, a fresh run MUST be compared
+first implementation edit of a feature that does not yet have a recorded baseline, `scripts/baseline`
+MUST be run once to record the commit, tool versions and every stage's exit code; before the feature
+closes, a fresh run MUST be compared
 against that baseline, and a stage that exited non-zero having analysed nothing is unreliable and
 MUST be fixed before anything builds on it. Failing tests MUST NOT be deleted, skipped, narrowed,
 ignored or commented out, and quality configurations, hooks or lint rules MUST NOT be weakened to
@@ -198,9 +202,8 @@ owner per behaviour keeps the product coherent and makes the next feature cheape
 2. Plan one dependency-ordered feature at a time. The plan MUST give every in-scope requirement an
    owning task, identify the applicable boundaries and name the evidence for each acceptance
    scenario. No rule-count, branch-per-file or per-rule-test quota applies.
-3. Run `scripts/baseline` once before the first implementation edit (the feature that creates
-   `scripts/baseline` runs it immediately after creating the entry-point scripts, before any other
-   implementation edit). Implement the approved scope;
+3. Run `scripts/baseline` once before the first implementation edit of a feature that does not yet
+   have a recorded baseline. Implement the approved scope;
    report any necessary scope expansion or requirement decision instead of resolving it in code.
 4. Verify through the six stages with `scripts/verify`, then perform the live interaction checks
    required for visible or platform-dependent work. Record commands, results and remaining
@@ -235,4 +238,4 @@ repository working instructions, and the active Spec Kit commands define artifac
 neither may override this constitution. The constitution itself is updated only through the
 constitution workflow.
 
-**Version**: 2.1.1 | **Ratified**: 2026-07-30 | **Last Amended**: 2026-09-16
+**Version**: 2.1.2 | **Ratified**: 2026-07-30 | **Last Amended**: 2026-09-19

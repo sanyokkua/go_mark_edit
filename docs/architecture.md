@@ -1,7 +1,7 @@
 # GoMarkEdit architecture map
 
 This is the concise architecture map for GoMarkEdit. Together with the active feature tree in
-`specs/004-codebase-refactoring/`, it is the authority for the current product and its boundaries;
+`specs/005-folder-workspace/`, it is the authority for the current product and its boundaries;
 this file states the decisions that current work must follow.
 
 ## Product intent
@@ -21,7 +21,7 @@ instances.
 ## Authority and ownership
 
 The active feature specification, plan, contracts and task list live under
-`specs/004-codebase-refactoring/`. This map records the stable architecture that those artifacts
+`specs/005-folder-workspace/`. This map records the stable architecture that those artifacts
 describe. A change to an existing behaviour starts by finding its owner and every consumer below;
 it does not create a parallel implementation in the caller.
 
@@ -383,7 +383,7 @@ swap-file feature. Autosave touches only files that already exist on disk.
 
 Before a release, run the packaged binary produced by `scripts/build` on the developer's host. Record
 one sentence in the release notes with the date, commit, host and outcome. This feature has no release,
-so the same sentence belongs in the close-out record in `specs/004-codebase-refactoring/plan.md`.
+so the same sentence belongs in the close-out record in `specs/005-folder-workspace/plan.md`.
 CI does not automate native dialogs or OS-level window interaction.
 
 1. Launch the packaged app with Wi-Fi and Ethernet disabled; confirm the window appears and the process

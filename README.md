@@ -23,8 +23,9 @@ just verify
 
 The active feature is the `specs/<NNN>-<name>/` directory whose number the checked-out
 `feature/<NNN>-<name>` branch carries. On this branch its artifacts are in
-[`specs/004-codebase-refactoring/`](specs/004-codebase-refactoring/): read `spec.md`, `plan.md`,
-`tasks.md` and the relevant files under `contracts/` before changing behaviour.
+[`specs/005-folder-workspace/`](specs/005-folder-workspace/): read `spec.md`, `plan.md`,
+`research.md`, `data-model.md`, `quickstart.md`, `tasks.md` and the relevant files under
+`contracts/` before changing behaviour.
 
 The repository-wide architecture authority is [`docs/architecture.md`](docs/architecture.md). It
 records owners, shared-component consumers, document lifecycle, persistence, shutdown, verification
