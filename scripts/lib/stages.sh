@@ -12,7 +12,12 @@ run_lint_stage() {
     (cd "$REPO_ROOT/frontend" && run_command 'TypeScript source check' "$frontend_bin/tsc" --noEmit -p tsconfig.json) || failed=1
     (cd "$REPO_ROOT/frontend" && run_command 'TypeScript test check' "$frontend_bin/tsc" --noEmit -p tsconfig.test.json) || failed=1
     (cd "$REPO_ROOT/frontend" && run_command 'TypeScript node check' "$frontend_bin/tsc" --noEmit --tsBuildInfoFile "$RUN_DIR/tsconfig.node.tsbuildinfo" -p tsconfig.node.json) || failed=1
-    run_reported_command 'ESLint' eslint "$RUN_DIR/reports/eslint.json" "$REPO_ROOT/frontend/node_modules/.bin/eslint" --config "$REPO_ROOT/frontend/eslint.config.js" frontend tools --format json || failed=1
+    # Keep ESLint above Node's default heap limit on macOS arm64 release runners.
+    local eslint_node_options="${NODE_OPTIONS:+$NODE_OPTIONS }--max-old-space-size=4096"
+    run_reported_command 'ESLint' eslint "$RUN_DIR/reports/eslint.json" \
+        env NODE_OPTIONS="$eslint_node_options" \
+        "$REPO_ROOT/frontend/node_modules/.bin/eslint" \
+        --config "$REPO_ROOT/frontend/eslint.config.js" frontend tools --format json || failed=1
     if (cd "$REPO_ROOT/frontend" && run_reported_command 'stylelint' stylelint "$RUN_DIR/reports/stylelint.json" --capture-stderr "$REPO_ROOT/frontend/node_modules/.bin/stylelint" 'src/**/*.css' --formatter json); then
         :
     else
