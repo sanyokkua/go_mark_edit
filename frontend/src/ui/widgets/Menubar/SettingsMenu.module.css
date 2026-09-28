@@ -1,0 +1,42 @@
+/* MenuItem owns row presentation; this widget only adds theme swatches and its checkbox input. */
+.menu {
+    position: relative;
+}
+
+.settingsBody {
+    display: block;
+    width: 100%;
+}
+
+.swatch {
+    background: var(--theme-glass-swatch);
+    block-size: var(--icon-size);
+    border: var(--control-border-width) solid var(--stroke);
+    border-radius: var(--segmented-option-radius);
+    box-sizing: border-box;
+    inline-size: var(--icon-size);
+}
+
+.swatch[data-menu-swatch='material'] {
+    background: var(--theme-material-swatch);
+}
+
+.swatch[data-menu-swatch='minimal'] {
+    background: var(--theme-minimal-swatch);
+}
+
+/*
+ * Settings drives its switches from a real checkbox so the control is operable
+ * and labelled; the View menu's switch is decorative. The input is taken out of
+ * the flow rather than hidden, so it stays focusable and keyboard-operable.
+ */
+.toggleInput {
+    height: 1px;
+    opacity: 0;
+    position: absolute;
+    width: 1px;
+}
+
+.toggleInput:disabled {
+    cursor: default;
+}

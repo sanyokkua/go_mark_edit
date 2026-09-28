@@ -1,0 +1,110 @@
+.row {
+    position: relative;
+    z-index: var(--z-sticky);
+    height: var(--menu-row-height);
+    min-height: revert;
+    display: flex;
+    align-items: center;
+    gap: var(--menu-row-gap);
+    padding: var(--menu-row-padding);
+    border-block-end: var(--control-border-width) solid var(--border);
+    background: transparent;
+    min-width: revert;
+    overflow: visible;
+    white-space: normal;
+}
+
+/* The menu is `display:flex;gap:1px`.
+   Nothing positions this element but the elements before it. The design's
+   traffic lights are drawn by the operating system's own frame, so no space is
+   reserved for them here. */
+.menu {
+    display: flex;
+    gap: 1px;
+}
+
+.barFrame {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+/*
+ * The menubar triggers — File, Settings, View, About and the narrow overflow —
+ * are drawn by `PopupTrigger`, which owns their styling, ARIA and keyboard
+ * contract in one place.
+ */
+
+.rowAction {
+    background: var(--surface);
+    border: var(--control-border-width) solid var(--stroke);
+    color: var(--muted);
+    flex: none;
+    border-radius: var(--menu-action-radius);
+    cursor: pointer;
+    font-size: var(--menu-trigger-font-size);
+    block-size: var(--menu-action-size);
+    inline-size: var(--menu-action-size);
+    min-inline-size: var(--menu-action-size);
+    line-height: var(--menu-trigger-line-height);
+    max-width: 100%;
+    min-height: 0;
+    overflow: hidden;
+    padding: 0;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.rowAction[aria-pressed='true'] {
+    background: var(--accent-soft);
+    border-color: var(--stroke-soft);
+    color: var(--accent-ink);
+}
+
+.rowAction:hover,
+.rowAction:focus-visible {
+    background: var(--surface);
+    box-shadow: var(--focus-ring);
+}
+
+/* In the design a single `flex:1` spacer sits before the document identity,
+   and the two window-control buttons follow it on the row's own 12px gap. The
+   identity owns the auto margin; a second one here would split the free space
+   and leave the identity floating mid-row instead of adjacent to these
+   buttons. */
+.menuRowActions {
+    align-items: center;
+    display: flex;
+    gap: var(--menu-row-gap);
+}
+
+/* The flexible spacer before the document identity. */
+.spacer {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.rowAction:disabled {
+    cursor: not-allowed;
+    opacity: var(--disabled-opacity);
+}
+
+/* Recent and reopen rows retain their indentation within the shared row metrics. */
+.subItem {
+    color: var(--muted);
+    padding-inline-start: var(--popup-row-indent);
+}
+
+.subItemIcon {
+    color: inherit;
+}
+
+.subItemLabel {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.narrowOverflow {
+    max-inline-size: calc(100vw - 2 * var(--app-gap));
+}

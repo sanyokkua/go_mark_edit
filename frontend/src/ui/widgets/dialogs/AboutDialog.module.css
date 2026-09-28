@@ -1,0 +1,12 @@
+.label {
+    display: grid;
+    gap: var(--control-gap);
+}
+.close {
+    background: var(--accent);
+    border: 0;
+    border-radius: var(--control-radius);
+    color: var(--accent-contrast);
+    font: inherit;
+    padding: var(--control-padding);
+}

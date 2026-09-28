@@ -1,0 +1,56 @@
+.normalizationBody {
+    display: grid;
+    gap: 16px;
+    padding: 16px;
+}
+
+.normalizationBody header {
+    min-width: 0;
+}
+
+.normalizationBody p {
+    color: var(--text-muted);
+    line-height: 1.6;
+    overflow-wrap: anywhere;
+}
+
+.normalizationBody .actions {
+    gap: 8px;
+}
+
+.normalizationBody .primary,
+.normalizationBody .secondary {
+    border-radius: 9px;
+    padding: 8px 14px;
+}
+
+.label {
+    display: grid;
+    gap: var(--control-gap);
+    margin-top: var(--app-gap);
+}
+
+.actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--control-gap);
+    justify-content: flex-end;
+}
+
+.primary,
+.secondary {
+    border: var(--control-border-width) solid var(--border);
+    border-radius: var(--control-radius);
+    font: inherit;
+    padding: var(--control-padding);
+}
+
+.primary {
+    background: var(--accent);
+    color: var(--accent-contrast);
+}
+
+.secondary {
+    background: var(--surface);
+    color: var(--text);
+}

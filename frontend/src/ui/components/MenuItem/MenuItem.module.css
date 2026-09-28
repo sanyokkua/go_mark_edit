@@ -1,0 +1,112 @@
+.item {
+    align-items: center;
+    background: transparent;
+    border: 0;
+    border-radius: var(--control-radius);
+    box-sizing: border-box;
+    color: var(--text);
+    cursor: pointer;
+    display: flex;
+    flex-wrap: wrap;
+    font: inherit;
+    font-size: var(--popup-row-font-size);
+    font-weight: var(--popup-row-font-weight);
+    gap: var(--popup-row-gap);
+    inline-size: 100%;
+    justify-content: flex-start;
+    line-height: var(--popup-row-line-height);
+    min-block-size: var(--menu-item-height);
+    min-inline-size: 0;
+    overflow: visible;
+    padding: var(--popup-row-padding);
+    text-align: start;
+    white-space: nowrap;
+}
+
+.item:hover,
+.item:focus-visible,
+.item[data-highlighted] {
+    background: var(--hover);
+}
+
+.item:focus-visible {
+    box-shadow: var(--focus-ring);
+    outline: 0;
+}
+
+.item:disabled,
+.item[aria-disabled='true'] {
+    cursor: not-allowed;
+    opacity: var(--disabled-opacity);
+}
+
+.icon,
+.label,
+.accelerator {
+    min-inline-size: 0;
+}
+
+.label {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.icon,
+.trailing,
+.indicator {
+    align-items: center;
+    display: inline-flex;
+    flex: none;
+    justify-content: center;
+}
+
+.indicator {
+    block-size: var(--icon-size);
+    color: var(--accent-ink);
+    inline-size: var(--icon-size);
+}
+
+.accelerator {
+    color: var(--faint);
+    flex: none;
+    font-family: var(--mono);
+    font-size: var(--popup-accelerator-font-size);
+}
+
+.submenu {
+    flex-basis: 100%;
+    padding-inline-start: var(--popup-row-indent);
+}
+
+.toggle {
+    background: var(--surface-3);
+    border: var(--control-border-width) solid var(--stroke);
+    border-radius: 12px;
+    cursor: pointer;
+    flex: none;
+    height: 19px;
+    position: relative;
+    width: 34px;
+}
+
+.toggle::after {
+    background: var(--muted);
+    border-radius: 50%;
+    content: '';
+    height: 14px;
+    left: 1.5px;
+    position: absolute;
+    top: 1.5px;
+    width: 14px;
+}
+
+.toggle[data-checked='true'] {
+    background: var(--accent);
+    border-color: transparent;
+}
+
+.toggle[data-checked='true']::after {
+    background: var(--accent-contrast);
+    left: 16px;
+}

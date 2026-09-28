@@ -1,0 +1,9 @@
+.specify/**
+frontend/wailsjs/**
+frontend/dist/**
+build/bin/**
+**/node_modules/**
+**/package-lock.json
+go.sum
+justfile
+specs/*/evidence/**
