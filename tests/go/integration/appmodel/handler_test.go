@@ -457,3 +457,19 @@ func (service *fakeAppModelService) CancelConflict(_ context.Context, _ string, 
 }
 
 var _ AppModelServiceAPI = (*fakeAppModelService)(nil)
+
+func (service *fakeAppModelService) RefreshRecentItems(context.Context) apperr.RecentItemsResult {
+	if service.panicOn == "RefreshRecentItems" {
+		panic("service panic")
+	}
+	service.emissions++
+	return apperr.RecentItemsResult{}
+}
+
+func (service *fakeAppModelService) ClearRecentItems(context.Context) apperr.VoidResult {
+	if service.panicOn == "ClearRecentItems" {
+		panic("service panic")
+	}
+	service.emissions++
+	return apperr.VoidResult{}
+}

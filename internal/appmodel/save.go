@@ -390,6 +390,7 @@ func (service *AppModelService) executeWrite(ctx context.Context, snapshot write
 	if snapshot.targetPathAdopted {
 		if candidateErr == nil {
 			document.metadata.Path = candidate.Path
+			document.metadata.Title = candidate.DisplayName
 			document.metadata.DisplayName = candidate.DisplayName
 			document.metadata.ParentName = candidate.ParentName
 		}
@@ -409,12 +410,13 @@ func (service *AppModelService) executeWrite(ctx context.Context, snapshot write
 	if document.metadata.LineEnding == string(file.LineEndingLF) && encoded.lineEndingOutcome == apperr.LineEndingPreservedCRLF {
 		document.metadata.LineEnding = string(file.LineEndingCRLF)
 	}
-	recentRepository := service.recentFiles
+	recentRepository := service.recentItems
 	shouldPromoteRecent := origin == SaveOriginExplicitSave || origin == SaveOriginSaveAs
 	if !shouldPromoteRecent {
 		recentRepository = nil
 	} else if recentRepository == nil {
-		service.state.recentFiles = promoteRecentFile(service.state.recentFiles, snapshot.path)
+		service.state.recentItems = promoteRecentItem(service.state.recentItems, snapshot.path, "file")
+		service.updateCanReopenLastFileLocked()
 	}
 	patch := service.documentPatchLocked(snapshot.documentID)
 	projectionRevision := service.state.revision
@@ -426,11 +428,11 @@ func (service *AppModelService) executeWrite(ctx context.Context, snapshot write
 
 	var promotionWarning *apperr.ClassifiedError
 	if recentRepository != nil {
-		entries, promoteErr := recentRepository.Promote(ctx, snapshot.path)
+		entries, promoteErr := recentRepository.Promote(ctx, snapshot.path, "file")
 		if promoteErr != nil {
-			promotionWarning = bridge.ClassifiedWithID(apperr.ClassifiedPersistenceWarning, snapshot.path, "The document was saved successfully, but recent-file history could not be updated.", apperr.RemediationNone, "recent-files")
+			promotionWarning = bridge.ClassifiedWithID(apperr.ClassifiedPersistenceWarning, snapshot.path, "The document was saved successfully, but recent history could not be updated.", apperr.RemediationNone, "recent-items")
 		} else {
-			service.publishRecentFiles(ctx, entries)
+			_ = service.publishRecentItems(ctx, entries)
 		}
 	}
 	if replaceErr != nil {

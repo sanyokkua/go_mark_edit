@@ -78,6 +78,44 @@ func TestSaveAsUsesTheDialogTargetAndAdoptsItsCanonicalPath(t *testing.T) {
 	}
 }
 
+func TestSaveAsUpdatesTheTitleAndDisplayNameOfAnOpenDocument(t *testing.T) {
+	directory := t.TempDir()
+	source := filepath.Join(directory, "c.md")
+	target := filepath.Join(directory, "c-copy.md")
+	if err := os.WriteFile(source, []byte("content\n"), 0o644); err != nil {
+		t.Fatalf("write source: %v", err)
+	}
+	service := NewAppModelServiceForHost(
+		WithEmitter(&recordingEmitter{}),
+		AppModelOption{AutosaveTimer: &fakeAutosaveClock{}},
+		WithDialogs(nil, saveDialog{path: target}),
+	)
+	state, err := service.GetState(context.Background())
+	if err != nil {
+		t.Fatalf("GetState before open: %v", err)
+	}
+	opened := service.OpenPath(context.Background(), source, state.Snapshot.TabSetRevision)
+	if opened.Status != apperr.OpenStatusOpened {
+		t.Fatalf("OpenPath = %+v", opened)
+	}
+	state, err = service.GetState(context.Background())
+	if err != nil {
+		t.Fatalf("GetState before Save As: %v", err)
+	}
+	result := service.SaveAs(context.Background(), opened.DocumentID, state.Snapshot.Documents[opened.DocumentID].ContentRevision, "")
+	if result.Status != apperr.WriteStatusCommitted {
+		t.Fatalf("SaveAs = %+v", result)
+	}
+	state, err = service.GetState(context.Background())
+	if err != nil {
+		t.Fatalf("GetState after Save As: %v", err)
+	}
+	metadata := state.Snapshot.Documents[opened.DocumentID]
+	if metadata.Title != "c-copy.md" || metadata.DisplayName != "c-copy.md" {
+		t.Fatalf("Save As title = %q and display name = %q, want c-copy.md", metadata.Title, metadata.DisplayName)
+	}
+}
+
 func TestSaveRefusesAnUnsupportedSaveAsSuffixBeforeCreatingTheTarget(t *testing.T) {
 	target := filepath.Join(t.TempDir(), "saved.png")
 	service := NewAppModelServiceForHost(WithEmitter(&recordingEmitter{}), WithDialogs(nil, saveDialog{path: target}))

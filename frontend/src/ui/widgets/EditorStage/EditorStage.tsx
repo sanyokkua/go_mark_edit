@@ -44,6 +44,8 @@ export interface EditorStageProps {
     editorVisible: boolean;
     labelledBy?: string;
     onLiveCursorChange: (cursor: EditorPosition) => void;
+    onEditorReady?: (documentId: string) => void;
+    onFocusedDocumentOpen?: (documentId: string) => void;
     onPreviewRefresh?: (accepted: LivePreviewSnapshot) => Promise<LivePreviewSnapshot>;
     onPreviewWarning: (target: string, reason: string) => void;
     panelId?: string;
@@ -56,6 +58,7 @@ interface ActiveEditorProps {
     activeBuffer: ActiveBuffer;
     adapter: EditorStageAdapter;
     onLiveCursorChange: (cursor: EditorPosition) => void;
+    onEditorReady?: (documentId: string) => void;
     onPreviewScrollHandler: (handler: ((scrollTop: number) => void) | null) => void;
     onScrollPortReady: (port: EditorScrollPort | null) => void;
     readOnly: boolean;
@@ -72,6 +75,7 @@ const ActiveEditor = forwardRef<ActiveEditorHandle, ActiveEditorProps>(function 
         activeBuffer,
         adapter,
         onLiveCursorChange,
+        onEditorReady,
         onPreviewScrollHandler,
         onScrollPortReady,
         readOnly,
@@ -114,10 +118,11 @@ const ActiveEditor = forwardRef<ActiveEditorHandle, ActiveEditorProps>(function 
     }, [adapter, activeBuffer.documentId, activationToken, flushSession]);
 
     const synchronizeMountedEditorTheme = useCallback((): void => {
+        onEditorReady?.(activeBuffer.documentId);
         void import('../../components/monacoSetup').then(({ applyMonacoThemeFromRoot }): void => {
             applyMonacoThemeFromRoot()();
         });
-    }, []);
+    }, [activeBuffer.documentId, onEditorReady]);
 
     useEffect((): void => {
         onLiveCursorChange(synchronizedBuffer.liveCursor);
@@ -178,6 +183,7 @@ interface LivePreviewProps {
     adapter: EditorStageAdapter;
     claimScrollRestore: (documentId: string) => boolean;
     documentPath: string;
+    onFocusedDocumentOpen?: (documentId: string) => void;
     onPreviewRefresh?: (accepted: LivePreviewSnapshot) => Promise<LivePreviewSnapshot>;
     onPreviewWarning: (target: string, reason: string) => void;
     onScrollChange: (scrollTop: number) => void;
@@ -193,6 +199,7 @@ const LivePreview: React.FC<LivePreviewProps> = ({
     claimScrollRestore,
     documentPath,
     onPreviewRefresh,
+    onFocusedDocumentOpen,
     onPreviewWarning,
     onScrollChange,
     onScrollContainerChange,
@@ -275,6 +282,7 @@ const LivePreview: React.FC<LivePreviewProps> = ({
                         documentPath={documentPath}
                         linkAdapter={adapter}
                         notificationOwner={{ warn: onPreviewWarning }}
+                        onFocusedDocumentOpen={onFocusedDocumentOpen}
                         showPausedStatus={false}
                     />
                 </div>
@@ -296,6 +304,8 @@ const EditorStage = forwardRef<EditorStageHandle, EditorStageProps>(function Edi
         editorVisible,
         labelledBy,
         onLiveCursorChange,
+        onEditorReady,
+        onFocusedDocumentOpen,
         onPreviewRefresh,
         onPreviewWarning,
         panelId = EDITOR_TABPANEL_ID,
@@ -357,6 +367,7 @@ const EditorStage = forwardRef<EditorStageHandle, EditorStageProps>(function Edi
                             readOnly={readOnly}
                             visible={editorVisible}
                             onLiveCursorChange={onLiveCursorChange}
+                            onEditorReady={onEditorReady}
                             onPreviewScrollHandler={registerPreviewScrollHandler}
                             onScrollPortReady={setEditorPort}
                         />
@@ -383,6 +394,7 @@ const EditorStage = forwardRef<EditorStageHandle, EditorStageProps>(function Edi
                 claimScrollRestore={claimPreviewScrollRestore}
                 documentPath={activeDocument?.path ?? ''}
                 onPreviewRefresh={onPreviewRefresh}
+                onFocusedDocumentOpen={onFocusedDocumentOpen}
                 onPreviewWarning={onPreviewWarning}
                 onScrollChange={(scrollTop: number): void => {
                     previewScrollHandlerRef.current?.(scrollTop);

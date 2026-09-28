@@ -182,54 +182,18 @@ After any change to `apperr.ErrorCode` or **any bound-method signature**, run
 switches on `apperr.ErrorCode.Busy`, `apperr.ErrorCode.Timeout`, `apperr.ErrorCode.Cancelled`, etc. —
 never on raw string literals.
 
-### agent:* events contract (assistant only)
+### Assistant events and inference
 
-There is **no chain concept** in GoMarkEdit. The assistant LLM assistant runs an **agentic tool-call loop**
-(`internal/llm/agent/`) whose progress and streamed tokens flow Go→frontend via **Wails events**
-(`runtime.EventsEmit` on the backend, `EventsOn` in `logic/adapter/` → dispatched into the `run` slice in
-`logic/store/assistant/`). The bound `RunResult` envelope still returns the final outcome; events are the
-incremental channel. Every payload carries the `runId` from the originating `RunAgentRequest`. See
-`references/05-event-system.md §GoMarkEdit Agent Events` for the full contract.
-
-| Event            | Payload                                    | When                                                                          |
-| ---------------- | ------------------------------------------ | ----------------------------------------------------------------------------- |
-| `agent:progress` | `{ runId, phase, iteration, tool? }`       | Loop advanced; `phase ∈ {infer, tool, final}`; `tool` set when `phase="tool"` |
-| `agent:token`    | `{ runId, delta }`                         | Streaming: a chunk of assistant text to append to the transcript              |
-| `agent:done`     | `{ runId, stopReason, transcriptSummary }` | Run finished (incl. cancelled stop reason)                                    |
-| `agent:error`    | `{ runId, error: WireError }`              | Run failed; `error` is the standard sanitized envelope                        |
-
-### Single-flight gate + bounded, cancellable agent loop
-
-At most **one inference runs app-wide**. `AgentHandler.RunAgent` and `verify.TestInference` both
-`TryAcquire()` the same process-wide `internal/gate`; a held gate returns `apperr.Busy()` (`busy` code)
-and the release happens in a `defer` on every exit (success/error/cancel). The agent loop is **bounded**
-(hard iteration + wall-clock limits) and cooperatively cancellable via the run's `context.Context`:
-check `ctx.Err()` **each iteration** and again **before each tool dispatch** so cancellation aborts
-promptly — between turns or mid-tool. A clean stop at a limit reports `agent_limit`; a cancel reports
-`cancelled` and emits `agent:done` with a cancelled stop reason (or `agent:error`).
-
-```go
-// internal/llm/agent — acquire the shared gate, release on every exit
-if !h.gate.TryAcquire() {
-    wire := apperr.ToWire(h.zlog, apperr.Busy())
-    return apperr.RunResult{Error: &wire}
-}
-defer h.gate.Release()
-
-for i := 0; i < maxIterations; i++ {
-    if err := ctx.Err(); err != nil { /* emit agent:done cancelled; return */ }
-    // ... infer, then before each tool dispatch: re-check ctx.Err() ...
-}
-```
-
-On `OnShutdown`, cancel any in-flight run's context; the deferred `Release` frees the gate.
+The Assistant is planned but not implemented in the current application. There are no `agent:*`
+events, LLM handler, inference gate or provider integration. Do not treat assistant-specific material
+in this reference as current GoMarkEdit behavior. The current app-owned event contract is documented
+in `references/05-event-system.md`.
 
 ### Drag-and-drop via `runtime.OnFileDrop` (native, path-based)
 
 GoMarkEdit uses **Wails' native file-drop**, which delivers **absolute filesystem paths** — not browser
-`File` objects (DD-56–DD-59, ADR-0012). Enable it in `options.App` and register the handler in
-`OnStartup`; route every dropped path through the **same** open-target resolution used for OS opens,
-in `internal/fileassoc`:
+`File` objects. Enable it in `options.App` and register the handler in `OnStartup`; route every dropped
+path through the same open-target resolution used for OS opens:
 
 ```go
 DragAndDrop: &options.DragAndDrop{
@@ -240,21 +204,20 @@ DragAndDrop: &options.DragAndDrop{
 },
 // ... in OnStartup:
 runtime.OnFileDrop(ctx, func(x, y int, paths []string) {
-    // internal/fileassoc: os.Stat-classify, then dispatch as internal/appmodel commands —
-    // file → OpenDoc (default open mode), folder → workspace open (DD-57/DD-58); the resulting
-    // tab/document change reaches the frontend as a state:patch event (DD-62)
+    // Classify paths, then dispatch to the application model; resulting state changes reach
+    // the frontend through the state:patch event.
     app.OpenDropped(paths)
 })
 ```
 
-The frontend renders a drop-target overlay (carrying the `--wails-drop-target` token) and
-`preventDefault`s `dragover`/`drop` so the webview never handles the drop; the real paths arrive via the
-Wails `OnFileDrop` event, not the browser drop event (`logic/hooks/useFileDrop`).
+The frontend adapter subscribes to native Wails file-drop events; see
+`frontend/src/logic/adapter/events.ts` and `frontend/src/app/useDropHandler.ts`.
 
 ### Window / UI-layout persistence (write-through-on-change)
 
-Window geometry (`window.*`) and application UI-layout state (`ui.*` — sidebar visibility/width, view
-arrangement, assistant panel) are persisted in the generic `settings(key,value,type)` KV table and
+Window geometry (`window.*`) and application UI-layout state (`ui.*` — sidebar visibility/width and
+view arrangement; assistant layout fields are reserved for future use) are persisted in the generic
+`settings(key,value,type)` KV table and
 **written through on each change** (DD-60/DD-61), then restored during the `Init(ctx)`
 `restoreWindowState` step (falling back to `options.App` defaults when a value is absent). No migration
 is needed to add a layout key.

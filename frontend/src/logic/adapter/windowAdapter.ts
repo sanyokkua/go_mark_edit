@@ -15,6 +15,7 @@ export interface NativeWindowGeometry {
 export interface WindowBindings {
     retryStartup: () => Promise<VoidResult>;
     windowReady: () => Promise<VoidResult>;
+    openNewWindow: (folderPath: string) => Promise<VoidResult>;
     windowFullscreen: () => void;
     windowGetSize: () => Promise<{ h: number; w: number }>;
     windowIsFullscreen: () => Promise<boolean>;
@@ -25,6 +26,7 @@ export interface WindowBindings {
 export interface WindowAdapter {
     retryStartup: () => Promise<void>;
     windowReady: () => Promise<void>;
+    openNewWindow: (folderPath: string) => Promise<void>;
     isFullscreen: () => Promise<boolean>;
     enterFullscreen: () => Promise<boolean>;
     exitFullscreen: () => Promise<boolean>;
@@ -37,12 +39,16 @@ export interface WindowAdapter {
 export function createWindowAdapter(bindings: WindowBindings): WindowAdapter {
     const retryStartup = guardArity('ApplicationHandler.RetryStartup', bindings.retryStartup);
     const windowReady = guardArity('ApplicationHandler.WindowReady', bindings.windowReady);
+    const openNewWindow = guardArity('ApplicationHandler.OpenNewWindow', async (folderPath: string): Promise<void> =>
+        unwrapPromise(bindings.openNewWindow(folderPath)),
+    );
     const windowIsFullscreen = guardArity('WindowIsFullscreen', bindings.windowIsFullscreen);
     const windowGetSize = guardArity('WindowGetSize', bindings.windowGetSize);
     const windowIsMaximised = guardArity('WindowIsMaximised', bindings.windowIsMaximised);
     return {
         retryStartup: (): Promise<void> => unwrapPromise(retryStartup()),
         windowReady: (): Promise<void> => unwrapPromise(windowReady()),
+        openNewWindow,
         isFullscreen: (): Promise<boolean> => windowIsFullscreen(),
         async getNativeGeometry(): Promise<NativeWindowGeometry> {
             const [size, maximized] = await Promise.all([windowGetSize(), windowIsMaximised()]);

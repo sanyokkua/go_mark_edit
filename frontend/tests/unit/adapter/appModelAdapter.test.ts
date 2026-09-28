@@ -1,14 +1,23 @@
 import { store } from '../../../src/logic/store';
 import { dismissNotification } from '../../../src/logic/store/notificationsSlice';
-import type { AppModelState, AppStatePatch, DocViewInput } from '../../../src/logic/store/appModelTypes';
+import type {
+    AppModelState,
+    AppStatePatch,
+    ClassifiedError,
+    ClassifiedVoidResult,
+    DocViewInput,
+    WorkspaceResult,
+} from '../../../src/logic/store/appModelTypes';
 import type { WireError } from '../../../src/logic/utils/parseError';
 import {
     BUFFER_SYNC_MS,
     createAppModelAdapter,
+    normalizeRecentItems,
     type AppModelAdapter,
     type AppModelBindings,
     type AppModelRuntime,
 } from '../../../src/logic/adapter/appModelAdapter';
+import { createStatePatchDriver } from '../../support/statePatches';
 
 type VoidResult = { error?: WireError };
 
@@ -53,6 +62,48 @@ afterEach((): void => {
     for (const notification of store.getState().notifications.items) {
         store.dispatch(dismissNotification(notification.id));
     }
+});
+
+it('normalizes recent-item wire kinds before the Redux projection', (): void => {
+    expect(
+        normalizeRecentItems([
+            { path: '/tmp/notes.md', kind: 'file' },
+            { path: '/tmp/notes', kind: 'folder' },
+            { path: '/tmp/unsupported', kind: 'unknown' },
+        ]),
+    ).toEqual([
+        { path: '/tmp/notes.md', kind: 'file' },
+        { path: '/tmp/notes', kind: 'folder' },
+    ]);
+    expect(normalizeRecentItems(null)).toBeUndefined();
+});
+
+it('exposes guarded refresh and clear recent commands', async () => {
+    const refreshRecentItems = jest.fn(async () => ({
+        recentItems: [{ path: '/tmp/project', kind: 'folder' as const }],
+    }));
+    const clearRecentItems = jest.fn(async () => ({}));
+    const adapter = createAppModelAdapter(
+        {
+            getState: async () => ({ data: state }),
+            refreshRecentItems,
+            clearRecentItems,
+            updateBuffer: async () => ({}),
+            setDocView: async () => ({}),
+            setUILayout: async () => ({}),
+        },
+        { eventsOn: (): (() => void) => (): void => undefined },
+    );
+    expect(await adapter.refreshRecentItems?.()).toEqual({ recentItems: [{ path: '/tmp/project', kind: 'folder' }] });
+    expect(await adapter.clearRecentItems?.()).toEqual({});
+    await expect(Reflect.apply(adapter.refreshRecentItems!, undefined, ['extra'])).rejects.toThrow(
+        'AppModelHandler.RefreshRecentItems expects 0 argument(s), received 1.',
+    );
+    await expect(Reflect.apply(adapter.clearRecentItems!, undefined, ['extra'])).rejects.toThrow(
+        'AppModelHandler.ClearRecentItems expects 0 argument(s), received 1.',
+    );
+    expect(refreshRecentItems).toHaveBeenCalledTimes(1);
+    expect(clearRecentItems).toHaveBeenCalledTimes(1);
 });
 
 it('exposes guarded New/Open commands without converting classified outcomes', async () => {
@@ -955,4 +1006,199 @@ it('keeps an empty tab order, which is the last document closing', () => {
     eventCallback?.({ revision: 8, orderedDocumentIds: [] });
 
     expect(received.mock.calls[0][0].orderedDocumentIds).toEqual([]);
+});
+
+it('When the backend closes a workspace, the adapter preserves the explicit null patch.', (): void => {
+    const runtime = createStatePatchDriver();
+    const adapter = createAppModelAdapter(
+        {
+            getState: async () => ({ data: state }),
+            updateBuffer: async () => ({}),
+            setDocView: async () => ({}),
+            setUILayout: async () => ({}),
+        },
+        runtime,
+    );
+    const received = jest.fn<void, [AppStatePatch]>();
+    adapter.subscribeStatePatches(received);
+
+    runtime.emitStatePatch({ revision: 9, workspace: null });
+
+    expect(received).toHaveBeenCalledTimes(1);
+    const patch = received.mock.calls[0][0];
+    expect(Object.hasOwn(patch, 'workspace')).toBe(true);
+    expect(patch.workspace).toBeNull();
+});
+
+it('When workspace commands receive valid calls, the adapter forwards each command and guards its arity.', async (): Promise<void> => {
+    const openOutcome: WorkspaceResult = {
+        category: 'permission-denied',
+        subject: '/tmp/project',
+        message: 'The folder is unavailable.',
+        remediation: 'Copy path',
+        id: 'workspace-open',
+        status: 'refused',
+        error: {
+            category: 'permission-denied',
+            message: 'The folder is unavailable.',
+            remediations: ['Copy path'],
+            dedupKey: 'workspace-open',
+        },
+    };
+    const openWorkspace = jest.fn(async (folderPath: string): Promise<WorkspaceResult> => ({
+        ...openOutcome,
+        subject: folderPath,
+    }));
+    const refreshWorkspace = jest.fn(async (): Promise<WorkspaceResult> => ({ status: 'unchanged' }));
+    const closeWorkspace = jest.fn(async (): Promise<ClassifiedVoidResult> => ({}));
+    const adapter = createAppModelAdapter(
+        {
+            getState: async () => ({ data: state }),
+            openWorkspace,
+            refreshWorkspace,
+            closeWorkspace,
+            updateBuffer: async () => ({}),
+            setDocView: async () => ({}),
+            setUILayout: async () => ({}),
+        },
+        { eventsOn: (): (() => void) => (): void => undefined },
+    );
+    const openWorkspaceCommand = adapter.openWorkspace;
+    const refreshWorkspaceCommand = adapter.refreshWorkspace;
+    const closeWorkspaceCommand = adapter.closeWorkspace;
+
+    expect(openWorkspaceCommand).toEqual(expect.any(Function));
+    expect(refreshWorkspaceCommand).toEqual(expect.any(Function));
+    expect(closeWorkspaceCommand).toEqual(expect.any(Function));
+    if (
+        openWorkspaceCommand === undefined ||
+        refreshWorkspaceCommand === undefined ||
+        closeWorkspaceCommand === undefined
+    ) {
+        throw new Error('Workspace adapter commands are unavailable.');
+    }
+
+    await expect(openWorkspaceCommand('/tmp/project')).resolves.toMatchObject({
+        category: 'permission-denied',
+        subject: '/tmp/project',
+        message: 'The folder is unavailable.',
+        remediation: 'Copy path',
+        id: 'workspace-open',
+        status: 'refused',
+        error: {
+            category: 'permission-denied',
+            message: 'The folder is unavailable.',
+            remediations: ['Copy path'],
+            dedupKey: 'workspace-open',
+        },
+    });
+    await expect(refreshWorkspaceCommand()).resolves.toEqual({ status: 'unchanged' });
+    await expect(closeWorkspaceCommand()).resolves.toEqual({});
+    await expect(Reflect.apply(openWorkspaceCommand, undefined, [])).rejects.toThrow(
+        'AppModelHandler.OpenWorkspace expects 1 argument(s), received 0.',
+    );
+    await expect(Reflect.apply(refreshWorkspaceCommand, undefined, ['extra'])).rejects.toThrow(
+        'AppModelHandler.RefreshWorkspace expects 0 argument(s), received 1.',
+    );
+    await expect(Reflect.apply(closeWorkspaceCommand, undefined, ['extra'])).rejects.toThrow(
+        'AppModelHandler.CloseWorkspace expects 0 argument(s), received 1.',
+    );
+    expect(openWorkspace).toHaveBeenCalledWith('/tmp/project');
+    expect(refreshWorkspace).toHaveBeenCalledTimes(1);
+    expect(closeWorkspace).toHaveBeenCalledTimes(1);
+});
+
+it('returns a canonical chosen folder without opening it, and preserves picker cancellation and refusal', async () => {
+    const chooseWorkspaceFolder = jest
+        .fn()
+        .mockResolvedValueOnce({ status: 'chosen', path: '/private/tmp/notes' })
+        .mockResolvedValueOnce({ status: 'cancelled' })
+        .mockResolvedValueOnce({
+            status: 'refused',
+            error: { category: 'permission-denied', message: 'Cannot read folder.', dedupKey: 'folder-picker' },
+        });
+    const openWorkspace = jest.fn();
+    const adapter = createAppModelAdapter(
+        {
+            getState: async () => ({ data: state }),
+            chooseWorkspaceFolder,
+            openWorkspace,
+            updateBuffer: async () => ({}),
+            setDocView: async () => ({}),
+            setUILayout: async () => ({}),
+        },
+        { eventsOn: (): (() => void) => (): void => undefined },
+    );
+
+    await expect(adapter.chooseWorkspaceFolder?.()).resolves.toMatchObject({
+        status: 'chosen',
+        path: '/private/tmp/notes',
+    });
+    await expect(adapter.chooseWorkspaceFolder?.()).resolves.toMatchObject({ status: 'cancelled' });
+    await expect(adapter.chooseWorkspaceFolder?.()).resolves.toMatchObject({
+        status: 'refused',
+        error: { category: 'permission-denied', remediations: [] },
+    });
+    expect(openWorkspace).not.toHaveBeenCalled();
+    expect(chooseWorkspaceFolder).toHaveBeenCalledTimes(3);
+});
+
+it('When workspace refusals omit remediations, the adapter provides an empty list.', async (): Promise<void> => {
+    const refusalError: ClassifiedError = {
+        category: 'permission-denied',
+        message: 'The folder is unavailable.',
+        remediations: [],
+        dedupKey: 'workspace-refusal',
+    };
+    Reflect.deleteProperty(refusalError, 'remediations');
+    const openOutcome: WorkspaceResult = {
+        category: 'permission-denied',
+        subject: '/tmp/project',
+        message: 'The folder is unavailable.',
+        id: 'workspace-open-refused',
+        status: 'refused',
+        error: refusalError,
+    };
+    const refreshOutcome: WorkspaceResult = {
+        category: 'permission-denied',
+        subject: '/tmp/project',
+        message: 'The folder is unavailable.',
+        id: 'workspace-refresh-refused',
+        status: 'refused',
+        error: refusalError,
+    };
+    const closeOutcome: ClassifiedVoidResult = {
+        category: 'permission-denied',
+        subject: '/tmp/project',
+        message: 'The folder is unavailable.',
+        id: 'workspace-close-refused',
+        error: refusalError,
+    };
+    const openWorkspace = jest.fn(async (): Promise<WorkspaceResult> => openOutcome);
+    const refreshWorkspace = jest.fn(async (): Promise<WorkspaceResult> => refreshOutcome);
+    const closeWorkspace = jest.fn(async (): Promise<ClassifiedVoidResult> => closeOutcome);
+    const adapter = createAppModelAdapter(
+        {
+            getState: async () => ({ data: state }),
+            openWorkspace,
+            refreshWorkspace,
+            closeWorkspace,
+            updateBuffer: async () => ({}),
+            setDocView: async () => ({}),
+            setUILayout: async () => ({}),
+        },
+        { eventsOn: (): (() => void) => (): void => undefined },
+    );
+
+    await expect(adapter.openWorkspace?.('/tmp/project')).resolves.toMatchObject({
+        status: 'refused',
+        error: { remediations: [] },
+    });
+    await expect(adapter.refreshWorkspace?.()).resolves.toMatchObject({
+        status: 'refused',
+        error: { remediations: [] },
+    });
+    await expect(adapter.closeWorkspace?.()).resolves.toMatchObject({
+        error: { remediations: [] },
+    });
 });

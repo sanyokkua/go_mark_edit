@@ -6,7 +6,7 @@ import { useAppDispatch, useAppSelector } from '../../../logic/store';
 import { notifyError } from '../../../logic/store/notificationsSlice';
 import { reportClassifiedError } from '../../../logic/store/classifiedNotification';
 import { setWorkspaceVisible } from '../../../logic/store/uiLayoutCommands';
-import type { ViewArrangement } from '../../../logic/store/appModelTypes';
+import type { ViewArrangement, RecentItem } from '../../../logic/store/appModelTypes';
 import { parseError } from '../../../logic/utils/parseError';
 import { useEditorSettings } from '../../../logic/settings/editorSettings';
 import { useAppearanceSettings } from '../appearanceSettingsContext';
@@ -20,7 +20,12 @@ export interface ApplicationMenuState {
     onAbout: () => void;
     onNewDocument: (expectedTabSetRevision: number) => Promise<unknown>;
     onOpenDocument: (expectedTabSetRevision: number) => Promise<unknown>;
-    onOpenRecentFile: (path: string, expectedTabSetRevision: number) => Promise<unknown>;
+    onOpenFolder: () => Promise<unknown>;
+    onNewWindow: () => Promise<unknown>;
+    onCloseFolder: () => Promise<unknown>;
+    onOpenRecentItem: (item: RecentItem, expectedTabSetRevision: number) => Promise<unknown>;
+    onRefreshRecentItems: () => Promise<unknown>;
+    onClearRecentItems: () => Promise<unknown>;
     onReopenLastFile: (expectedTabSetRevision: number) => Promise<unknown>;
     onSave: () => Promise<unknown>;
     onSaveAs: () => Promise<unknown>;
@@ -46,8 +51,9 @@ export default function ApplicationMenubar({ menuState }: ApplicationMenubarProp
         state.documents.activeDocumentId === null ? undefined : state.documents.byId[state.documents.activeDocumentId],
     );
     const workspaceVisible = useAppSelector((state) => state.ui.layout.sidebarVisible ?? true);
+    const workspaceOpen = useAppSelector((state) => state.workspace.snapshot !== null);
     const tabSetRevision = useAppSelector((state) => state.documents.tabSetRevision);
-    const recentFiles = useAppSelector((state) => state.documents.recentFiles ?? []);
+    const recentItems = useAppSelector((state) => state.documents.recentItems ?? []);
     const canReopenLastFile = useAppSelector((state) => state.documents.canReopenLastFile ?? false);
     const appearanceSettings = useAppearanceSettings();
     const editorSettings = useEditorSettings();
@@ -94,14 +100,20 @@ export default function ApplicationMenubar({ menuState }: ApplicationMenubarProp
             }
             onNewDocument={(): Promise<unknown> => menuState.onNewDocument(tabSetRevision)}
             onOpenDocument={(): Promise<unknown> => menuState.onOpenDocument(tabSetRevision)}
-            onOpenRecentFile={(path): Promise<unknown> => menuState.onOpenRecentFile(path, tabSetRevision)}
+            onOpenFolder={menuState.onOpenFolder}
+            onNewWindow={menuState.onNewWindow}
+            onCloseFolder={menuState.onCloseFolder}
+            workspaceOpen={workspaceOpen}
+            onOpenRecentItem={(item): Promise<unknown> => menuState.onOpenRecentItem(item, tabSetRevision)}
+            onRefreshRecentItems={menuState.onRefreshRecentItems}
+            onClearRecentItems={menuState.onClearRecentItems}
             onQuit={menuState.onQuit}
             onReopenLastFile={(): Promise<unknown> => menuState.onReopenLastFile(tabSetRevision)}
             onRequestedMenuHandled={menuState.onRequestedMenuHandled}
             onSave={menuState.onSave}
             onSaveAs={menuState.onSaveAs}
             onShortcuts={menuState.onShortcuts}
-            recentFiles={recentFiles}
+            recentItems={recentItems}
             requestedMenu={menuState.requestedMenu}
             sessionDocumentId={menuState.sessionDocumentId}
             settingsMenuProps={settingsMenuProps}

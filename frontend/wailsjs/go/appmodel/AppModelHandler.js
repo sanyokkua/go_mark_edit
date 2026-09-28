@@ -22,12 +22,40 @@ export function CheckExternalChanges(arg1, arg2) {
   return window['go']['appmodel']['AppModelHandler']['CheckExternalChanges'](arg1, arg2);
 }
 
+export function ChooseWorkspaceFolder(arg1) {
+  return window['go']['appmodel']['AppModelHandler']['ChooseWorkspaceFolder'](arg1);
+}
+
+export function ClassifyDroppedPaths(arg1, arg2) {
+  return window['go']['appmodel']['AppModelHandler']['ClassifyDroppedPaths'](arg1, arg2);
+}
+
+export function ClearRecentItems(arg1) {
+  return window['go']['appmodel']['AppModelHandler']['ClearRecentItems'](arg1);
+}
+
 export function CloseDocument(arg1, arg2, arg3) {
   return window['go']['appmodel']['AppModelHandler']['CloseDocument'](arg1, arg2, arg3);
 }
 
+export function CloseWorkspace(arg1) {
+  return window['go']['appmodel']['AppModelHandler']['CloseWorkspace'](arg1);
+}
+
 export function CopyPath(arg1, arg2) {
   return window['go']['appmodel']['AppModelHandler']['CopyPath'](arg1, arg2);
+}
+
+export function CopyWorkspacePath(arg1, arg2) {
+  return window['go']['appmodel']['AppModelHandler']['CopyWorkspacePath'](arg1, arg2);
+}
+
+export function CreateWorkspaceFile(arg1, arg2, arg3) {
+  return window['go']['appmodel']['AppModelHandler']['CreateWorkspaceFile'](arg1, arg2, arg3);
+}
+
+export function CreateWorkspaceFolder(arg1, arg2, arg3) {
+  return window['go']['appmodel']['AppModelHandler']['CreateWorkspaceFolder'](arg1, arg2, arg3);
 }
 
 export function ExecuteClosePlan(arg1, arg2) {
@@ -54,8 +82,20 @@ export function OpenRecentFile(arg1, arg2, arg3) {
   return window['go']['appmodel']['AppModelHandler']['OpenRecentFile'](arg1, arg2, arg3);
 }
 
+export function OpenWorkspace(arg1, arg2) {
+  return window['go']['appmodel']['AppModelHandler']['OpenWorkspace'](arg1, arg2);
+}
+
 export function PrepareClose(arg1, arg2, arg3, arg4) {
   return window['go']['appmodel']['AppModelHandler']['PrepareClose'](arg1, arg2, arg3, arg4);
+}
+
+export function RefreshRecentItems(arg1) {
+  return window['go']['appmodel']['AppModelHandler']['RefreshRecentItems'](arg1);
+}
+
+export function RefreshWorkspace(arg1) {
+  return window['go']['appmodel']['AppModelHandler']['RefreshWorkspace'](arg1);
 }
 
 export function ReloadFromDisk(arg1, arg2, arg3, arg4) {
@@ -78,6 +118,10 @@ export function RevealInFileManager(arg1, arg2) {
   return window['go']['appmodel']['AppModelHandler']['RevealInFileManager'](arg1, arg2);
 }
 
+export function RevealWorkspacePath(arg1, arg2) {
+  return window['go']['appmodel']['AppModelHandler']['RevealWorkspacePath'](arg1, arg2);
+}
+
 export function Save(arg1, arg2, arg3, arg4) {
   return window['go']['appmodel']['AppModelHandler']['Save'](arg1, arg2, arg3, arg4);
 }
@@ -92,6 +136,10 @@ export function SetDocView(arg1, arg2, arg3) {
 
 export function SetUILayout(arg1, arg2) {
   return window['go']['appmodel']['AppModelHandler']['SetUILayout'](arg1, arg2);
+}
+
+export function SetWorkspaceHiddenFolders(arg1, arg2) {
+  return window['go']['appmodel']['AppModelHandler']['SetWorkspaceHiddenFolders'](arg1, arg2);
 }
 
 export function SkipConflict(arg1, arg2, arg3, arg4) {

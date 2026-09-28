@@ -19,7 +19,7 @@ it('creates projection-only notification state', () => {
     store.dispatch(notifyError(error));
 
     const state = store.getState();
-    expect(Object.keys(state).sort()).toEqual(['documents', 'notifications', 'settings', 'ui']);
+    expect(Object.keys(state).sort()).toEqual(['documents', 'notifications', 'settings', 'ui', 'workspace']);
     expect(state.notifications.items).toEqual([
         expect.objectContaining({
             id: expect.any(Number),

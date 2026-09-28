@@ -28,7 +28,8 @@ type applicationState struct {
 	documents          map[string]*openDocument
 	activeDocumentID   string
 	ui                 apperr.UILayout
-	recentFiles        []string
+	recentItems        []apperr.RecentItem
 	canReopenLastFile  bool
 	recentlyClosed     []recentlyClosedDocument
+	workspace          *apperr.WorkspaceSnapshot
 }

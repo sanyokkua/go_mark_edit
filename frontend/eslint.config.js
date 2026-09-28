@@ -16,11 +16,15 @@ const userVisibleAttributes =
 export default tseslint.config(
     {
         ignores: [
+            'build/**',
+            'coverage/**',
+            'frontend/coverage/**',
             'frontend/dist/**',
             'frontend/wailsjs/**',
             'frontend/node_modules/**',
             'frontend/test-results/**',
             'frontend/playwright-report/**',
+            '**/*.min.js',
         ],
     },
     eslint.configs.recommended,

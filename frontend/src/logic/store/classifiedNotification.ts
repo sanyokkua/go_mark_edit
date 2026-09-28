@@ -1,5 +1,5 @@
 import type { AppDispatch } from './index';
-import type { ClassifiedError, ClosePlanKind } from './appModelTypes';
+import type { ClassifiedError, ClosePlanKind, RecentItemKind } from './appModelTypes';
 import { notifyToast, type NotificationRemediation, type NotificationRemediationIntent } from './notificationsSlice';
 
 /**
@@ -84,6 +84,7 @@ export interface ClassifiedReportOptions {
     retry?: {
         documentId?: string;
         path?: string;
+        kind?: RecentItemKind;
         /**
          * The original close request, for `close-documents`.
          *
@@ -146,11 +147,17 @@ function retryIsExecutable(
             return reorder !== undefined && reorder.documentId !== '' && reorder.targetIndex >= 0;
         case 'command':
             return false;
+        case 'create-workspace-entry':
+        case 'reveal-workspace-path':
+        case 'copy-workspace-path':
+            return false;
         // `quit` belongs to this group for the same reason as the rest: it takes no
         // arguments. It re-asks the native frame to close, and the frame is a
         // singleton, so there is nothing a caller could fail to supply.
         case 'new-document':
         case 'open-document':
+        case 'open-folder':
+        case 'refresh-workspace':
         case 'reopen-last':
         case 'save':
         case 'save-as':
@@ -178,6 +185,7 @@ function remediationsFor(error: ClassifiedError, options: ClassifiedReportOption
             intent,
             labelKey: 'action.retry.label',
             ...(retry?.path === undefined ? {} : { path: retry.path }),
+            ...(retry?.kind === undefined ? {} : { kind: retry.kind }),
             ...(retry?.close === undefined ? {} : { close: retry.close }),
             ...(retry?.reorder === undefined ? {} : { reorder: retry.reorder }),
         });

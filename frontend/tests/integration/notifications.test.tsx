@@ -2,9 +2,12 @@ import type { PropsWithChildren } from 'react';
 import { act, renderHook } from '@testing-library/react';
 import { Provider } from 'react-redux';
 
-jest.mock('../../src/logic/adapter', () => ({ commandAdapter: { retry: jest.fn(), cancel: jest.fn() } }));
+jest.mock('../../src/logic/adapter', () => ({
+    commandAdapter: { retry: jest.fn(), cancel: jest.fn() },
+    appModelAdapter: { getState: jest.fn() },
+}));
 
-import { commandAdapter } from '../../src/logic/adapter';
+import { appModelAdapter, commandAdapter } from '../../src/logic/adapter';
 import { useNotifications } from '../../src/app/useNotifications';
 import { store } from '../../src/logic/store';
 import {
@@ -22,12 +25,51 @@ function commands() {
         onActivateDocument: jest.fn(pending),
         onNewDocument: jest.fn(pending),
         onOpenDocument: jest.fn(pending),
+        onOpenFolder: jest.fn(async () => ({})),
+        onRefreshWorkspace: jest.fn(async () => ({})),
+        onOpenWorkspacePath: jest.fn(async () => ({})),
         onOpenRecentFile: jest.fn(pending),
+        onOpenRecentItem: jest.fn(pending),
         onReopenLastFile: jest.fn(pending),
         onCloseDocument: jest.fn(pending),
         requestQuit: jest.fn(),
     };
 }
+
+it('retries an Open Folder failure using the canonical path without reopening the picker', async () => {
+    (appModelAdapter.getState as jest.Mock).mockResolvedValue({ snapshot: { tabSetRevision: 1 } });
+    notice([{ action: 'retry', intent: 'open-folder', path: '/notes', labelKey: 'action.retry.label' }]);
+    const capabilities = commands();
+    const owner = renderHook(() => useNotifications(capabilities), { wrapper });
+
+    await act(async () => owner.result.current.notices[0].actions?.[0].onActivate());
+
+    expect(capabilities.onOpenWorkspacePath).toHaveBeenCalledWith('/notes');
+    expect(capabilities.onOpenFolder).not.toHaveBeenCalled();
+});
+
+it('routes a workspace refresh remediation to the folder refresh command', async () => {
+    notice([{ action: 'retry', intent: 'refresh-workspace', labelKey: 'action.retry.label' }]);
+    const capabilities = commands();
+    const owner = renderHook(() => useNotifications(capabilities), { wrapper });
+
+    await act(async () => owner.result.current.notices[0].actions?.[0].onActivate());
+
+    expect(capabilities.onRefreshWorkspace).toHaveBeenCalledTimes(1);
+    expect(store.getState().notifications.items).toHaveLength(0);
+});
+
+it('retains the recent entry kind when retrying a classified refusal', async () => {
+    (appModelAdapter.getState as jest.Mock).mockResolvedValue({ snapshot: { tabSetRevision: 7 } });
+    notice([
+        { action: 'retry', intent: 'open-recent', path: '/notes', kind: 'folder', labelKey: 'action.retry.label' },
+    ]);
+    const capabilities = commands();
+    const owner = renderHook(() => useNotifications(capabilities), { wrapper });
+    await act(async () => owner.result.current.notices[0].actions?.[0].onActivate());
+    expect(capabilities.onOpenRecentItem).toHaveBeenCalledWith({ path: '/notes', kind: 'folder' }, 7);
+    expect(capabilities.onOpenRecentFile).not.toHaveBeenCalled();
+});
 function notice(remediations: NotificationRemediation[]): void {
     store.dispatch(
         notifyToast({

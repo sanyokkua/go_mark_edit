@@ -151,6 +151,101 @@ type DocumentMetadata struct {
 	View            DocView `json:"view"`
 }
 
+// RecentItem is one entry in the combined, most-recently-used list.
+type RecentItem struct {
+	Path string `json:"path"`
+	Kind string `json:"kind"`
+}
+
+// RecentItemsResult returns the current durable recent history.
+type RecentItemsResult struct {
+	Failure
+	RecentItems []RecentItem     `json:"recentItems"`
+	Error       *ClassifiedError `json:"error,omitempty"`
+}
+
+// DropClassificationResult groups native dropped paths without changing app state.
+type DropClassificationResult struct {
+	Failure
+	Files       []string `json:"files,omitempty"`
+	Folders     []string `json:"folders,omitempty"`
+	Unsupported []string `json:"unsupported,omitempty"`
+}
+
+// WorkspaceSnapshot is the content-free frontend projection of an open folder.
+type WorkspaceSnapshot struct {
+	RootPath          string        `json:"rootPath"`
+	RootName          string        `json:"rootName"`
+	Root              WorkspaceNode `json:"root"`
+	TotalEntries      int           `json:"totalEntries"`
+	Truncated         bool          `json:"truncated"`
+	Unavailable       bool          `json:"unavailable"`
+	FilterSuffixes    []string      `json:"filterSuffixes"`
+	ShowHiddenFolders bool          `json:"showHiddenFolders"`
+}
+
+// WorkspaceNode is one filtered file or folder in a workspace snapshot.
+type WorkspaceNode struct {
+	Path       string          `json:"path"`
+	Name       string          `json:"name"`
+	IsDir      bool            `json:"isDir"`
+	Unreadable bool            `json:"unreadable,omitempty"`
+	Children   []WorkspaceNode `json:"children,omitempty"`
+}
+
+// WorkspacePatch uses a nil Snapshot to encode an explicit workspace clear;
+// absence of the WorkspacePatch itself means that the field did not change.
+type WorkspacePatch struct {
+	Snapshot *WorkspaceSnapshot
+}
+
+func (patch WorkspacePatch) MarshalJSON() ([]byte, error) {
+	if patch.Snapshot == nil {
+		return []byte("null"), nil
+	}
+	return json.Marshal(patch.Snapshot)
+}
+
+// WorkspaceStatus describes the OpenWorkspace and RefreshWorkspace outcome.
+type WorkspaceStatus string
+
+const (
+	WorkspaceStatusOpened    WorkspaceStatus = "opened"
+	WorkspaceStatusUnchanged WorkspaceStatus = "unchanged"
+	WorkspaceStatusRefused   WorkspaceStatus = "refused"
+)
+
+// WorkspaceResult carries the open workspace projection or a classified refusal.
+type WorkspaceResult struct {
+	Failure
+	Status    WorkspaceStatus    `json:"status"`
+	Workspace *WorkspaceSnapshot `json:"workspace,omitempty"`
+	Error     *ClassifiedError   `json:"error,omitempty"`
+}
+
+// WorkspaceOutcome is the contract-level name for a workspace command result.
+type WorkspaceOutcome = WorkspaceResult
+
+// FolderChoiceStatus reports the native directory picker's outcome.
+type FolderChoiceStatus string
+
+const (
+	FolderChoiceStatusChosen    FolderChoiceStatus = "chosen"
+	FolderChoiceStatusCancelled FolderChoiceStatus = "cancelled"
+	FolderChoiceStatusRefused   FolderChoiceStatus = "refused"
+)
+
+// FolderChoiceResult carries a canonical folder path without opening it.
+type FolderChoiceResult struct {
+	Failure
+	Status FolderChoiceStatus `json:"status"`
+	Path   string             `json:"path,omitempty"`
+	Error  *ClassifiedError   `json:"error,omitempty"`
+}
+
+// FolderChoiceOutcome names the command's contract-level result.
+type FolderChoiceOutcome = FolderChoiceResult
+
 // AppStateSnapshot is the metadata-only frontend projection of the live model.
 type AppStateSnapshot struct {
 	Revision           uint64                      `json:"revision"`
@@ -160,8 +255,9 @@ type AppStateSnapshot struct {
 	OrderedDocumentIDs []string                    `json:"orderedDocumentIds"`
 	ActiveDocumentID   string                      `json:"activeDocumentId,omitempty"`
 	ActiveDocument     *string                     `json:"activeDocument,omitempty"`
-	RecentFiles        []string                    `json:"recentFiles,omitempty"`
+	RecentItems        []RecentItem                `json:"recentItems,omitempty"`
 	CanReopenLastFile  bool                        `json:"canReopenLastFile"`
+	Workspace          *WorkspaceSnapshot          `json:"workspace,omitempty"`
 	UI                 UILayout                    `json:"ui"`
 	PendingClose       *PendingClose               `json:"pendingClose,omitempty"`
 }
@@ -521,10 +617,11 @@ type ConflictResult struct {
 type OpenStatus string
 
 const (
-	OpenStatusCancelled OpenStatus = "cancelled"
-	OpenStatusFocused   OpenStatus = "focused"
-	OpenStatusOpened    OpenStatus = "opened"
-	OpenStatusRefused   OpenStatus = "refused"
+	OpenStatusCancelled    OpenStatus = "cancelled"
+	OpenStatusFocused      OpenStatus = "focused"
+	OpenStatusOpened       OpenStatus = "opened"
+	OpenStatusFolderTarget OpenStatus = "folder-target"
+	OpenStatusRefused      OpenStatus = "refused"
 )
 
 // OpenResult describes canonical Open without placing source in the metadata projection.
@@ -532,6 +629,7 @@ type OpenResult struct {
 	Failure
 	Status             OpenStatus                   `json:"status"`
 	DocumentID         string                       `json:"documentId,omitempty"`
+	Path               string                       `json:"path,omitempty"`
 	ProjectionRevision uint64                       `json:"projectionRevision,omitempty"`
 	ActiveBuffer       *ActiveBufferAcknowledgement `json:"activeBuffer,omitempty"`
 	Error              *ClassifiedError             `json:"error,omitempty"`
@@ -567,9 +665,24 @@ type AppStatePatch struct {
 	Documents          *DocumentsPatch      `json:"documents,omitempty"`
 	ActiveDocumentID   *string              `json:"activeDocumentId,omitempty"`
 	ActiveDocument     *ActiveDocumentPatch `json:"activeDocument,omitempty"`
-	RecentFiles        []string             `json:"recentFiles,omitempty"`
+	RecentItems        []RecentItem         `json:"recentItems,omitempty"`
 	CanReopenLastFile  *bool                `json:"canReopenLastFile,omitempty"`
+	Workspace          *WorkspacePatch      `json:"workspace,omitempty"`
 	UI                 *UILayout            `json:"ui,omitempty"`
+}
+
+// MarshalJSON distinguishes an omitted Recent Items update from an explicit
+// empty list, which tells projections to clear their existing history.
+func (patch AppStatePatch) MarshalJSON() ([]byte, error) {
+	type patchAlias AppStatePatch
+	wire := struct {
+		*patchAlias
+		RecentItems *[]RecentItem `json:"recentItems,omitempty"`
+	}{patchAlias: (*patchAlias)(&patch)}
+	if patch.RecentItems != nil {
+		wire.RecentItems = &patch.RecentItems
+	}
+	return json.Marshal(wire)
 }
 
 // StateResult is the envelope for an application-model hydration query.

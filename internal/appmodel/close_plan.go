@@ -607,12 +607,12 @@ func (service *AppModelService) closeDocuments(ctx context.Context, documentIDs 
 			service.state.activeDocumentID = remaining[activeIndex]
 		}
 	}
-	service.state.canReopenLastFile = len(service.state.recentlyClosed) > 0
+	service.updateCanReopenLastFileLocked()
 	service.state.tabSetRevision++
 	service.state.revision++
 	patch := service.tabStatePatchLocked()
 	patch.Documents = &apperr.DocumentsPatch{Remove: append([]string(nil), closeIDs...)}
-	patch.RecentFiles = append([]string(nil), service.state.recentFiles...)
+	patch.RecentItems = append([]apperr.RecentItem(nil), service.state.recentItems...)
 	patch.CanReopenLastFile = pointerTo(service.state.canReopenLastFile)
 	if err := service.publishLocked(ctx, before, patch); err != nil {
 		return bridge.Refused[apperr.TabTransitionResult](apperr.ClassifiedIOFailure, closeIDs[0], "The documents could not be closed.", apperr.RemediationRetry)

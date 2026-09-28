@@ -29,6 +29,7 @@ export interface PreviewPaneProps {
     documentPath?: string;
     linkAdapter?: Pick<LivePreviewAdapter, 'openPreviewLink' | 'openExternalLink' | 'resolvePreviewImage'>;
     notificationOwner?: PreviewNotificationOwner;
+    onFocusedDocumentOpen?: (documentId: string) => void;
     onRefresh: () => Promise<PreviewSnapshot>;
 }
 
@@ -179,6 +180,7 @@ export interface PreviewPaneContentProps {
     documentPath?: string;
     linkAdapter?: Pick<LivePreviewAdapter, 'openPreviewLink' | 'openExternalLink' | 'resolvePreviewImage'>;
     notificationOwner?: PreviewNotificationOwner;
+    onFocusedDocumentOpen?: (documentId: string) => void;
     showPausedStatus?: boolean;
 }
 
@@ -189,10 +191,12 @@ export const PreviewPaneContent: React.FC<PreviewPaneContentProps> = ({
     documentPath,
     linkAdapter,
     notificationOwner,
+    onFocusedDocumentOpen,
     showPausedStatus = true,
 }: PreviewPaneContentProps): React.JSX.Element => {
     const linkAdapterRef = useRef(linkAdapter);
     const notificationOwnerRef = useRef(notificationOwner);
+    const focusedDocumentOpenRef = useRef(onFocusedDocumentOpen);
 
     useEffect((): void => {
         linkAdapterRef.current = linkAdapter;
@@ -201,6 +205,10 @@ export const PreviewPaneContent: React.FC<PreviewPaneContentProps> = ({
     useEffect((): void => {
         notificationOwnerRef.current = notificationOwner;
     }, [notificationOwner]);
+
+    useEffect((): void => {
+        focusedDocumentOpenRef.current = onFocusedDocumentOpen;
+    }, [onFocusedDocumentOpen]);
 
     const resolveImageSource = useCallback(
         (source: string): string | undefined => {
@@ -251,6 +259,9 @@ export const PreviewPaneContent: React.FC<PreviewPaneContentProps> = ({
                 void adapter
                     .openPreviewLink(sourceDocumentId, target.href)
                     .then((result): void => {
+                        if (result.status === 'focused' && result.documentId !== undefined) {
+                            focusedDocumentOpenRef.current?.(result.documentId);
+                        }
                         const reason = openResultRefusal(result);
                         if (reason !== undefined) notifyRefusal(notificationOwnerRef.current, target.href, reason);
                     })
@@ -296,6 +307,7 @@ const PreviewPane: React.FC<PreviewPaneProps> = ({
     documentPath,
     linkAdapter,
     notificationOwner,
+    onFocusedDocumentOpen,
     onRefresh,
 }: PreviewPaneProps): React.JSX.Element => {
     const controller = usePreviewPaneState(accepted, onRefresh);
@@ -308,6 +320,7 @@ const PreviewPane: React.FC<PreviewPaneProps> = ({
             documentPath={documentPath}
             linkAdapter={linkAdapter}
             notificationOwner={notificationOwner}
+            onFocusedDocumentOpen={onFocusedDocumentOpen}
         />
     );
 };

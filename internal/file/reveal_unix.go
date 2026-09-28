@@ -5,15 +5,14 @@ package file
 import (
 	"os/exec"
 	"path/filepath"
+	"runtime"
 )
 
 type platformRevealPort struct{}
 
 func (platformRevealPort) Reveal(path string) error {
-	if filepath.Ext(path) != "" {
-		if _, err := exec.LookPath("open"); err == nil {
-			return exec.Command("open", "-R", path).Run()
-		}
+	if runtime.GOOS == "darwin" {
+		return exec.Command("open", "-R", path).Run()
 	}
 	return exec.Command("xdg-open", filepath.Dir(path)).Run()
 }

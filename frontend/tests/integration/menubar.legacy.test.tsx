@@ -85,6 +85,32 @@ it('keeps popup accelerators, group labels, separators, and viewport sizing toke
     expect(settingsStyles).not.toContain('min-inline-size: var(--popup-min-width)');
 });
 
+it('offers live Open Folder and Close Folder rows when a workspace is open', () => {
+    const onOpenFolder = jest.fn();
+    const onCloseFolder = jest.fn();
+    render(
+        <Menubar
+            modalOpen={false}
+            onAbout={jest.fn()}
+            onOpenFolder={onOpenFolder}
+            onCloseFolder={onCloseFolder}
+            workspaceOpen
+            settingsMenuProps={settingsMenuProps}
+        />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'File' }));
+    const menu = screen.getByRole('menu', { name: 'File' });
+    const open = within(menu).getByRole('menuitem', { name: 'Open Folder' });
+    const close = within(menu).getByRole('menuitem', { name: 'Close Folder' });
+    expect(open).toBeEnabled();
+    expect(close).toBeEnabled();
+    fireEvent.click(open);
+    fireEvent.click(screen.getByRole('button', { name: 'File' }));
+    fireEvent.click(within(screen.getByRole('menu', { name: 'File' })).getByRole('menuitem', { name: 'Close Folder' }));
+    expect(onOpenFolder).toHaveBeenCalledTimes(1);
+    expect(onCloseFolder).toHaveBeenCalledTimes(1);
+});
+
 afterEach(() => {
     Object.defineProperty(window, 'innerWidth', {
         configurable: true,
@@ -201,9 +227,11 @@ it('renders File, Settings, View, About in binding order with exact deferred inv
         'New Window',
         'Open File…',
         'Open Folder…',
-        // The design renders the reopen row as `↺ Reopen last file`; the
+        'Close Folder',
+        // The design renders the reopen row with an arrow; the
         // accessible name stays the plain action label.
-        '↺ Reopen last file',
+        'Clear Recent…',
+        '↺ Reopen Last',
         'Save',
         'Save As…',
         'Export to PDF…',
@@ -469,7 +497,7 @@ it('shows the defined empty message in the narrow Open Recent group', () => {
 
     const fileMenu = screen.getByRole('menu', { name: 'File' });
     expect(within(fileMenu).getByText('Open Recent')).toBeVisible();
-    expect(within(fileMenu).getByText('No recent files yet.')).toBeVisible();
+    expect(within(fileMenu).getByText('No recent items yet.')).toBeVisible();
     expect(within(fileMenu).queryByRole('menuitem', { name: 'Open Recent' })).toBeNull();
     expect(within(fileMenu).queryByText('release-notes.md')).toBeNull();
     expect(within(fileMenu).queryByText('spec-draft.md')).toBeNull();

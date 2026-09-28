@@ -7,18 +7,33 @@ import (
 )
 
 type openFilePicker func(context.Context) (string, error)
+type folderPicker func(context.Context) (string, error)
 type saveFilePicker func(context.Context, appmodel.SaveDialogRequest) (string, error)
 type overwriteConfirmer func(context.Context, string) (bool, error)
 
 // DocumentDialogs adapts one injected native picker. It owns no application model state.
 type DocumentDialogs struct {
 	openFile         openFilePicker
+	chooseFolder     folderPicker
 	saveFile         saveFilePicker
 	confirmOverwrite overwriteConfirmer
 }
 
 func NewDocumentDialogs(openFile openFilePicker) *DocumentDialogs {
 	return &DocumentDialogs{openFile: openFile}
+}
+
+func (dialogs *DocumentDialogs) SetFolderPicker(chooseFolder folderPicker) {
+	if dialogs != nil {
+		dialogs.chooseFolder = chooseFolder
+	}
+}
+
+func (dialogs *DocumentDialogs) ChooseFolder(ctx context.Context) (string, error) {
+	if dialogs == nil || dialogs.chooseFolder == nil {
+		return "", nil
+	}
+	return dialogs.chooseFolder(ctx)
 }
 
 func (dialogs *DocumentDialogs) SetSaveFilePicker(saveFile saveFilePicker) {

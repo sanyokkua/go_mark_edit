@@ -88,8 +88,8 @@ func TestAutosaveFailureEpisodeShowsNewCategoriesOnceAndClearsOnSuccess(t *testi
 	if err != nil {
 		t.Fatalf("stat recovered fixture: %v", err)
 	}
-	if info.Mode().Perm() != 0o644 {
-		t.Fatalf("recovered fixture mode = %o, want writable", info.Mode().Perm())
+	if info.Mode().Perm()&0o200 == 0 {
+		t.Fatalf("recovered fixture mode = %o, want owner-writable", info.Mode().Perm())
 	}
 }
 

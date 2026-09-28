@@ -180,6 +180,33 @@ func TestApplicationContextWaitsForFrontendReadinessAfterBackendRestore(t *testi
 	}
 }
 
+func TestApplicationContextKeepsNativeWindowHiddenForHeadlessE2E(t *testing.T) {
+	t.Setenv("GOMARKEDIT_E2E_HEADLESS", "1")
+
+	ctx := context.Background()
+	holder := NewApplicationContextHolderWithOptions(&fakeFileUtils{databasePath: filepath.Join(t.TempDir(), "settings.db")}, nil, ApplicationContextOptions{})
+	native := &lifecycleRecordingNativeWindow{usableWidth: 1920, usableHeight: 1080}
+	holder.SetNativeWindow(native)
+
+	if err := holder.Init(ctx); err != nil {
+		t.Fatalf("initialize backend: %v", err)
+	}
+	t.Cleanup(func() {
+		if err := holder.Close(); err != nil {
+			t.Errorf("close application database: %v", err)
+		}
+	})
+	if err := holder.RestoreNativeWindow(ctx); err != nil {
+		t.Fatalf("restore native window: %v", err)
+	}
+	if result := holder.ApplicationHandler.WindowReady(bridge.Request{ID: "headless-e2e"}); result.Error != nil {
+		t.Fatalf("headless frontend readiness result = %+v, want acknowledgement", result)
+	}
+	if native.showCalls != 0 {
+		t.Fatalf("headless E2E showed the native window %d times, want 0", native.showCalls)
+	}
+}
+
 // Native close must not release the database while a timer-owned layout write
 // is already in flight; Close waits for that synchronous flush seam to settle.
 func TestApplicationContextCloseWaitsForInFlightTimerLayoutFlush(t *testing.T) {

@@ -9,7 +9,12 @@ import ShortcutsDialog from '../ui/widgets/dialogs/ShortcutsDialog';
 import NormalizationPrompt from '../ui/widgets/dialogs/NormalizationPrompt';
 import ExternalChangePrompt from '../ui/widgets/dialogs/ExternalChangePrompt';
 import ClosePrompt from '../ui/widgets/dialogs/ClosePrompt';
+import CloseFolderPrompt from '../ui/widgets/dialogs/CloseFolderPrompt';
+import WorkspaceReplacePrompt from '../ui/widgets/dialogs/WorkspaceReplacePrompt';
+import FolderDropPrompt from '../ui/widgets/dialogs/FolderDropPrompt';
 import type { WorkflowPrompts } from './useWorkflowPrompts';
+import type { UseCommandsResult } from './useCommands';
+import type { DropHandler } from './useDropHandler';
 
 interface DialogVisibility {
     readonly open: boolean;
@@ -21,6 +26,11 @@ export interface AppDialogsProps {
     about: DialogVisibility;
     shortcuts: DialogVisibility;
     prompts: WorkflowPrompts;
+    folderCommands: Pick<
+        UseCommandsResult,
+        'replaceFolderPath' | 'onReplaceFolderChoice' | 'closeFolderPromptOpen' | 'onCloseFolderChoice'
+    >;
+    drops: Pick<DropHandler, 'folderPaths' | 'onFolderChoice'>;
     recovery: RecoverySurface | null;
     announcement: string;
 }
@@ -31,6 +41,8 @@ export function AppDialogs({
     about,
     shortcuts,
     prompts,
+    folderCommands,
+    drops,
     recovery,
     announcement,
 }: AppDialogsProps): React.JSX.Element {
@@ -58,6 +70,20 @@ export function AppDialogs({
                     onChoice={prompts.close.onChoice}
                 />
             ) : null}
+            <WorkspaceReplacePrompt
+                open={ready && folderCommands.replaceFolderPath !== null}
+                folderPath={folderCommands.replaceFolderPath ?? ''}
+                onChoice={folderCommands.onReplaceFolderChoice}
+            />
+            <FolderDropPrompt
+                open={ready && drops.folderPaths.length > 1}
+                folderPaths={drops.folderPaths}
+                onChoice={drops.onFolderChoice}
+            />
+            <CloseFolderPrompt
+                open={ready && folderCommands.closeFolderPromptOpen}
+                onChoice={folderCommands.onCloseFolderChoice}
+            />
             {prompts.conflict !== null ? (
                 <ExternalChangePrompt
                     key={prompts.conflict.id}

@@ -39,6 +39,7 @@ func NewOptions(config Options) *wailsoptions.App {
 		DisableResize: false,
 		StartHidden:   true,
 		Mac:           &mac.Options{DisableZoom: false},
+		DragAndDrop:   &wailsoptions.DragAndDrop{EnableFileDrop: true, DisableWebViewDrop: true},
 		Menu:          config.Menu,
 		AssetServer: &assetserver.Options{
 			Assets:  config.Assets,

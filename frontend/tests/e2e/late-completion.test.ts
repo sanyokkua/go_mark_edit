@@ -2,13 +2,14 @@ import { spawn, type ChildProcess } from 'node:child_process';
 import type { Page } from '@playwright/test';
 
 import { expect, test } from '../support/harness';
+import { preparedPaths } from '../support/prepare';
 
 interface HeldLock {
     process: ChildProcess;
 }
 
 async function startHeldLock(repositoryDirectory: string, profileDirectory: string): Promise<HeldLock> {
-    const child = spawn(process.env.GO_BIN ?? 'go', ['run', './tools/e2e-seed', profileDirectory, 'hold-lock', '14'], {
+    const child = spawn(preparedPaths().seedExecutable, [profileDirectory, 'hold-lock', '14'], {
         cwd: repositoryDirectory,
         detached: process.platform !== 'win32',
         env: { ...process.env },
@@ -68,12 +69,17 @@ async function stopHeldLock(child: ChildProcess): Promise<void> {
             // The helper may have completed between the state check and the signal.
         }
     }
-    await Promise.race([
-        closed,
-        new Promise<void>((resolve) => {
-            globalThis.setTimeout(resolve, 5_000);
-        }),
-    ]);
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    try {
+        await Promise.race([
+            closed,
+            new Promise<void>((resolve) => {
+                timer = globalThis.setTimeout(resolve, 5_000);
+            }),
+        ]);
+    } finally {
+        if (timer !== undefined) clearTimeout(timer);
+    }
 }
 
 async function closeUntitledDocument(page: Page): Promise<void> {

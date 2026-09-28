@@ -12,6 +12,18 @@ import {
     NewDocument,
     OpenDocument,
     OpenRecentFile,
+    ClassifyDroppedPaths,
+    RefreshRecentItems,
+    ClearRecentItems,
+    OpenWorkspace,
+    ChooseWorkspaceFolder,
+    RefreshWorkspace,
+    SetWorkspaceHiddenFolders,
+    CloseWorkspace,
+    CreateWorkspaceFile,
+    CreateWorkspaceFolder,
+    RevealWorkspacePath,
+    CopyWorkspacePath,
     OpenPreviewLink,
     ReopenLastFile,
     ActivateDocument,
@@ -47,9 +59,21 @@ import {
     ClipboardGetText,
     ClipboardSetText,
 } from 'wailsjs/runtime';
-import { RetryStartup, WindowReady, AuthorizeQuit, CancelQuit } from 'wailsjs/go/application/ApplicationHandler';
+import {
+    RetryStartup,
+    WindowReady,
+    AuthorizeQuit,
+    CancelQuit,
+    OpenNewWindow,
+} from 'wailsjs/go/application/ApplicationHandler';
 
-import { createAppModelAdapter, type AppModelBindings, type AppModelRuntime } from './appModelAdapter';
+import {
+    createAppModelAdapter,
+    normalizeClassifiedError,
+    normalizeRecentItems,
+    type AppModelBindings,
+    type AppModelRuntime,
+} from './appModelAdapter';
 import {
     createDocumentConflictAdapter,
     createDocumentWriteAdapter,
@@ -102,6 +126,18 @@ const commandArities: Readonly<Record<string, number>> = {
     'AppModelHandler.NewDocument': 1,
     'AppModelHandler.OpenDocument': 1,
     'AppModelHandler.OpenRecentFile': 2,
+    'AppModelHandler.ClassifyDroppedPaths': 1,
+    'AppModelHandler.RefreshRecentItems': 0,
+    'AppModelHandler.ClearRecentItems': 0,
+    'AppModelHandler.OpenWorkspace': 1,
+    'AppModelHandler.ChooseWorkspaceFolder': 0,
+    'AppModelHandler.RefreshWorkspace': 0,
+    'AppModelHandler.SetWorkspaceHiddenFolders': 1,
+    'AppModelHandler.CloseWorkspace': 0,
+    'AppModelHandler.CreateWorkspaceFile': 2,
+    'AppModelHandler.CreateWorkspaceFolder': 2,
+    'AppModelHandler.RevealWorkspacePath': 1,
+    'AppModelHandler.CopyWorkspacePath': 1,
     'AppModelHandler.OpenPreviewLink': 2,
     'AppModelHandler.ReopenLastFile': 1,
     'AppModelHandler.ActivateDocument': 2,
@@ -125,6 +161,7 @@ const commandArities: Readonly<Record<string, number>> = {
     'AppModelHandler.CancelConflict': 3,
     'ApplicationHandler.RetryStartup': 0,
     'ApplicationHandler.WindowReady': 0,
+    'ApplicationHandler.OpenNewWindow': 1,
     'ApplicationHandler.AuthorizeQuit': 1,
     'ApplicationHandler.CancelQuit': 1,
 };
@@ -151,15 +188,6 @@ function normalizeSaveStatus(status: string | undefined): DocumentMetadata['stat
         default:
             return undefined;
     }
-}
-
-function normalizeClassifiedError(error: apperr.ClassifiedError | undefined): ClassifiedError | undefined {
-    if (error === undefined) return undefined;
-    return {
-        ...error,
-        category: error.category as ClassifiedError['category'],
-        remediations: (error.remediations ?? []) as ClassifiedError['remediations'],
-    };
 }
 
 function normalizeTransitionResult(result: apperr.DocumentTransitionResult): DocumentTransitionResult {
@@ -233,6 +261,7 @@ function normalizeConflictResult(result: apperr.ConflictResult): ConflictResult 
 function normalizeOpenResult(result: apperr.OpenResult): OpenResult {
     return {
         status: result.status as OpenResult['status'],
+        path: result.path,
         documentId: result.documentId,
         projectionRevision: result.projectionRevision,
         activeBuffer:
@@ -336,6 +365,21 @@ const commandInvokerGetState = command('AppModelHandler.GetState', GetState);
 const commandInvokerNewDocument = command('AppModelHandler.NewDocument', NewDocument);
 const commandInvokerOpenDocument = command('AppModelHandler.OpenDocument', OpenDocument, { pacing: 'user-paced' });
 const commandInvokerOpenRecentFile = command('AppModelHandler.OpenRecentFile', OpenRecentFile);
+const commandInvokerClassifyDroppedPaths = command('AppModelHandler.ClassifyDroppedPaths', ClassifyDroppedPaths);
+const commandInvokerRefreshRecentItems = command('AppModelHandler.RefreshRecentItems', RefreshRecentItems);
+const commandInvokerClearRecentItems = command('AppModelHandler.ClearRecentItems', ClearRecentItems);
+const commandInvokerOpenWorkspace = command('AppModelHandler.OpenWorkspace', OpenWorkspace);
+const commandInvokerChooseWorkspaceFolder = command('AppModelHandler.ChooseWorkspaceFolder', ChooseWorkspaceFolder);
+const commandInvokerRefreshWorkspace = command('AppModelHandler.RefreshWorkspace', RefreshWorkspace);
+const commandInvokerSetWorkspaceHiddenFolders = command(
+    'AppModelHandler.SetWorkspaceHiddenFolders',
+    SetWorkspaceHiddenFolders,
+);
+const commandInvokerCloseWorkspace = command('AppModelHandler.CloseWorkspace', CloseWorkspace);
+const commandInvokerCreateWorkspaceFile = command('AppModelHandler.CreateWorkspaceFile', CreateWorkspaceFile);
+const commandInvokerCreateWorkspaceFolder = command('AppModelHandler.CreateWorkspaceFolder', CreateWorkspaceFolder);
+const commandInvokerRevealWorkspacePath = command('AppModelHandler.RevealWorkspacePath', RevealWorkspacePath);
+const commandInvokerCopyWorkspacePath = command('AppModelHandler.CopyWorkspacePath', CopyWorkspacePath);
 const commandInvokerOpenPreviewLink = command('AppModelHandler.OpenPreviewLink', OpenPreviewLink);
 const commandInvokerReopenLastFile = command('AppModelHandler.ReopenLastFile', ReopenLastFile);
 const commandInvokerActivateDocument = command('AppModelHandler.ActivateDocument', ActivateDocument);
@@ -353,6 +397,7 @@ const commandInvokerResolveClosePlan = command('AppModelHandler.ResolveClosePlan
 const commandInvokerExecuteClosePlan = command('AppModelHandler.ExecuteClosePlan', ExecuteClosePlan);
 const commandInvokerRetryStartup = command('ApplicationHandler.RetryStartup', RetryStartup);
 const commandInvokerWindowReady = command('ApplicationHandler.WindowReady', WindowReady);
+const commandInvokerOpenNewWindow = command('ApplicationHandler.OpenNewWindow', OpenNewWindow);
 const commandInvokerAuthorizeQuit = command('ApplicationHandler.AuthorizeQuit', AuthorizeQuit);
 const commandInvokerCancelQuit = command('ApplicationHandler.CancelQuit', CancelQuit);
 
@@ -404,6 +449,7 @@ const generatedAppModelBindings: AppModelBindings = {
                     ...result.data.snapshot,
                     activeDocumentId: result.data.snapshot.activeDocumentId ?? null,
                     orderedDocumentIds: result.data.snapshot.orderedDocumentIds ?? [],
+                    recentItems: normalizeRecentItems(result.data.snapshot.recentItems),
                     documents: Object.fromEntries(
                         Object.entries(result.data.snapshot.documents ?? {}).map(([documentId, document]) => [
                             documentId,
@@ -428,6 +474,41 @@ const generatedAppModelBindings: AppModelBindings = {
         normalizeOpenResult(await commandInvokerOpenDocument(expectedTabSetRevision)),
     openRecentFile: async (path, expectedTabSetRevision) =>
         normalizeOpenResult(await commandInvokerOpenRecentFile(path, expectedTabSetRevision)),
+    classifyDroppedPaths: (paths) => commandInvokerClassifyDroppedPaths(paths),
+    refreshRecentItems: async () => {
+        const result = await commandInvokerRefreshRecentItems();
+        return {
+            recentItems: normalizeRecentItems(result.recentItems) ?? [],
+            error: normalizeClassifiedError(result.error),
+        };
+    },
+    clearRecentItems: async () => {
+        const result = await commandInvokerClearRecentItems();
+        return {
+            error:
+                result.category === undefined
+                    ? undefined
+                    : {
+                          category: result.category as ClassifiedError['category'],
+                          message: result.message ?? result.error?.message ?? '',
+                          remediations:
+                              result.remediation === undefined
+                                  ? []
+                                  : [result.remediation as ClassifiedError['remediations'][number]],
+                          dedupKey: result.id ?? 'recent-items',
+                          safeSubject: result.subject,
+                      },
+        };
+    },
+    openWorkspace: async (folderPath) => commandInvokerOpenWorkspace(folderPath),
+    chooseWorkspaceFolder: async () => commandInvokerChooseWorkspaceFolder(),
+    refreshWorkspace: async () => commandInvokerRefreshWorkspace(),
+    setWorkspaceHiddenFolders: async (show) => commandInvokerSetWorkspaceHiddenFolders(show),
+    closeWorkspace: async () => commandInvokerCloseWorkspace(),
+    createWorkspaceFile: async (parentPath, name) => commandInvokerCreateWorkspaceFile(parentPath, name),
+    createWorkspaceFolder: async (parentPath, name) => commandInvokerCreateWorkspaceFolder(parentPath, name),
+    revealWorkspacePath: async (path) => normalizePathCommandResult(await commandInvokerRevealWorkspacePath(path)),
+    copyWorkspacePath: async (path) => normalizePathCommandResult(await commandInvokerCopyWorkspacePath(path)),
     openPreviewLink: async (documentId, href) =>
         normalizeOpenResult(await commandInvokerOpenPreviewLink(documentId, href)),
     openExternalLink: (href) => BrowserOpenURL(href),
@@ -480,6 +561,7 @@ export const closePlanAdapter = createClosePlanAdapter({
 export const windowAdapter = createWindowAdapter({
     retryStartup: commandInvokerRetryStartup,
     windowReady: commandInvokerWindowReady,
+    openNewWindow: commandInvokerOpenNewWindow,
     windowFullscreen: WindowFullscreen,
     windowGetSize: WindowGetSize,
     windowIsFullscreen: WindowIsFullscreen,

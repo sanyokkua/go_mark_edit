@@ -16,19 +16,26 @@ type AppModelOption struct {
 	StableRead             func(string, int64) (file.StableClassifiedRead, error)
 	DiskVersion            func(string) (file.DiskVersion, error)
 	OpenDialog             DocumentOpenDialog
+	FolderDialog           WorkspaceFolderDialog
 	SaveDialog             DocumentSaveDialog
 	Emitter                StatePatchEmitter
 	Version                *string
 	Logger                 *zerolog.Logger
 	LayoutRepository       LayoutRepositoryAPI
 	FileMetadataRepository FileMetadataRepository
-	RecentFilesRepository  RecentFilesRepository
+	RecentItemsRepository  RecentItemsRepository
 	ClipboardWriter        file.ClipboardWriter
 	RevealPort             file.RevealPort
 	WriteCommitObserver    WriteCommitObserver
+	StartEmpty             bool
 }
 
 func (option AppModelOption) apply(service *AppModelService) {
+	if option.StartEmpty {
+		service.state.orderedDocumentIDs = nil
+		service.state.documents = make(map[string]*openDocument)
+		service.state.activeDocumentID = ""
+	}
 	if option.Clock != nil {
 		service.timer = option.Clock
 	}
@@ -48,6 +55,9 @@ func (option AppModelOption) apply(service *AppModelService) {
 		service.openDialog = option.OpenDialog
 		service.saveDialog = option.SaveDialog
 	}
+	if option.FolderDialog != nil {
+		service.folderDialog = option.FolderDialog
+	}
 	if option.Emitter != nil {
 		service.emitter = option.Emitter
 	}
@@ -63,8 +73,8 @@ func (option AppModelOption) apply(service *AppModelService) {
 	if option.FileMetadataRepository != nil {
 		service.metadata = option.FileMetadataRepository
 	}
-	if option.RecentFilesRepository != nil {
-		service.recentFiles = option.RecentFilesRepository
+	if option.RecentItemsRepository != nil {
+		service.recentItems = option.RecentItemsRepository
 	}
 	if option.ClipboardWriter != nil {
 		service.clipboard = option.ClipboardWriter
@@ -77,9 +87,18 @@ func (option AppModelOption) apply(service *AppModelService) {
 	}
 }
 
+// WithEmptySession starts a new process without a preloaded document.
+func WithEmptySession() AppModelOption {
+	return AppModelOption{StartEmpty: true}
+}
+
 // WithDialogs supplies the open and save dialog ports.
 func WithDialogs(open DocumentOpenDialog, save DocumentSaveDialog) AppModelOption {
-	return AppModelOption{OpenDialog: open, SaveDialog: save}
+	option := AppModelOption{OpenDialog: open, SaveDialog: save}
+	if folder, ok := open.(WorkspaceFolderDialog); ok {
+		option.FolderDialog = folder
+	}
+	return option
 }
 
 // WithEmitter supplies the state and asynchronous-error event port.

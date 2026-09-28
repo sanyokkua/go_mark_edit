@@ -13,6 +13,7 @@ import {
     type AppModelRuntime,
 } from '../../src/logic/adapter/appModelAdapter';
 import type { WireError } from '../../src/logic/utils/parseError';
+import { WorkspaceTreeTestProvider } from '../support/WorkspaceTreeTestProvider';
 
 const mockSetDocView = jest.fn(async (): Promise<void> => undefined);
 const mockGetSettings = jest.fn();
@@ -48,6 +49,8 @@ jest.mock('../../src/logic/adapter', () => ({
 }));
 
 interface MockMonacoRuntime {
+    deferMount?: boolean;
+    finishMount?: () => void;
     content: string;
     cursorPositionListener: ((event: editor.ICursorPositionChangedEvent) => void) | undefined;
     cursorSelectionListener: ((event: editor.ICursorSelectionChangedEvent) => void) | undefined;
@@ -65,6 +68,8 @@ interface MockMonacoRuntime {
 const mockRuntime = {} as MockMonacoRuntime;
 
 function resetMockMonaco(): void {
+    mockRuntime.deferMount = false;
+    mockRuntime.finishMount = undefined;
     mockRuntime.content = '';
     mockRuntime.cursorPositionListener = undefined;
     mockRuntime.cursorSelectionListener = undefined;
@@ -88,6 +93,9 @@ function resetMockMonaco(): void {
         scrollTop: 480,
     } as unknown as editor.ICodeEditorViewState;
     mockRuntime.editor = {
+        focus: jest.fn(() =>
+            document.querySelector<HTMLTextAreaElement>('textarea[aria-label="Markdown source"]')?.focus(),
+        ),
         dispose: jest.fn(),
         executeEdits: jest.fn(),
         getModel: jest.fn(() => mockRuntime.model as unknown as editor.ITextModel),
@@ -155,7 +163,10 @@ jest.mock('@monaco-editor/react', () => {
 
         React.useEffect((): void => {
             mockRuntime.props = props;
-            props.onMount?.(editorInstance, {} as Parameters<NonNullable<EditorProps['onMount']>>[1]);
+            const finishMount = (): void =>
+                props.onMount?.(editorInstance, {} as Parameters<NonNullable<EditorProps['onMount']>>[1]);
+            if (mockRuntime.deferMount) mockRuntime.finishMount = finishMount;
+            else finishMount();
         }, [editorInstance, props]);
 
         return React.createElement('textarea', {
@@ -267,6 +278,33 @@ afterEach((): void => {
     store.dispatch(resetProjection());
 });
 
+it('focuses a newly created file when Monaco mounts after the focus request', async () => {
+    mockRuntime.deferMount = true;
+    const document = statusDocument({ documentId: 'document-1' });
+    store.dispatch(
+        hydrateProjection({
+            revision: 1,
+            documents: { [document.documentId]: document },
+            activeDocumentId: document.documentId,
+            ui: {},
+        }),
+    );
+    render(
+        <Provider store={store}>
+            <EditorSessionProvider activeBuffer={{ documentId: document.documentId, content: '' }}>
+                <EditorView editorFocusRequest={{ documentId: document.documentId, sequence: 1 }} />
+            </EditorSessionProvider>
+        </Provider>,
+    );
+    const source = await screen.findByRole('textbox', { name: 'Markdown source' });
+    expect(source).not.toHaveFocus();
+    expect(mockRuntime.finishMount).toBeDefined();
+    await act(async () => {
+        mockRuntime.finishMount?.();
+    });
+    expect(source).toHaveFocus();
+});
+
 function statusDocument(overrides: Partial<DocumentMetadata> = {}): DocumentMetadata {
     const view = overrides.view ?? {
         arrangement: 'split',
@@ -313,7 +351,9 @@ async function renderStatusEditor(document: DocumentMetadata, content: string): 
     render(
         <Provider store={store}>
             <EditorSessionContext.Provider value={initialState.activeBuffer}>
-                <AppShell />
+                <WorkspaceTreeTestProvider>
+                    <AppShell />
+                </WorkspaceTreeTestProvider>
             </EditorSessionContext.Provider>
         </Provider>,
     );
@@ -723,6 +763,13 @@ it('formats Phase-01 canonical wire metadata labels', async () => {
 
     expect(status).toHaveTextContent('UTF-8');
     expect(status).toHaveTextContent('LF');
+});
+
+it('shows a readable line-ending label for an empty document', async () => {
+    await renderStatusEditor(statusDocument({ lineEnding: 'none' }), '');
+
+    expect(screen.getByLabelText('Editor pane')).toHaveTextContent('No line endings');
+    expect(await screen.findByRole('status', { name: 'Document status' })).toHaveTextContent('No line endings');
 });
 
 it('keeps preview text outside Redux', () => {

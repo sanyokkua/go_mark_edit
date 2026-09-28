@@ -160,7 +160,7 @@ const ViewMenu: React.FC<ViewMenuProps> = ({
                         accelerator={acceleratorFor('toggle-sidebar')}
                         label={
                             arrangement === undefined
-                                ? t('view.menu.showWorkspace')
+                                ? t('view.menu.showSidebar')
                                 : t(getAction('toggle-sidebar').labelKey)
                         }
                         onSelect={(): void =>

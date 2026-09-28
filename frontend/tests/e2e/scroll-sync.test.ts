@@ -422,8 +422,9 @@ test('keeps both panes on the same block while either pane scrolls', async ({ ap
     await seekEditorToLine(page, 150, 15);
     expectAligned(await settledLinePair(page), BLOCK_TOLERANCE_LINES);
 
-    // Wheel over the preview: the editor follows back.
-    await seekPreviewToLine(page, 300, 12);
+    // Wheel over ordinary preview blocks: the editor follows back. Stay clear of
+    // the fenced block, whose single anchor cannot represent an interior editor line.
+    await seekPreviewToLine(page, 250, 12);
     expectAligned(await settledLinePair(page), BLOCK_TOLERANCE_LINES);
 
     // The same agreement holds where the block at the top is the fenced code

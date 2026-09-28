@@ -5,6 +5,7 @@ import { useAppDispatch, useAppSelector } from '../../logic/store';
 import { WORKSPACE_BINDING_WIDTH, setWorkspaceWidth } from '../../logic/store/uiLayoutCommands';
 import Sidebar from '../components/Sidebar';
 import { useMinimumWindow } from './minimumWindow';
+import WorkspaceTree from './WorkspaceTree/WorkspaceTree';
 import styles from './AppShell.module.css';
 
 export interface WorkspaceLayoutProps extends PropsWithChildren {
@@ -63,15 +64,17 @@ const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
         >
             {minimumWindow ? null : (
                 <Sidebar
-                    ariaLabel={t('shell.workspace')}
+                    ariaLabel={t('shell.sidebar')}
                     collapsed={!workspaceVisible}
                     minWidth={0}
                     onResize={requestWidth}
                     onResizeEnd={(): void => undefined}
-                    resizeAriaLabel={t('shell.workspace.resize')}
+                    resizeAriaLabel={t('shell.sidebar.resize')}
                     side="left"
                     width={workspaceWidth}
-                />
+                >
+                    <WorkspaceTree />
+                </Sidebar>
             )}
             <main aria-label={t('shell.document')} className={styles.document}>
                 {children}

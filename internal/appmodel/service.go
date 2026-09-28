@@ -45,9 +45,10 @@ type AppModelService struct {
 	conflictQueue                  *conflictQueue
 	shutdownDraining               bool
 	metadata                       FileMetadataRepository
-	recentFiles                    RecentFilesRepository
+	recentItems                    RecentItemsRepository
 	defaultOpenMode                string
 	openDialog                     DocumentOpenDialog
+	folderDialog                   WorkspaceFolderDialog
 	saveDialog                     DocumentSaveDialog
 	clipboard                      file.ClipboardWriter
 	reveal                         file.RevealPort
@@ -56,6 +57,7 @@ type AppModelService struct {
 	applicationVersion             string
 	logger                         zerolog.Logger
 	publicationMu                  sync.Mutex
+	workspaceMu                    sync.Mutex
 	publicationSequence            uint64
 	applicationPublicationCommitID uint64
 }
@@ -135,12 +137,12 @@ func (service *AppModelService) SetFileMetadataRepository(repository FileMetadat
 	service.metadata = repository
 }
 
-// SetRecentFilesRepository configures durable MRU metadata without changing
+// SetRecentItemsRepository configures durable MRU metadata without changing
 // the in-memory document/session authority.
-func (service *AppModelService) SetRecentFilesRepository(repository RecentFilesRepository) {
+func (service *AppModelService) SetRecentItemsRepository(repository RecentItemsRepository) {
 	service.mu.Lock()
 	defer service.mu.Unlock()
-	service.recentFiles = repository
+	service.recentItems = repository
 }
 
 // SetDefaultOpenMode records the acknowledged setting used before path arrangements.
@@ -269,7 +271,7 @@ func (service *AppModelService) ClearPendingClose(id string) {
 
 // GetState returns a metadata-only snapshot plus the active canonical buffer.
 func (service *AppModelService) GetState(ctx context.Context) (apperr.AppState, error) {
-	service.refreshRecentFiles(ctx)
+	_, _ = service.refreshRecentItems(ctx, false)
 	service.mu.RLock()
 	defer service.mu.RUnlock()
 	if service.startupErr != nil {
@@ -303,8 +305,9 @@ func (service *AppModelService) GetState(ctx context.Context) (apperr.AppState, 
 			ActiveDocumentID:   service.state.activeDocumentID,
 			ActiveDocument:     activeDocumentID,
 			OrderedDocumentIDs: orderedDocumentIDs,
-			RecentFiles:        append([]string(nil), service.state.recentFiles...),
+			RecentItems:        append([]apperr.RecentItem(nil), service.state.recentItems...),
 			CanReopenLastFile:  service.state.canReopenLastFile,
+			Workspace:          cloneWorkspaceSnapshot(service.state.workspace),
 			UI:                 cloneUILayout(service.state.ui),
 			PendingClose:       clonePendingClose(service.pendingClose),
 		},
@@ -855,7 +858,7 @@ func (service *AppModelService) documentPatchLocked(documentID string) apperr.Ap
 			documentID: metadata,
 		}},
 		ActiveDocument:    activeDocumentPatch(service.state.activeDocumentID),
-		RecentFiles:       append([]string(nil), service.state.recentFiles...),
+		RecentItems:       append([]apperr.RecentItem(nil), service.state.recentItems...),
 		CanReopenLastFile: pointerTo(service.state.canReopenLastFile),
 	}
 }
@@ -875,8 +878,9 @@ func (service *AppModelService) snapshotLocked() applicationState {
 		documents:          make(map[string]*openDocument, len(service.state.documents)),
 		activeDocumentID:   service.state.activeDocumentID,
 		ui:                 cloneUILayout(service.state.ui),
-		recentFiles:        append([]string(nil), service.state.recentFiles...),
+		recentItems:        append([]apperr.RecentItem(nil), service.state.recentItems...),
 		canReopenLastFile:  service.state.canReopenLastFile,
+		workspace:          cloneWorkspaceSnapshot(service.state.workspace),
 	}
 	for documentID, document := range service.state.documents {
 		documentCopy := *document

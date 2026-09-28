@@ -9,6 +9,7 @@ export type ActionSurface =
     | 'overflow'
     | 'context'
     | 'tab-context'
+    | 'tree-context'
     | 'shortcuts';
 export type NativeActionRole = 'clipboard' | 'none';
 
@@ -20,7 +21,9 @@ export type ActionId =
     | 'new-window'
     | 'open-file'
     | 'open-folder'
+    | 'close-folder'
     | 'open-recent'
+    | 'clear-recent'
     | 'reopen'
     | 'next-tab'
     | 'previous-tab'
@@ -32,6 +35,8 @@ export type ActionId =
     | 'close-right'
     | 'move-tab-left'
     | 'move-tab-right'
+    | 'new-file-here'
+    | 'new-folder-here'
     | 'copy-path'
     | 'reveal-in-file-manager'
     | 'exit'
@@ -114,7 +119,7 @@ export interface ProjectedActionState {
     readonly canReopenLastFile?: boolean;
     readonly documents?: Readonly<Record<string, ProjectedActionDocument>>;
     readonly orderedDocumentIds?: readonly string[];
-    readonly recentFiles?: readonly string[];
+    readonly recentItems?: readonly RecentItem[];
 }
 
 export interface ActionAvailabilityContext {
@@ -129,6 +134,10 @@ export interface ActionAvailabilityContext {
     readonly tabCommand?: boolean;
     readonly targetDocumentId?: string;
     readonly targetIndex?: number;
+    readonly targetPath?: string;
+    readonly targetNodeIsDir?: boolean;
+    readonly targetNodeUnreadable?: boolean;
+    readonly workspaceOpen?: boolean;
     readonly writable?: boolean;
 }
 
@@ -184,7 +193,7 @@ export const actionRegistry: readonly ActionEntry[] = Object.freeze([
         availability: available(),
     }),
     entry('new-window', 'application', ['file-menu'], {
-        availability: fileDeferred,
+        availability: available(),
     }),
     entry('open-file', 'application', ['file-menu'], {
         shortcut: 'Mod+O',
@@ -193,9 +202,11 @@ export const actionRegistry: readonly ActionEntry[] = Object.freeze([
     }),
     entry('open-folder', 'application', ['file-menu'], {
         surfaceLabelKeys: { 'file-menu': 'action.open-folder.file-menu.label' },
-        availability: fileDeferred,
+        availability: available(),
     }),
+    entry('close-folder', 'application', ['file-menu']),
     entry('open-recent', 'application', ['file-menu']),
+    entry('clear-recent', 'application', ['file-menu']),
     entry('reopen', 'application', ['file-menu'], {
         shortcut: 'Mod+Shift+Alt+T',
     }),
@@ -227,11 +238,17 @@ export const actionRegistry: readonly ActionEntry[] = Object.freeze([
         shortcut: 'Mod+Shift+PageDown',
         surfaceOrder: { 'tab-context': 4 },
     }),
-    entry('copy-path', 'document', ['tab-context'], {
-        surfaceOrder: { 'tab-context': 5 },
+    entry('new-file-here', 'window', ['tree-context'], {
+        surfaceOrder: { 'tree-context': 0 },
     }),
-    entry('reveal-in-file-manager', 'document', ['tab-context'], {
-        surfaceOrder: { 'tab-context': 6 },
+    entry('new-folder-here', 'window', ['tree-context'], {
+        surfaceOrder: { 'tree-context': 1 },
+    }),
+    entry('copy-path', 'document', ['tab-context', 'tree-context'], {
+        surfaceOrder: { 'tab-context': 5, 'tree-context': 3 },
+    }),
+    entry('reveal-in-file-manager', 'document', ['tab-context', 'tree-context'], {
+        surfaceOrder: { 'tab-context': 6, 'tree-context': 2 },
     }),
     entry('exit', 'application', ['file-menu'], { availability: available() }),
 
@@ -451,6 +468,22 @@ export function getActionAvailability(
     if (context.commandBarrier === true || context.barrierBlocked === true) {
         return { kind: 'unavailable', reason: 'barrier' };
     }
+    if (
+        id === 'new-file-here' ||
+        id === 'new-folder-here' ||
+        ((id === 'copy-path' || id === 'reveal-in-file-manager') && context.targetPath !== undefined)
+    ) {
+        if (context.workspaceOpen !== true || !context.targetPath) {
+            return { kind: 'unavailable', reason: 'unsupported' };
+        }
+        if (
+            (id === 'new-file-here' || id === 'new-folder-here') &&
+            (!context.targetNodeIsDir || context.targetNodeUnreadable)
+        ) {
+            return { kind: 'unavailable', reason: 'unsupported' };
+        }
+        return { kind: 'available' };
+    }
 
     const projected = projectedStateFor(context);
     const orderedDocumentIds = projected?.orderedDocumentIds;
@@ -463,16 +496,14 @@ export function getActionAvailability(
         return { kind: 'unavailable', reason: 'limit' };
     }
     if (id === 'open-recent') {
-        if (projected?.recentFiles !== undefined && projected.recentFiles.length === 0) {
+        if (projected?.recentItems !== undefined && projected.recentItems.length === 0) {
             return { kind: 'unavailable', reason: 'no-recent' };
         }
-        if (isAtTabLimit(context)) return { kind: 'unavailable', reason: 'limit' };
     }
     if (id === 'reopen') {
         if (projected?.canReopenLastFile === false) {
             return { kind: 'unavailable', reason: 'no-recent' };
         }
-        if (isAtTabLimit(context)) return { kind: 'unavailable', reason: 'limit' };
     }
 
     if (id === 'save' || id === 'save-as') {
@@ -587,3 +618,4 @@ export function actionsForSurface(surface: ActionSurface): readonly ActionEntry[
         })
         .map(({ action }) => action);
 }
+import type { RecentItem } from '../store/appModelTypes';

@@ -10,6 +10,10 @@ export function CancelQuit(arg1, arg2) {
   return window['go']['application']['ApplicationHandler']['CancelQuit'](arg1, arg2);
 }
 
+export function OpenNewWindow(arg1, arg2) {
+  return window['go']['application']['ApplicationHandler']['OpenNewWindow'](arg1, arg2);
+}
+
 export function RetryStartup(arg1) {
   return window['go']['application']['ApplicationHandler']['RetryStartup'](arg1);
 }

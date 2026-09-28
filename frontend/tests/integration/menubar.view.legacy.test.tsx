@@ -40,6 +40,25 @@ it('renders synchronized pane toggles without an unlisted view-cycle shortcut', 
     expect(screen.queryByRole('menuitem', { name: /Cycle view arrangement/i })).not.toBeInTheDocument();
 });
 
+it('labels the checked sidebar toggle with sidebar terminology', (): void => {
+    render(
+        <ViewMenu
+            editorVisible
+            previewVisible
+            workspaceVisible
+            onEditorVisibilityChange={jest.fn()}
+            onPreviewVisibilityChange={jest.fn()}
+            onWorkspaceVisibilityChange={jest.fn()}
+        />,
+    );
+
+    fireEvent.keyDown(screen.getByRole('button', { name: 'View' }), {
+        key: 'ArrowDown',
+    });
+
+    expect(screen.getByRole('menuitemcheckbox', { name: 'Show Sidebar' })).toHaveAttribute('data-state', 'checked');
+});
+
 it('routes legacy editor and preview view toggles through the dispatcher', async () => {
     const dispatch = jest.spyOn(actionDispatcher, 'dispatchAction');
     const onEditorVisibilityChange = jest.fn();

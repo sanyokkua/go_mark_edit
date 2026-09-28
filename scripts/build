@@ -3,10 +3,11 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 . "$SCRIPT_DIR/lib/common.sh"
+. "$SCRIPT_DIR/lib/release_version.sh"
 
 usage() {
     cat <<'EOF'
-Usage: scripts/build [--version X.Y.Z]
+Usage: scripts/build [--version X.Y.Z[{-alpha.N|-beta.N}]]
        scripts/build setup [--with-browser]
        scripts/build dev
 EOF
@@ -66,7 +67,7 @@ version=''
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --version)
-            [[ $# -ge 2 ]] || usage_error '--version requires X.Y.Z'
+            [[ $# -ge 2 ]] || usage_error '--version requires X.Y.Z, X.Y.Z-alpha.N, or X.Y.Z-beta.N'
             version="$2"
             shift 2
             ;;
@@ -77,6 +78,10 @@ while [[ $# -gt 0 ]]; do
         *) usage_error "unknown option: $1" ;;
     esac
 done
+
+if [[ -n "$version" ]]; then
+    parse_release_version "$version" || exit 2
+fi
 
 require_command wails
 require_command go
@@ -103,7 +108,6 @@ node frontend/scripts/generate-editor-themes.mjs
 
 build_args=()
 if [[ -n "$version" ]]; then
-    [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || die "invalid version: $version (expected X.Y.Z)"
     build_args+=(-ldflags "-X github.com/sanyokkua/go_mark_edit/internal/bootstrap.version=$version")
 fi
 if [[ "$(uname -s)" == 'Linux' ]]; then

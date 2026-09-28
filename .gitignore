@@ -51,3 +51,4 @@ go.work.sum
 .vscode/
 .DS_Store
 .serena/
+/.agent-docs/

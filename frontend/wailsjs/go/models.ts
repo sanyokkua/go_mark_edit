@@ -71,6 +71,102 @@ export namespace apperr {
 	        this.assistantWidth = source["assistantWidth"];
 	    }
 	}
+	export class WorkspaceNode {
+	    path: string;
+	    name: string;
+	    isDir: boolean;
+	    unreadable?: boolean;
+	    children?: WorkspaceNode[];
+	
+	    static createFrom(source: any = {}) {
+	        return new WorkspaceNode(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.path = source["path"];
+	        this.name = source["name"];
+	        this.isDir = source["isDir"];
+	        this.unreadable = source["unreadable"];
+	        this.children = this.convertValues(source["children"], WorkspaceNode);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class WorkspaceSnapshot {
+	    rootPath: string;
+	    rootName: string;
+	    root: WorkspaceNode;
+	    totalEntries: number;
+	    truncated: boolean;
+	    unavailable: boolean;
+	    filterSuffixes: string[];
+	    showHiddenFolders: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new WorkspaceSnapshot(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.rootPath = source["rootPath"];
+	        this.rootName = source["rootName"];
+	        this.root = this.convertValues(source["root"], WorkspaceNode);
+	        this.totalEntries = source["totalEntries"];
+	        this.truncated = source["truncated"];
+	        this.unavailable = source["unavailable"];
+	        this.filterSuffixes = source["filterSuffixes"];
+	        this.showHiddenFolders = source["showHiddenFolders"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class RecentItem {
+	    path: string;
+	    kind: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new RecentItem(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.path = source["path"];
+	        this.kind = source["kind"];
+	    }
+	}
 	export class ScrollOffsets {
 	    editor: number;
 	    preview: number;
@@ -243,8 +339,9 @@ export namespace apperr {
 	    orderedDocumentIds: string[];
 	    activeDocumentId?: string;
 	    activeDocument?: string;
-	    recentFiles?: string[];
+	    recentItems?: RecentItem[];
 	    canReopenLastFile: boolean;
+	    workspace?: WorkspaceSnapshot;
 	    ui: UILayout;
 	    pendingClose?: PendingClose;
 	
@@ -261,8 +358,9 @@ export namespace apperr {
 	        this.orderedDocumentIds = source["orderedDocumentIds"];
 	        this.activeDocumentId = source["activeDocumentId"];
 	        this.activeDocument = source["activeDocument"];
-	        this.recentFiles = source["recentFiles"];
+	        this.recentItems = this.convertValues(source["recentItems"], RecentItem);
 	        this.canReopenLastFile = source["canReopenLastFile"];
+	        this.workspace = this.convertValues(source["workspace"], WorkspaceSnapshot);
 	        this.ui = this.convertValues(source["ui"], UILayout);
 	        this.pendingClose = this.convertValues(source["pendingClose"], PendingClose);
 	    }
@@ -816,6 +914,32 @@ export namespace apperr {
 		    return a;
 		}
 	}
+	export class DropClassificationResult {
+	    category?: string;
+	    subject?: string;
+	    message?: string;
+	    remediation?: string;
+	    id?: string;
+	    files?: string[];
+	    folders?: string[];
+	    unsupported?: string[];
+	
+	    static createFrom(source: any = {}) {
+	        return new DropClassificationResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.category = source["category"];
+	        this.subject = source["subject"];
+	        this.message = source["message"];
+	        this.remediation = source["remediation"];
+	        this.id = source["id"];
+	        this.files = source["files"];
+	        this.folders = source["folders"];
+	        this.unsupported = source["unsupported"];
+	    }
+	}
 	export class EditorSettings {
 	    lineNumbers: boolean;
 	    wordWrap: boolean;
@@ -845,6 +969,50 @@ export namespace apperr {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.autosave = source["autosave"];
 	    }
+	}
+	export class FolderChoiceResult {
+	    category?: string;
+	    subject?: string;
+	    message?: string;
+	    remediation?: string;
+	    id?: string;
+	    status: string;
+	    path?: string;
+	    error?: ClassifiedError;
+	
+	    static createFrom(source: any = {}) {
+	        return new FolderChoiceResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.category = source["category"];
+	        this.subject = source["subject"];
+	        this.message = source["message"];
+	        this.remediation = source["remediation"];
+	        this.id = source["id"];
+	        this.status = source["status"];
+	        this.path = source["path"];
+	        this.error = this.convertValues(source["error"], ClassifiedError);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
 	}
 	export class MarkdownSettings {
 	    standard: string;
@@ -876,6 +1044,7 @@ export namespace apperr {
 	    id?: string;
 	    status: string;
 	    documentId?: string;
+	    path?: string;
 	    projectionRevision?: number;
 	    activeBuffer?: ActiveBuffer;
 	    error?: ClassifiedError;
@@ -893,6 +1062,7 @@ export namespace apperr {
 	        this.id = source["id"];
 	        this.status = source["status"];
 	        this.documentId = source["documentId"];
+	        this.path = source["path"];
 	        this.projectionRevision = source["projectionRevision"];
 	        this.activeBuffer = this.convertValues(source["activeBuffer"], ActiveBuffer);
 	        this.error = this.convertValues(source["error"], ClassifiedError);
@@ -959,6 +1129,49 @@ export namespace apperr {
 		}
 	}
 	
+	
+	export class RecentItemsResult {
+	    category?: string;
+	    subject?: string;
+	    message?: string;
+	    remediation?: string;
+	    id?: string;
+	    recentItems: RecentItem[];
+	    error?: ClassifiedError;
+	
+	    static createFrom(source: any = {}) {
+	        return new RecentItemsResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.category = source["category"];
+	        this.subject = source["subject"];
+	        this.message = source["message"];
+	        this.remediation = source["remediation"];
+	        this.id = source["id"];
+	        this.recentItems = this.convertValues(source["recentItems"], RecentItem);
+	        this.error = this.convertValues(source["error"], ClassifiedError);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	
 	
 	export class Settings {
@@ -1192,6 +1405,52 @@ export namespace apperr {
 	        this.remediation = source["remediation"];
 	        this.id = source["id"];
 	        this.error = this.convertValues(source["error"], WireError);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	
+	
+	export class WorkspaceResult {
+	    category?: string;
+	    subject?: string;
+	    message?: string;
+	    remediation?: string;
+	    id?: string;
+	    status: string;
+	    workspace?: WorkspaceSnapshot;
+	    error?: ClassifiedError;
+	
+	    static createFrom(source: any = {}) {
+	        return new WorkspaceResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.category = source["category"];
+	        this.subject = source["subject"];
+	        this.message = source["message"];
+	        this.remediation = source["remediation"];
+	        this.id = source["id"];
+	        this.status = source["status"];
+	        this.workspace = this.convertValues(source["workspace"], WorkspaceSnapshot);
+	        this.error = this.convertValues(source["error"], ClassifiedError);
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {

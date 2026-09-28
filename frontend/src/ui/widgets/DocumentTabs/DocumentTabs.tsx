@@ -19,7 +19,7 @@ import { currentPlatform, shortcutForKeyEvent } from '../../../logic/actions/sho
 import { t } from '../../../i18n';
 import LiveRegion from '../../primitives/LiveRegion';
 import type { PopupAnchor } from '../../components/Popup';
-import TabBar from '../../components/TabBar';
+import TabBar, { type TabBarProps } from '../../components/TabBar';
 import TabContextMenu, {
     type TabContextAction,
     type TabContextAdapter,
@@ -32,6 +32,7 @@ import { flushOutgoingDocument, outgoingFlushRefusal } from '../outgoingFlush';
 import { tabLabelsFor, truncatedTabLabelParts, type TabLabel } from '../tabLabel';
 
 export interface DocumentTabsProps {
+    revealRequest?: TabBarProps['revealRequest'];
     adapter?: Pick<
         AppModelAdapter,
         | 'activateDocument'
@@ -65,6 +66,7 @@ const DocumentTabs: React.FC<DocumentTabsProps> = ({
     onCloseDocument,
     onExternalConflict,
     onNewDocument,
+    revealRequest,
     modalOpen = false,
 }: DocumentTabsProps): React.JSX.Element => {
     const dispatch = useAppDispatch();
@@ -544,6 +546,7 @@ const DocumentTabs: React.FC<DocumentTabsProps> = ({
         <>
             <TabBar
                 ariaLabel={t('editor.tabs')}
+                revealRequest={revealRequest}
                 onActivate={(documentId): void => {
                     void activateDocument(documentId);
                 }}

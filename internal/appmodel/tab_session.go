@@ -130,7 +130,7 @@ func (service *AppModelService) removeClosedEntryLocked(path string) {
 		}
 	}
 	service.state.recentlyClosed = filtered
-	service.state.canReopenLastFile = len(filtered) > 0
+	service.updateCanReopenLastFileLocked()
 }
 
 func (service *AppModelService) consumeClosedEntry(ctx context.Context, path string) {

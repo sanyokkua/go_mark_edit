@@ -159,101 +159,15 @@ Useful for one-time handshakes or initialization signals. Equivalent TypeScript:
 
 ## GoMarkEdit Application-Model Events (`state:patch`)
 
-Before the agent events below: GoMarkEdit's primary Go→frontend event is **`state:patch`**, emitted by
+GoMarkEdit's primary Go→frontend event is **`state:patch`**, emitted by
 `internal/appmodel` after **every** model mutation (DD-62/DD-63). It carries only the changed sections of
 the authoritative application state (docs metadata, tabs, workspace ref, UI/layout); the adapter applies
 it to the Redux projection (hydrated once via the bound `GetState` query). The backend **never** emits
 buffer text for the currently focused editor (DD-64) — only derived fields (dirty, counts). Contract:
 `docs/architecture.md` (Backend truth and frontend working copy).
 
-## GoMarkEdit Agent Events
+## Assistant events
 
-GoMarkEdit has **no chain concept**. Its assistant LLM assistant runs an **agentic tool-call loop**
-(`internal/llm/agent/`) whose progress and streamed tokens flow Go→frontend via four events, emitted by
-the agent orchestrator via `runtime.EventsEmit`. The bound `RunResult` envelope still returns the final
-outcome; events are the incremental channel. Only the frontend `logic/adapter/` subscribes (via
-`EventsOn`) and dispatches into the `run` slice (`logic/store/assistant/`) — components never call
-`EventsOn` directly. Every payload carries the `runId` from the originating `RunAgentRequest`.
-
-### Event contract
-
-| Event name       | Payload shape                              | When emitted                                                                  |
-| ---------------- | ------------------------------------------ | ----------------------------------------------------------------------------- |
-| `agent:progress` | `{ runId, phase, iteration, tool? }`       | Loop advanced; `phase ∈ {infer, tool, final}`; `tool` set when `phase="tool"` |
-| `agent:token`    | `{ runId, delta }`                         | Streaming: a chunk of assistant text to append to the transcript              |
-| `agent:done`     | `{ runId, stopReason, transcriptSummary }` | Run finished (incl. a cancelled stop reason) — final event, always emitted    |
-| `agent:error`    | `{ runId, error: WireError }`              | Run failed; `error` is the standard sanitized envelope error                  |
-
-`WireError` shape: `{ code: ErrorCode, message: string, details?: Record<string,string> }`. Because
-`agent:error` reuses that exact shape, the adapter's normal `notifyError` toast path handles it with no
-special casing.
-
-### Go emission
-
-```go
-// internal/llm/agent — emits as the loop advances
-type progressPayload struct {
-    RunID     string `json:"runId"`
-    Phase     string `json:"phase"`     // "infer" | "tool" | "final"
-    Iteration int    `json:"iteration"`
-    Tool      string `json:"tool,omitempty"`
-}
-
-runtime.EventsEmit(ctx, "agent:progress", progressPayload{
-    RunID:     runID,
-    Phase:     "tool",
-    Iteration: i,
-    Tool:      call.Name,
-})
-```
-
-### TypeScript listener (adapter layer)
-
-```typescript
-import { EventsOn } from '@wailsapp/runtime';
-import { store } from 'logic/store';
-import { setProgress, appendToken, setDone, setError } from 'logic/store/assistant/run';
-
-// Subscribed once inside logic/adapter/, tied to the active runId
-export function subscribeAgentEvents(runId: string): () => void {
-    const cancelProgress = EventsOn('agent:progress', (p) => {
-        if (p.runId === runId) store.dispatch(setProgress({ phase: p.phase, iteration: p.iteration, tool: p.tool }));
-    });
-    const cancelToken = EventsOn('agent:token', (p) => {
-        if (p.runId === runId) store.dispatch(appendToken(p.delta));
-    });
-    const cancelError = EventsOn('agent:error', (p) => {
-        if (p.runId === runId) store.dispatch(setError(p.error));
-    });
-    const cancelDone = EventsOn('agent:done', (p) => {
-        if (p.runId !== runId) return;
-        store.dispatch(
-            setDone({
-                stopReason: p.stopReason,
-                transcriptSummary: p.transcriptSummary,
-            }),
-        );
-        cancelProgress();
-        cancelToken();
-        cancelError();
-        cancelDone();
-    });
-    return () => {
-        cancelProgress();
-        cancelToken();
-        cancelError();
-        cancelDone();
-    };
-}
-```
-
-### Key invariants
-
-- `agent:done` is **always** the last event for a run — a cancelled run also ends with `agent:done`
-  (carrying a cancelled `stopReason`), not a bare stop.
-- At most **one run is in flight app-wide** (single-flight `internal/gate`); a second `RunAgent` while the
-  gate is held returns `apperr.Busy()` synchronously and emits no events.
-- Cancellation is via the run's `context.Context` (checked each iteration and before each tool dispatch),
-  not a dedicated cancel event; the in-flight run ends with `agent:done`/`agent:error`.
-- Event subscriptions live in the adapter, not components. Always return and call the cancel functions so
-  listeners don't leak across runs.
+The Assistant is planned but is not implemented in the current application. GoMarkEdit has no `agent:*`
+events or LLM event stream. Assistant-specific examples have been removed so this document describes
+only shipped event contracts.

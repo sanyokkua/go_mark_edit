@@ -261,25 +261,26 @@ func (service *AppModelService) CommitPreparedOpen(ctx context.Context, reservat
 		changed = true
 	}
 	var promotionWarning *apperr.ClassifiedError
-	if service.recentFiles == nil {
-		service.state.recentFiles = promoteRecentFile(service.state.recentFiles, reservation.canonical.Path)
-		if service.state.recentFilesChanged(before.recentFiles) {
+	if service.recentItems == nil {
+		service.state.recentItems = promoteRecentItem(service.state.recentItems, reservation.canonical.Path, "file")
+		if service.state.recentItemsChanged(before.recentItems) {
 			changed = true
 		}
 	} else {
-		repository := service.recentFiles
+		repository := service.recentItems
 		service.mu.Unlock()
-		entries, err := repository.Promote(ctx, reservation.canonical.Path)
+		entries, err := repository.Promote(ctx, reservation.canonical.Path, "file")
 		service.mu.Lock()
 		if err != nil {
-			promotionWarning = bridge.ClassifiedWithID(apperr.ClassifiedPersistenceWarning, reservation.canonical.Path, "The file opened successfully, but recent-file history could not be updated.", apperr.RemediationNone, "recent-files")
+			promotionWarning = bridge.ClassifiedWithID(apperr.ClassifiedPersistenceWarning, reservation.canonical.Path, "The file opened successfully, but recent history could not be updated.", apperr.RemediationNone, "recent-items")
 		} else {
-			service.state.recentFiles = append([]string(nil), entries...)
-			if service.state.recentFilesChanged(before.recentFiles) {
+			service.state.recentItems = append([]apperr.RecentItem(nil), entries...)
+			if service.state.recentItemsChanged(before.recentItems) {
 				changed = true
 			}
 		}
 	}
+	service.updateCanReopenLastFileLocked()
 	if !changed {
 		result := openOutcomeForDocument(status, documentID, service.state.revision, service.state.documents[documentID])
 		result.Error = promotionWarning
@@ -295,7 +296,7 @@ func (service *AppModelService) CommitPreparedOpen(ctx context.Context, reservat
 		OrderedDocumentIDs: append([]string(nil), service.state.orderedDocumentIDs...),
 		Documents:          &apperr.DocumentsPatch{Upsert: map[string]apperr.DocumentMetadata{documentID: metadata}},
 		ActiveDocument:     activeDocumentPatch(service.state.activeDocumentID),
-		RecentFiles:        append([]string(nil), service.state.recentFiles...),
+		RecentItems:        append([]apperr.RecentItem(nil), service.state.recentItems...),
 		CanReopenLastFile:  pointerTo(service.state.canReopenLastFile),
 	}
 	if removedID != "" {
@@ -324,8 +325,16 @@ func (service *AppModelService) ReopenLastFile(ctx context.Context, expectedTabS
 		return bridge.FromClassified[apperr.OpenOutcome](classified, apperr.OpenStatusRefused)
 	}
 	if len(service.state.recentlyClosed) == 0 {
+		if len(service.state.recentItems) > 0 {
+			entry := service.state.recentItems[0]
+			service.mu.RUnlock()
+			if entry.Kind == "folder" {
+				return apperr.OpenOutcome{Status: apperr.OpenStatusFolderTarget, Path: entry.Path}
+			}
+			return service.OpenPath(ctx, entry.Path, expectedTabSetRevision)
+		}
 		service.mu.RUnlock()
-		classified := bridge.ClassifiedWithID(apperr.ClassifiedNotFound, "document", "There is no recently closed file to reopen.", apperr.RemediationNone, "")
+		classified := bridge.ClassifiedWithID(apperr.ClassifiedNotFound, "document", "There is nothing to reopen.", apperr.RemediationNone, "")
 		return bridge.FromClassified[apperr.OpenOutcome](classified, apperr.OpenStatusRefused)
 	}
 	entry := service.state.recentlyClosed[0]
@@ -424,22 +433,22 @@ func openArrangement(defaultMode, fallback string) string {
 	return ArrangementSplit
 }
 
-func promoteRecentFile(recent []string, path string) []string {
-	result := []string{path}
+func promoteRecentItem(recent []apperr.RecentItem, path, kind string) []apperr.RecentItem {
+	result := []apperr.RecentItem{{Path: path, Kind: kind}}
 	for _, candidate := range recent {
-		if candidate != path && len(result) < 6 {
+		if candidate.Path != path && len(result) < maxRecentItems {
 			result = append(result, candidate)
 		}
 	}
 	return result
 }
 
-func (state applicationState) recentFilesChanged(before []string) bool {
-	if len(state.recentFiles) != len(before) {
+func (state applicationState) recentItemsChanged(before []apperr.RecentItem) bool {
+	if len(state.recentItems) != len(before) {
 		return true
 	}
-	for index := range state.recentFiles {
-		if state.recentFiles[index] != before[index] {
+	for index := range state.recentItems {
+		if state.recentItems[index] != before[index] {
 			return true
 		}
 	}

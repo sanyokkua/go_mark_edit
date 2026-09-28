@@ -91,6 +91,105 @@ it('keeps a deferred comparison hidden until the production owner rechecks it', 
     expect(owner.result.current.conflict).toBeNull();
 });
 
+it('clears a foreground comparison after a deferred write saves the document', async () => {
+    const check = documentConflictAdapter.checkExternalChanges as jest.Mock;
+    check.mockResolvedValueOnce({ status: 'detected', preview: conflictFixture() });
+    check.mockResolvedValueOnce({ status: 'unchanged' });
+    const owner = renderOwner();
+    act(() => owner.result.current.receiveConflict(conflictFixture()));
+    owner.rerender({ suspended: true });
+    owner.rerender({ suspended: false });
+    await waitFor(() => expect(owner.result.current.conflict).not.toBeNull());
+    await waitFor(() => expect(check).toHaveBeenCalledTimes(1));
+
+    act(() => {
+        store.dispatch(
+            hydrateProjection({
+                revision: 2,
+                tabSetRevision: 1,
+                activeDocumentId: 'one',
+                orderedDocumentIds: ['one', 'two'],
+                documents: {
+                    one: { ...documentFixture(), dirty: false, status: 'saved' },
+                    two: documentFixture('two'),
+                },
+                ui: {},
+            }),
+        );
+    });
+    await waitFor(() => expect(check).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(owner.result.current.conflict).toBeNull());
+});
+
+it('rechecks a saved document even when an older foreground check completes afterward', async () => {
+    let resolveOlder!: (result: { status: string; preview: ReturnType<typeof conflictFixture> }) => void;
+    const older = new Promise<{ status: string; preview: ReturnType<typeof conflictFixture> }>((resolve) => {
+        resolveOlder = resolve;
+    });
+    const check = documentConflictAdapter.checkExternalChanges as jest.Mock;
+    check.mockImplementationOnce(() => older).mockResolvedValueOnce({ status: 'unchanged' });
+    const owner = renderOwner();
+    act(() => owner.result.current.receiveConflict(conflictFixture()));
+    owner.rerender({ suspended: true });
+    owner.rerender({ suspended: false });
+    await waitFor(() => expect(check).toHaveBeenCalledTimes(1));
+
+    act(() => {
+        store.dispatch(
+            hydrateProjection({
+                revision: 2,
+                tabSetRevision: 1,
+                activeDocumentId: 'one',
+                orderedDocumentIds: ['one', 'two'],
+                documents: {
+                    one: { ...documentFixture(), dirty: false, status: 'saved' },
+                    two: documentFixture('two'),
+                },
+                ui: {},
+            }),
+        );
+        resolveOlder({ status: 'detected', preview: conflictFixture() });
+    });
+    await waitFor(() => expect(check).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(owner.result.current.conflict).toBeNull());
+});
+
+it('does not replace a newer foreground comparison with an older saved-document result', async () => {
+    let resolveCheck!: (result: { status: string }) => void;
+    const checkResult = new Promise<{ status: string }>((resolve) => {
+        resolveCheck = resolve;
+    });
+    const check = documentConflictAdapter.checkExternalChanges as jest.Mock;
+    check.mockImplementationOnce(() => checkResult);
+    const owner = renderOwner();
+    act(() => owner.result.current.receiveConflict(conflictFixture()));
+    act(() => {
+        store.dispatch(
+            hydrateProjection({
+                revision: 2,
+                tabSetRevision: 1,
+                activeDocumentId: 'one',
+                orderedDocumentIds: ['one', 'two'],
+                documents: {
+                    one: { ...documentFixture(), dirty: false, status: 'saved' },
+                    two: documentFixture('two'),
+                },
+                ui: {},
+            }),
+        );
+    });
+    await waitFor(() => expect(check).toHaveBeenCalledTimes(1));
+    const newer = {
+        ...conflictFixture(),
+        detectedDiskVersion: { ...conflictFixture().detectedDiskVersion, modifiedUnixNano: '300' },
+    };
+    act(() => owner.result.current.receiveConflict(newer));
+    await act(async () => resolveCheck({ status: 'unchanged' }));
+    await waitFor(() =>
+        expect(owner.result.current.conflict?.preview.detectedDiskVersion.modifiedUnixNano).toBe('300'),
+    );
+});
+
 it('removes a pending comparison when its document closes', () => {
     const owner = renderOwner();
     act(() => owner.result.current.receiveConflict(conflictFixture()));

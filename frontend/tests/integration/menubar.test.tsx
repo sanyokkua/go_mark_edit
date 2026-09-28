@@ -30,6 +30,69 @@ afterEach(() => {
     });
 });
 
+it('shows an enabled New Window row and invokes its command', async () => {
+    const onNewWindow = jest.fn(async () => undefined);
+    render(
+        <Menubar
+            modalOpen={false}
+            onAbout={jest.fn()}
+            onNewWindow={onNewWindow}
+            settingsMenuProps={settingsMenuProps}
+        />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'File' }));
+    const row = screen.getByRole('menuitem', { name: 'New Window' });
+    expect(row).toBeEnabled();
+    fireEvent.click(row);
+    await waitFor(() => expect(onNewWindow).toHaveBeenCalledTimes(1));
+});
+
+it.each([1024, 375])('shows ten recent names and clear confirmation at width %i', async (width) => {
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: width });
+    fireEvent(window, new Event('resize'));
+    const refresh = jest.fn(async () => undefined);
+    const clear = jest.fn(async () => undefined);
+    const open = jest.fn(async () => undefined);
+    const recentItems = Array.from({ length: 11 }, (_, index) => ({
+        path: `/tmp/item-${index}${index === 0 ? '' : '.md'}`,
+        kind: index === 0 ? ('folder' as const) : ('file' as const),
+    }));
+    render(
+        <Menubar
+            modalOpen={false}
+            onAbout={jest.fn()}
+            settingsMenuProps={settingsMenuProps}
+            recentItems={recentItems}
+            onRefreshRecentItems={refresh}
+            onClearRecentItems={clear}
+            onOpenRecentItem={open}
+        />,
+    );
+    if (width < 500) {
+        fireEvent.click(screen.getByRole('button', { name: 'More actions' }));
+        fireEvent.click(screen.getByRole('menuitem', { name: 'File' }));
+    } else {
+        fireEvent.click(screen.getByRole('button', { name: 'File' }));
+    }
+    expect(refresh).toHaveBeenCalledTimes(1);
+    const menu = await screen.findByRole('menu', { name: 'File' });
+    expect(menu.querySelectorAll('[title^="/tmp/item-"]')).toHaveLength(10);
+    expect(screen.queryByText('item-10.md')).toBeNull();
+    expect(screen.getByTitle('/tmp/item-0')).toHaveTextContent('item-0');
+    fireEvent.click(screen.getByTitle('/tmp/item-0'));
+    expect(open).toHaveBeenCalledWith({ path: '/tmp/item-0', kind: 'folder' });
+    if (width < 500) {
+        fireEvent.click(screen.getByRole('button', { name: 'More actions' }));
+        fireEvent.click(screen.getByRole('menuitem', { name: 'File' }));
+    } else {
+        fireEvent.click(screen.getByRole('button', { name: 'File' }));
+    }
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Clear Recent…' }));
+    expect(clear).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Clear Recent…' }));
+    expect(clear).toHaveBeenCalledTimes(1);
+});
+
 it.each([
     ['File', 'File', 'n', 'New File'],
     ['Settings', 'Settings menu', 'a', 'Autosave'],

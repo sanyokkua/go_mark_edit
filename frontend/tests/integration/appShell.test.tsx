@@ -5,6 +5,7 @@ import { hydrateProjection, resetProjection } from '../../src/logic/store/appMod
 import type { UILayout } from '../../src/logic/store/appModelTypes';
 import { store } from '../../src/logic/store';
 import AppShell from '../../src/ui/widgets/AppShell';
+import { WorkspaceTreeTestProvider } from '../support/WorkspaceTreeTestProvider';
 
 jest.mock('../../src/logic/adapter', () => ({
     appModelAdapter: {
@@ -29,7 +30,9 @@ function renderShell(layout: UILayout): void {
 
     render(
         <Provider store={store}>
-            <AppShell />
+            <WorkspaceTreeTestProvider>
+                <AppShell />
+            </WorkspaceTreeTestProvider>
         </Provider>,
     );
 }
@@ -45,7 +48,7 @@ afterEach(() => {
 it('renders workspace and document regions while reserving the assistant track', () => {
     renderShell({ sidebarVisible: true, sidebarWidth: 288 });
 
-    expect(screen.getByRole('complementary', { name: 'Workspace' })).toBeInTheDocument();
+    expect(screen.getByRole('complementary', { name: 'Sidebar' })).toBeInTheDocument();
     expect(screen.getByRole('main', { name: 'Document area' })).toHaveTextContent('Document consumer');
     expect(screen.queryByLabelText(/assistant/i)).not.toBeInTheDocument();
 });

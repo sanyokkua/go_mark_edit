@@ -68,14 +68,18 @@ func TestDiskVersionFromPathTable(t *testing.T) {
 	if present.Size != int64(len("content")) {
 		t.Fatalf("size = %d, want %d", present.Size, len("content"))
 	}
-	if present.ModifiedUnixNano != mtime.UnixNano() {
-		t.Fatalf("modifiedUnixNano = %d, want %d", present.ModifiedUnixNano, mtime.UnixNano())
+	observedInfo, err := os.Stat(path)
+	if err != nil {
+		t.Fatalf("stat document after setting mtime: %v", err)
 	}
-	if present.Mode != 0o640 {
-		t.Fatalf("mode = %04o, want 0640", present.Mode)
+	if present.ModifiedUnixNano != observedInfo.ModTime().UnixNano() {
+		t.Fatalf("modifiedUnixNano = %d, want filesystem-reported %d", present.ModifiedUnixNano, observedInfo.ModTime().UnixNano())
+	}
+	if present.Mode != observedInfo.Mode().Perm() || present.Mode&0o200 == 0 {
+		t.Fatalf("mode = %04o, want filesystem-reported writable mode %04o", present.Mode, observedInfo.Mode().Perm())
 	}
 
-	if err := os.Chmod(path, 0o600); err != nil {
+	if err := os.Chmod(path, 0o400); err != nil {
 		t.Fatalf("change mode: %v", err)
 	}
 	modeChanged, err := CurrentDiskVersion(path)
@@ -85,8 +89,12 @@ func TestDiskVersionFromPathTable(t *testing.T) {
 	if present.Equal(modeChanged) {
 		t.Fatalf("mode change was not detected: before=%+v after=%+v", present, modeChanged)
 	}
-	if modeChanged.Mode != 0o600 {
-		t.Fatalf("changed mode = %04o, want 0600", modeChanged.Mode)
+	changedInfo, err := os.Stat(path)
+	if err != nil {
+		t.Fatalf("stat document after chmod: %v", err)
+	}
+	if modeChanged.Mode != changedInfo.Mode().Perm() || modeChanged.Mode == present.Mode {
+		t.Fatalf("changed mode = %04o, want filesystem-reported mode different from %04o", modeChanged.Mode, present.Mode)
 	}
 
 	if err := os.Remove(path); err != nil {

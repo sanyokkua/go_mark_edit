@@ -192,6 +192,7 @@ export async function dispatchAction(actionId: ActionId, context: ActionDispatch
     }
     if (
         action.scope === 'document' &&
+        context.targetPath === undefined &&
         !tabActionIds.has(actionId) &&
         context.writable !== true &&
         !projectedDocumentIsWritable(context)

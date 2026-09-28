@@ -15,14 +15,15 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/sanyokkua/go_mark_edit/internal/apperr"
 	"github.com/sanyokkua/go_mark_edit/internal/db"
 	"github.com/sanyokkua/go_mark_edit/internal/kv"
 )
 
 const (
-	recentFilesKey  = "recent.files"
-	recentFilesType = "recent.files.v1"
-	maxRecentFiles  = 6
+	recentItemsKey  = "recent.files"
+	recentItemsType = "recent.files.v2"
+	maxRecentItems  = 10
 
 	appearanceInsertTrigger = `
 CREATE TRIGGER IF NOT EXISTS e2e_reject_insert
@@ -61,9 +62,26 @@ func run(args []string) error {
 	switch args[1] {
 	case "seed-recents":
 		if len(args) < 3 {
-			return errors.New("seed-recents requires at least one file")
+			return errors.New("seed-recents requires at least one item")
 		}
-		return seedRecents(context.Background(), profileDir, args[2:])
+		if args[2] == "--typed" {
+			if len(args) < 5 || (len(args)-3)%2 != 0 {
+				return errors.New("seed-recents --typed requires kind/path pairs")
+			}
+			items := make([]apperr.RecentItem, 0, (len(args)-3)/2)
+			for index := 3; index < len(args); index += 2 {
+				if args[index] != "file" && args[index] != "folder" {
+					return fmt.Errorf("invalid recent item kind %q", args[index])
+				}
+				items = append(items, apperr.RecentItem{Kind: args[index], Path: args[index+1]})
+			}
+			return seedRecentItems(context.Background(), profileDir, items)
+		}
+		items := make([]apperr.RecentItem, 0, len(args)-2)
+		for _, path := range args[2:] {
+			items = append(items, apperr.RecentItem{Path: path, Kind: "file"})
+		}
+		return seedRecentItems(context.Background(), profileDir, items)
 	case "add-trigger":
 		if len(args) != 3 || args[2] != "appearance" {
 			return errors.New("add-trigger requires the appearance target")
@@ -117,7 +135,7 @@ func openProfileDatabase(ctx context.Context, profileDir string) (*db.Database, 
 	return database, nil
 }
 
-func seedRecents(ctx context.Context, profileDir string, paths []string) (retErr error) {
+func seedRecentItems(ctx context.Context, profileDir string, items []apperr.RecentItem) (retErr error) {
 	database, err := openProfileDatabase(ctx, profileDir)
 	if err != nil {
 		return err
@@ -126,19 +144,19 @@ func seedRecents(ctx context.Context, profileDir string, paths []string) (retErr
 		retErr = errors.Join(retErr, closeProfileDatabase(database))
 	}()
 
-	if len(paths) > maxRecentFiles {
-		paths = paths[:maxRecentFiles]
+	if len(items) > maxRecentItems {
+		items = items[:maxRecentItems]
 	}
-	encoded, err := kv.EncodeVersionedJSON(1, struct {
-		Entries []string `json:"entries"`
-	}{Entries: append([]string(nil), paths...)})
+	encoded, err := kv.EncodeVersionedJSON(2, struct {
+		Entries []apperr.RecentItem `json:"entries"`
+	}{Entries: items})
 	if err != nil {
 		return fmt.Errorf("encode recent files: %w", err)
 	}
 	if err := kv.New(database.DB).Upsert(ctx, kv.KVEntry{
-		Key:   recentFilesKey,
+		Key:   recentItemsKey,
 		Value: encoded,
-		Type:  recentFilesType,
+		Type:  recentItemsType,
 	}); err != nil {
 		return fmt.Errorf("write recent files: %w", err)
 	}

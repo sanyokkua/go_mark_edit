@@ -101,6 +101,19 @@ it('dispatches New and Open as focused application commands', async () => {
     expect(invoke).toHaveBeenCalledTimes(2);
 });
 
+it('dispatches New Window only with focused application context', async () => {
+    const invoke = jest.fn(async () => undefined);
+    await expect(dispatchAction('new-window', { applicationFocused: true, invoke })).resolves.toMatchObject({
+        status: 'mutated',
+        actionId: 'new-window',
+    });
+    expect(invoke).toHaveBeenCalledTimes(1);
+    await expect(dispatchAction('new-window', { applicationFocused: false, invoke })).resolves.toMatchObject({
+        status: 'unavailable',
+    });
+    expect(invoke).toHaveBeenCalledTimes(1);
+});
+
 it('dispatches Exit as a focused application command', async () => {
     const invoke = jest.fn(async () => undefined);
 

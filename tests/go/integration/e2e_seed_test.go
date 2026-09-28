@@ -21,7 +21,7 @@ import (
 func TestProfileSeederCreatesControlledProfileState(t *testing.T) {
 	seeder := buildSeeder(t)
 
-	t.Run("seeds six recent files", func(t *testing.T) {
+	t.Run("seeds ten recent file items", func(t *testing.T) {
 		profileDir := t.TempDir()
 		paths := []string{
 			"/tmp/one.md",
@@ -31,6 +31,10 @@ func TestProfileSeederCreatesControlledProfileState(t *testing.T) {
 			"/tmp/five.md",
 			"/tmp/six.md",
 			"/tmp/seven.md",
+			"/tmp/eight.md",
+			"/tmp/nine.md",
+			"/tmp/ten.md",
+			"/tmp/eleven.md",
 		}
 		runSeeder(t, seeder, profileDir, append([]string{"seed-recents"}, paths...)...)
 
@@ -44,22 +48,25 @@ func TestProfileSeederCreatesControlledProfileState(t *testing.T) {
 			t.Fatalf("read recent files = %+v, found=%t, error=%v", entry, found, err)
 		}
 		var value struct {
-			Version int      `json:"version"`
-			Entries []string `json:"entries"`
+			Version int `json:"version"`
+			Entries []struct {
+				Path string `json:"path"`
+				Kind string `json:"kind"`
+			} `json:"entries"`
 		}
-		valid, err := kv.DecodeVersionedJSON(entry.Value, 1, &value)
+		valid, err := kv.DecodeVersionedJSON(entry.Value, 2, &value)
 		if err != nil || !valid {
 			t.Fatalf("decode recent files = valid %t, error %v", valid, err)
 		}
-		if entry.Type != "recent.files.v1" || value.Version != 1 {
+		if entry.Type != "recent.files.v2" || value.Version != 2 {
 			t.Fatalf("recent files entry = %+v, want versioned recent files", entry)
 		}
-		if len(value.Entries) != 6 {
-			t.Fatalf("recent files entries = %d, want six", len(value.Entries))
+		if len(value.Entries) != 10 {
+			t.Fatalf("recent items entries = %d, want ten", len(value.Entries))
 		}
-		for index, path := range value.Entries {
-			if path != paths[index] {
-				t.Fatalf("recent files entry %d = %q, want %q", index, path, paths[index])
+		for index, item := range value.Entries {
+			if item.Path != paths[index] || item.Kind != "file" {
+				t.Fatalf("recent item %d = %+v, want file %q", index, item, paths[index])
 			}
 		}
 	})

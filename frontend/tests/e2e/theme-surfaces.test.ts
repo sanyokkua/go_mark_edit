@@ -294,6 +294,7 @@ test('keeps surface ownership through Auto transitions and tab drag reorder', as
         }
     }
     await page.getByRole('button', { name: 'New tab' }).click();
+    await expect(page.getByRole('tab')).toHaveCount(2);
     await page.getByRole('button', { name: 'New tab' }).click();
     const tabs = page.getByRole('tab');
     await expect(tabs).toHaveCount(3);

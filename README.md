@@ -1,42 +1,64 @@
 # GoMarkEdit
 
-GoMarkEdit is a native, offline-first Markdown editor and viewer. It is one Wails v2 binary: a Go
-backend owns application state, local files, persistence and native integration, while a React
-frontend renders the editor, preview and workspace controls.
+GoMarkEdit is a native, offline-first Markdown editor and viewer for Windows, macOS and Linux. One
+Wails v2 application contains a Go backend and React/TypeScript frontend. The backend owns document
+state, file I/O, persistence and native integration; Markdown files remain the user's source of truth.
 
-The product works without an internet connection. It makes no background network request, has no
-telemetry and has no automatic update path. A future provider may use the network only after an
-explicit user action and under that feature's policy.
+At runtime the app makes no background network requests, telemetry calls or automatic-update
+requests. User-selected web links can open in the system browser. GitHub is used only by CI and the
+release workflow.
+
+## Current scope
+
+The completed versioned features cover the native shell and settings, editor and preview, real files
+and tabs, repository architecture and verification, and the folder workspace with Recent Items,
+folder browsing, drag-and-drop and new windows. The broader product roadmap still has work to define
+and implement, including extended Markdown rendering, document-wide formatting/lint, PDF export,
+file associations, fuller asset support and the Assistant. These are not part of the completed
+feature set; start future work with a new approved feature specification.
 
 ## Run it
 
+Prerequisites: Go as pinned in `go.mod`, Node as pinned in `.nvmrc`, npm, and the Wails platform
+build prerequisites.
+
 ```bash
-just setup
-just dev
-just verify
+scripts/build setup
+scripts/build dev
+scripts/verify
 ```
 
-`just --list` shows the aliases. The underlying entry points are `scripts/build`, `scripts/test`,
-`scripts/verify`, `scripts/format` and `scripts/baseline`.
+Optional aliases are available through `just`: `just setup`, `just dev`, `just verify`, and
+`just --list`. Use `scripts/build setup --with-browser` to install Chromium for E2E verification.
+On Linux, desktop builds need GTK 3 and WebKit2GTK 4.1 development headers.
 
-## Read first
+## Documentation
 
-The active feature is the `specs/<NNN>-<name>/` directory whose number the checked-out
-`feature/<NNN>-<name>` branch carries. On this branch its artifacts are in
-[`specs/004-codebase-refactoring/`](specs/004-codebase-refactoring/): read `spec.md`, `plan.md`,
-`tasks.md` and the relevant files under `contracts/` before changing behaviour.
+- [Project guide](docs/index.md) — architecture, inputs/outputs, data flows, contracts, configuration,
+  operations, current scope and future work.
+- [Architecture map](docs/architecture.md) — code ownership, shared UI consumers, document lifecycle,
+  persistence, shutdown and durable decisions.
+- [Feature specifications](specs/) — versioned product and architecture contracts. Feature 005 is
+  complete and retained as a reference.
+- [E2E performance notes](docs/e2e-performance.md) — real-backend test harness and verification findings.
+- [Working instructions](AGENTS.md) — repository conventions for contributors and agents.
 
-The repository-wide architecture authority is [`docs/architecture.md`](docs/architecture.md). It
-records owners, shared-component consumers, document lifecycle, persistence, shutdown, verification
-walkthrough steps and durable decisions.
+`app_version_1_codebase` is the integration branch for completed feature work. The repository owner
+controls the later integration into `master`. New implementation work should use a new numbered
+feature branch and its own specification; the completed feature 005 is not an active feature on the
+integration branch.
+
+## Build and release
+
+CI tests Go packages on macOS and Windows and runs full verification on Linux. The current release
+workflow packages macOS arm64. Versioned builds accept `X.Y.Z`, `X.Y.Z-alpha.N`, and
+`X.Y.Z-beta.N`; alpha and beta tags create GitHub prereleases. Manual release dispatch builds an
+artifact without publishing a release. See [the project guide](docs/index.md#103-ci-and-release).
 
 ## Contributing
 
-[`AGENTS.md`](AGENTS.md) contains the working instructions for contributors and coding agents.
-`CLAUDE.md` and `.github/copilot-instructions.md` are compatibility pointers to those instructions.
+`AGENTS.md` is the single source of truth for development workflow and repository boundaries.
+`CLAUDE.md` and `.github/copilot-instructions.md` point to it. The canonical local commands are
+`scripts/build`, `scripts/test`, `scripts/verify`, `scripts/format` and `scripts/baseline`.
 
-Start each task by finding the existing owner and its consumers, then run the relevant verification
-stage. Before the first implementation edit, capture the baseline with `scripts/baseline`; at close,
-run the six-stage `scripts/verify` flow and `scripts/baseline --compare`.
-
-MIT licensed.
+MIT licensed. See [LICENSE](LICENSE).

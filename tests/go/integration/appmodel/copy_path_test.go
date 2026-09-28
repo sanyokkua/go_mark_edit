@@ -13,6 +13,39 @@ import (
 	"github.com/sanyokkua/go_mark_edit/internal/apperr"
 )
 
+func TestWorkspacePathCommandsAcceptTreeNodesWithoutOpenDocuments(t *testing.T) {
+	ctx := context.Background()
+	root := t.TempDir()
+	folder := filepath.Join(root, "folder")
+	unreadable := filepath.Join(root, "unreadable")
+	filePath := filepath.Join(folder, "note.md")
+	for _, path := range []string{folder, unreadable} {
+		if err := os.Mkdir(path, 0755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := os.WriteFile(filePath, []byte("note"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(unreadable, 0); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(unreadable, 0755) })
+	var copied, revealed string
+	service := NewAppModelServiceForHost(WithEmitter(&recordingEmitter{}), WithClipboardWriter(clipboardWriterFunc(func(path string) error { copied = path; return nil })), WithRevealPort(revealPortFunc(func(path string) error { revealed = path; return nil })), AppModelOption{LayoutRepository: &workspaceLayoutFixture{values: []bool{false}}})
+	if got := service.OpenWorkspace(ctx, root); got.Error != nil {
+		t.Fatalf("open: %+v", got)
+	}
+	for _, path := range []string{root, folder, unreadable, filePath} {
+		if got := service.CopyWorkspacePath(ctx, path); got.Status != apperr.PathCommandCopied || copied != path {
+			t.Errorf("copy %q: %+v, wrote %q", path, got, copied)
+		}
+		if got := service.RevealWorkspacePath(ctx, path); got.Status != apperr.PathCommandRevealed || revealed != path {
+			t.Errorf("reveal %q: %+v, revealed %q", path, got, revealed)
+		}
+	}
+}
+
 func TestCopyPathResolvesCanonicalPathAndClassifiesClipboardFailure(t *testing.T) {
 	root := t.TempDir()
 	path := filepath.Join(root, "notes.md")

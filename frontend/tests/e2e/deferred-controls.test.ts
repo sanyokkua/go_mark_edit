@@ -1,8 +1,6 @@
 import { expect, test } from '../support/harness';
 
-test('keeps deferred Assistant, Export, and Open Folder surfaces visible but disabled without a custom frame', async ({
-    app,
-}) => {
+test('keeps deferred Assistant and Export surfaces visible but disabled without a custom frame', async ({ app }) => {
     await app.launch();
 
     const { page } = app;
@@ -20,7 +18,7 @@ test('keeps deferred Assistant, Export, and Open Folder surfaces visible but dis
 
     await page.getByRole('button', { name: 'File', exact: true }).click();
     const fileMenu = page.getByRole('menu', { name: 'File' });
-    await expect(fileMenu.getByRole('menuitem', { name: 'Open Folder', exact: true })).toBeDisabled();
+    await expect(fileMenu.getByRole('menuitem', { name: 'Open Folder', exact: true })).toBeEnabled();
     await expect(fileMenu.getByRole('menuitem', { name: 'Export to PDF', exact: true })).toBeDisabled();
     await page.keyboard.press('Escape');
 

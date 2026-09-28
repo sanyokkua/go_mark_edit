@@ -35,6 +35,7 @@ export interface TabBarProps {
     readonly onContextMenu: (documentId: string, anchor: PopupAnchor) => void;
     readonly onReorder: (documentId: string, targetIndex: number) => void;
     readonly tabs: readonly TabBarTab[];
+    readonly revealRequest?: { readonly documentId: string; readonly sequence: number } | null;
     readonly className?: string;
     readonly newTabLabel?: string;
     readonly onTabRef?: (documentId: string, element: HTMLButtonElement | null) => void;
@@ -78,10 +79,16 @@ const TabBar: React.FC<TabBarProps> = ({
     onContextMenu,
     onReorder,
     onTabRef,
+    revealRequest,
     tabs,
 }: TabBarProps): React.JSX.Element => {
     const stripRef = useRef<HTMLDivElement | null>(null);
     const tabRefs = useRef(new Map<string, HTMLButtonElement>());
+    const previousRevealState = useRef<{
+        activeId: string | undefined;
+        tabIds: readonly string[];
+        overflowing: boolean;
+    } | null>(null);
     const [tabsOverflowing, setTabsOverflowing] = useState(false);
     const [insertionSlot, setInsertionSlot] = useState<number | null>(null);
     const [draggingDocumentId, setDraggingDocumentId] = useState<string | null>(null);
@@ -94,9 +101,23 @@ const TabBar: React.FC<TabBarProps> = ({
     const dragTeardown = useRef<(() => void) | null>(null);
     const edgeScrollTimer = useRef<ReturnType<typeof setInterval> | null>(null);
     const suppressActivationClick = useRef(false);
+    const activeTabId = tabs.find((tab) => tab.active)?.id;
 
     const focusDocument = useCallback((documentId: string): void => {
         tabRefs.current.get(documentId)?.focus();
+    }, []);
+
+    const revealTab = useCallback((documentId: string): void => {
+        const strip = stripRef.current;
+        const item = tabRefs.current.get(documentId)?.parentElement;
+        if (strip === null || item === null || item === undefined) return;
+        const stripBounds = strip.getBoundingClientRect();
+        const itemBounds = item.getBoundingClientRect();
+        if (itemBounds.left < stripBounds.left) {
+            strip.scrollLeft += itemBounds.left - stripBounds.left;
+        } else if (itemBounds.right > stripBounds.right) {
+            strip.scrollLeft += itemBounds.right - stripBounds.right;
+        }
     }, []);
 
     const registerTabRef = useCallback(
@@ -127,7 +148,24 @@ const TabBar: React.FC<TabBarProps> = ({
         const strip = stripRef.current;
         if (strip === null) return;
         setTabsOverflowing(strip.scrollWidth > strip.clientWidth);
-    }, [tabs]);
+        const activeId = activeTabId;
+        const tabIds = tabs.map((tab) => tab.id);
+        const previous = previousRevealState.current;
+        const shouldReveal =
+            previous === null ||
+            previous.activeId !== activeId ||
+            previous.tabIds.length !== tabIds.length ||
+            tabIds.some((id, index) => id !== previous.tabIds[index]) ||
+            (tabsOverflowing && !previous.overflowing);
+        previousRevealState.current = { activeId, tabIds, overflowing: tabsOverflowing };
+        if (activeId !== undefined && shouldReveal) revealTab(activeId);
+    }, [activeTabId, revealTab, tabs, tabsOverflowing]);
+
+    useLayoutEffect((): void => {
+        if (revealRequest !== undefined && revealRequest !== null && revealRequest.documentId === activeTabId) {
+            revealTab(revealRequest.documentId);
+        }
+    }, [activeTabId, revealRequest, revealTab]);
 
     useEffect((): (() => void) | undefined => {
         const strip = stripRef.current;
@@ -324,6 +362,7 @@ const TabBar: React.FC<TabBarProps> = ({
                                             suppressActivationClick.current = false;
                                             return;
                                         }
+                                        revealTab(tab.id);
                                         onActivate(tab.id);
                                     }}
                                     onContextMenu={(event): void => {

@@ -187,54 +187,58 @@ test('keeps live Preview and Monaco focus while Save delivers metadata', async (
     expect(await editorCaret(page)).toEqual(caretBeforeSave);
 });
 
-test('uses the native clipboard for every editor popup action and keeps Monaco formatting focus stable', async ({
-    app,
-}) => {
-    const source = await app.writeDocument('editor-actions.md', 'Cut this');
-    await app.seedRecents([source]);
-    await app.launch();
+test(
+    'uses the native clipboard for every editor popup action and keeps Monaco formatting focus stable',
+    {
+        tag: '@native-clipboard',
+    },
+    async ({ app }) => {
+        const source = await app.writeDocument('editor-actions.md', 'Cut this');
+        await app.seedRecents([source]);
+        await app.launch();
 
-    const { page } = app;
-    await openRecent(page, 'editor-actions.md');
-    await disableAutosave(page);
-    const modifier = await editorModifier(page);
-    const editor = page.locator('[data-editor-surface] textarea').first();
-    await expect(editor).toBeVisible();
-    await editor.focus();
+        const { page } = app;
+        await openRecent(page, 'editor-actions.md');
+        await disableAutosave(page);
+        const modifier = await editorModifier(page);
+        const editor = page.locator('[data-editor-surface] textarea').first();
+        await expect(editor).toBeVisible();
+        await editor.focus();
 
-    await editor.press(`${modifier}+A`);
-    await invokeEditorContextAction(page, 'Cut');
-    await expect.poll(() => activeBufferContent(page)).toBe('');
-    await expect.poll(() => nativeClipboardText(page)).toBe('Cut this');
+        await editor.press(`${modifier}+A`);
+        await invokeEditorContextAction(page, 'Cut');
+        await expect.poll(() => activeBufferContent(page)).toBe('');
+        await expect.poll(() => nativeClipboardText(page)).toBe('Cut this');
 
-    await setNativeClipboard(page, 'Paste this');
-    await invokeEditorContextAction(page, 'Paste');
-    await expect.poll(() => activeBufferContent(page)).toBe('Paste this');
+        await setNativeClipboard(page, 'Paste this');
+        await invokeEditorContextAction(page, 'Paste');
+        await expect.poll(() => activeBufferContent(page)).toBe('Paste this');
 
-    await editor.press(`${modifier}+A`);
-    await invokeEditorContextAction(page, 'Copy');
-    await expect.poll(() => nativeClipboardText(page)).toBe('Paste this');
-    await expect.poll(() => activeBufferContent(page)).toBe('Paste this');
+        await editor.press(`${modifier}+A`);
+        await invokeEditorContextAction(page, 'Copy');
+        await expect.poll(() => nativeClipboardText(page)).toBe('Paste this');
+        await expect.poll(() => activeBufferContent(page)).toBe('Paste this');
 
-    await setNativeClipboard(page, 'Plain text');
-    await editor.press(`${modifier}+A`);
-    await invokeEditorContextAction(page, 'Paste as plain text');
-    await expect.poll(() => activeBufferContent(page)).toBe('Plain text');
+        await setNativeClipboard(page, 'Plain text');
+        await editor.press(`${modifier}+A`);
+        await invokeEditorContextAction(page, 'Paste as plain text');
+        await expect.poll(() => activeBufferContent(page)).toBe('Plain text');
 
-    await editor.press(`${modifier}+A`);
-    await page.keyboard.insertText('Word');
-    await expect.poll(() => activeBufferContent(page)).toBe('Word');
-    await page.getByRole('button', { name: 'Bold' }).click();
-    await expect.poll(() => activeBufferContent(page)).toBe('**Word**');
-    await expect(editor).toBeFocused();
+        await editor.press(`${modifier}+A`);
+        await page.keyboard.insertText('Word');
+        await expect.poll(() => activeBufferContent(page)).toBe('Word');
+        await page.getByRole('button', { name: 'Bold' }).click();
+        await expect.poll(() => activeBufferContent(page)).toBe('**Word**');
+        await expect(editor).toBeFocused();
 
-    // Toolbar Bold leaves a collapsed caret at the end of **Word|**, which
-    // exercises the caret-specific replacement path: **Word** -> _Word_.
-    await invokeEditorContextAction(page, 'Italic');
-    await expect.poll(() => activeBufferContent(page)).toBe('_Word_');
-    await expect(editor).toBeFocused();
+        // Toolbar Bold leaves a collapsed caret at the end of **Word|**, which
+        // exercises the caret-specific replacement path: **Word** -> _Word_.
+        await invokeEditorContextAction(page, 'Italic');
+        await expect.poll(() => activeBufferContent(page)).toBe('_Word_');
+        await expect(editor).toBeFocused();
 
-    await editor.press('ControlOrMeta+I');
-    await expect.poll(() => activeBufferContent(page)).toBe('Word');
-    await expect(editor).toBeFocused();
-});
+        await editor.press('ControlOrMeta+I');
+        await expect.poll(() => activeBufferContent(page)).toBe('Word');
+        await expect(editor).toBeFocused();
+    },
+);

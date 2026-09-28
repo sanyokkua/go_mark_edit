@@ -79,10 +79,13 @@ it('derives lifecycle availability from projected capability and limits', () => 
         kind: 'unavailable',
         reason: 'no-document',
     });
-    expect(getActionAvailability('reopen', { projectedState, tabLimit: 2 })).toMatchObject({
-        kind: 'unavailable',
-        reason: 'limit',
-    });
+    expect(getActionAvailability('reopen', { projectedState, tabLimit: 2 })).toEqual({ kind: 'available' });
+    expect(
+        getActionAvailability('open-recent', {
+            projectedState: { ...projectedState, recentItems: [{ path: '/tmp/project', kind: 'folder' }] },
+            tabLimit: 2,
+        }),
+    ).toEqual({ kind: 'available' });
     expect(getActionAvailability('reopen', { projectedState, tabLimit: 40 })).toEqual({ kind: 'available' });
 });
 
@@ -138,7 +141,9 @@ it('keeps File popup actions ordered and classifies deferred items explicitly', 
         'new-window',
         'open-file',
         'open-folder',
+        'close-folder',
         'open-recent',
+        'clear-recent',
         'reopen',
         'save',
         'save-as',
@@ -146,10 +151,20 @@ it('keeps File popup actions ordered and classifies deferred items explicitly', 
         'close-tab',
         'exit',
     ]);
-    for (const actionId of ['new-file', 'open-file', 'save', 'save-as', 'close-tab', 'exit'] as const) {
+    for (const actionId of [
+        'new-file',
+        'new-window',
+        'open-file',
+        'open-folder',
+        'close-folder',
+        'save',
+        'save-as',
+        'close-tab',
+        'exit',
+    ] as const) {
         expect(getAction(actionId).availability.kind).toBe('available');
     }
-    for (const actionId of ['new-window', 'open-folder', 'export-pdf'] as const) {
+    for (const actionId of ['export-pdf'] as const) {
         expect(getAction(actionId).availability).toMatchObject({
             kind: 'deferred',
         });

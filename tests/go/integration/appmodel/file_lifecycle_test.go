@@ -46,7 +46,7 @@ func TestNewDocumentDefaultsAndNoWrite(t *testing.T) {
 	if metadata.Dirty || metadata.View.Arrangement != ArrangementEditor || !metadata.View.EditorVisible || metadata.View.PreviewVisible {
 		t.Fatalf("New defaults = %+v, want clean Editor-only document", metadata)
 	}
-	if len(after.Snapshot.RecentFiles) != 0 || after.Snapshot.CanReopenLastFile {
+	if len(after.Snapshot.RecentItems) != 0 || after.Snapshot.CanReopenLastFile {
 		t.Fatalf("New changed recent state = %+v", after.Snapshot)
 	}
 	if outcome.Data.Content != "" || outcome.Data.DocumentRevision != metadata.ContentRevision || outcome.Data.ProjectionRevision != after.Snapshot.Revision {

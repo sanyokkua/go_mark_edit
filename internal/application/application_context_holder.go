@@ -4,6 +4,7 @@ package application
 import (
 	"context"
 	"fmt"
+	"os"
 	"sync"
 
 	"github.com/sanyokkua/go_mark_edit/internal/apperr"
@@ -22,14 +23,16 @@ type ApplicationContextHolder struct {
 	mu      sync.Mutex
 	retryMu sync.Mutex
 
-	ctx        context.Context
-	startupErr error
+	ctx                      context.Context
+	startupErr               error
+	pendingStartupFolderPath string
 
 	DB *db.Database
 
 	fileService        file.FileUtilsServiceAPI
 	appLogger          *logging.Logger
 	settingsRepository settings.SettingsRepositoryAPI
+	newWindowLauncher  NewWindowLauncher
 
 	SettingsService     *settings.SettingsService
 	SettingsHandler     *settings.SettingsHandler
@@ -40,13 +43,15 @@ type ApplicationContextHolder struct {
 	Shutdown            *ShutdownOwner
 }
 
-// ApplicationContextOptions supplies persistence seams that must be available
+// ApplicationContextOptions supplies host seams and explicit startup arguments
 // before startup begins. Production leaves SettingsRepository nil so Init can
-// inject the SQLite repository; integration hosts can provide a repository
-// that models a failing or recovering settings store.
+// inject the SQLite repository; the launcher is supplied by the desktop
+// composition root and can be replaced by integration hosts.
 type ApplicationContextOptions struct {
 	SettingsRepository settings.SettingsRepositoryAPI
 	AppModelOptions    []appmodel.AppModelOption
+	NewWindowLauncher  NewWindowLauncher
+	StartupFolderArgs  []string
 }
 
 // NewApplicationContextHolderWithOptions constructs the phase-one graph with
@@ -72,15 +77,20 @@ func NewApplicationContextHolderWithOptions(fileService file.FileUtilsServiceAPI
 		modelOptions = append(modelOptions, appmodel.WithLogger(appLogger.Zerolog()))
 	}
 	modelOptions = append(modelOptions, options.AppModelOptions...)
+	if os.Getenv(newWindowChildEnv) == "1" {
+		modelOptions = append(modelOptions, appmodel.WithEmptySession())
+	}
 	appModelService := appmodel.NewAppModelServiceForHost(
 		modelOptions...,
 	)
 	holder := &ApplicationContextHolder{
-		fileService:        fileService,
-		appLogger:          appLogger,
-		settingsRepository: options.SettingsRepository,
-		SettingsService:    settingsService,
-		AppModelService:    appModelService,
+		fileService:              fileService,
+		appLogger:                appLogger,
+		settingsRepository:       options.SettingsRepository,
+		newWindowLauncher:        options.NewWindowLauncher,
+		pendingStartupFolderPath: firstStartupFolderArgument(options.StartupFolderArgs),
+		SettingsService:          settingsService,
+		AppModelService:          appModelService,
 	}
 	// Settings owns the autosave preference and the document model owns the
 	// scheduler; this composition root is the boundary where the preference
@@ -205,7 +215,7 @@ func (holder *ApplicationContextHolder) Init(ctx context.Context) error {
 	holder.SettingsService.SetRepository(repository)
 	holder.AppModelService.SetLayoutRepository(appmodel.NewSqliteLayoutRepository(database))
 	holder.AppModelService.SetFileMetadataRepository(appmodel.NewSqliteFileMetadataRepository(database))
-	holder.AppModelService.SetRecentFilesRepository(appmodel.NewSqliteRecentFilesRepository(database))
+	holder.AppModelService.SetRecentItemsRepository(appmodel.NewSqliteRecentItemsRepository(database))
 	holder.DB = database
 	holder.applyPersistedAutosavePreference(ctx)
 	holder.applyPersistedDefaultOpenMode(ctx)
@@ -254,6 +264,7 @@ func (holder *ApplicationContextHolder) RetryStartup(ctx context.Context) error 
 	if err := holder.refreshPersistedSettings(ctx); err != nil {
 		return err
 	}
+	holder.OpenPendingStartupFolder(ctx)
 	return holder.RestoreNativeWindow(ctx)
 }
 

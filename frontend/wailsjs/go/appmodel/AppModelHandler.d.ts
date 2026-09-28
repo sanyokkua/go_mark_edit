@@ -13,9 +13,23 @@ export function CancelNormalization(arg1:bridge.Request,arg2:string,arg3:string)
 
 export function CheckExternalChanges(arg1:bridge.Request,arg2:string):Promise<apperr.ConflictResult>;
 
+export function ChooseWorkspaceFolder(arg1:bridge.Request):Promise<apperr.FolderChoiceResult>;
+
+export function ClassifyDroppedPaths(arg1:bridge.Request,arg2:Array<string>):Promise<apperr.DropClassificationResult>;
+
+export function ClearRecentItems(arg1:bridge.Request):Promise<apperr.VoidResult>;
+
 export function CloseDocument(arg1:bridge.Request,arg2:string,arg3:number):Promise<apperr.TabTransitionResult>;
 
+export function CloseWorkspace(arg1:bridge.Request):Promise<apperr.ClassifiedVoidResult>;
+
 export function CopyPath(arg1:bridge.Request,arg2:string):Promise<apperr.PathCommandResult>;
+
+export function CopyWorkspacePath(arg1:bridge.Request,arg2:string):Promise<apperr.PathCommandResult>;
+
+export function CreateWorkspaceFile(arg1:bridge.Request,arg2:string,arg3:string):Promise<apperr.WorkspaceResult>;
+
+export function CreateWorkspaceFolder(arg1:bridge.Request,arg2:string,arg3:string):Promise<apperr.WorkspaceResult>;
 
 export function ExecuteClosePlan(arg1:bridge.Request,arg2:string):Promise<apperr.TabTransitionResult>;
 
@@ -29,7 +43,13 @@ export function OpenPreviewLink(arg1:bridge.Request,arg2:string,arg3:string):Pro
 
 export function OpenRecentFile(arg1:bridge.Request,arg2:string,arg3:number):Promise<apperr.OpenResult>;
 
+export function OpenWorkspace(arg1:bridge.Request,arg2:string):Promise<apperr.WorkspaceResult>;
+
 export function PrepareClose(arg1:bridge.Request,arg2:string,arg3:Array<string>,arg4:number):Promise<apperr.ClosePlanResult>;
+
+export function RefreshRecentItems(arg1:bridge.Request):Promise<apperr.RecentItemsResult>;
+
+export function RefreshWorkspace(arg1:bridge.Request):Promise<apperr.WorkspaceResult>;
 
 export function ReloadFromDisk(arg1:bridge.Request,arg2:string,arg3:number,arg4:apperr.DiskVersion):Promise<apperr.ConflictResult>;
 
@@ -41,6 +61,8 @@ export function ResolveClosePlan(arg1:bridge.Request,arg2:string,arg3:Array<appe
 
 export function RevealInFileManager(arg1:bridge.Request,arg2:string):Promise<apperr.PathCommandResult>;
 
+export function RevealWorkspacePath(arg1:bridge.Request,arg2:string):Promise<apperr.PathCommandResult>;
+
 export function Save(arg1:bridge.Request,arg2:string,arg3:number,arg4:string):Promise<apperr.WriteResult>;
 
 export function SaveAs(arg1:bridge.Request,arg2:string,arg3:number,arg4:string):Promise<apperr.WriteResult>;
@@ -48,6 +70,8 @@ export function SaveAs(arg1:bridge.Request,arg2:string,arg3:number,arg4:string):
 export function SetDocView(arg1:bridge.Request,arg2:string,arg3:apperr.DocViewInput):Promise<apperr.VoidResult>;
 
 export function SetUILayout(arg1:bridge.Request,arg2:apperr.UILayout):Promise<apperr.VoidResult>;
+
+export function SetWorkspaceHiddenFolders(arg1:bridge.Request,arg2:boolean):Promise<apperr.WorkspaceResult>;
 
 export function SkipConflict(arg1:bridge.Request,arg2:string,arg3:number,arg4:apperr.DiskVersion):Promise<apperr.ConflictResult>;
 

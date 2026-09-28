@@ -20,6 +20,7 @@ import type { DocumentMetadata, UILayout } from '../../src/logic/store/appModelT
 import { store } from '../../src/logic/store';
 import { hydrateSettings } from '../../src/logic/store/settingsSlice';
 import AppShell from '../../src/ui/widgets/AppShell';
+import { WorkspaceTreeTestProvider } from '../support/WorkspaceTreeTestProvider';
 
 const readSource = (relativePath: string): string => readFileSync(resolve(process.cwd(), relativePath), 'utf8');
 
@@ -50,7 +51,9 @@ function renderShell(layout: UILayout = {}): void {
     );
     render(
         <Provider store={store}>
-            <AppShell />
+            <WorkspaceTreeTestProvider>
+                <AppShell />
+            </WorkspaceTreeTestProvider>
         </Provider>,
     );
 }
@@ -67,7 +70,7 @@ afterEach((): void => {
 it('keeps workspace and document regions while the reserved Assistant track has no surface', () => {
     renderShell({ sidebarVisible: true, sidebarWidth: 288 });
 
-    expect(screen.getByRole('complementary', { name: 'Workspace' })).toBeInTheDocument();
+    expect(screen.getByRole('complementary', { name: 'Sidebar' })).toBeInTheDocument();
     expect(screen.getByRole('main', { name: 'Document area' })).toHaveTextContent('Existing document consumer');
     expect(screen.queryByLabelText(/assistant/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/assistant/i)).not.toBeInTheDocument();
@@ -136,7 +139,7 @@ it('renders an immediate non-durable divider width while sending the durable int
     expect(shell).toHaveStyle({ '--shell-left-width': '288px' });
 
     const divider = screen.getByRole('separator', {
-        name: 'Resize workspace',
+        name: 'Resize sidebar',
     });
     fireEvent(divider, pointerEvent('pointerdown', 288, 7));
     fireEvent(window, pointerEvent('pointermove', 320, 7));
@@ -151,7 +154,7 @@ it('restores the last acknowledged divider width after its delayed layout write 
 
     const shell = screen.getByTestId('application-shell');
     const divider = screen.getByRole('separator', {
-        name: 'Resize workspace',
+        name: 'Resize sidebar',
     });
     setUILayout.mockRejectedValueOnce(new Error('layout update failed'));
     fireEvent(divider, pointerEvent('pointerdown', 288, 7));
@@ -168,7 +171,7 @@ it('keeps the workspace divider keyboard reachable and requests fixed width step
     renderShell({ sidebarVisible: true, sidebarWidth: 288 });
 
     const divider = screen.getByRole('separator', {
-        name: 'Resize workspace',
+        name: 'Resize sidebar',
     });
     divider.focus();
     expect(divider).toHaveFocus();
@@ -191,8 +194,8 @@ for (const width of [375, 376]) {
         try {
             renderShell({ sidebarVisible: true, sidebarWidth: 288 });
 
-            expect(screen.queryByRole('complementary', { name: 'Workspace' })).not.toBeInTheDocument();
-            expect(screen.queryByRole('separator', { name: 'Resize workspace' })).not.toBeInTheDocument();
+            expect(screen.queryByRole('complementary', { name: 'Sidebar' })).not.toBeInTheDocument();
+            expect(screen.queryByRole('separator', { name: 'Resize sidebar' })).not.toBeInTheDocument();
             /*
              * The stored preference is the single source of truth and it is
              * untouched: App.tsx hands the same value to the View menu's toggle, so
@@ -213,8 +216,8 @@ it('keeps the workspace panel and divider one pixel above the minimum window', (
     try {
         renderShell({ sidebarVisible: true, sidebarWidth: 288 });
 
-        expect(screen.getByRole('complementary', { name: 'Workspace' })).toBeInTheDocument();
-        expect(screen.getByRole('separator', { name: 'Resize workspace' })).toBeInTheDocument();
+        expect(screen.getByRole('complementary', { name: 'Sidebar' })).toBeInTheDocument();
+        expect(screen.getByRole('separator', { name: 'Resize sidebar' })).toBeInTheDocument();
     } finally {
         setViewportWidth(1024);
     }
@@ -225,7 +228,7 @@ it('still reports a stored hidden workspace at the minimum window', () => {
     try {
         renderShell({ sidebarVisible: false, sidebarWidth: 288 });
 
-        expect(screen.queryByRole('complementary', { name: 'Workspace' })).not.toBeInTheDocument();
+        expect(screen.queryByRole('complementary', { name: 'Sidebar' })).not.toBeInTheDocument();
         expect(screen.getByTestId('application-shell')).toHaveAttribute('data-workspace-visible', 'false');
     } finally {
         setViewportWidth(1024);
@@ -298,7 +301,9 @@ it('places the 28px status surface below editor content in the shell region', ()
     );
     render(
         <Provider store={store}>
-            <AppShell />
+            <WorkspaceTreeTestProvider>
+                <AppShell />
+            </WorkspaceTreeTestProvider>
         </Provider>,
     );
 
@@ -376,7 +381,9 @@ it('projects an acknowledged autosave-on setting into status details', () => {
 
     render(
         <Provider store={store}>
-            <AppShell />
+            <WorkspaceTreeTestProvider>
+                <AppShell />
+            </WorkspaceTreeTestProvider>
         </Provider>,
     );
 
@@ -450,7 +457,10 @@ it('and keep shell styles tokenized and production surfaces honest', () => {
     const appSource = readSource('src/app/App.tsx');
     const actionSource = readSource('src/logic/actions/shellActions.ts');
 
-    expect(shellSource).toContain("t('shell.workspace')");
+    setViewportWidth(1024);
+    renderShell({ sidebarVisible: true, sidebarWidth: 288 });
+    expect(screen.getByRole('complementary', { name: 'Sidebar' })).toBeInTheDocument();
+    expect(screen.getByRole('separator', { name: 'Resize sidebar' })).toBeInTheDocument();
     expect(shellSource).toContain("t('shell.document')");
     expect(shellStyles).not.toMatch(/#[\da-f]{3,8}\b|rgba?\(|hsla?\(/i);
     for (const source of [shellSource, appSource, actionSource]) {

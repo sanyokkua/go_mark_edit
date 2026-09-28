@@ -135,53 +135,59 @@ test('creates a document, opens Recents, saves once, moves tabs, and restores sa
     expect(await readFile(first, 'utf8')).toBe(saved);
 });
 
-test('reveals a missing real file and completes Save to recreate and Copy path remediations', async ({ app }) => {
-    const original = '# Recover me\n\nThe buffer remains available.\n';
-    const source = await app.writeDocument('recover.md', original);
-    const background = await app.writeDocument('stay-active.md', '# Active file stays unchanged\n');
-    await app.seedRecents([source, background]);
-    await app.launch();
-    await openRecentFromLauncher(app.page, 'recover.md');
+test(
+    'reveals a missing real file and completes Save to recreate and Copy path remediations',
+    {
+        tag: '@native-clipboard',
+    },
+    async ({ app }) => {
+        const original = '# Recover me\n\nThe buffer remains available.\n';
+        const source = await app.writeDocument('recover.md', original);
+        const background = await app.writeDocument('stay-active.md', '# Active file stays unchanged\n');
+        await app.seedRecents([source, background]);
+        await app.launch();
+        await openRecentFromLauncher(app.page, 'recover.md');
 
-    await unlink(source);
-    await app.page.getByRole('tab', { name: 'recover.md' }).click({
-        button: 'right',
-    });
-    await app.page
-        .getByRole('menu', { name: 'Tab actions' })
-        .getByRole('menuitem', { name: 'Reveal in file manager', exact: true })
-        .click();
+        await unlink(source);
+        await app.page.getByRole('tab', { name: 'recover.md' }).click({
+            button: 'right',
+        });
+        await app.page
+            .getByRole('menu', { name: 'Tab actions' })
+            .getByRole('menuitem', { name: 'Reveal in file manager', exact: true })
+            .click();
 
-    const missing = app.page.locator('[data-notification-code="not_found"]');
-    await expect(missing).toHaveCount(1);
-    await expect(missing).toContainText('The document could not be found.');
-    await expect(missing).not.toContainText(source);
-    await expect(missing.getByRole('button', { name: 'Save to recreate' })).toBeEnabled();
-    await expect(missing.getByRole('button', { name: 'Copy path' })).toBeEnabled();
+        const missing = app.page.locator('[data-notification-code="not_found"]');
+        await expect(missing).toHaveCount(1);
+        await expect(missing).toContainText('The document could not be found.');
+        await expect(missing).not.toContainText(source);
+        await expect(missing.getByRole('button', { name: 'Save to recreate' })).toBeEnabled();
+        await expect(missing.getByRole('button', { name: 'Copy path' })).toBeEnabled();
 
-    await openRecentFromFileMenu(app.page, 'stay-active.md');
-    await missing.getByRole('button', { name: 'Save to recreate' }).click();
-    await expect(app.page.locator('[data-notification-code="save-success"]')).toHaveCount(1);
-    expect(await readFile(source, 'utf8')).toBe(original);
-    expect(await activeBufferContent(app.page)).toBe('# Active file stays unchanged\n');
-    expect(await readFile(background, 'utf8')).toBe('# Active file stays unchanged\n');
-    await expect(app.page.locator('[aria-label="Document identity"]')).toContainText('Saved');
+        await openRecentFromFileMenu(app.page, 'stay-active.md');
+        await missing.getByRole('button', { name: 'Save to recreate' }).click();
+        await expect(app.page.locator('[data-notification-code="save-success"]')).toHaveCount(1);
+        expect(await readFile(source, 'utf8')).toBe(original);
+        expect(await activeBufferContent(app.page)).toBe('# Active file stays unchanged\n');
+        expect(await readFile(background, 'utf8')).toBe('# Active file stays unchanged\n');
+        await expect(app.page.locator('[aria-label="Document identity"]')).toContainText('Saved');
 
-    await unlink(source);
-    await app.page.getByRole('tab', { name: 'recover.md' }).click({
-        button: 'right',
-    });
-    await app.page
-        .getByRole('menu', { name: 'Tab actions' })
-        .getByRole('menuitem', { name: 'Reveal in file manager', exact: true })
-        .click();
-    const secondMissing = app.page.locator('[data-notification-code="not_found"]');
-    await expect(secondMissing).toHaveCount(1);
-    await secondMissing.getByRole('button', { name: 'Copy path' }).click();
-    await expect(app.page.getByRole('status').filter({ hasText: 'Copied path for recover.md' })).toHaveCount(1);
-    await expect(secondMissing).toHaveCount(0);
-    await expect(app.page.getByRole('status').filter({ hasText: 'Copied path for recover.md' })).toHaveCount(0);
-});
+        await unlink(source);
+        await app.page.getByRole('tab', { name: 'recover.md' }).click({
+            button: 'right',
+        });
+        await app.page
+            .getByRole('menu', { name: 'Tab actions' })
+            .getByRole('menuitem', { name: 'Reveal in file manager', exact: true })
+            .click();
+        const secondMissing = app.page.locator('[data-notification-code="not_found"]');
+        await expect(secondMissing).toHaveCount(1);
+        await secondMissing.getByRole('button', { name: 'Copy path' }).click();
+        await expect(app.page.getByRole('status').filter({ hasText: 'Copied path for recover.md' })).toHaveCount(1);
+        await expect(secondMissing).toHaveCount(0);
+        await expect(app.page.getByRole('status').filter({ hasText: 'Copied path for recover.md' })).toHaveCount(0);
+    },
+);
 
 test('offers Retry for a transient Save inspection refusal and commits after recovery', async ({ app }) => {
     const original = '# Retry me\n\nBefore.\n';
@@ -552,6 +558,7 @@ test('retries deferred write validation without starting its Save automatically'
         expect(await readFile(source, 'utf8')).toBe(external);
         await conflict.getByRole('button', { name: 'Keep mine' }).click();
         await expect(conflict).toHaveCount(0);
+        await expect(app.page.locator('[data-notification-code="save-success"]')).toHaveCount(1);
         expect(await readFile(source, 'utf8')).toBe(mine);
     } finally {
         await chmod(app.documentDirectory, 0o755);

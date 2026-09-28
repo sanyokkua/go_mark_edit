@@ -2,9 +2,12 @@ import type { PropsWithChildren } from 'react';
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { Provider } from 'react-redux';
 
-jest.mock('../../src/logic/adapter', () => ({ appModelAdapter: { getState: jest.fn() } }));
+jest.mock('../../src/logic/adapter', () => ({
+    appModelAdapter: { getState: jest.fn() },
+    closePlanAdapter: { prepareClose: jest.fn(), resolveClosePlan: jest.fn(), executeClosePlan: jest.fn() },
+}));
 
-import { appModelAdapter, type NativeLifecycleAdapter } from '../../src/logic/adapter';
+import { appModelAdapter, closePlanAdapter, type NativeLifecycleAdapter } from '../../src/logic/adapter';
 import { store } from '../../src/logic/store';
 import { hydrateProjection, resetProjection } from '../../src/logic/store/appModelProjectionActions';
 import { useDocumentSession } from '../../src/app/useDocumentSession';
@@ -52,6 +55,165 @@ beforeEach(() => {
 afterEach(() => {
     store.dispatch(resetProjection());
     jest.clearAllMocks();
+});
+
+function renderCloseWorkflow() {
+    const runtime = nativeRecorder();
+    return renderHook(
+        () => {
+            const session = useDocumentSession();
+            const shutdown = useShutdown({
+                bootstrapStatus: 'ready',
+                hydratedPendingCloseId: null,
+                dependencies: { native: runtime.native },
+            });
+            return useCloseWorkflow({
+                session,
+                shutdown,
+                conflicts: useConflictCommands(session.activation),
+                recoverySurface: null,
+            });
+        },
+        { wrapper },
+    );
+}
+
+it('reports closed only after the existing window plan closes every tab', async () => {
+    (appModelAdapter.getState as jest.Mock).mockResolvedValue({
+        snapshot: { revision: 2, activeDocumentId: null, orderedDocumentIds: [], documents: {}, ui: {} },
+    });
+    (closePlanAdapter.prepareClose as jest.Mock).mockResolvedValue({
+        data: { id: 'plan', kind: 'window', status: 'ready', tabSetRevision: 0, targets: [] },
+    });
+    (closePlanAdapter.resolveClosePlan as jest.Mock).mockResolvedValue({
+        data: { id: 'plan', kind: 'window', status: 'ready', tabSetRevision: 0, targets: [] },
+    });
+    let finishExecution: ((result: unknown) => void) | undefined;
+    (closePlanAdapter.executeClosePlan as jest.Mock).mockImplementation(
+        () => new Promise((resolve) => (finishExecution = resolve)),
+    );
+    const owner = renderCloseWorkflow();
+    let outcome: string | undefined;
+    act(() => {
+        void owner.result.current.closeAllWindowTabs().then((value) => (outcome = value));
+    });
+    await waitFor(() => expect(closePlanAdapter.executeClosePlan).toHaveBeenCalledWith('plan'));
+    expect(closePlanAdapter.prepareClose).toHaveBeenCalledWith('window', ['one', 'two'], expect.any(Number));
+    expect(outcome).toBeUndefined();
+    await act(async () => {
+        finishExecution?.({ status: 'closed', orderedDocumentIds: [] });
+    });
+    expect(outcome).toBe('closed');
+});
+
+it('reports cancellation from a save prompt without executing the window plan', async () => {
+    (closePlanAdapter.prepareClose as jest.Mock).mockResolvedValue({
+        data: {
+            id: 'plan',
+            kind: 'window',
+            status: 'collecting',
+            tabSetRevision: 0,
+            targets: [{ documentId: 'one', title: 'one', contentRevision: 1, dirty: true }],
+        },
+    });
+    (closePlanAdapter.resolveClosePlan as jest.Mock).mockResolvedValue({
+        data: { id: 'plan', kind: 'window', status: 'cancelled', tabSetRevision: 0, targets: [] },
+    });
+    const owner = renderCloseWorkflow();
+    let outcome: string | undefined;
+    act(() => {
+        void owner.result.current.closeAllWindowTabs().then((value) => (outcome = value));
+    });
+    await waitFor(() => expect(owner.result.current.state.phase).toBe('collecting'));
+    expect(outcome).toBeUndefined();
+    await act(async () => owner.result.current.choose('cancel'));
+    expect(outcome).toBe('cancelled');
+    expect(closePlanAdapter.executeClosePlan).not.toHaveBeenCalled();
+});
+
+it('reports refusal when plan preparation is refused', async () => {
+    (closePlanAdapter.prepareClose as jest.Mock).mockResolvedValue({
+        error: { category: 'conflict', dedupKey: 'close-refused', message: 'Close refused' },
+    });
+    const owner = renderCloseWorkflow();
+    let outcome: Promise<string> | undefined;
+    act(() => {
+        outcome = owner.result.current.closeAllWindowTabs();
+    });
+    await act(async () => {
+        await expect(outcome).resolves.toBe('refused');
+    });
+    expect(closePlanAdapter.executeClosePlan).not.toHaveBeenCalled();
+});
+
+it('reports a failed plan as refusal rather than user cancellation', async () => {
+    (closePlanAdapter.prepareClose as jest.Mock).mockResolvedValue({
+        data: { id: 'plan', kind: 'window', status: 'failed', tabSetRevision: 0, targets: [] },
+    });
+    const owner = renderCloseWorkflow();
+    let outcome: Promise<string> | undefined;
+    act(() => {
+        outcome = owner.result.current.closeAllWindowTabs();
+    });
+    await act(async () => {
+        await expect(outcome).resolves.toBe('refused');
+    });
+});
+
+it('settles a pending window close when the owner unmounts', async () => {
+    (closePlanAdapter.prepareClose as jest.Mock).mockResolvedValue({
+        data: {
+            id: 'plan',
+            kind: 'window',
+            status: 'collecting',
+            tabSetRevision: 0,
+            targets: [{ documentId: 'one', title: 'one', contentRevision: 1, dirty: true }],
+        },
+    });
+    const owner = renderCloseWorkflow();
+    let outcome: Promise<string> | undefined;
+    act(() => {
+        outcome = owner.result.current.closeAllWindowTabs();
+    });
+    await waitFor(() => expect(owner.result.current.state.phase).toBe('collecting'));
+    owner.unmount();
+    await expect(outcome).resolves.toBe('refused');
+});
+
+it('cancels the terminal result when a target disappears during its save prompt', async () => {
+    (closePlanAdapter.prepareClose as jest.Mock).mockResolvedValue({
+        data: {
+            id: 'plan',
+            kind: 'window',
+            status: 'collecting',
+            tabSetRevision: 0,
+            targets: [{ documentId: 'one', title: 'one', contentRevision: 1, dirty: true }],
+        },
+    });
+    (closePlanAdapter.resolveClosePlan as jest.Mock).mockResolvedValue({
+        data: { id: 'plan', kind: 'window', status: 'cancelled', tabSetRevision: 0, targets: [] },
+    });
+    const owner = renderCloseWorkflow();
+    let outcome: Promise<string> | undefined;
+    act(() => {
+        outcome = owner.result.current.closeAllWindowTabs();
+    });
+    await waitFor(() => expect(owner.result.current.state.phase).toBe('collecting'));
+    act(() => {
+        store.dispatch(
+            hydrateProjection({
+                revision: 2,
+                activeDocumentId: 'two',
+                orderedDocumentIds: ['two'],
+                documents: { two: { ...documentFixture('two'), dirty: false } },
+                ui: {},
+            }),
+        );
+    });
+    await act(async () => {
+        await expect(outcome).resolves.toBe('cancelled');
+        await Promise.resolve();
+    });
 });
 
 it('starts one native close for repeated early, hydrated, and live deliveries of the same identity', async () => {

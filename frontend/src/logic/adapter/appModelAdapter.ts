@@ -5,14 +5,26 @@ import type { RegisteredLifecycleSession } from '../hooks/useLifecycleBarrier';
 import type {
     AppModelState,
     AppStatePatch,
+    ClassifiedError,
+    ClassifiedErrorWire,
+    ClassifiedVoidResultWire,
     DocumentTransitionResult,
+    DropClassificationResult,
+    DropClassificationResultWire,
     DocViewInput,
     OpenResult,
+    RecentItem,
+    RecentItemsResult,
+    ClassifiedVoidResult,
     CommittedWriteOutcome,
     PathCommandResult,
     RecoverySurface,
     TabTransitionResult,
     UILayout,
+    WorkspaceResult,
+    WorkspaceResultWire,
+    FolderChoiceResult,
+    FolderChoiceResultWire,
 } from '../store/appModelTypes';
 import { isWireError, type WireError } from '../utils/parseError';
 import { t } from '../../i18n';
@@ -34,6 +46,18 @@ export interface AppModelBindings {
     newDocument?: (expectedTabSetRevision: number) => Promise<DocumentTransitionResult>;
     openDocument?: (expectedTabSetRevision: number) => Promise<OpenResult>;
     openRecentFile?: (path: string, expectedTabSetRevision: number) => Promise<OpenResult>;
+    classifyDroppedPaths?: (paths: string[]) => Promise<DropClassificationResultWire>;
+    refreshRecentItems?: () => Promise<RecentItemsResult>;
+    clearRecentItems?: () => Promise<ClassifiedVoidResult>;
+    openWorkspace?: (folderPath: string) => Promise<WorkspaceResultWire>;
+    chooseWorkspaceFolder?: () => Promise<FolderChoiceResultWire>;
+    refreshWorkspace?: () => Promise<WorkspaceResultWire>;
+    setWorkspaceHiddenFolders?: (show: boolean) => Promise<WorkspaceResultWire>;
+    closeWorkspace?: () => Promise<ClassifiedVoidResultWire>;
+    createWorkspaceFile?: (parentPath: string, name: string) => Promise<WorkspaceResultWire>;
+    createWorkspaceFolder?: (parentPath: string, name: string) => Promise<WorkspaceResultWire>;
+    revealWorkspacePath?: (path: string) => Promise<PathCommandResult>;
+    copyWorkspacePath?: (path: string) => Promise<PathCommandResult>;
     openPreviewLink?: (documentId: string, href: string) => Promise<OpenResult>;
     openExternalLink?: (href: string) => void;
     reopenLastFile?: (expectedTabSetRevision: number) => Promise<OpenResult>;
@@ -66,6 +90,18 @@ export interface AppModelAdapter {
     newDocument?: (expectedTabSetRevision: number) => Promise<DocumentTransitionResult>;
     openDocument?: (expectedTabSetRevision: number) => Promise<OpenResult>;
     openRecentFile?: (path: string, expectedTabSetRevision: number) => Promise<OpenResult>;
+    classifyDroppedPaths?: (paths: string[]) => Promise<DropClassificationResult>;
+    refreshRecentItems?: () => Promise<RecentItemsResult>;
+    clearRecentItems?: () => Promise<ClassifiedVoidResult>;
+    openWorkspace?: (folderPath: string) => Promise<WorkspaceResult>;
+    chooseWorkspaceFolder?: () => Promise<FolderChoiceResult>;
+    refreshWorkspace?: () => Promise<WorkspaceResult>;
+    setWorkspaceHiddenFolders?: (show: boolean) => Promise<WorkspaceResult>;
+    closeWorkspace?: () => Promise<ClassifiedVoidResult>;
+    createWorkspaceFile?: (parentPath: string, name: string) => Promise<WorkspaceResult>;
+    createWorkspaceFolder?: (parentPath: string, name: string) => Promise<WorkspaceResult>;
+    revealWorkspacePath?: (path: string) => Promise<PathCommandResult>;
+    copyWorkspacePath?: (path: string) => Promise<PathCommandResult>;
     openPreviewLink?: (documentId: string, href: string) => Promise<OpenResult>;
     openExternalLink?: (href: string) => void;
     resolvePreviewImage?: (documentId: string, source: string) => string;
@@ -139,18 +175,81 @@ function isAppStatePatch(payload: unknown): payload is AppStatePatch {
  * Fields `AppStatePatch` declares as optional and never null, so a null on the
  * wire means "absent" and must not survive into the projection.
  *
- * `activeDocumentId` is deliberately absent from this list: null is its
- * documented way of saying there is no active document.
+ * `activeDocumentId` and `workspace` are deliberately absent from this list:
+ * null means there is no active document or that the current workspace is
+ * explicitly cleared.
  */
 const absentWhenNull = [
     'tabSetRevision',
     'orderedDocumentIds',
     'documents',
     'activeDocument',
-    'recentFiles',
+    'recentItems',
     'canReopenLastFile',
     'ui',
 ] as const;
+
+// Wails generates string fields for Go enums. Keep that broad wire shape at
+// the bridge boundary and only publish the two supported recent-item kinds.
+export function normalizeRecentItems(
+    items: ReadonlyArray<{ path: string; kind: string }> | null | undefined,
+): RecentItem[] | undefined {
+    if (items === null || items === undefined) {
+        return undefined;
+    }
+    return items.flatMap((item): RecentItem[] => {
+        if (item.kind !== 'file' && item.kind !== 'folder') {
+            return [];
+        }
+        return [{ path: item.path, kind: item.kind }];
+    });
+}
+
+export function normalizeClassifiedError(error: ClassifiedErrorWire | undefined): ClassifiedError | undefined {
+    if (error === undefined) return undefined;
+    return {
+        ...error,
+        category: error.category as ClassifiedError['category'],
+        remediations: (error.remediations ?? []) as ClassifiedError['remediations'],
+    };
+}
+
+function normalizeWorkspaceResult(result: WorkspaceResultWire): WorkspaceResult {
+    return {
+        category: result.category as WorkspaceResult['category'],
+        subject: result.subject,
+        message: result.message,
+        remediation: result.remediation as WorkspaceResult['remediation'],
+        id: result.id,
+        status: result.status as WorkspaceResult['status'],
+        workspace: result.workspace,
+        error: normalizeClassifiedError(result.error),
+    };
+}
+
+function normalizeFolderChoiceResult(result: FolderChoiceResultWire): FolderChoiceResult {
+    return {
+        category: result.category as FolderChoiceResult['category'],
+        subject: result.subject,
+        message: result.message,
+        remediation: result.remediation as FolderChoiceResult['remediation'],
+        id: result.id,
+        status: result.status as FolderChoiceResult['status'],
+        path: result.path,
+        error: normalizeClassifiedError(result.error),
+    };
+}
+
+function normalizeClassifiedVoidResult(result: ClassifiedVoidResultWire): ClassifiedVoidResult {
+    return {
+        category: result.category as ClassifiedVoidResult['category'],
+        subject: result.subject,
+        message: result.message,
+        remediation: result.remediation as ClassifiedVoidResult['remediation'],
+        id: result.id,
+        error: normalizeClassifiedError(result.error),
+    };
+}
 
 /*
  * The bridge is the only module that sees the wire, so it is the only place
@@ -204,6 +303,111 @@ export function createAppModelAdapter(bindings: AppModelBindings, runtime: AppMo
         bindings.closeDocument === undefined
             ? undefined
             : guardArity('AppModelHandler.CloseDocument', bindings.closeDocument);
+    const openWorkspaceBinding = bindings.openWorkspace;
+    const classifyDroppedPaths =
+        bindings.classifyDroppedPaths === undefined
+            ? undefined
+            : guardArity(
+                  'AppModelHandler.ClassifyDroppedPaths',
+                  async (paths: string[]): Promise<DropClassificationResult> => {
+                      assertCommandsAvailable();
+                      const result = await bindings.classifyDroppedPaths!(paths);
+                      return {
+                          ...result,
+                          category: result.category as DropClassificationResult['category'],
+                          remediation: result.remediation as DropClassificationResult['remediation'],
+                          files: result.files ?? [],
+                          folders: result.folders ?? [],
+                          unsupported: result.unsupported ?? [],
+                      };
+                  },
+              );
+    const chooseWorkspaceFolderBinding = bindings.chooseWorkspaceFolder;
+    const chooseWorkspaceFolder =
+        chooseWorkspaceFolderBinding === undefined
+            ? undefined
+            : guardArity('AppModelHandler.ChooseWorkspaceFolder', async (): Promise<FolderChoiceResult> => {
+                  assertCommandsAvailable();
+                  return normalizeFolderChoiceResult(await chooseWorkspaceFolderBinding());
+              });
+    const openWorkspace =
+        openWorkspaceBinding === undefined
+            ? undefined
+            : guardArity('AppModelHandler.OpenWorkspace', async (folderPath: string): Promise<WorkspaceResult> => {
+                  assertCommandsAvailable();
+                  return normalizeWorkspaceResult(await openWorkspaceBinding(folderPath));
+              });
+    const refreshWorkspaceBinding = bindings.refreshWorkspace;
+    const refreshWorkspace =
+        refreshWorkspaceBinding === undefined
+            ? undefined
+            : guardArity('AppModelHandler.RefreshWorkspace', async (): Promise<WorkspaceResult> => {
+                  assertCommandsAvailable();
+                  return normalizeWorkspaceResult(await refreshWorkspaceBinding());
+              });
+    const refreshRecentItemsBinding = bindings.refreshRecentItems;
+    const refreshRecentItems =
+        refreshRecentItemsBinding === undefined
+            ? undefined
+            : guardArity('AppModelHandler.RefreshRecentItems', async () => {
+                  assertCommandsAvailable();
+                  return refreshRecentItemsBinding();
+              });
+    const clearRecentItemsBinding = bindings.clearRecentItems;
+    const clearRecentItems =
+        clearRecentItemsBinding === undefined
+            ? undefined
+            : guardArity('AppModelHandler.ClearRecentItems', async () => {
+                  assertCommandsAvailable();
+                  return clearRecentItemsBinding();
+              });
+    const setWorkspaceHiddenFoldersBinding = bindings.setWorkspaceHiddenFolders;
+    const setWorkspaceHiddenFolders =
+        setWorkspaceHiddenFoldersBinding === undefined
+            ? undefined
+            : guardArity(
+                  'AppModelHandler.SetWorkspaceHiddenFolders',
+                  async (show: boolean): Promise<WorkspaceResult> => {
+                      assertCommandsAvailable();
+                      return normalizeWorkspaceResult(await setWorkspaceHiddenFoldersBinding(show));
+                  },
+              );
+    const closeWorkspaceBinding = bindings.closeWorkspace;
+    const closeWorkspace =
+        closeWorkspaceBinding === undefined
+            ? undefined
+            : guardArity('AppModelHandler.CloseWorkspace', async (): Promise<ClassifiedVoidResult> => {
+                  assertCommandsAvailable();
+                  return normalizeClassifiedVoidResult(await closeWorkspaceBinding());
+              });
+    const createWorkspaceFile =
+        bindings.createWorkspaceFile === undefined
+            ? undefined
+            : guardArity(
+                  'AppModelHandler.CreateWorkspaceFile',
+                  async (parentPath: string, name: string): Promise<WorkspaceResult> => {
+                      assertCommandsAvailable();
+                      return normalizeWorkspaceResult(await bindings.createWorkspaceFile!(parentPath, name));
+                  },
+              );
+    const createWorkspaceFolder =
+        bindings.createWorkspaceFolder === undefined
+            ? undefined
+            : guardArity(
+                  'AppModelHandler.CreateWorkspaceFolder',
+                  async (parentPath: string, name: string): Promise<WorkspaceResult> => {
+                      assertCommandsAvailable();
+                      return normalizeWorkspaceResult(await bindings.createWorkspaceFolder!(parentPath, name));
+                  },
+              );
+    const revealWorkspacePath =
+        bindings.revealWorkspacePath === undefined
+            ? undefined
+            : guardArity('AppModelHandler.RevealWorkspacePath', bindings.revealWorkspacePath);
+    const copyWorkspacePath =
+        bindings.copyWorkspacePath === undefined
+            ? undefined
+            : guardArity('AppModelHandler.CopyWorkspacePath', bindings.copyWorkspacePath);
     const copyPath =
         bindings.copyPath === undefined ? undefined : guardArity('AppModelHandler.CopyPath', bindings.copyPath);
     const revealInFileManager =
@@ -443,6 +647,30 @@ export function createAppModelAdapter(bindings: AppModelBindings, runtime: AppMo
                       return (
                           documentLifecycle.openRecentFile?.(path, expectedTabSetRevision) ?? { status: 'cancelled' }
                       );
+                  },
+        classifyDroppedPaths,
+        refreshRecentItems,
+        clearRecentItems,
+        openWorkspace,
+        chooseWorkspaceFolder,
+        refreshWorkspace,
+        setWorkspaceHiddenFolders,
+        closeWorkspace,
+        createWorkspaceFile,
+        createWorkspaceFolder,
+        revealWorkspacePath:
+            revealWorkspacePath === undefined
+                ? undefined
+                : async (path) => {
+                      assertCommandsAvailable();
+                      return revealWorkspacePath(path);
+                  },
+        copyWorkspacePath:
+            copyWorkspacePath === undefined
+                ? undefined
+                : async (path) => {
+                      assertCommandsAvailable();
+                      return copyWorkspacePath(path);
                   },
         openPreviewLink:
             openPreviewLink === undefined

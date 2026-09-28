@@ -46,6 +46,7 @@ import { store } from '../../src/logic/store';
 import AppShell from '../../src/ui/widgets/AppShell';
 import EditorView from '../../src/ui/widgets/EditorView';
 import { EditorSessionContext, EditorSessionEpochContext } from '../../src/ui/widgets/editorSession';
+import { WorkspaceTreeTestProvider } from '../support/WorkspaceTreeTestProvider';
 
 const readSource = (relativePath: string): string => readFileSync(resolve(process.cwd(), relativePath), 'utf8');
 
@@ -158,12 +159,14 @@ it('applies the responsive split layout contract', () => {
     render(
         <Provider store={store}>
             <EditorSessionContext.Provider value={null}>
-                <AppShell />
+                <WorkspaceTreeTestProvider>
+                    <AppShell />
+                </WorkspaceTreeTestProvider>
             </EditorSessionContext.Provider>
         </Provider>,
     );
 
-    expect(screen.getByRole('complementary', { name: 'Workspace' })).toBeInTheDocument();
+    expect(screen.getByRole('complementary', { name: 'Sidebar' })).toBeInTheDocument();
     expect(screen.getByRole('main', { name: 'Document area' })).toBeEmptyDOMElement();
     expect(screen.queryByLabelText('Assistant')).not.toBeInTheDocument();
 });

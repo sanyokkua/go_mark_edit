@@ -14,7 +14,15 @@ import type { DocumentWrites } from './useDocumentWrites';
 
 type NotificationCommands = Pick<
     UseCommandsResult,
-    'onActivateDocument' | 'onNewDocument' | 'onOpenDocument' | 'onOpenRecentFile' | 'onReopenLastFile'
+    | 'onActivateDocument'
+    | 'onNewDocument'
+    | 'onOpenDocument'
+    | 'onOpenFolder'
+    | 'onRefreshWorkspace'
+    | 'onOpenWorkspacePath'
+    | 'onOpenRecentFile'
+    | 'onOpenRecentItem'
+    | 'onReopenLastFile'
 > & {
     retryWrite: DocumentWrites['retryWrite'];
     dismissWriteFailure: DocumentWrites['dismissWriteFailure'];
@@ -29,7 +37,11 @@ export function useNotifications({
     onActivateDocument,
     onNewDocument,
     onOpenDocument,
+    onOpenFolder,
+    onRefreshWorkspace,
+    onOpenWorkspacePath,
     onOpenRecentFile,
+    onOpenRecentItem,
     onReopenLastFile,
     onCloseDocument,
     requestQuit,
@@ -65,8 +77,14 @@ export function useNotifications({
                     return onNewDocument(revision);
                 case 'open-document':
                     return onOpenDocument(revision);
+                case 'open-folder':
+                    return remediation.path === undefined ? onOpenFolder() : onOpenWorkspacePath(remediation.path);
                 case 'open-recent':
-                    return remediation.path === undefined ? undefined : onOpenRecentFile(remediation.path, revision);
+                    return remediation.path === undefined
+                        ? undefined
+                        : remediation.kind === undefined
+                          ? onOpenRecentFile(remediation.path, revision)
+                          : onOpenRecentItem({ path: remediation.path, kind: remediation.kind }, revision);
                 case 'reopen-last':
                     return onReopenLastFile(revision);
                 case 'activate-document':
@@ -77,7 +95,16 @@ export function useNotifications({
                     return undefined;
             }
         },
-        [onActivateDocument, onNewDocument, onOpenDocument, onOpenRecentFile, onReopenLastFile],
+        [
+            onActivateDocument,
+            onNewDocument,
+            onOpenDocument,
+            onOpenFolder,
+            onOpenWorkspacePath,
+            onOpenRecentFile,
+            onOpenRecentItem,
+            onReopenLastFile,
+        ],
     );
     const onRemediate = useCallback(
         async (remediation: NotificationRemediation, notificationId: number, safeSubject: string): Promise<void> => {
@@ -121,8 +148,18 @@ export function useNotifications({
                     dispatch(dismissNotification(notificationId));
                     return;
                 }
+                case 'refresh-workspace': {
+                    const result = await onRefreshWorkspace();
+                    if (result?.error === undefined) dispatch(dismissNotification(notificationId));
+                    return;
+                }
+                case 'create-workspace-entry':
+                case 'reveal-workspace-path':
+                case 'copy-workspace-path':
+                    return;
                 case 'new-document':
                 case 'open-document':
+                case 'open-folder':
                 case 'open-recent':
                 case 'reopen-last':
                 case 'activate-document': {
@@ -183,7 +220,15 @@ export function useNotifications({
                 }
             }
         },
-        [announceRemediation, retryWrite, dispatch, onCloseDocument, requestQuit, retryEntryCommand],
+        [
+            announceRemediation,
+            retryWrite,
+            dispatch,
+            onCloseDocument,
+            onRefreshWorkspace,
+            requestQuit,
+            retryEntryCommand,
+        ],
     );
     const surfaceNotices: readonly NotificationNotice[] = useMemo(
         () =>

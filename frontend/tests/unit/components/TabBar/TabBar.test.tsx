@@ -128,3 +128,189 @@ it('keeps the tablist inside one labelled scrollable bar with tab state exposed'
     expect(screen.getByRole('tab', { name: 'Two' })).toHaveAttribute('aria-readonly', 'true');
     expect(screen.getByLabelText('Modified')).toBeInTheDocument();
 });
+
+function setHorizontalBounds(element: Element, left: number, right: number): void {
+    Object.defineProperty(element, 'getBoundingClientRect', {
+        configurable: true,
+        value: (): DOMRect => new DOMRect(left, 0, right - left, 30),
+    });
+}
+
+it('reveals a newly active tab by scrolling only the hidden distance', () => {
+    const callbacks = {
+        onActivate: jest.fn(),
+        onAdd: jest.fn(),
+        onClose: jest.fn(),
+        onContextMenu: jest.fn(),
+        onReorder: jest.fn(),
+    };
+    const { rerender } = render(<TabBar ariaLabel="Document tabs" tabs={tabs} {...callbacks} />);
+    const strip = screen.getByRole('tablist', { name: 'Document tabs' });
+    const third = screen.getByRole('tab', { name: 'Three' });
+    setHorizontalBounds(strip, 0, 100);
+    setHorizontalBounds(third.parentElement as Element, 80, 145);
+
+    rerender(
+        <TabBar
+            ariaLabel="Document tabs"
+            tabs={tabs.map((tab) => ({ ...tab, active: tab.id === 'three' }))}
+            {...callbacks}
+        />,
+    );
+
+    expect(strip.scrollLeft).toBe(45);
+});
+
+it('reveals a newly opened tab added past the visible strip', () => {
+    const callbacks = {
+        onActivate: jest.fn(),
+        onAdd: jest.fn(),
+        onClose: jest.fn(),
+        onContextMenu: jest.fn(),
+        onReorder: jest.fn(),
+    };
+    const newTab: TabBarTab = {
+        active: true,
+        dirty: false,
+        id: 'four',
+        label: 'Four',
+        readOnly: false,
+    };
+    const onTabRef = (documentId: string, element: HTMLButtonElement | null): void => {
+        if (documentId === 'four' && element?.parentElement) {
+            setHorizontalBounds(element.parentElement, 115, 165);
+        }
+    };
+    const { rerender } = render(<TabBar ariaLabel="Document tabs" tabs={tabs} {...callbacks} onTabRef={onTabRef} />);
+    const strip = screen.getByRole('tablist', { name: 'Document tabs' });
+    setHorizontalBounds(strip, 0, 100);
+
+    rerender(
+        <TabBar
+            ariaLabel="Document tabs"
+            tabs={[...tabs.map((tab) => ({ ...tab, active: false })), newTab]}
+            {...callbacks}
+            onTabRef={onTabRef}
+        />,
+    );
+
+    expect(strip.scrollLeft).toBe(65);
+});
+
+it('reveals an already active tab when it is activated again', () => {
+    const callbacks = renderTabBar();
+    const strip = screen.getByRole('tablist', { name: 'Document tabs' });
+    const first = screen.getByRole('tab', { name: 'One' });
+    strip.scrollLeft = 60;
+    setHorizontalBounds(strip, 0, 100);
+    setHorizontalBounds(first.parentElement as Element, -35, 20);
+
+    fireEvent.click(first);
+
+    expect(callbacks.onActivate).toHaveBeenCalledWith('one');
+    expect(strip.scrollLeft).toBe(25);
+});
+
+it('does not move the tab strip when the active tab is already fully visible', () => {
+    const callbacks = renderTabBar();
+    const strip = screen.getByRole('tablist', { name: 'Document tabs' });
+    const first = screen.getByRole('tab', { name: 'One' });
+    strip.scrollLeft = 20;
+    setHorizontalBounds(strip, 0, 100);
+    setHorizontalBounds(first.parentElement as Element, 15, 85);
+
+    fireEvent.click(first);
+
+    expect(callbacks.onActivate).toHaveBeenCalledWith('one');
+    expect(strip.scrollLeft).toBe(20);
+});
+
+it('preserves manual tab-strip scrolling when an unrelated tab property changes', () => {
+    const callbacks = {
+        onActivate: jest.fn(),
+        onAdd: jest.fn(),
+        onClose: jest.fn(),
+        onContextMenu: jest.fn(),
+        onReorder: jest.fn(),
+    };
+    const { rerender } = render(<TabBar ariaLabel="Document tabs" tabs={tabs} {...callbacks} />);
+    const strip = screen.getByRole('tablist', { name: 'Document tabs' });
+    const first = screen.getByRole('tab', { name: 'One' });
+    strip.scrollLeft = 40;
+    setHorizontalBounds(strip, 0, 100);
+    setHorizontalBounds(first.parentElement as Element, -35, 20);
+
+    rerender(
+        <TabBar
+            ariaLabel="Document tabs"
+            tabs={tabs.map((tab) => (tab.id === 'two' ? { ...tab, dirty: true } : tab))}
+            {...callbacks}
+        />,
+    );
+
+    expect(strip.scrollLeft).toBe(40);
+});
+
+it('reveals repeated successful open requests for the same active tab', () => {
+    const callbacks = {
+        onActivate: jest.fn(),
+        onAdd: jest.fn(),
+        onClose: jest.fn(),
+        onContextMenu: jest.fn(),
+        onReorder: jest.fn(),
+    };
+    const { rerender } = render(<TabBar ariaLabel="Document tabs" tabs={tabs} {...callbacks} />);
+    const strip = screen.getByRole('tablist', { name: 'Document tabs' });
+    const first = screen.getByRole('tab', { name: 'One' });
+    setHorizontalBounds(strip, 0, 100);
+    setHorizontalBounds(first.parentElement as Element, -35, 20);
+    strip.scrollLeft = 40;
+
+    rerender(
+        <TabBar
+            ariaLabel="Document tabs"
+            tabs={tabs}
+            {...callbacks}
+            revealRequest={{ documentId: 'one', sequence: 1 }}
+        />,
+    );
+    expect(strip.scrollLeft).toBe(5);
+
+    strip.scrollLeft = 40;
+    rerender(
+        <TabBar
+            ariaLabel="Document tabs"
+            tabs={tabs}
+            {...callbacks}
+            revealRequest={{ documentId: 'one', sequence: 2 }}
+        />,
+    );
+    expect(strip.scrollLeft).toBe(5);
+});
+
+it('ignores a late reveal request for a tab that is no longer active', () => {
+    const callbacks = {
+        onActivate: jest.fn(),
+        onAdd: jest.fn(),
+        onClose: jest.fn(),
+        onContextMenu: jest.fn(),
+        onReorder: jest.fn(),
+    };
+    const { rerender } = render(<TabBar ariaLabel="Document tabs" tabs={tabs} {...callbacks} />);
+    const strip = screen.getByRole('tablist', { name: 'Document tabs' });
+    const second = screen.getByRole('tab', { name: 'Two' });
+    strip.scrollLeft = 40;
+    setHorizontalBounds(strip, 0, 100);
+    setHorizontalBounds(second.parentElement as Element, 110, 160);
+
+    rerender(
+        <TabBar
+            ariaLabel="Document tabs"
+            tabs={tabs}
+            {...callbacks}
+            revealRequest={{ documentId: 'two', sequence: 1 }}
+        />,
+    );
+
+    expect(strip.scrollLeft).toBe(40);
+});

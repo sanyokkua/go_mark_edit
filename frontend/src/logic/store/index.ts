@@ -5,6 +5,7 @@ import { documentsReducer } from './documentsSlice';
 import notificationsReducer from './notificationsSlice';
 import settingsReducer from './settingsSlice';
 import { uiReducer } from './uiSlice';
+import { workspaceReducer } from './workspaceSlice';
 
 export const store = configureStore({
     reducer: {
@@ -12,6 +13,7 @@ export const store = configureStore({
         notifications: notificationsReducer,
         settings: settingsReducer,
         ui: uiReducer,
+        workspace: workspaceReducer,
     },
 });
 

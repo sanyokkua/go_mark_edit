@@ -7,101 +7,113 @@ import (
 	"os"
 	"strings"
 
+	"github.com/sanyokkua/go_mark_edit/internal/apperr"
 	"github.com/sanyokkua/go_mark_edit/internal/db"
 	"github.com/sanyokkua/go_mark_edit/internal/file"
 	"github.com/sanyokkua/go_mark_edit/internal/kv"
 )
 
-// SqliteRecentFilesRepository stores only the versioned recent-path envelope
+// SqliteRecentItemsRepository stores only the versioned recent-item envelope
 // in the existing settings KV table. It owns no document/session state.
-type SqliteRecentFilesRepository struct {
+type SqliteRecentItemsRepository struct {
 	store             *kv.Store
 	afterReadDecision func()
 }
 
-func NewSqliteRecentFilesRepository(database *db.Database) *SqliteRecentFilesRepository {
+func NewSqliteRecentItemsRepository(database *db.Database) *SqliteRecentItemsRepository {
 	if database == nil {
-		return &SqliteRecentFilesRepository{store: kv.New(nil)}
+		return &SqliteRecentItemsRepository{store: kv.New(nil)}
 	}
-	return &SqliteRecentFilesRepository{store: kv.New(database.DB)}
+	return &SqliteRecentItemsRepository{store: kv.New(database.DB)}
 }
 
-type recentFilesValue struct {
+type recentItemsValue struct {
+	Version int                 `json:"version"`
+	Entries []apperr.RecentItem `json:"entries"`
+}
+
+type legacyRecentValue struct {
 	Version int      `json:"version"`
 	Entries []string `json:"entries"`
 }
 
-func (repository *SqliteRecentFilesRepository) List(ctx context.Context) ([]string, error) {
-	return repository.withEntries(ctx, func(entries []string) ([]string, bool, error) {
-		normalized := normalizeRecentFiles(entries)
-		changed := !sameRecentFiles(entries, normalized)
+func (repository *SqliteRecentItemsRepository) List(ctx context.Context) ([]apperr.RecentItem, error) {
+	return repository.withItems(ctx, false, func(entries []apperr.RecentItem) ([]apperr.RecentItem, bool, error) {
+		normalized := normalizeRecentItems(entries)
+		changed := false
 		filtered := normalized[:0]
-		for _, path := range normalized {
-			_, statErr := os.Stat(path)
+		for _, item := range normalized {
+			_, statErr := os.Stat(item.Path)
 			if statErr == nil {
-				filtered = append(filtered, path)
+				filtered = append(filtered, item)
 				continue
 			}
 			if errors.Is(statErr, os.ErrNotExist) {
 				changed = true
 				continue
 			}
-			return nil, false, fmt.Errorf("validate recent file: %w", statErr)
+			return nil, false, fmt.Errorf("validate recent item: %w", statErr)
 		}
-		if !sameRecentFiles(filtered, normalized) {
+		if !sameRecentItems(filtered, normalized) {
 			changed = true
 		}
 		return filtered, changed, nil
 	})
 }
 
-func (repository *SqliteRecentFilesRepository) Promote(ctx context.Context, path string) ([]string, error) {
+func (repository *SqliteRecentItemsRepository) Promote(ctx context.Context, path, kind string) ([]apperr.RecentItem, error) {
 	if strings.TrimSpace(path) == "" {
-		return nil, errors.New("recent file path is required")
+		return nil, errors.New("recent item path is required")
 	}
-	path = canonicalRecentPath(path)
-	return repository.withEntries(ctx, func(entries []string) ([]string, bool, error) {
-		current := normalizeRecentFiles(entries)
-		promoted := make([]string, 0, maxRecentFiles)
-		promoted = append(promoted, path)
+	if kind != "file" && kind != "folder" {
+		return nil, errors.New("recent item kind is required")
+	}
+	item := apperr.RecentItem{Path: canonicalRecentPath(path), Kind: kind}
+	return repository.withItems(ctx, true, func(entries []apperr.RecentItem) ([]apperr.RecentItem, bool, error) {
+		current := normalizeRecentItems(entries)
+		promoted := make([]apperr.RecentItem, 0, maxRecentItems)
+		promoted = append(promoted, item)
 		for _, candidate := range current {
-			if candidate == path || len(promoted) == maxRecentFiles {
+			if candidate.Path == item.Path || len(promoted) == maxRecentItems {
 				continue
 			}
 			promoted = append(promoted, candidate)
 		}
-		return promoted, !sameRecentFiles(current, promoted), nil
+		return promoted, !sameRecentItems(current, promoted), nil
 	})
 }
 
-func (repository *SqliteRecentFilesRepository) withEntries(ctx context.Context, mutate func([]string) ([]string, bool, error)) ([]string, error) {
+func (repository *SqliteRecentItemsRepository) Clear(ctx context.Context) error {
+	_, err := repository.withItems(ctx, true, func([]apperr.RecentItem) ([]apperr.RecentItem, bool, error) {
+		return nil, true, nil
+	})
+	return err
+}
+
+func (repository *SqliteRecentItemsRepository) withItems(ctx context.Context, persistLegacy bool, mutate func([]apperr.RecentItem) ([]apperr.RecentItem, bool, error)) ([]apperr.RecentItem, error) {
 	if repository == nil || repository.store == nil {
-		return nil, errors.New("recent files database is not configured")
+		return nil, errors.New("recent items database is not configured")
 	}
 	if ctx == nil {
 		ctx = context.Background()
 	}
-	// The first optimistic attempt may fail its WAL write upgrade immediately;
-	// keep the same three busy-timeout windows after that fast failure so a
-	// writer held for the case-6 14-second lever can still complete the
-	// promotion instead of being reported as an early warning.
 	for attempt := 0; attempt < 4; attempt++ {
-		entries, retry, err := repository.withEntriesAttempt(ctx, mutate, attempt > 0)
+		entries, retry, err := repository.withItemsAttempt(ctx, persistLegacy, mutate, attempt > 0)
 		if err == nil || !retry {
 			return entries, err
 		}
 	}
-	return nil, errors.New("recent files transaction remained busy")
+	return nil, errors.New("recent items transaction remained busy")
 }
 
-func (repository *SqliteRecentFilesRepository) withEntriesAttempt(ctx context.Context, mutate func([]string) ([]string, bool, error), immediate bool) ([]string, bool, error) {
-	var result []string
+func (repository *SqliteRecentItemsRepository) withItemsAttempt(ctx context.Context, persistLegacy bool, mutate func([]apperr.RecentItem) ([]apperr.RecentItem, bool, error), immediate bool) ([]apperr.RecentItem, bool, error) {
+	var result []apperr.RecentItem
 	transaction := repository.store.Tx
 	if immediate {
 		transaction = repository.store.TxImmediate
 	}
 	err := transaction(ctx, func(transaction *kv.Tx) error {
-		entries, err := readRecentFilesTx(ctx, transaction)
+		entries, legacy, err := readRecentItemsTx(ctx, transaction)
 		if err != nil {
 			return err
 		}
@@ -114,9 +126,9 @@ func (repository *SqliteRecentFilesRepository) withEntriesAttempt(ctx context.Co
 		if err != nil {
 			return err
 		}
-		next = normalizeRecentFiles(next)
-		if changed {
-			if err := writeRecentFilesTx(ctx, transaction, next); err != nil {
+		next = normalizeRecentItems(next)
+		if changed || (legacy && persistLegacy) {
+			if err := writeRecentItemsTx(ctx, transaction, next); err != nil {
 				return err
 			}
 		}
@@ -129,51 +141,61 @@ func (repository *SqliteRecentFilesRepository) withEntriesAttempt(ctx context.Co
 	return result, false, nil
 }
 
-func readRecentFilesTx(ctx context.Context, query *kv.Tx) ([]string, error) {
-	entry, found, err := query.Get(ctx, recentFilesSettingKey)
+func readRecentItemsTx(ctx context.Context, query *kv.Tx) ([]apperr.RecentItem, bool, error) {
+	entry, found, err := query.Get(ctx, recentItemsSettingKey)
 	if err != nil {
-		return nil, fmt.Errorf("read recent files: %w", err)
+		return nil, false, fmt.Errorf("read recent items: %w", err)
 	}
 	if !found {
-		return nil, nil
+		return nil, false, nil
 	}
-	var value recentFilesValue
-	valid, err := kv.DecodeVersionedJSON(entry.Value, 1, &value)
+	var current recentItemsValue
+	valid, err := kv.DecodeVersionedJSON(entry.Value, 2, &current)
+	if err != nil {
+		return nil, false, nil
+	}
+	if valid {
+		return current.Entries, false, nil
+	}
+	var legacy legacyRecentValue
+	valid, err = kv.DecodeVersionedJSON(entry.Value, 1, &legacy)
 	if err != nil || !valid {
-		// Recent-file metadata is optional presentation state. A corrupt or
-		// unknown value must not prevent startup or block later promotion.
-		return nil, nil
+		return nil, false, nil
 	}
-	return value.Entries, nil
+	items := make([]apperr.RecentItem, 0, len(legacy.Entries))
+	for _, path := range legacy.Entries {
+		items = append(items, apperr.RecentItem{Path: path, Kind: "file"})
+	}
+	return items, true, nil
 }
 
-func writeRecentFilesTx(ctx context.Context, query *kv.Tx, entries []string) error {
-	encoded, err := kv.EncodeVersionedJSON(1, struct {
-		Entries []string `json:"entries"`
+func writeRecentItemsTx(ctx context.Context, query *kv.Tx, entries []apperr.RecentItem) error {
+	encoded, err := kv.EncodeVersionedJSON(2, struct {
+		Entries []apperr.RecentItem `json:"entries"`
 	}{Entries: entries})
 	if err != nil {
-		return fmt.Errorf("encode recent files: %w", err)
+		return fmt.Errorf("encode recent items: %w", err)
 	}
-	if err := query.Upsert(ctx, kv.KVEntry{Key: recentFilesSettingKey, Value: encoded, Type: recentFilesSettingType}); err != nil {
-		return fmt.Errorf("write recent files: %w", err)
+	if err := query.Upsert(ctx, kv.KVEntry{Key: recentItemsSettingKey, Value: encoded, Type: recentItemsSettingType}); err != nil {
+		return fmt.Errorf("write recent items: %w", err)
 	}
 	return nil
 }
 
-func normalizeRecentFiles(entries []string) []string {
-	result := make([]string, 0, maxRecentFiles)
+func normalizeRecentItems(entries []apperr.RecentItem) []apperr.RecentItem {
+	result := make([]apperr.RecentItem, 0, maxRecentItems)
 	seen := make(map[string]struct{}, len(entries))
-	for _, path := range entries {
-		path = canonicalRecentPath(path)
-		if path == "" {
+	for _, item := range entries {
+		item.Path = canonicalRecentPath(item.Path)
+		if item.Path == "" || (item.Kind != "file" && item.Kind != "folder") {
 			continue
 		}
-		if _, exists := seen[path]; exists {
+		if _, exists := seen[item.Path]; exists {
 			continue
 		}
-		seen[path] = struct{}{}
-		result = append(result, path)
-		if len(result) == maxRecentFiles {
+		seen[item.Path] = struct{}{}
+		result = append(result, item)
+		if len(result) == maxRecentItems {
 			break
 		}
 	}
@@ -190,7 +212,7 @@ func canonicalRecentPath(path string) string {
 	return path
 }
 
-func sameRecentFiles(left, right []string) bool {
+func sameRecentItems(left, right []apperr.RecentItem) bool {
 	if len(left) != len(right) {
 		return false
 	}
@@ -210,4 +232,4 @@ func isRecentSQLiteBusy(err error) bool {
 	return strings.Contains(message, "busy") || strings.Contains(message, "locked")
 }
 
-var _ RecentFilesRepository = (*SqliteRecentFilesRepository)(nil)
+var _ RecentItemsRepository = (*SqliteRecentItemsRepository)(nil)

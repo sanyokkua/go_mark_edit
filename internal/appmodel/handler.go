@@ -22,6 +22,8 @@ type AppModelServiceAPI interface {
 	OpenPath(ctx context.Context, path string, expectedTabSetRevision uint64) apperr.OpenResult
 	OpenPreviewLink(ctx context.Context, documentID, href string) apperr.OpenResult
 	ReopenLastFile(ctx context.Context, expectedTabSetRevision uint64) apperr.OpenResult
+	RefreshRecentItems(ctx context.Context) apperr.RecentItemsResult
+	ClearRecentItems(ctx context.Context) apperr.VoidResult
 	UpdateBuffer(ctx context.Context, documentID, content string) error
 	SetDocView(ctx context.Context, documentID string, view apperr.DocViewInput) error
 	SetUILayout(ctx context.Context, layout apperr.UILayout) error
@@ -39,6 +41,118 @@ type AppModelServiceAPI interface {
 	AuthorizeKeepMine(ctx context.Context, documentID string, contentRevision uint64, path string, detectedVersion apperr.DiskVersion) apperr.ConflictResult
 	SkipConflict(ctx context.Context, documentID string, contentRevision uint64, detectedVersion apperr.DiskVersion) apperr.ConflictResult
 	CancelConflict(ctx context.Context, documentID string, contentRevision uint64, detectedVersion apperr.DiskVersion) apperr.ConflictResult
+}
+
+// WorkspaceServiceAPI isolates folder lifecycle commands from the legacy
+// document-service surface used by older handler test doubles.
+type WorkspaceServiceAPI interface {
+	OpenWorkspace(ctx context.Context, path string) apperr.WorkspaceResult
+	RefreshWorkspace(ctx context.Context) apperr.WorkspaceResult
+	CloseWorkspace(ctx context.Context) apperr.ClassifiedVoidResult
+}
+
+// WorkspaceEntryServiceAPI owns additive filesystem actions for tree rows.
+type WorkspaceEntryServiceAPI interface {
+	CreateWorkspaceFile(context.Context, string, string) apperr.WorkspaceResult
+	CreateWorkspaceFolder(context.Context, string, string) apperr.WorkspaceResult
+	RevealWorkspacePath(context.Context, string) apperr.RevealResult
+	CopyWorkspacePath(context.Context, string) apperr.CopyPathResult
+}
+
+func (handler *AppModelHandler) CreateWorkspaceFile(request bridge.Request, parentPath, name string) (res apperr.WorkspaceResult) {
+	defer bridge.Guard(&res)
+	return bridge.Once(handler.outcomes, request, func() apperr.WorkspaceResult {
+		service, ok := handler.service.(WorkspaceEntryServiceAPI)
+		if !ok {
+			return workspaceClassifiedRefusal(apperr.ClassifiedSystemCommandFailure, "folder", "The folder service is unavailable.", "")
+		}
+		return service.CreateWorkspaceFile(handler.context(), parentPath, name)
+	})
+}
+
+func (handler *AppModelHandler) CreateWorkspaceFolder(request bridge.Request, parentPath, name string) (res apperr.WorkspaceResult) {
+	defer bridge.Guard(&res)
+	return bridge.Once(handler.outcomes, request, func() apperr.WorkspaceResult {
+		service, ok := handler.service.(WorkspaceEntryServiceAPI)
+		if !ok {
+			return workspaceClassifiedRefusal(apperr.ClassifiedSystemCommandFailure, "folder", "The folder service is unavailable.", "")
+		}
+		return service.CreateWorkspaceFolder(handler.context(), parentPath, name)
+	})
+}
+
+func (handler *AppModelHandler) RevealWorkspacePath(request bridge.Request, path string) (res apperr.RevealResult) {
+	defer bridge.Guard(&res)
+	return bridge.Once(handler.outcomes, request, func() apperr.RevealResult {
+		service, ok := handler.service.(WorkspaceEntryServiceAPI)
+		if !ok {
+			return bridge.Refused[apperr.RevealResult](apperr.ClassifiedSystemCommandFailure, "", path, "The folder service is unavailable.", apperr.RemediationRetry)
+		}
+		return service.RevealWorkspacePath(handler.context(), path)
+	})
+}
+
+func (handler *AppModelHandler) CopyWorkspacePath(request bridge.Request, path string) (res apperr.CopyPathResult) {
+	defer bridge.Guard(&res)
+	return bridge.Once(handler.outcomes, request, func() apperr.CopyPathResult {
+		service, ok := handler.service.(WorkspaceEntryServiceAPI)
+		if !ok {
+			return bridge.Refused[apperr.CopyPathResult](apperr.ClassifiedSystemCommandFailure, "", path, "The folder service is unavailable.", apperr.RemediationRetry)
+		}
+		return service.CopyWorkspacePath(handler.context(), path)
+	})
+}
+
+// DropClassificationServiceAPI keeps drop inspection separate from opening.
+type DropClassificationServiceAPI interface {
+	ClassifyDroppedPaths(context.Context, []string) apperr.DropClassificationResult
+}
+
+// ClassifyDroppedPaths returns path buckets without opening dropped items.
+func (handler *AppModelHandler) ClassifyDroppedPaths(request bridge.Request, paths []string) (res apperr.DropClassificationResult) {
+	defer bridge.Guard(&res)
+	return bridge.Once(handler.outcomes, request, func() apperr.DropClassificationResult {
+		service, ok := handler.service.(DropClassificationServiceAPI)
+		if !ok {
+			return bridge.Refused[apperr.DropClassificationResult](apperr.ClassifiedSystemCommandFailure, "drop", "The drop classification service is unavailable.", apperr.RemediationRetry)
+		}
+		return service.ClassifyDroppedPaths(handler.context(), paths)
+	})
+}
+
+// WorkspaceFolderPickerAPI is the optional native folder choice capability.
+type WorkspaceFolderPickerAPI interface {
+	ChooseWorkspaceFolder(ctx context.Context) apperr.FolderChoiceResult
+}
+
+// WorkspaceVisibilityServiceAPI owns the persisted hidden-folder setting.
+type WorkspaceVisibilityServiceAPI interface {
+	SetWorkspaceHiddenFolders(ctx context.Context, show bool) apperr.WorkspaceResult
+}
+
+// ChooseWorkspaceFolder returns a canonical native selection without opening it.
+func (handler *AppModelHandler) ChooseWorkspaceFolder(request bridge.Request) (res apperr.FolderChoiceResult) {
+	defer bridge.Guard(&res)
+	return bridge.Once(handler.outcomes, request, func() apperr.FolderChoiceResult {
+		workspaceService, ok := handler.service.(WorkspaceFolderPickerAPI)
+		if !ok {
+			classified := bridge.ClassifiedWithID(apperr.ClassifiedSystemCommandFailure, "folder", "The folder service is unavailable.", apperr.RemediationRetry, "")
+			return apperr.FolderChoiceResult{Status: apperr.FolderChoiceStatusRefused, Error: classified, Failure: bridge.FailureFromClassified(classified)}
+		}
+		return workspaceService.ChooseWorkspaceFolder(handler.context())
+	})
+}
+
+// SetWorkspaceHiddenFolders persists visibility and rebuilds this window's tree.
+func (handler *AppModelHandler) SetWorkspaceHiddenFolders(request bridge.Request, show bool) (res apperr.WorkspaceResult) {
+	defer bridge.Guard(&res)
+	return bridge.Once(handler.outcomes, request, func() apperr.WorkspaceResult {
+		workspaceService, ok := handler.service.(WorkspaceVisibilityServiceAPI)
+		if !ok {
+			return workspaceClassifiedRefusal(apperr.ClassifiedSystemCommandFailure, "folder", "The folder service is unavailable.", "")
+		}
+		return workspaceService.SetWorkspaceHiddenFolders(handler.context(), show)
+	})
 }
 
 // ClosePlanServiceAPI is kept separate from the legacy command surface so
@@ -63,6 +177,59 @@ func (handler *AppModelHandler) OpenRecentFile(request bridge.Request, path stri
 	defer bridge.Guard(&res)
 	return bridge.Once(handler.outcomes, request, func() apperr.OpenResult {
 		return handler.service.OpenPath(handler.context(), path, expectedTabSetRevision)
+	})
+}
+
+// RefreshRecentItems re-reads cross-window history when the File menu opens.
+func (handler *AppModelHandler) RefreshRecentItems(request bridge.Request) (res apperr.RecentItemsResult) {
+	defer bridge.Guard(&res)
+	return bridge.Once(handler.outcomes, request, func() apperr.RecentItemsResult {
+		return handler.service.RefreshRecentItems(handler.context())
+	})
+}
+
+// ClearRecentItems removes durable history and publishes the empty list.
+func (handler *AppModelHandler) ClearRecentItems(request bridge.Request) (res apperr.VoidResult) {
+	defer bridge.Guard(&res)
+	return bridge.Once(handler.outcomes, request, func() apperr.VoidResult {
+		return handler.service.ClearRecentItems(handler.context())
+	})
+}
+
+// OpenWorkspace builds and opens a folder tree through the app-model lifecycle.
+func (handler *AppModelHandler) OpenWorkspace(request bridge.Request, path string) (res apperr.WorkspaceResult) {
+	defer bridge.Guard(&res)
+	return bridge.Once(handler.outcomes, request, func() apperr.WorkspaceResult {
+		workspaceService, ok := handler.service.(WorkspaceServiceAPI)
+		if !ok {
+			return workspaceClassifiedRefusal(apperr.ClassifiedSystemCommandFailure, "folder", "The folder service is unavailable.", "")
+		}
+		return workspaceService.OpenWorkspace(handler.context(), path)
+	})
+}
+
+// RefreshWorkspace rebuilds the currently open folder tree.
+func (handler *AppModelHandler) RefreshWorkspace(request bridge.Request) (res apperr.WorkspaceResult) {
+	defer bridge.Guard(&res)
+	return bridge.Once(handler.outcomes, request, func() apperr.WorkspaceResult {
+		workspaceService, ok := handler.service.(WorkspaceServiceAPI)
+		if !ok {
+			return workspaceClassifiedRefusal(apperr.ClassifiedSystemCommandFailure, "folder", "The folder service is unavailable.", "")
+		}
+		return workspaceService.RefreshWorkspace(handler.context())
+	})
+}
+
+// CloseWorkspace clears only the session's current folder projection.
+func (handler *AppModelHandler) CloseWorkspace(request bridge.Request) (res apperr.ClassifiedVoidResult) {
+	defer bridge.Guard(&res)
+	return bridge.Once(handler.outcomes, request, func() apperr.ClassifiedVoidResult {
+		workspaceService, ok := handler.service.(WorkspaceServiceAPI)
+		if !ok {
+			classified := bridge.ClassifiedWithID(apperr.ClassifiedSystemCommandFailure, "folder", "The folder service is unavailable.", apperr.RemediationNone, "")
+			return apperr.ClassifiedVoidResult{Failure: bridge.FailureFromClassified(classified), Error: classified}
+		}
+		return workspaceService.CloseWorkspace(handler.context())
 	})
 }
 

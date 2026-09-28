@@ -2,6 +2,7 @@
 package file
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -14,6 +15,9 @@ const (
 	developmentAppName = "GoMarkEdit-Dev"
 	settingsDatabase   = "settings.db"
 )
+
+// ErrNotDirectory marks an existing path that does not identify a directory.
+var ErrNotDirectory = errors.New("path is not a directory")
 
 // Identity is the stable identity of a local document. Device is signed because
 // Darwin's stat structure exposes dev_t through a signed field; Linux values are
@@ -110,14 +114,46 @@ func CanonicalizeCandidateDocumentPath(path string) (CanonicalDocumentPath, erro
 	}, nil
 }
 
+// CanonicalizeDirectoryPath resolves an existing directory and returns its
+// absolute, symlink-resolved path without changing path case.
+func CanonicalizeDirectoryPath(path string) (string, error) {
+	if strings.TrimSpace(path) == "" {
+		return "", fmt.Errorf("directory path is empty")
+	}
+	absolute, err := filepath.Abs(path)
+	if err != nil {
+		return "", fmt.Errorf("resolve directory path: %w", err)
+	}
+	resolved, err := filepath.EvalSymlinks(filepath.Clean(absolute))
+	if err != nil {
+		return "", fmt.Errorf("resolve directory path: %w", err)
+	}
+	info, err := os.Stat(resolved)
+	if err != nil {
+		return "", fmt.Errorf("inspect directory path: %w", err)
+	}
+	if !info.IsDir() {
+		return "", fmt.Errorf("directory path is not a directory: %w", ErrNotDirectory)
+	}
+	return resolved, nil
+}
+
 // IsSupportedDocumentSuffix accepts only the four direct-entry suffixes, case-insensitively.
 func IsSupportedDocumentSuffix(path string) bool {
-	switch strings.ToLower(filepath.Ext(path)) {
-	case ".md", ".markdown", ".mdown", ".txt":
-		return true
-	default:
-		return false
+	for _, suffix := range supportedDocumentSuffixes {
+		if strings.EqualFold(filepath.Ext(path), suffix) {
+			return true
+		}
 	}
+	return false
+}
+
+var supportedDocumentSuffixes = [...]string{".md", ".markdown", ".mdown", ".txt"}
+
+// SupportedDocumentSuffixes returns the fixed document filter used by local-file
+// consumers. The returned slice is independent from the package's source list.
+func SupportedDocumentSuffixes() []string {
+	return append([]string(nil), supportedDocumentSuffixes[:]...)
 }
 
 func newCanonicalDocumentPath(path string, info os.FileInfo) CanonicalDocumentPath {

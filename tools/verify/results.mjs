@@ -252,6 +252,9 @@ function parseFindings(stage, log) {
         const line = rawLine.trim();
         if (!line) continue;
 
+        // Playwright prints every passing title; words inside a title are not diagnostics.
+        if (stage === 'e2e' && /^(?:\[\d+\/\d+\]\s+)?\[[^\]]+\]\s+›\s+tests\/e2e\//.test(line)) continue;
+
         if (
             /^(?:golangci-lint|ESLint|Stylelint|Go tests)\s+\.+\s+(?:PASS|FAIL|SKIPPED|NOT RUN|UNAVAILABLE|UNRELIABLE)\b/.test(
                 line,
@@ -507,11 +510,94 @@ function parsePlaywrightTestCounts(report) {
     return testCount(counts);
 }
 
-function readNormalizedReports(reportsDir) {
+function parseE2eTiming(log, report, wallMs) {
+    const preparation = log.match(/^\[e2e\] prepareMs=(\d+)(?:\s|$)/m);
+    const timing = {
+        wallMs,
+        prepareMs: preparation ? Number(preparation[1]) : null,
+        starts: null,
+        relaunches: null,
+        launchMs: null,
+        relaunchMs: null,
+        teardownMs: null,
+        retries: null,
+        failures: Number.isInteger(report?.stats?.unexpected) ? report.stats.unexpected : null,
+        skipped: Number.isInteger(report?.stats?.skipped) ? report.stats.skipped : null,
+        slowestTests: [],
+        slowestFiles: [],
+    };
+    if (!report || !Array.isArray(report.suites)) return timing;
+
+    const files = new Map();
+    const tests = [];
+    let starts = 0;
+    let relaunches = 0;
+    let launchMs = 0;
+    let relaunchMs = 0;
+    let teardownMs = 0;
+    let lifecycleRecords = 0;
+    let retries = 0;
+    function visit(suite, inheritedFile) {
+        const file = suite.file || inheritedFile;
+        for (const spec of Array.isArray(suite.specs) ? suite.specs : []) {
+            const name = spec.file || file || 'unknown file';
+            for (const test of Array.isArray(spec.tests) ? spec.tests : []) {
+                const attempts = Array.isArray(test.results) ? test.results : [];
+                retries += attempts.filter((attempt) => attempt.retry > 0).length;
+                const durationMs = attempts.reduce((total, attempt) => total + (Number(attempt.duration) || 0), 0);
+                if (attempts.length > 0) {
+                    tests.push({ file: name, title: spec.title, durationMs });
+                    files.set(name, (files.get(name) || 0) + durationMs);
+                }
+                for (const attempt of attempts) {
+                    const stdout = (Array.isArray(attempt.stdout) ? attempt.stdout : [])
+                        .map((entry) => (typeof entry === 'string' ? entry : entry?.text || ''))
+                        .join('');
+                    for (const match of stdout.matchAll(/^\[e2e\] (launchMs|relaunchMs|teardownMs)=(\d+)(?:\s|$)/gm)) {
+                        const value = Number(match[2]);
+                        lifecycleRecords += 1;
+                        if (match[1] === 'teardownMs') teardownMs += value;
+                        else if (match[1] === 'launchMs') {
+                            starts += 1;
+                            launchMs += value;
+                        } else {
+                            relaunches += 1;
+                            relaunchMs += value;
+                        }
+                    }
+                }
+            }
+        }
+        for (const child of Array.isArray(suite.suites) ? suite.suites : []) visit(child, file);
+    }
+    for (const suite of report.suites) visit(suite, null);
+    timing.retries = retries;
+    if (lifecycleRecords > 0) {
+        timing.starts = starts;
+        timing.relaunches = relaunches;
+        timing.launchMs = launchMs;
+        timing.relaunchMs = relaunchMs;
+        timing.teardownMs = teardownMs;
+    }
+    timing.slowestTests = tests.sort((a, b) => b.durationMs - a.durationMs).slice(0, 3);
+    timing.slowestFiles = [...files]
+        .map(([file, durationMs]) => ({ file, durationMs }))
+        .sort((a, b) => b.durationMs - a.durationMs)
+        .slice(0, 3);
+    return timing;
+}
+
+function readNormalizedReports(reportsDir, stage) {
     if (!reportsDir || !fs.existsSync(reportsDir)) return [];
+    const reportPrefix = {
+        lint: /^(?:golangci-lint|eslint|stylelint)\./,
+        unit: /^go-unit[.-]/,
+        integration: /^go-integration[.-]/,
+    }[stage];
+    if (!reportPrefix) return [];
     return fs
         .readdirSync(reportsDir)
-        .filter((file) => file.endsWith('.summary.json'))
+        .filter((file) => file.endsWith('.summary.json') && reportPrefix.test(file))
         .map((file) => readJson(path.join(reportsDir, file)))
         .filter((report) => report && REPORT_TOOLS.has(report.tool));
 }
@@ -566,8 +652,12 @@ function makeStage({
     runDir = path.dirname(process.cwd()),
     reportsDir,
 }) {
-    const reports = readNormalizedReports(reportsDir);
+    const reports = readNormalizedReports(reportsDir, name);
     const testCounts = collectTestCounts(name, log, runDir, reports);
+    const e2eTiming =
+        name === 'e2e'
+            ? parseE2eTiming(log, readJson(path.join(runDir, 'frontend-e2e-playwright.json')), durationMs)
+            : undefined;
     const unavailableGroups = countUnavailableGroups(testCounts);
     const failedGroups = failedTestGroups(testCounts);
     const requiredReports = !reportsDir
@@ -635,6 +725,7 @@ function makeStage({
         durationMs,
         verdict,
         ...(testCounts ? { testCounts } : {}),
+        ...(e2eTiming ? { e2eTiming } : {}),
         collected: countCollected(log, uniqueFindings, testCounts),
         findings: uniqueFindings,
     };
@@ -764,6 +855,27 @@ function formatSummary(summary, expectedStages = STAGES) {
         if (stage?.testCounts) {
             for (const group of TEST_GROUPS) {
                 if (stage.testCounts[group]) lines.push(formatTestCount(group, stage.testCounts[group]));
+            }
+        }
+        if (name === 'e2e' && stage?.e2eTiming && stage.verdict !== 'skipped') {
+            const timing = stage.e2eTiming;
+            const available = (value) => (value === null ? 'unavailable' : `${value} ms`);
+            lines.push(`  E2E wall: ${available(timing.wallMs)}; preparation: ${available(timing.prepareMs)}`);
+            lines.push(
+                `  E2E lifecycle (summed across concurrent tests): ${timing.starts ?? 'unavailable'} starts (${timing.relaunches ?? 'unavailable'} relaunches), launch total: ${available(timing.launchMs)}, teardown total: ${available(timing.teardownMs)}`,
+            );
+            lines.push(`  E2E relaunch inclusive total: ${available(timing.relaunchMs)}`);
+            lines.push(
+                `  E2E outcomes: ${timing.failures ?? 'unavailable'} failures, ${timing.skipped ?? 'unavailable'} skips, ${timing.retries ?? 'unavailable'} retries`,
+            );
+            for (const [label, entries] of [
+                ['tests', timing.slowestTests],
+                ['files', timing.slowestFiles],
+            ]) {
+                if (entries.length === 0) continue;
+                lines.push(`  Slowest ${label} (summed inclusive durations):`);
+                for (const entry of entries)
+                    lines.push(`    ${entry.durationMs} ms  ${entry.file}${entry.title ? ` › ${entry.title}` : ''}`);
             }
         }
     }

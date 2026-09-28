@@ -1,4 +1,4 @@
-import { useCallback, useContext, useRef } from 'react';
+import { useCallback, useContext, useEffect, useRef, useState } from 'react';
 
 import type { EditorPosition } from '../components/CodeEditor';
 import { appModelAdapter } from '../../logic/adapter';
@@ -15,7 +15,7 @@ import type {
     TabTransitionResult,
     ViewArrangement,
 } from '../../logic/store/appModelTypes';
-import { EditorSessionContext } from './editorSession';
+import { DocumentCommandContext, EditorSessionContext } from './editorSession';
 import type { DocumentTabsProps } from './DocumentTabs/DocumentTabs';
 import DocumentTabs from './DocumentTabs/DocumentTabs';
 import FormattingToolbar from './FormattingToolbar/FormattingToolbar';
@@ -43,6 +43,8 @@ function fallbackView(): DocumentView {
 }
 
 export interface EditorViewProps {
+    tabRevealRequest?: DocumentTabsProps['revealRequest'];
+    editorFocusRequest?: { documentId: string; sequence: number } | null;
     adapter?: EditorViewAdapter;
     tabAdapter?: DocumentTabsProps['adapter'];
     onNewDocument?: (expectedTabSetRevision: number) => Promise<unknown>;
@@ -54,6 +56,7 @@ export interface EditorViewProps {
         targetDocumentIds?: string[],
     ) => Promise<TabTransitionResult>;
     onExternalConflict?: (preview: ConflictPreview) => void;
+    onFocusedDocumentOpen?: (documentId: string) => void;
     onLiveCursorChange?: (cursor: EditorPosition) => void;
 }
 
@@ -74,12 +77,18 @@ const EditorView: React.FC<EditorViewProps> = ({
     onActivateDocument,
     onCloseDocument,
     onExternalConflict,
+    onFocusedDocumentOpen,
     onLiveCursorChange: onLiveCursorChangeProp,
+    tabRevealRequest,
+    editorFocusRequest,
 }: EditorViewProps): React.JSX.Element | null => {
     const dispatch = useAppDispatch();
     const activeBuffer = useContext(EditorSessionContext);
     const minimumWindow = useMinimumWindow();
     const modalOpen = useModalState();
+    const documentCommands = useContext(DocumentCommandContext);
+    const handledEditorFocus = useRef(0);
+    const [editorReadyEpoch, setEditorReadyEpoch] = useState(0);
     const stageRef = useRef<EditorStageHandle | null>(null);
     const activeDocument = useAppSelector((state) => {
         if (activeBuffer === null) {
@@ -88,6 +97,27 @@ const EditorView: React.FC<EditorViewProps> = ({
         return state.documents.byId[activeBuffer.documentId];
     });
     const activeDocumentReadOnly = activeDocument?.capability !== undefined && activeDocument.capability !== 'writable';
+    useEffect((): void => {
+        if (
+            editorFocusRequest === undefined ||
+            editorFocusRequest === null ||
+            handledEditorFocus.current >= editorFocusRequest.sequence ||
+            modalOpen ||
+            activeBuffer?.documentId !== editorFocusRequest.documentId
+        )
+            return;
+        if (documentCommands?.focus().status === 'available') {
+            handledEditorFocus.current = editorFocusRequest.sequence;
+        }
+    }, [activeBuffer?.documentId, documentCommands, editorFocusRequest, editorReadyEpoch, modalOpen]);
+    const onEditorReady = useCallback(
+        (documentId: string): void => {
+            if (editorFocusRequest?.documentId === documentId) {
+                setEditorReadyEpoch((epoch) => epoch + 1);
+            }
+        },
+        [editorFocusRequest?.documentId],
+    );
     const onArrangementChange = useCallback(
         (nextArrangement: ViewArrangement): void => {
             if (nextArrangement === 'preview') {
@@ -141,6 +171,7 @@ const EditorView: React.FC<EditorViewProps> = ({
         <section aria-label={t('editor.view')} className={styles.editorView}>
             <DocumentTabs
                 adapter={tabAdapter}
+                revealRequest={tabRevealRequest}
                 modalOpen={modalOpen}
                 onActivateDocument={onActivateDocument}
                 onCloseDocument={onCloseDocument}
@@ -156,8 +187,10 @@ const EditorView: React.FC<EditorViewProps> = ({
                 editorVisible={editorVisible}
                 labelledBy={activeBuffer.documentId === '' ? undefined : tabElementId(activeBuffer.documentId)}
                 onLiveCursorChange={onLiveCursorChange}
+                onEditorReady={onEditorReady}
                 onPreviewRefresh={onPreviewRefresh}
                 onPreviewWarning={onPreviewWarning}
+                onFocusedDocumentOpen={onFocusedDocumentOpen}
                 panelId={EDITOR_TABPANEL_ID}
                 previewVisible={previewVisible}
                 readOnly={activeDocumentReadOnly}

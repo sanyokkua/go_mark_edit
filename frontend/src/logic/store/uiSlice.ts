@@ -20,7 +20,7 @@ const uiSlice = createSlice({
     extraReducers: (builder) => {
         builder
             .addCase(hydrateProjection, (state, action): void => {
-                if (action.payload.revision <= state.revision) {
+                if (action.payload.revision < state.revision) {
                     return;
                 }
 

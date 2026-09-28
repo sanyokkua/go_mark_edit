@@ -6,12 +6,71 @@ import (
 	. "github.com/sanyokkua/go_mark_edit/internal/appmodel"
 	"os"
 	"path/filepath"
+	"reflect"
 	"testing"
 	"time"
 
+	"github.com/sanyokkua/go_mark_edit/internal/apperr"
 	"github.com/sanyokkua/go_mark_edit/internal/db"
 	"github.com/sanyokkua/go_mark_edit/internal/file"
+	"github.com/sanyokkua/go_mark_edit/internal/kv"
 )
+
+func TestRecentItemsReadV1HistoryUntilPromotionWritesV2(t *testing.T) {
+	database, err := db.Open(context.Background(), filepath.Join(t.TempDir(), "recents.db"))
+	if err != nil {
+		t.Fatalf("open database: %v", err)
+	}
+	defer func() { _ = database.Close() }()
+
+	first := filepath.Join(t.TempDir(), "first.md")
+	second := filepath.Join(t.TempDir(), "second.md")
+	for _, path := range []string{first, second} {
+		if err := os.WriteFile(path, []byte("fixture\n"), 0o600); err != nil {
+			t.Fatalf("write fixture %q: %v", path, err)
+		}
+	}
+	legacy, err := json.Marshal(recentFilesEnvelope{Version: 1, Entries: []string{first, second}})
+	if err != nil {
+		t.Fatalf("encode v1 recents: %v", err)
+	}
+	if err := kv.New(database.DB).Upsert(context.Background(), kv.KVEntry{Key: "recent.files", Type: "recent.files.v1", Value: string(legacy)}); err != nil {
+		t.Fatalf("seed v1 recents: %v", err)
+	}
+
+	repository := NewSqliteRecentItemsRepository(database)
+	entries, err := repository.List(context.Background())
+	if err != nil {
+		t.Fatalf("list v1 recents: %v", err)
+	}
+	if want := []apperr.RecentItem{{Path: canonicalPath(t, first), Kind: "file"}, {Path: canonicalPath(t, second), Kind: "file"}}; !reflect.DeepEqual(entries, want) {
+		t.Fatalf("v1 entries = %#v, want %#v", entries, want)
+	}
+	entry, found, err := kv.New(database.DB).Get(context.Background(), "recent.files")
+	if err != nil || !found || entry.Type != "recent.files.v1" {
+		t.Fatalf("clean v1 List rewrote storage: entry=%+v found=%t error=%v", entry, found, err)
+	}
+
+	third := filepath.Join(t.TempDir(), "third.md")
+	if err := os.WriteFile(third, []byte("fixture\n"), 0o600); err != nil {
+		t.Fatalf("write promotion fixture: %v", err)
+	}
+	if _, err := repository.Promote(context.Background(), third, "file"); err != nil {
+		t.Fatalf("promote v2 item: %v", err)
+	}
+	entry, found, err = kv.New(database.DB).Get(context.Background(), "recent.files")
+	if err != nil || !found || entry.Type != "recent.files.v2" {
+		t.Fatalf("promoted v2 storage = entry=%+v found=%t error=%v", entry, found, err)
+	}
+	var persisted struct {
+		Version int                 `json:"version"`
+		Entries []apperr.RecentItem `json:"entries"`
+	}
+	valid, err := kv.DecodeVersionedJSON(entry.Value, 2, &persisted)
+	if err != nil || !valid || persisted.Version != 2 || persisted.Entries[0].Path != canonicalPath(t, third) {
+		t.Fatalf("persisted v2 value = %#v, valid=%t error=%v", persisted, valid, err)
+	}
+}
 
 func openTwoRecentFilesDatabases(t *testing.T) (*db.Database, *db.Database) {
 	t.Helper()
@@ -42,7 +101,7 @@ func TestRecentFilesCorruptAndUnknownValuesFallBackSafely(t *testing.T) {
 		t.Fatalf("open database: %v", err)
 	}
 	defer func() { _ = database.Close() }()
-	repository := NewSqliteRecentFilesRepository(database)
+	repository := NewSqliteRecentItemsRepository(database)
 
 	for _, encoded := range []string{"not-json", string(mustJSON(t, recentFilesEnvelope{Version: 99, Entries: []string{"/stale.md"}}))} {
 		if _, err := database.DB.ExecContext(context.Background(), `
@@ -68,18 +127,18 @@ ON CONFLICT(key) DO UPDATE SET value = excluded.value, type = excluded.type
 	if err != nil {
 		t.Fatalf("canonicalize replacement fixture: %v", err)
 	}
-	got, err := repository.Promote(context.Background(), canonical.Path)
+	got, err := repository.Promote(context.Background(), canonical.Path, "file")
 	if err != nil {
 		t.Fatalf("promote after invalid value: %v", err)
 	}
-	if len(got) != 1 || got[0] != canonical.Path {
+	if len(got) != 1 || got[0] != (apperr.RecentItem{Path: canonical.Path, Kind: "file"}) {
 		t.Fatalf("promoted recents after invalid value = %v", got)
 	}
 }
 
 func TestRecentFilesPromotionWaitsForConcurrentWriter(t *testing.T) {
 	first, second := openTwoRecentFilesDatabases(t)
-	repository := NewSqliteRecentFilesRepository(first)
+	repository := NewSqliteRecentItemsRepository(first)
 	firstPath := filepath.Join(t.TempDir(), "first.md")
 	secondPath := filepath.Join(t.TempDir(), "second.md")
 	for _, path := range []string{firstPath, secondPath} {
@@ -95,7 +154,7 @@ func TestRecentFilesPromotionWaitsForConcurrentWriter(t *testing.T) {
 	if err != nil {
 		t.Fatalf("canonicalize second recent fixture: %v", err)
 	}
-	if _, err := repository.Promote(context.Background(), firstPath); err != nil {
+	if _, err := repository.Promote(context.Background(), firstPath, "file"); err != nil {
 		t.Fatalf("seed recent promotion: %v", err)
 	}
 
@@ -109,12 +168,12 @@ func TestRecentFilesPromotionWaitsForConcurrentWriter(t *testing.T) {
 	}
 
 	type promotionResult struct {
-		entries []string
+		entries []apperr.RecentItem
 		err     error
 	}
 	completed := make(chan promotionResult, 1)
 	go func() {
-		entries, promoteErr := repository.Promote(context.Background(), secondPath)
+		entries, promoteErr := repository.Promote(context.Background(), secondPath, "file")
 		completed <- promotionResult{entries: entries, err: promoteErr}
 	}()
 
@@ -132,7 +191,7 @@ func TestRecentFilesPromotionWaitsForConcurrentWriter(t *testing.T) {
 		if result.err != nil {
 			t.Fatalf("promotion after lock release: %v", result.err)
 		}
-		if len(result.entries) != 2 || result.entries[0] != secondCanonical.Path || result.entries[1] != firstCanonical.Path {
+		if len(result.entries) != 2 || result.entries[0] != (apperr.RecentItem{Path: secondCanonical.Path, Kind: "file"}) || result.entries[1] != (apperr.RecentItem{Path: firstCanonical.Path, Kind: "file"}) {
 			t.Fatalf("promoted entries = %v, want [%s %s]", result.entries, secondCanonical.Path, firstCanonical.Path)
 		}
 	case <-time.After(5 * time.Second):

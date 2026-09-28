@@ -1,26 +1,14 @@
-import { execFile } from 'node:child_process';
-import { promisify } from 'node:util';
-
 import { expect, test } from '../support/harness';
+import { runSeed } from '../support/profile';
 
-const execFileAsync = promisify(execFile);
-
-async function addAppearanceRejectionTrigger(repositoryDirectory: string, profileDirectory: string): Promise<void> {
-    await execFileAsync(
-        process.env.GO_BIN ?? 'go',
-        ['run', './tools/e2e-seed', profileDirectory, 'add-trigger', 'appearance'],
-        {
-            cwd: repositoryDirectory,
-            env: { ...process.env },
-            maxBuffer: 1024 * 1024,
-        },
-    );
+async function addAppearanceRejectionTrigger(profileDirectory: string): Promise<void> {
+    await runSeed(profileDirectory, ['add-trigger', 'appearance']);
 }
 
 test('a rejected appearance update keeps the acknowledged theme across a relaunch', async ({ app }) => {
     const source = await app.writeDocument('settings.md', '# Settings');
     await app.seedRecents([source]);
-    await addAppearanceRejectionTrigger(app.repositoryDirectory, app.profileDirectory);
+    await addAppearanceRejectionTrigger(app.profileDirectory);
     await app.launch();
 
     const root = app.page.locator('html');

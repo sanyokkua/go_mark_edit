@@ -2,7 +2,7 @@ import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
 
 import { t } from '../../i18n';
 import type { WireError } from '../utils/parseError';
-import type { ClosePlanKind } from './appModelTypes';
+import type { ClosePlanKind, RecentItemKind } from './appModelTypes';
 
 export type NotificationSeverity = 'error' | 'info' | 'success' | 'warning';
 
@@ -53,6 +53,11 @@ export type NotificationRemediationIntent =
     | 'save-as'
     | 'new-document'
     | 'open-document'
+    | 'open-folder'
+    | 'refresh-workspace'
+    | 'create-workspace-entry'
+    | 'reveal-workspace-path'
+    | 'copy-workspace-path'
     | 'open-recent'
     | 'reopen-last'
     | 'activate-document'
@@ -97,6 +102,7 @@ export interface NotificationRemediation {
      * other intent, and a retry is not offered at all without it.
      */
     path?: string;
+    kind?: RecentItemKind;
     /**
      * The close request a `close-documents` retry re-issues, verbatim.
      *

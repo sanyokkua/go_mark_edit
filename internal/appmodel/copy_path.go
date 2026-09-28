@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io/fs"
 	"os"
+	"path/filepath"
 
 	"github.com/sanyokkua/go_mark_edit/internal/apperr"
 	"github.com/sanyokkua/go_mark_edit/internal/bridge"
@@ -25,16 +26,33 @@ func (service *AppModelService) CopyPath(_ context.Context, documentID string) a
 	subject := document.metadata.DisplayName
 	service.mu.RUnlock()
 
+	result := copyPathViaWriter(writer, path, subject)
+	if result.Error != nil {
+		result.Error.DocumentID = documentID
+		result.Failure = bridge.FailureFromClassified(result.Error)
+	}
+	return result
+}
+
+func copyPathViaWriter(writer file.ClipboardWriter, path, subject string) apperr.CopyPathResult {
 	if path == "" {
-		return bridge.Refused[apperr.PathCommandResult](apperr.ClassifiedUnsupportedInput, documentID, subject, "This document does not have a file path.", apperr.RemediationNone)
+		return bridge.Refused[apperr.PathCommandResult](apperr.ClassifiedUnsupportedInput, "", subject, "This document does not have a file path.", apperr.RemediationNone)
 	}
 	if writer == nil {
-		return bridge.Refused[apperr.PathCommandResult](apperr.ClassifiedSystemCommandFailure, documentID, subject, "The path could not be copied.", apperr.RemediationRetry)
+		return bridge.Refused[apperr.PathCommandResult](apperr.ClassifiedSystemCommandFailure, "", subject, "The path could not be copied.", apperr.RemediationRetry)
 	}
 	if err := writer.WriteText(path); err != nil {
-		return bridge.Refused[apperr.PathCommandResult](apperr.ClassifiedSystemCommandFailure, documentID, subject, "The path could not be copied.", apperr.RemediationRetry)
+		return bridge.Refused[apperr.PathCommandResult](apperr.ClassifiedSystemCommandFailure, "", subject, "The path could not be copied.", apperr.RemediationRetry)
 	}
 	return apperr.CopyPathResult{Status: apperr.PathCommandCopied}
+}
+
+// CopyWorkspacePath writes a workspace node's absolute location.
+func (service *AppModelService) CopyWorkspacePath(_ context.Context, path string) apperr.CopyPathResult {
+	service.mu.RLock()
+	writer := service.clipboard
+	service.mu.RUnlock()
+	return copyPathViaWriter(writer, path, filepath.Base(path))
 }
 
 // RevealInFileManager performs one appmodel-owned existence check immediately
@@ -54,37 +72,60 @@ func (service *AppModelService) RevealInFileManager(ctx context.Context, documen
 	service.mu.RUnlock()
 
 	if path == "" {
-		return bridge.Refused[apperr.RevealResult](apperr.ClassifiedUnsupportedInput, documentID, subject, "This document does not have a file path.", apperr.RemediationNone)
+		result := revealPathViaPort(port, path, subject)
+		result.Error.DocumentID = documentID
+		result.Failure = bridge.FailureFromClassified(result.Error)
+		return result
 	}
 	if knownDetached {
 		return apperr.RevealResult{Status: apperr.PathCommandUnavailable}
 	}
-	if _, err := os.Stat(path); err != nil {
-		if errors.Is(err, fs.ErrNotExist) {
-			// The file was there when the document was opened and is gone now. This
-			// collapsed into the known-missing case above and returned no error at
-			// all, so a user who chose Reveal saw nothing happen. The operation must
-			// report a detached, classified not-found result offering the two
-			// actions that can still help.
+	result := revealPathViaPort(port, path, subject)
+	if result.Error != nil {
+		if result.Error.Category == apperr.ClassifiedNotFound {
 			service.markDetached(ctx, documentID)
 			return revealDetachedFailure(documentID, subject)
 		}
-		return revealCommandFailure(documentID, subject)
+		if result.Error.Category == apperr.ClassifiedSystemCommandFailure {
+			return revealCommandFailure(documentID, subject)
+		}
+		result.Error.DocumentID = documentID
+		result.Failure = bridge.FailureFromClassified(result.Error)
+	}
+	return result
+}
+
+func revealPathViaPort(port file.RevealPort, path, subject string) apperr.RevealResult {
+	if path == "" {
+		return bridge.Refused[apperr.RevealResult](apperr.ClassifiedUnsupportedInput, "", subject, "This document does not have a file path.", apperr.RemediationNone)
+	}
+	if _, err := os.Stat(path); err != nil {
+		if errors.Is(err, fs.ErrNotExist) {
+			return revealDetachedFailure("", subject)
+		}
+		return revealCommandFailure("", subject)
 	}
 	if port == nil {
-		return revealCommandFailure(documentID, subject)
+		return revealCommandFailure("", subject)
 	}
 	if err := port.Reveal(path); err != nil {
 		if errors.Is(err, file.ErrRevealUnavailable) {
 			return apperr.RevealResult{Status: apperr.PathCommandUnavailable}
 		}
 		if errors.Is(err, fs.ErrNotExist) || os.IsNotExist(err) {
-			service.markDetached(ctx, documentID)
-			return revealDetachedFailure(documentID, subject)
+			return revealDetachedFailure("", subject)
 		}
-		return revealCommandFailure(documentID, subject)
+		return revealCommandFailure("", subject)
 	}
 	return apperr.RevealResult{Status: apperr.PathCommandRevealed}
+}
+
+// RevealWorkspacePath reveals a workspace node through the existing native port.
+func (service *AppModelService) RevealWorkspacePath(_ context.Context, path string) apperr.RevealResult {
+	service.mu.RLock()
+	port := service.reveal
+	service.mu.RUnlock()
+	return revealPathViaPort(port, path, filepath.Base(path))
 }
 
 func (service *AppModelService) markDetached(ctx context.Context, documentID string) {

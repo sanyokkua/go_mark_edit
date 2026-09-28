@@ -1,5 +1,5 @@
 import type { AppModelAdapter } from '../adapter/appModelAdapter';
-import { isWireError } from '../utils/parseError';
+import { isWireError, parseError } from '../utils/parseError';
 import { notifyError } from './notificationsSlice';
 
 import { applyStatePatch, hydrateProjection, resetProjection } from './appModelProjectionActions';
@@ -26,6 +26,7 @@ interface BootstrapAttempt {
     disposeAsyncErrors?: () => void;
     disposeStatePatches?: () => void;
     isHydrated: boolean;
+    isRecovering: boolean;
     queuedPatches: AppStatePatch[];
 }
 
@@ -48,6 +49,7 @@ export function disposeAppModelProjection(): void {
 async function initializeProjection(appModelAdapter: AppModelAdapter): Promise<AppModelBootstrapResult> {
     const attempt: BootstrapAttempt = {
         isHydrated: false,
+        isRecovering: false,
         queuedPatches: [],
     };
     activeAttempt = attempt;
@@ -63,11 +65,10 @@ async function initializeProjection(appModelAdapter: AppModelAdapter): Promise<A
             if (activeAttempt !== attempt) {
                 return;
             }
-            if (!attempt.isHydrated) {
-                attempt.queuedPatches.push(patch);
-                return;
+            attempt.queuedPatches.push(patch);
+            if (attempt.isHydrated) {
+                drainPatches(appModelAdapter, attempt);
             }
-            store.dispatch(applyStatePatch(patch));
         });
         const state = await appModelAdapter.getState();
         if (activeAttempt !== attempt) {
@@ -78,10 +79,7 @@ async function initializeProjection(appModelAdapter: AppModelAdapter): Promise<A
         }
         store.dispatch(hydrateProjection(state.snapshot));
         attempt.isHydrated = true;
-        for (const patch of attempt.queuedPatches) {
-            store.dispatch(applyStatePatch(patch));
-        }
-        attempt.queuedPatches = [];
+        drainPatches(appModelAdapter, attempt);
 
         const result: Extract<AppModelBootstrapResult, { status: 'ready' }> = {
             status: 'ready',
@@ -109,6 +107,59 @@ async function initializeProjection(appModelAdapter: AppModelAdapter): Promise<A
     }
 }
 
+// Patches are partial metadata, so accepting a future revision can permanently
+// hide an earlier document/workspace change. Recover from backend truth instead
+// of assuming that transport delivery preserves publication order.
+function drainPatches(appModelAdapter: AppModelAdapter, attempt: BootstrapAttempt, allowRecovery = true): void {
+    if (attempt.isRecovering) {
+        return;
+    }
+    while (attempt.queuedPatches.length > 0) {
+        const patch = attempt.queuedPatches[0];
+        // Save and close recovery can also hydrate the projection.
+        const revision = store.getState().documents.revision;
+        if (patch.revision <= revision) {
+            attempt.queuedPatches.shift();
+        } else if (patch.revision === revision + 1) {
+            attempt.queuedPatches.shift();
+            store.dispatch(applyStatePatch(patch));
+        } else {
+            if (allowRecovery) {
+                attempt.isRecovering = true;
+                void recoverProjection(appModelAdapter, attempt, patch.revision);
+            }
+            return;
+        }
+    }
+}
+
+async function recoverProjection(
+    appModelAdapter: AppModelAdapter,
+    attempt: BootstrapAttempt,
+    gapRevision: number,
+): Promise<void> {
+    try {
+        const state = await appModelAdapter.getState();
+        if (activeAttempt !== attempt) {
+            return;
+        }
+        store.dispatch(hydrateProjection(state.snapshot));
+        attempt.isRecovering = false;
+        // A snapshot behind its triggering event must not cause an unbounded
+        // retry loop. Retain the gap and retry when another event arrives.
+        drainPatches(appModelAdapter, attempt, state.snapshot.revision >= gapRevision);
+    } catch (error: unknown) {
+        if (activeAttempt !== attempt) {
+            return;
+        }
+        attempt.isRecovering = false;
+        // The adapter already reports classified bridge failures once.
+        if (!isWireError(error)) {
+            store.dispatch(notifyError(parseError(error)));
+        }
+    }
+}
+
 function resetAttempt(attempt: BootstrapAttempt): void {
     if (activeAttempt !== attempt) {
         return;
@@ -121,6 +172,7 @@ function resetAttempt(attempt: BootstrapAttempt): void {
     attempt.disposeStatePatches?.();
     attempt.disposeStatePatches = undefined;
     attempt.isHydrated = false;
+    attempt.isRecovering = false;
     attempt.queuedPatches = [];
     store.dispatch(resetProjection());
     disposeSettingsProjection();

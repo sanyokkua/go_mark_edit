@@ -5,6 +5,100 @@ export interface ActiveBuffer {
     projectionRevision?: number;
 }
 
+export type RecentItemKind = 'file' | 'folder';
+
+export interface RecentItem {
+    path: string;
+    kind: RecentItemKind;
+}
+
+export interface RecentItemsResult {
+    recentItems: RecentItem[];
+    error?: ClassifiedError;
+}
+
+export interface DropClassificationResultWire extends Omit<FailureEnvelope, 'category' | 'remediation'> {
+    category?: string;
+    remediation?: string;
+    files?: string[];
+    folders?: string[];
+    unsupported?: string[];
+}
+
+export interface DropClassificationResult extends FailureEnvelope {
+    files: string[];
+    folders: string[];
+    unsupported: string[];
+}
+
+export interface WorkspaceNode {
+    path: string;
+    name: string;
+    isDir: boolean;
+    unreadable?: boolean;
+    children?: WorkspaceNode[];
+}
+
+export interface WorkspaceSnapshot {
+    rootPath: string;
+    rootName: string;
+    root: WorkspaceNode;
+    totalEntries: number;
+    truncated: boolean;
+    unavailable: boolean;
+    filterSuffixes: string[];
+    showHiddenFolders: boolean;
+}
+
+export type WorkspaceStatus = 'opened' | 'unchanged' | 'refused';
+
+export type FailureCategory = ClassifiedErrorCategory | 'validation' | 'internal';
+
+export interface FailureEnvelope {
+    category?: FailureCategory;
+    subject?: string;
+    message?: string;
+    remediation?: ClassifiedRemediation;
+    id?: string;
+}
+
+export interface ClassifiedErrorWire {
+    category: string;
+    safeSubject?: string;
+    message: string;
+    remediations?: string[];
+    documentId?: string;
+    dedupKey: string;
+}
+
+export interface WorkspaceResultWire extends Omit<FailureEnvelope, 'category' | 'remediation'> {
+    category?: string;
+    remediation?: string;
+    status: string;
+    workspace?: WorkspaceSnapshot;
+    error?: ClassifiedErrorWire;
+}
+
+export interface WorkspaceResult extends FailureEnvelope {
+    status: WorkspaceStatus;
+    workspace?: WorkspaceSnapshot;
+    error?: ClassifiedError;
+}
+
+export interface FolderChoiceResultWire extends Omit<FailureEnvelope, 'category' | 'remediation'> {
+    category?: string;
+    remediation?: string;
+    status: string;
+    path?: string;
+    error?: ClassifiedErrorWire;
+}
+
+export interface FolderChoiceResult extends FailureEnvelope {
+    status: 'chosen' | 'cancelled' | 'refused';
+    path?: string;
+    error?: ClassifiedError;
+}
+
 export const viewArrangements = ['editor', 'split', 'preview'] as const;
 
 export type ViewArrangement = (typeof viewArrangements)[number];
@@ -159,8 +253,9 @@ export interface AppStateSnapshot {
     orderedDocumentIds?: string[];
     activeDocumentId: string | null;
     activeDocument?: string | null;
-    recentFiles?: string[];
+    recentItems?: RecentItem[];
     canReopenLastFile?: boolean;
+    workspace?: WorkspaceSnapshot;
     ui: UILayout;
     pendingClose?: PendingClose;
 }
@@ -183,8 +278,9 @@ export interface AppStatePatch {
     documents?: DocumentsPatch;
     activeDocumentId?: string | null;
     activeDocument?: { present: boolean; documentId?: string };
-    recentFiles?: string[];
+    recentItems?: RecentItem[];
     canReopenLastFile?: boolean;
+    workspace?: WorkspaceSnapshot | null;
     ui?: UILayout;
 }
 
@@ -214,6 +310,16 @@ export interface ClassifiedError {
     remediations: ClassifiedRemediation[];
     documentId?: string;
     dedupKey: string;
+}
+
+export interface ClassifiedVoidResultWire extends Omit<FailureEnvelope, 'category' | 'remediation'> {
+    category?: string;
+    remediation?: string;
+    error?: ClassifiedErrorWire;
+}
+
+export interface ClassifiedVoidResult extends FailureEnvelope {
+    error?: ClassifiedError;
 }
 
 export interface DocumentTransitionResult {
@@ -284,10 +390,11 @@ export interface PathCommandResult {
     error?: ClassifiedError;
 }
 
-export type OpenStatus = 'cancelled' | 'focused' | 'opened' | 'refused';
+export type OpenStatus = 'cancelled' | 'focused' | 'opened' | 'refused' | 'folder-target';
 
 export interface OpenResult {
     status: OpenStatus;
+    path?: string;
     documentId?: string;
     projectionRevision?: number;
     activeBuffer?: ActiveBuffer;

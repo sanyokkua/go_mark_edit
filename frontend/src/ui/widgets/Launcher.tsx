@@ -1,14 +1,18 @@
 import type { MouseEvent } from 'react';
 
 import { t } from '../../i18n';
+import { dispatchAction } from '../../logic/actions/actionDispatcher';
+import type { RecentItem } from '../../logic/store/appModelTypes';
 import Button from '../primitives/Button';
+import Icon from '../primitives/Icon';
 import styles from './Launcher.module.css';
 
 export interface LauncherProps {
-    recentFiles?: readonly string[];
+    recentItems?: readonly RecentItem[];
     onNewDocument?: () => Promise<unknown> | unknown;
     onOpenDocument?: () => Promise<unknown> | unknown;
-    onOpenRecentFile?: (path: string) => Promise<unknown> | unknown;
+    onOpenFolder?: () => Promise<unknown> | unknown;
+    onOpenRecentItem?: (item: RecentItem) => Promise<unknown> | unknown;
 }
 
 function safeSegment(value: string): string {
@@ -27,17 +31,18 @@ function invoke(event: MouseEvent<HTMLButtonElement>, callback: (() => Promise<u
 }
 
 const Launcher: React.FC<LauncherProps> = ({
-    recentFiles = [],
+    recentItems = [],
     onNewDocument,
     onOpenDocument,
-    onOpenRecentFile,
+    onOpenFolder,
+    onOpenRecentItem,
 }: LauncherProps): React.JSX.Element => {
     return (
         <section aria-labelledby="launcher-title" className={styles.launcher} data-testid="document-launcher">
             <div className={styles.panel}>
                 <h1 id="launcher-title">{t('launcher.title')}</h1>
                 <p className={styles.message}>
-                    {recentFiles.length === 0 ? t('launcher.firstRun') : t('launcher.chooseRecent')}
+                    {recentItems.length === 0 ? t('launcher.firstRun') : t('launcher.chooseRecent')}
                 </p>
                 <div className={styles.actions}>
                     {/*
@@ -57,27 +62,34 @@ const Launcher: React.FC<LauncherProps> = ({
                     <Button variant="secondary" onClick={(event): void => invoke(event, onOpenDocument)}>
                         {t('action.open-file.label')}
                     </Button>
-                    <Button disabled title={t('action.unavailable')} variant="secondary">
+                    <Button
+                        variant="secondary"
+                        onClick={(event): void => {
+                            event.preventDefault();
+                            void dispatchAction('open-folder', { applicationFocused: true, invoke: onOpenFolder });
+                        }}
+                    >
                         {t('action.open-folder.label')}
                     </Button>
                 </div>
                 <div aria-label={t('file.recent.label')} className={styles.recent}>
                     <h2>{t('file.recent.label')}</h2>
-                    {recentFiles.length === 0 ? (
+                    {recentItems.length === 0 ? (
                         <p className={styles.empty}>{t('launcher.noRecent')}</p>
                     ) : (
                         <ul>
-                            {recentFiles.slice(0, 6).map((path) => (
-                                <li key={path}>
+                            {recentItems.slice(0, 10).map((item) => (
+                                <li key={item.path}>
                                     <Button
-                                        title={safeRecentLabel(path)}
+                                        title={item.path}
                                         variant="quiet"
                                         onClick={(event): void => {
                                             event.preventDefault();
-                                            void onOpenRecentFile?.(path);
+                                            void onOpenRecentItem?.(item);
                                         }}
                                     >
-                                        {safeRecentLabel(path)}
+                                        <Icon aria-hidden="true" name={item.kind} />
+                                        {safeRecentLabel(item.path)}
                                     </Button>
                                 </li>
                             ))}

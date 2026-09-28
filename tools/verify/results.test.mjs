@@ -711,6 +711,82 @@ void test('prefers structured failures without treating successful test names as
     }
 });
 
+void test('keeps passing E2E titles and another stage report out of E2E findings', () => {
+    const runDirectory = fixtureDirectory();
+    try {
+        const reportsDirectory = join(runDirectory, 'reports');
+        mkdirSync(reportsDirectory, { recursive: true });
+        writeFileSync(
+            join(reportsDirectory, 'go-integration.jsonl.summary.json'),
+            JSON.stringify({
+                tool: 'go-test',
+                status: 'available',
+                exitCode: 1,
+                testCounts: { total: 1, passed: 0, failed: 1, skipped: 0, todo: 0, status: 'available' },
+                findings: [
+                    { id: 'go-test:TestUnrelated', tool: 'go-test', location: 'TestUnrelated', message: 'failed test' },
+                ],
+            }),
+        );
+        writeFileSync(
+            join(runDirectory, 'frontend-e2e-playwright.json'),
+            JSON.stringify({
+                stats: { expected: 2, unexpected: 0, flaky: 0, skipped: 0 },
+            }),
+        );
+        writeFileSync(
+            join(runDirectory, 'e2e.log'),
+            [
+                '[1/2] [chromium] › tests/e2e/real-files.test.ts:562:5 › saves after a failure is dismissed',
+                '[chromium] › tests/e2e/real-files.test.ts:562:5 › saves after a failure is dismissed',
+                '[2/2] [chromium] › tests/e2e/startup-close.test.ts:50:1 › retrying a failed settings startup',
+                '2 passed (3.1s)',
+            ].join('\n'),
+        );
+        const result = runResults(
+            'stage',
+            '--name',
+            'e2e',
+            '--command',
+            'scripts/test e2e',
+            '--exit-code',
+            '0',
+            '--log',
+            join(runDirectory, 'e2e.log'),
+            '--reports-dir',
+            reportsDirectory,
+            '--output',
+            join(runDirectory, 'e2e.json'),
+        );
+        assert.equal(result.status, 0, result.stderr);
+        const record = JSON.parse(readFileSync(join(runDirectory, 'e2e.json'), 'utf8'));
+        assert.equal(record.verdict, 'clean');
+        assert.deepEqual(record.findings, []);
+
+        const interrupted = runResults(
+            'stage',
+            '--name',
+            'e2e',
+            '--command',
+            'scripts/test e2e',
+            '--exit-code',
+            '1',
+            '--log',
+            join(runDirectory, 'e2e.log'),
+            '--reports-dir',
+            reportsDirectory,
+            '--output',
+            join(runDirectory, 'e2e-interrupted.json'),
+        );
+        assert.equal(interrupted.status, 1);
+        const interruptedRecord = JSON.parse(readFileSync(join(runDirectory, 'e2e-interrupted.json'), 'utf8'));
+        assert.equal(interruptedRecord.verdict, 'unreliable');
+        assert.deepEqual(interruptedRecord.findings, []);
+    } finally {
+        rmSync(runDirectory, { recursive: true, force: true });
+    }
+});
+
 void test('keeps raw failure fallback and the complete tsx location', () => {
     const runDirectory = fixtureDirectory();
     try {

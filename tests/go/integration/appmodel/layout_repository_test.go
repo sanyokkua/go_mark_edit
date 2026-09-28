@@ -47,6 +47,33 @@ func TestSqliteLayoutRepositoryArbitratesPerFieldAndReadsLegacyValues(t *testing
 	}
 }
 
+func TestHiddenFolderPreferenceDefaultsAndValidatesAsBoolean(t *testing.T) {
+	database, err := db.Open(context.Background(), t.TempDir()+"/settings.db")
+	if err != nil {
+		t.Fatalf("open settings database: %v", err)
+	}
+	defer func() { _ = database.Close() }()
+	repository := NewSqliteLayoutRepository(database)
+
+	missing, found, err := repository.Read(context.Background(), LayoutWorkspaceHiddenFolders)
+	if err != nil || found || missing.Value != nil {
+		t.Fatalf("missing hidden-folder preference = %+v, found=%t, err=%v; want absent", missing, found, err)
+	}
+	stored := VersionedLayoutValue{Version: 1, Value: true, WriterID: "workspace-test", Sequence: 1}
+	if result, err := repository.Write(context.Background(), LayoutWorkspaceHiddenFolders, stored); err != nil || !result.Applied {
+		t.Fatalf("write hidden-folder preference = %+v, %v; want applied", result, err)
+	}
+	loaded, found, err := repository.Read(context.Background(), LayoutWorkspaceHiddenFolders)
+	if err != nil || !found || loaded.Value != true {
+		t.Fatalf("loaded hidden-folder preference = %+v, found=%t, err=%v; want true", loaded, found, err)
+	}
+	stored.Value = "true"
+	stored.Sequence++
+	if _, err := repository.Write(context.Background(), LayoutWorkspaceHiddenFolders, stored); err == nil {
+		t.Fatal("non-boolean hidden-folder preference was accepted")
+	}
+}
+
 func TestLayoutCommandsPersistContinuousFieldsAfterTheDebounce(t *testing.T) {
 	timer := &layoutManualTimer{}
 	repository := &layoutRecordingRepository{}

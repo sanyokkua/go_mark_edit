@@ -6,13 +6,56 @@ on:
             - '**'
 
 jobs:
+    cross-platform-go:
+        strategy:
+            fail-fast: false
+            matrix:
+                os: [macos-latest, windows-latest]
+        runs-on: ${{ matrix.os }}
+        timeout-minutes: 20
+        steps:
+            - uses: actions/checkout@v7
+            - uses: actions/setup-go@v7
+              with:
+                  go-version-file: go.mod
+                  cache: true
+            - name: Validate release version formats
+              shell: bash
+              run: |
+                  source scripts/lib/release_version.sh
+                  for version in 1.2.3; do
+                    parse_release_version "$version" || { echo "expected valid version: $version" >&2; exit 1; }
+                    if [[ "$RELEASE_VERSION_PRERELEASE" != false ]]; then
+                      echo "stable release was classified as a prerelease: $version" >&2
+                      exit 1
+                    fi
+                  done
+                  for version in 1.2.3-alpha.1 1.2.3-beta.12; do
+                    parse_release_version "$version" || { echo "expected valid version: $version" >&2; exit 1; }
+                    if [[ "$RELEASE_VERSION_PRERELEASE" != true ]]; then
+                      echo "expected prerelease classification: $version" >&2
+                      exit 1
+                    fi
+                  done
+                  for version in 1.2 1.2.3-rc.1 1.2.3-alpha 1.2.3-alpha.01 1.2.3-beta.0; do
+                    if parse_release_version "$version"; then
+                      echo "expected invalid version: $version" >&2
+                      exit 1
+                    fi
+                  done
+            - name: Test file save and workspace behavior
+              run: >-
+                  go test ./tests/go/unit/apperr ./tests/go/unit/file ./tests/go/unit/workspace
+                  ./tests/go/integration/appmodel ./tests/go/integration/application
+            - name: Build Go packages
+              run: go build ./...
     verify:
         runs-on: ubuntu-24.04
         timeout-minutes: 40
         steps:
             - uses: actions/checkout@v7
             - name: Install Linux Wails toolchain
-              run: sudo apt-get update && sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev
+              run: sudo apt-get update && sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev lsof
             - uses: actions/setup-go@v7
               with:
                   go-version-file: go.mod

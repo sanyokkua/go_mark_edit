@@ -22,8 +22,8 @@ import (
 const (
 	busyTimeoutMilliseconds = 5000
 	corruptFileMarker       = ".corrupt-"
-	freshOpenRetryTimeout   = time.Duration(busyTimeoutMilliseconds) * time.Millisecond
-	freshOpenRetryDelay     = 25 * time.Millisecond
+	connectionRetryTimeout  = time.Duration(busyTimeoutMilliseconds) * time.Millisecond
+	connectionRetryDelay    = 25 * time.Millisecond
 	migrationOpenAttempts   = 5
 	migrationRetryDelay     = 25 * time.Millisecond
 )
@@ -62,15 +62,7 @@ func Open(ctx context.Context, path string) (*Database, error) {
 		return nil, fmt.Errorf("inspect database: %w", statErr)
 	}
 
-	var (
-		database *Database
-		err      error
-	)
-	if errors.Is(statErr, os.ErrNotExist) || corruptFile != nil && corruptFile.Size() == 0 {
-		database, err = openFreshAndMigrate(ctx, path)
-	} else {
-		database, err = openAndMigrate(ctx, path)
-	}
+	database, err := openAndMigrate(ctx, path)
 	if err == nil || !isSQLiteCorruption(err) {
 		return database, err
 	}
@@ -80,7 +72,7 @@ func Open(ctx context.Context, path string) (*Database, error) {
 		}
 	}
 
-	database, err = openFreshAndMigrate(ctx, path)
+	database, err = openAndMigrate(ctx, path)
 	if err != nil {
 		return nil, fmt.Errorf("open replacement database: %w", err)
 	}
@@ -96,17 +88,9 @@ func (database *Database) Close() error {
 }
 
 func openAndMigrate(ctx context.Context, path string) (_ *Database, retErr error) {
-	database, err := openSQLiteConnection(ctx, path)
-	if err != nil {
-		return nil, err
-	}
-	return migrateOpenConnection(ctx, database)
-}
-
-func openFreshAndMigrate(ctx context.Context, path string) (*Database, error) {
-	// modernc applies the DSN journal_mode pragma during Ping. Concurrent initializers can receive
+	// modernc applies the DSN journal_mode pragma during Ping. Concurrent openers can receive
 	// SQLITE_BUSY there before migrations begin, so only that connection-establishment step polls.
-	deadline := time.Now().Add(freshOpenRetryTimeout)
+	deadline := time.Now().Add(connectionRetryTimeout)
 	for {
 		database, err := openSQLiteConnection(ctx, path)
 		if err == nil {
@@ -120,7 +104,7 @@ func openFreshAndMigrate(ctx context.Context, path string) (*Database, error) {
 		if remaining <= 0 {
 			return nil, err
 		}
-		delay := min(freshOpenRetryDelay, remaining)
+		delay := min(connectionRetryDelay, remaining)
 		if waitErr := waitForRetry(ctx, delay); waitErr != nil {
 			return nil, waitErr
 		}

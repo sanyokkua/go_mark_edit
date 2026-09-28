@@ -7,16 +7,22 @@ import type {
     ClosePlanKind,
     ConflictPreview,
     DocumentTransitionResult,
+    RecentItem,
     TabTransitionResult,
 } from '../../logic/store/appModelTypes';
 import StatusBar, { type StatusFact } from '../components/StatusBar';
-import EditorView from './EditorView';
+import EditorView, { type EditorViewProps } from './EditorView';
 import Launcher from './Launcher';
 import WorkspaceLayout from './WorkspaceLayout';
+import WindowDropTarget from './WindowDropTarget';
 
 export interface AppShellProps {
+    dropEpoch?: number;
+    tabRevealRequest?: EditorViewProps['tabRevealRequest'];
+    editorFocusRequest?: EditorViewProps['editorFocusRequest'];
     onNewDocument?: (expectedTabSetRevision: number) => Promise<unknown>;
     onOpenDocument?: (expectedTabSetRevision: number) => Promise<unknown>;
+    onOpenFolder?: () => Promise<unknown>;
     onActivateDocument?: (documentId: string, expectedTabSetRevision: number) => Promise<DocumentTransitionResult>;
     onCloseDocument?: (
         documentId: string,
@@ -25,16 +31,22 @@ export interface AppShellProps {
         targetDocumentIds?: string[],
     ) => Promise<TabTransitionResult>;
     onExternalConflict?: (preview: ConflictPreview) => void;
-    onOpenRecentFile?: (path: string, expectedTabSetRevision: number) => Promise<unknown>;
+    onFocusedDocumentOpen?: (documentId: string) => void;
+    onOpenRecentItem?: (item: RecentItem, expectedTabSetRevision: number) => Promise<unknown>;
 }
 
 const AppShell: React.FC<AppShellProps> = ({
+    dropEpoch,
     onNewDocument,
     onOpenDocument,
+    onOpenFolder,
     onActivateDocument,
     onCloseDocument,
     onExternalConflict,
-    onOpenRecentFile,
+    onFocusedDocumentOpen,
+    onOpenRecentItem,
+    tabRevealRequest,
+    editorFocusRequest,
 }: AppShellProps): React.JSX.Element => {
     const { fileSettings, markdownSettings } = useEditorSettings();
     const hasActiveDocument = useAppSelector(
@@ -49,8 +61,8 @@ const AppShell: React.FC<AppShellProps> = ({
         lineNumber: activeDocument?.view.cursor.line ?? 1,
         column: activeDocument?.view.cursor.column ?? 1,
     });
-    const recentFiles = useAppSelector((state) => state.documents.recentFiles ?? []);
-    const showLauncher = onNewDocument !== undefined || onOpenDocument !== undefined || recentFiles.length > 0;
+    const recentItems = useAppSelector((state) => state.documents.recentItems ?? []);
+    const showLauncher = onNewDocument !== undefined || onOpenDocument !== undefined || recentItems.length > 0;
     const tabSetRevision = useAppSelector((state) => state.documents.tabSetRevision);
     const statusFacts: readonly StatusFact[] =
         activeDocument === undefined
@@ -120,9 +132,10 @@ const AppShell: React.FC<AppShellProps> = ({
 
     return (
         <WorkspaceLayout documentState={hasActiveDocument ? 'active' : 'empty'}>
+            <WindowDropTarget dropEpoch={dropEpoch} />
             {!hasActiveDocument && showLauncher ? (
                 <Launcher
-                    recentFiles={recentFiles}
+                    recentItems={recentItems}
                     onNewDocument={
                         onNewDocument === undefined ? undefined : (): Promise<unknown> => onNewDocument(tabSetRevision)
                     }
@@ -131,14 +144,18 @@ const AppShell: React.FC<AppShellProps> = ({
                             ? undefined
                             : (): Promise<unknown> => onOpenDocument(tabSetRevision)
                     }
-                    onOpenRecentFile={
-                        onOpenRecentFile === undefined
+                    onOpenFolder={onOpenFolder}
+                    onOpenRecentItem={
+                        onOpenRecentItem === undefined
                             ? undefined
-                            : (path): Promise<unknown> => onOpenRecentFile(path, tabSetRevision)
+                            : (item): Promise<unknown> => onOpenRecentItem(item, tabSetRevision)
                     }
                 />
             ) : null}
             <EditorView
+                tabRevealRequest={tabRevealRequest}
+                editorFocusRequest={editorFocusRequest}
+                onFocusedDocumentOpen={onFocusedDocumentOpen}
                 onNewDocument={onNewDocument}
                 onActivateDocument={onActivateDocument}
                 onCloseDocument={onCloseDocument}

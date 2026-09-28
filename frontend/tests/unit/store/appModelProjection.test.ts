@@ -2,7 +2,9 @@ import { bootstrapAppModelProjection, disposeAppModelProjection } from '../../..
 import type { AppModelState, AppStatePatch, DocumentMetadata } from '../../../src/logic/store/appModelTypes';
 import { store } from '../../../src/logic/store/index';
 import type { AppModelAdapter } from '../../../src/logic/adapter/appModelAdapter';
-import { dismissNotification } from '../../../src/logic/store/notificationsSlice';
+import { waitFor } from '@testing-library/react';
+import { hydrateProjection } from '../../../src/logic/store/appModelProjectionActions';
+import { dismissNotification, notifyError } from '../../../src/logic/store/notificationsSlice';
 import type { WireError } from '../../../src/logic/utils/parseError';
 
 const documentMetadata: DocumentMetadata = {
@@ -296,7 +298,7 @@ it('reconciles revisioned content-free state patches', async () => {
     adapter.emitPatch({ revision: 6, ui: { sidebarVisible: true } });
     adapter.emitPatch({ revision: 7, ui: { windowMaximized: true } });
 
-    resolveState?.(appState(5));
+    resolveState?.(appState(6));
     await expect(bootstrap).resolves.toMatchObject({ status: 'ready' });
 
     adapter.emitPatch({
@@ -455,4 +457,247 @@ it('supports a fresh retry after each repeated failed attempt', async () => {
         activeBuffer: appState(7).activeBuffer,
         applicationVersion: 'test-build',
     });
+});
+
+function deferredState(): {
+    promise: Promise<AppModelState>;
+    resolve: (state: AppModelState) => void;
+    reject: (error: unknown) => void;
+} {
+    let resolve!: (state: AppModelState) => void;
+    let reject!: (error: unknown) => void;
+    const promise = new Promise<AppModelState>((onResolve, onReject): void => {
+        resolve = onResolve;
+        reject = onReject;
+    });
+    return { promise, resolve, reject };
+}
+
+it('When reopened-tab patches arrive after a newer partial patch, the projection recovers backend metadata.', async () => {
+    const closed = appState(6);
+    closed.snapshot.documents = {};
+    closed.snapshot.orderedDocumentIds = [];
+    closed.snapshot.activeDocumentId = null;
+    closed.activeBuffer = null;
+    const recovery = deferredState();
+    const getState = jest.fn().mockResolvedValueOnce(closed).mockReturnValueOnce(recovery.promise);
+    const adapter = createAdapter(getState);
+    await bootstrapAppModelProjection(adapter);
+
+    // Real Wails dev WebSocket order observed: closing revision6, then9,7,8.
+    adapter.emitPatch({ revision: 9, canReopenLastFile: false });
+    adapter.emitPatch({
+        revision: 7,
+        documents: { upsert: { 'document-1': documentMetadata } },
+        orderedDocumentIds: ['document-1'],
+        activeDocumentId: 'document-1',
+    });
+    adapter.emitPatch({ revision: 8, ui: { sidebarVisible: false } });
+    expect(getState).toHaveBeenCalledTimes(2);
+    expect(store.getState().documents.orderedIds).toEqual([]);
+
+    const recovered = appState(9);
+    recovered.snapshot.ui = { sidebarVisible: false };
+    recovery.resolve(recovered);
+    await waitFor(() => expect(store.getState().documents.orderedIds).toEqual(['document-1']));
+    expect(store.getState().documents.activeDocumentId).toBe('document-1');
+    expect(store.getState().ui.layout.sidebarVisible).toBe(false);
+    expect(JSON.stringify(store.getState())).not.toContain('Canonical content');
+    expect(getState).toHaveBeenCalledTimes(2);
+});
+
+it('When another gap arrives during recovery, one further snapshot covers the queued metadata.', async () => {
+    const firstRecovery = deferredState();
+    const secondRecovery = deferredState();
+    const getState = jest
+        .fn()
+        .mockResolvedValueOnce(appState(3))
+        .mockReturnValueOnce(firstRecovery.promise)
+        .mockReturnValueOnce(secondRecovery.promise);
+    const adapter = createAdapter(getState);
+    await bootstrapAppModelProjection(adapter);
+    adapter.emitPatch({ revision: 5, ui: { sidebarVisible: false } });
+    adapter.emitPatch({ revision: 8, canReopenLastFile: true });
+    expect(getState).toHaveBeenCalledTimes(2);
+    firstRecovery.resolve(appState(5));
+    await waitFor(() => expect(getState).toHaveBeenCalledTimes(3));
+    const finalState = appState(8);
+    finalState.snapshot.canReopenLastFile = true;
+    secondRecovery.resolve(finalState);
+    await waitFor(() => expect(store.getState().documents.canReopenLastFile).toBe(true));
+    expect(store.getState().documents.revision).toBe(8);
+});
+
+it('When recovery covers the gap, contiguous patches received while it runs still apply.', async () => {
+    const recovery = deferredState();
+    const getState = jest.fn().mockResolvedValueOnce(appState(3)).mockReturnValueOnce(recovery.promise);
+    const adapter = createAdapter(getState);
+    await bootstrapAppModelProjection(adapter);
+    adapter.emitPatch({ revision: 5 });
+    adapter.emitPatch({ revision: 6, ui: { sidebarVisible: false } });
+    recovery.resolve(appState(5));
+    await waitFor(() => expect(store.getState().ui.revision).toBe(6));
+    expect(store.getState().ui.layout.sidebarVisible).toBe(false);
+    expect(getState).toHaveBeenCalledTimes(2);
+});
+
+it('When another consumer hydrates newer state during recovery, the older result cannot roll it back.', async () => {
+    const recovery = deferredState();
+    const getState = jest.fn().mockResolvedValueOnce(appState(3)).mockReturnValueOnce(recovery.promise);
+    const adapter = createAdapter(getState);
+    await bootstrapAppModelProjection(adapter);
+    adapter.emitPatch({ revision: 5 });
+    const newer = appState(8);
+    newer.snapshot.ui = { sidebarVisible: false };
+    store.dispatch(hydrateProjection(newer.snapshot));
+    recovery.resolve(appState(5));
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(store.getState().ui).toEqual({ revision: 8, layout: { sidebarVisible: false } });
+    adapter.emitPatch({ revision: 9, ui: { windowMaximized: true } });
+    expect(store.getState().ui.layout.windowMaximized).toBe(true);
+    expect(getState).toHaveBeenCalledTimes(2);
+});
+
+it('When recovery fails, its error is visible and a later patch can retry without an automatic loop.', async () => {
+    const recovery = deferredState();
+    const getState = jest
+        .fn()
+        .mockResolvedValueOnce(appState(3))
+        .mockReturnValueOnce(recovery.promise)
+        .mockResolvedValueOnce(appState(6));
+    const adapter = createAdapter(getState);
+    await bootstrapAppModelProjection(adapter);
+    adapter.emitPatch({ revision: 5 });
+    recovery.reject(new Error('State recovery unavailable'));
+    await waitFor(() => expect(store.getState().notifications.items).toHaveLength(1));
+    expect(getState).toHaveBeenCalledTimes(2);
+    expect(store.getState().documents.revision).toBe(3);
+    adapter.emitPatch({ revision: 6 });
+    await waitFor(() => expect(store.getState().documents.revision).toBe(6));
+    expect(getState).toHaveBeenCalledTimes(3);
+});
+
+it('When a recovery snapshot cannot cover its gap, it waits for another event instead of retrying forever.', async () => {
+    const getState = jest
+        .fn()
+        .mockResolvedValueOnce(appState(3))
+        .mockResolvedValueOnce(appState(3))
+        .mockResolvedValueOnce(appState(6));
+    const adapter = createAdapter(getState);
+    await bootstrapAppModelProjection(adapter);
+    adapter.emitPatch({ revision: 5 });
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(getState).toHaveBeenCalledTimes(2);
+    expect(store.getState().documents.revision).toBe(3);
+    adapter.emitPatch({ revision: 6 });
+    await waitFor(() => expect(store.getState().documents.revision).toBe(6));
+});
+
+it('When projection disposal precedes recovery completion, the late result cannot hydrate a new attempt.', async () => {
+    const recovery = deferredState();
+    const getState = jest.fn().mockResolvedValueOnce(appState(3)).mockReturnValueOnce(recovery.promise);
+    const adapter = createAdapter(getState);
+    await bootstrapAppModelProjection(adapter);
+    adapter.emitPatch({ revision: 5 });
+    disposeAppModelProjection();
+    await bootstrapAppModelProjection(createAdapter(() => Promise.resolve(appState(2))));
+    recovery.resolve(appState(5));
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(store.getState().documents.revision).toBe(2);
+});
+
+it('When an authoritative full snapshot has the current revision, it repairs all projection metadata while duplicate patches remain ignored.', async () => {
+    const initial = appState(5);
+    initial.snapshot.documents['document-1'] = { ...documentMetadata, dirty: true, status: 'unsaved-changes' };
+    const adapter = createAdapter(() => Promise.resolve(initial));
+    await bootstrapAppModelProjection(adapter);
+    adapter.emitPatch({ revision: 6, canReopenLastFile: true });
+    const saved = appState(6);
+    saved.snapshot.ui = { sidebarVisible: false };
+    saved.snapshot.workspace = {
+        rootPath: '/project',
+        rootName: 'project',
+        root: { path: '/project', name: 'project', isDir: true },
+        totalEntries: 1,
+        truncated: false,
+        unavailable: false,
+        filterSuffixes: ['.md'],
+        showHiddenFolders: false,
+    };
+    store.dispatch(hydrateProjection(saved.snapshot));
+    expect(store.getState().documents.byId['document-1'].dirty).toBe(false);
+    expect(store.getState().ui.layout.sidebarVisible).toBe(false);
+    expect(store.getState().workspace.snapshot?.rootPath).toBe('/project');
+    adapter.emitPatch({
+        revision: 6,
+        documents: { upsert: { 'document-1': initial.snapshot.documents['document-1'] } },
+        ui: { sidebarVisible: true },
+        workspace: null,
+    });
+    expect(store.getState().documents.byId['document-1'].dirty).toBe(false);
+    expect(store.getState().ui.layout.sidebarVisible).toBe(false);
+    expect(store.getState().workspace.snapshot?.rootPath).toBe('/project');
+    store.dispatch(hydrateProjection(initial.snapshot));
+    expect(store.getState().documents.revision).toBe(6);
+    expect(store.getState().workspace.snapshot?.rootPath).toBe('/project');
+});
+
+it('When a gap arrives before bootstrap hydration, the same recovery owner restores its metadata.', async () => {
+    const initial = deferredState();
+    const recovery = deferredState();
+    const getState = jest.fn().mockReturnValueOnce(initial.promise).mockReturnValueOnce(recovery.promise);
+    const adapter = createAdapter(getState);
+    const bootstrap = bootstrapAppModelProjection(adapter);
+    adapter.emitPatch({ revision: 5, ui: { sidebarVisible: false } });
+    initial.resolve(appState(3));
+    await expect(bootstrap).resolves.toMatchObject({ status: 'ready' });
+    expect(getState).toHaveBeenCalledTimes(2);
+    const state = appState(5);
+    state.snapshot.ui.sidebarVisible = false;
+    recovery.resolve(state);
+    await waitFor(() => expect(store.getState().ui.layout.sidebarVisible).toBe(false));
+});
+
+it('When the adapter has reported a classified recovery failure, the projection does not report it twice.', async () => {
+    const error: WireError = {
+        code: 'io',
+        title: 'File operation failed',
+        message: 'Cannot recover state.',
+        retryable: true,
+    };
+    let calls = 0;
+    const adapter = createAdapter(() => {
+        calls += 1;
+        if (calls === 1) {
+            return Promise.resolve(appState(3));
+        }
+        store.dispatch(notifyError(error));
+        return Promise.reject(error);
+    });
+    await bootstrapAppModelProjection(adapter);
+    adapter.emitPatch({ revision: 5 });
+    await waitFor(() => expect(store.getState().notifications.items).toHaveLength(1));
+    await Promise.resolve();
+    expect(store.getState().notifications.items).toHaveLength(1);
+    expect(calls).toBe(2);
+});
+
+it('When disposal precedes a recovery failure, the old attempt cannot notify a new projection.', async () => {
+    const recovery = deferredState();
+    const getState = jest.fn().mockResolvedValueOnce(appState(3)).mockReturnValueOnce(recovery.promise);
+    const adapter = createAdapter(getState);
+    await bootstrapAppModelProjection(adapter);
+    adapter.emitPatch({ revision: 5 });
+    expect(getState).toHaveBeenCalledTimes(2);
+    disposeAppModelProjection();
+    await bootstrapAppModelProjection(createAdapter(() => Promise.resolve(appState(2))));
+    recovery.reject(new Error('Old attempt failure'));
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(store.getState().documents.revision).toBe(2);
+    expect(store.getState().notifications.items).toHaveLength(0);
 });

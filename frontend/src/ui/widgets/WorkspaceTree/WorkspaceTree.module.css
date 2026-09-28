@@ -1,0 +1,136 @@
+.tree {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-width: 0;
+}
+.header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.125rem;
+    padding: 0.25rem;
+}
+.header button {
+    font-size: 0.75rem;
+    min-block-size: 1.65rem;
+    min-inline-size: 1.65rem;
+    padding-inline: 0.4rem;
+}
+.hiddenToggle {
+    flex: 1 1 auto;
+    justify-content: center;
+}
+.body {
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+}
+.nodes,
+.children {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+.children {
+    padding: 0;
+}
+.nodeRow {
+    align-items: center;
+    display: flex;
+    min-width: 0;
+}
+.nodeButton {
+    background: transparent;
+    border: 0;
+    border-inline-start: 3px solid transparent;
+    border-radius: 0.25rem;
+    color: var(--text);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    flex: 1;
+    font: inherit;
+    gap: 0.35rem;
+    min-width: 0;
+    width: 100%;
+    min-height: 1.7rem;
+    padding-block: 0.16rem;
+    padding-inline-start: 0.4rem;
+    padding-inline-end: 0.35rem;
+    text-align: start;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.nodeButton:hover {
+    background: var(--hover);
+}
+.node:focus-visible > .nodeRow > .nodeButton {
+    box-shadow: var(--focus-ring);
+    outline: 0;
+}
+.nodeButton > svg,
+.chevronSpacer {
+    flex: 0 0 auto;
+}
+.chevronSpacer {
+    width: 1rem;
+}
+.nodeLabel {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.rootNode {
+    font-weight: 600;
+}
+.children {
+    border-inline-start: 1px solid var(--border);
+    margin-inline-start: 0.9rem;
+}
+.trailingMark {
+    margin-inline-start: auto;
+}
+.openNode {
+    border-inline-start-color: var(--accent);
+}
+.chevronExpanded {
+    transform: rotate(90deg);
+}
+.dirtyDot {
+    background: var(--accent);
+    border-radius: 50%;
+    flex: 0 0 0.4rem;
+    height: 0.4rem;
+    margin-inline-start: auto;
+    margin-inline-end: 0.25rem;
+}
+.node[aria-selected='true'] > .nodeRow > .nodeButton {
+    background: var(--accent-soft);
+}
+.message,
+.emptyState {
+    padding: var(--control-padding);
+}
+.unavailable {
+    padding: var(--control-padding);
+}
+.actions {
+    display: flex;
+    gap: var(--app-gap);
+}
+.chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.2rem;
+    padding: 0.3rem;
+}
+.chip {
+    background: var(--surface-raised);
+    border: 1px solid var(--border);
+    border-radius: 0.3rem;
+    color: var(--text-muted);
+    font-size: 0.68rem;
+    line-height: 1.1;
+    padding: 0.12rem 0.3rem;
+}

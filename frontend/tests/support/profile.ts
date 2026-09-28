@@ -3,6 +3,8 @@ import { promisify } from 'node:util';
 
 import { join } from 'node:path';
 
+import { preparedPaths, selectedRepository } from './prepare';
+
 const execFileAsync = promisify(execFile);
 
 export function profileDirectory(tempDirectory: string): string {
@@ -12,22 +14,26 @@ export function profileDirectory(tempDirectory: string): string {
     return join(tempDirectory, 'GoMarkEdit-Dev');
 }
 
+export async function runSeed(profileDirectoryPath: string, args: readonly string[]): Promise<void> {
+    await execFileAsync(preparedPaths().seedExecutable, [profileDirectoryPath, ...args], {
+        cwd: selectedRepository(),
+        env: { ...process.env },
+        maxBuffer: 1024 * 1024,
+    });
+}
+
 export async function seedRecents(
-    repositoryDirectory: string,
     profileDirectoryPath: string,
-    files: readonly string[],
+    items: readonly (string | { path: string; kind: 'file' | 'folder' })[],
 ): Promise<void> {
-    if (files.length === 0) {
-        throw new Error('seedRecents requires at least one file');
+    if (items.length === 0) {
+        throw new Error('seedRecents requires at least one item');
     }
 
-    await execFileAsync(
-        process.env.GO_BIN ?? 'go',
-        ['run', './tools/e2e-seed', profileDirectoryPath, 'seed-recents', ...files],
-        {
-            cwd: repositoryDirectory,
-            env: { ...process.env },
-            maxBuffer: 1024 * 1024,
-        },
-    );
+    const typed = items.some((item) => typeof item !== 'string');
+    const argumentsForItems = typed
+        ? ['--typed', ...items.flatMap((item) => (typeof item === 'string' ? ['file', item] : [item.kind, item.path]))]
+        : (items as readonly string[]);
+
+    await runSeed(profileDirectoryPath, ['seed-recents', ...argumentsForItems]);
 }

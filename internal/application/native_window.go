@@ -2,10 +2,19 @@ package application
 
 import (
 	"context"
+	"os"
 	"sync"
 
 	"github.com/sanyokkua/go_mark_edit/internal/appmodel"
 )
+
+const e2eHeadlessEnvironment = "GOMARKEDIT_E2E_HEADLESS"
+
+// E2EHeadlessEnabled reports whether a child process is running the real-backend
+// E2E harness without a native presentation surface.
+func E2EHeadlessEnabled() bool {
+	return os.Getenv(e2eHeadlessEnvironment) == "1"
+}
 
 const (
 	defaultWindowWidth  = 1024
@@ -32,10 +41,11 @@ type NativeWindowService struct {
 	restored      bool
 	frontendReady bool
 	shown         bool
+	headless      bool
 }
 
 func NewNativeWindowService(model *appmodel.AppModelService, native NativeWindowAPI) *NativeWindowService {
-	return &NativeWindowService{model: model, native: native}
+	return &NativeWindowService{model: model, native: native, headless: E2EHeadlessEnabled()}
 }
 
 // Restore loads the valid persisted layout while Wails keeps the window hidden.
@@ -92,6 +102,10 @@ func (service *NativeWindowService) showIfReadyLocked(ctx context.Context) {
 		return
 	}
 
+	if service.headless {
+		service.shown = true
+		return
+	}
 	service.native.Show(ctx)
 	service.shown = true
 }

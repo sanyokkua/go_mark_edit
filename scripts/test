@@ -7,7 +7,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 usage() {
     cat <<'EOF'
-Usage: scripts/test <unit|integration|e2e|all>
+Usage: scripts/test <unit|integration|e2e|all> [-- <Playwright options>]
 EOF
 }
 
@@ -19,7 +19,20 @@ case "${1:-}" in
     unit | integration | e2e | all) tier="$1" ;;
     *) usage_error 'expected unit, integration, e2e or all' ;;
 esac
-[[ $# -eq 1 ]] || usage_error 'scripts/test accepts exactly one tier'
+shift
+playwright_args=()
+if [[ $# -gt 0 ]]; then
+    [[ "$tier" == e2e && "$1" == -- ]] || usage_error 'scripts/test accepts exactly one tier; only e2e accepts options after --'
+    shift
+    playwright_args=("$@")
+    for option in "${playwright_args[@]}"; do
+        case "$option" in
+            --reporter | --reporter=* | --config | --config=* | -c* | --output | --output=* | --retries | --retries=*)
+                usage_error "scripts/test e2e reserves $option for canonical reporting"
+                ;;
+        esac
+    done
+fi
 
 new_run_dir "test-$tier" >/dev/null
 printf '[gomarkedit] artifacts: %s\n' "$RUN_DIR"
@@ -29,7 +42,7 @@ run_tier() {
     case "$name" in
         unit) capture_stage unit 'scripts/test unit' run_unit_stage || failed=1 ;;
         integration) capture_stage integration 'scripts/test integration' run_integration_stage || failed=1 ;;
-        e2e) capture_stage e2e 'scripts/test e2e' run_e2e_stage || failed=1 ;;
+        e2e) capture_stage e2e 'scripts/test e2e' run_e2e_stage "${playwright_args[@]}" || failed=1 ;;
     esac
 }
 

@@ -38,6 +38,9 @@ func TestNewOptionsBuildsAHiddenFramedWindowWithTheEmbeddedFrontend(t *testing.T
 	if configured.SingleInstanceLock != nil || configured.Mac == nil || configured.Mac.DisableZoom {
 		t.Fatalf("native ownership options = %+v, want independent macOS zoomable window", configured)
 	}
+	if configured.DragAndDrop == nil || !configured.DragAndDrop.EnableFileDrop || !configured.DragAndDrop.DisableWebViewDrop {
+		t.Fatal("NewOptions did not route external drops through native Wails file handling")
+	}
 	if configured.AssetServer == nil || configured.AssetServer.Assets == nil || configured.AssetServer.Handler == nil {
 		t.Fatal("NewOptions did not wire both the embedded assets and preview handler")
 	}

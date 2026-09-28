@@ -87,7 +87,7 @@
     font-weight: 600;
 }
 
-/* The recent-files block is
+/* The recent-items block is
    `text-align:left;border-top:1px solid var(--stroke-soft);padding-top:12px`. */
 .recent {
     border-top: 1px solid var(--stroke-soft);

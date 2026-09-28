@@ -1,5 +1,7 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 
+jest.mock('../../src/logic/adapter/events', () => ({ subscribeFileDrops: jest.fn(() => jest.fn()) }));
+
 jest.mock('../../src/app/useBootstrap', () => ({
     useBootstrap: jest.fn(),
 }));
@@ -17,6 +19,9 @@ jest.mock('../../src/app/useShutdown', () => ({
 jest.mock('../../src/logic/adapter', () => ({
     appModelAdapter: {
         newDocument: jest.fn(),
+        chooseWorkspaceFolder: jest.fn(),
+        openWorkspace: jest.fn(),
+        setUILayout: jest.fn(),
     },
     settingsAdapter: {
         getSettings: jest.fn(async () => ({
@@ -36,7 +41,7 @@ import { useBootstrap } from '../../src/app/useBootstrap';
 import App from '../../src/app/App';
 import { appModelAdapter } from '../../src/logic/adapter';
 import { store } from '../../src/logic/store';
-import { hydrateProjection } from '../../src/logic/store/appModelProjectionActions';
+import { applyStatePatch, hydrateProjection } from '../../src/logic/store/appModelProjectionActions';
 import { createCommandRecorder } from '../support/commandRecorder';
 
 const mockedUseBootstrap = useBootstrap as jest.MockedFunction<typeof useBootstrap>;
@@ -57,7 +62,7 @@ function hydrateEmptyProjection(): void {
             activeDocumentId: null,
             documents: {},
             orderedDocumentIds: [],
-            recentFiles: [],
+            recentItems: [],
             revision: 1,
             tabSetRevision: 1,
             ui: {},
@@ -157,4 +162,87 @@ it('delivers a refused File/New result to the application notification surface',
     );
 
     expect(await screen.findByText('The window already contains 40 documents.')).toBeVisible();
+});
+
+it('routes the Launcher Open Folder action to the native folder picker', async () => {
+    mockedUseBootstrap.mockReturnValue(readyBootstrap());
+    hydrateEmptyProjection();
+    (appModelAdapter.chooseWorkspaceFolder as jest.Mock).mockResolvedValue({ status: 'cancelled' });
+
+    render(<App />);
+    await waitForAppearanceHydration();
+    fireEvent.click(within(screen.getByTestId('document-launcher')).getByRole('button', { name: 'Open Folder' }));
+
+    await waitFor(() => expect(appModelAdapter.chooseWorkspaceFolder).toHaveBeenCalledTimes(1));
+    expect(appModelAdapter.openWorkspace).not.toHaveBeenCalled();
+});
+
+it('reveals the sidebar when startup hydration already includes a folder', async () => {
+    mockedUseBootstrap.mockReturnValue(readyBootstrap());
+    store.dispatch(
+        hydrateProjection({
+            activeDocumentId: null,
+            documents: {},
+            orderedDocumentIds: [],
+            revision: 2,
+            tabSetRevision: 2,
+            workspace: {
+                rootPath: '/notes',
+                rootName: 'notes',
+                root: { path: '/notes', name: 'notes', isDir: true },
+                totalEntries: 1,
+                truncated: false,
+                unavailable: false,
+                filterSuffixes: ['.md'],
+                showHiddenFolders: false,
+            },
+            ui: { sidebarVisible: false },
+        }),
+    );
+    (appModelAdapter.setUILayout as jest.Mock).mockResolvedValue(undefined);
+
+    render(<App />);
+    await waitForAppearanceHydration();
+
+    await waitFor(() => expect(appModelAdapter.setUILayout).toHaveBeenCalledWith({ sidebarVisible: true }));
+});
+
+it('reveals the sidebar when a folder open publishes a new root', async () => {
+    mockedUseBootstrap.mockReturnValue(readyBootstrap());
+    store.dispatch(
+        hydrateProjection({
+            activeDocumentId: null,
+            documents: {},
+            orderedDocumentIds: [],
+            revision: 3,
+            tabSetRevision: 3,
+            ui: { sidebarVisible: false },
+        }),
+    );
+    (appModelAdapter.setUILayout as jest.Mock).mockResolvedValue(undefined);
+    (appModelAdapter.chooseWorkspaceFolder as jest.Mock).mockResolvedValue({ status: 'chosen', path: '/notes' });
+    (appModelAdapter.openWorkspace as jest.Mock).mockImplementation(async () => {
+        store.dispatch(
+            applyStatePatch({
+                revision: 4,
+                workspace: {
+                    rootPath: '/notes',
+                    rootName: 'notes',
+                    root: { path: '/notes', name: 'notes', isDir: true },
+                    totalEntries: 1,
+                    truncated: false,
+                    unavailable: false,
+                    filterSuffixes: ['.md'],
+                    showHiddenFolders: false,
+                },
+            }),
+        );
+        return { status: 'opened' };
+    });
+
+    render(<App />);
+    await waitForAppearanceHydration();
+    fireEvent.click(screen.getByRole('button', { name: 'Open Folder' }));
+
+    await waitFor(() => expect(appModelAdapter.setUILayout).toHaveBeenCalledWith({ sidebarVisible: true }));
 });

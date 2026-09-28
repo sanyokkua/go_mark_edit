@@ -33,7 +33,11 @@ type nativeRuntimePorts struct {
 
 func productionNativeRuntimePorts() nativeRuntimePorts {
 	return nativeRuntimePorts{
-		showStartupRecoveryWindow: runtime.WindowShow,
+		showStartupRecoveryWindow: func(ctx context.Context) {
+			if !application.E2EHeadlessEnabled() {
+				runtime.WindowShow(ctx)
+			}
+		},
 		emitNativeCloseRequest: func(ctx context.Context, id string) {
 			runtime.EventsEmit(ctx, application.NativeCloseRequestEvent, map[string]string{"id": id})
 		},
@@ -68,6 +72,16 @@ func main() {
 			Filters: documentFileFilters(),
 		})
 	})
+	dialogs.SetFolderPicker(func(ctx context.Context) (string, error) {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return "", err
+		}
+		return runtime.OpenDirectoryDialog(ctx, runtime.OpenDialogOptions{
+			Title:            "Open Folder",
+			DefaultDirectory: home,
+		})
+	})
 	dialogs.SetSaveFilePicker(func(ctx context.Context, request appmodel.SaveDialogRequest) (string, error) {
 		return runtime.SaveFileDialog(ctx, runtime.SaveDialogOptions{
 			Title:            request.Title,
@@ -88,7 +102,9 @@ func main() {
 		return result == "Overwrite", err
 	})
 	applicationContext := application.NewApplicationContextHolderWithOptions(fileUtils, appLogger, application.ApplicationContextOptions{
-		AppModelOptions: []appmodel.AppModelOption{appmodel.WithDialogs(dialogs, dialogs)},
+		AppModelOptions:   []appmodel.AppModelOption{appmodel.WithDialogs(dialogs, dialogs)},
+		NewWindowLauncher: application.NewOSNewWindowLauncher(appLogger),
+		StartupFolderArgs: os.Args[1:],
 	}, outcomes)
 	if err := wails.Run(newAppOptionsWithLogger(applicationContext, appLogger)); err != nil {
 		bootstrapLogger.Error().Err(err).Msg("run application")
@@ -209,6 +225,7 @@ func newAppOptionsWithLogger(applicationContext *application.ApplicationContextH
 				ports.showStartupRecoveryWindow(ctx)
 				return
 			}
+			applicationContext.OpenPendingStartupFolder(ctx)
 			if err := applicationContext.RestoreNativeWindow(ctx); err != nil {
 				if appLogger != nil {
 					appLogger.Error(err.Error())

@@ -31,8 +31,8 @@ func TestOpeningAFileReplacesTheEmptyPlaceholderAndPromotesRecency(t *testing.T)
 	if got := state.Snapshot.Documents[opened.DocumentID].Path; got == "" {
 		t.Fatal("opened metadata has no canonical path")
 	}
-	if len(state.Snapshot.RecentFiles) != 1 || state.Snapshot.RecentFiles[0] != state.Snapshot.Documents[opened.DocumentID].Path {
-		t.Fatalf("recent files = %v, want the canonical opened path", state.Snapshot.RecentFiles)
+	if len(state.Snapshot.RecentItems) != 1 || state.Snapshot.RecentItems[0].Path != state.Snapshot.Documents[opened.DocumentID].Path || state.Snapshot.RecentItems[0].Kind != "file" {
+		t.Fatalf("recent items = %v, want the canonical opened file", state.Snapshot.RecentItems)
 	}
 
 	focused := service.OpenPath(context.Background(), path, state.Snapshot.TabSetRevision)

@@ -29,6 +29,40 @@ func TestDocumentDialogs(t *testing.T) {
 	}
 }
 
+func TestFolderPickerForwardsSelectionCancellationAndFailure(t *testing.T) {
+	ctx := context.WithValue(context.Background(), dialogContextKey{}, "folder")
+	dialogs := NewDocumentDialogs(nil)
+	selected := "/picked/folder"
+	wantErr := errors.New("picker unavailable")
+	var calls int
+	dialogs.SetFolderPicker(func(got context.Context) (string, error) {
+		if got != ctx {
+			t.Fatal("folder picker lost its context")
+		}
+		calls++
+		switch calls {
+		case 1:
+			return selected, nil
+		case 2:
+			return "", nil
+		default:
+			return "", wantErr
+		}
+	})
+	for _, expected := range []struct {
+		path string
+		err  error
+	}{{selected, nil}, {"", nil}, {"", wantErr}} {
+		path, err := dialogs.ChooseFolder(ctx)
+		if path != expected.path || !errors.Is(err, expected.err) {
+			t.Fatalf("folder choice = %q/%v, want %q/%v", path, err, expected.path, expected.err)
+		}
+	}
+	if calls != 3 {
+		t.Fatalf("folder picker calls = %d, want 3", calls)
+	}
+}
+
 func TestDocumentDialogsSaveAndOverwritePorts(t *testing.T) {
 	ctx := context.WithValue(context.Background(), dialogContextKey{}, "save-dialog")
 	saveCalls := 0

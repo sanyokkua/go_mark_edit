@@ -11,25 +11,25 @@ Requirements: FR-025, FR-026, FR-031 (archive runs), SC-002, SC-007, SC-014. Own
    child process only. The dev build resolves its profile to `T/Library/Application Support/GoMarkEdit-Dev/`
    (macOS) or `T/GoMarkEdit-Dev/` (Linux); `settings.db` and `logs/` live there.
 2. Seed the profile (below) and create the temporary document folder `D` with the case's files.
-3. Spawn `wails dev -devserver localhost:34115 -nocolour` with that environment from the repository
-   root, or from the directory named by `E2E_REPO` when set (the archive worktree of FR-031); wait
+3. Spawn `wails dev -devserver localhost:34115 -nocolour` with that environment plus
+   `GOMARKEDIT_E2E_HEADLESS=1` from the repository root, or from the directory named by `E2E_REPO`
+   when set (the archive worktree of FR-031); wait
    until `GET http://localhost:34115/` returns the page and the page has `window.go`; fail the case
    after 120 seconds.
 4. Playwright (Chromium, `retries: 0`, `forbidOnly: true`, `workers: 1`, viewport 1280×720 unless the
    case sets another) drives the page; bindings and events work over the dev server's IPC websocket.
-   `wails dev` also shows the application's own native window, a second frontend on the same backend
-   that stays idle; a case never relies on it and never counts its calls. Because that window's
-   frontend usually sends `WindowReady` first, the backend treats a repeated `WindowReady` as
-   idempotent (Retry needs the same rule), and a case that needs "never ready" uses a lever that
-   fails `Init` for both frontends (cases 2, 3). Each case below states what the second frontend
-   does where it could count.
+   `wails dev` starts the application's native window hidden; the E2E-only marker keeps it hidden,
+   including the startup-recovery path. Its hidden frontend may still send `WindowReady`; a case
+   never relies on or counts those calls. Repeated acknowledgements remain idempotent for Retry.
+   Each case below states the native window's effect where it could otherwise count.
 5. A case that asserts state after a restart calls the fixture's relaunch (steps 3–4 again with the
    same `T`). Teardown kills the process tree (`wails dev` and the app it launched) and deletes `T`
    and `D` unless `KEEP_E2E_ARTEFACTS=1`.
 
 Each case launches its own application because cases differ in profile contents before launch. The
-binary contains no test hook, flag, debugging port or build flavour; no tier automates a native
-dialog; files are opened through the Recents menu.
+binary contains no test flag, debugging port or build flavour. `GOMARKEDIT_E2E_HEADLESS=1` is a
+child-process-only harness marker that suppresses native window presentation; no tier automates a
+native dialog; files are opened through the Recents menu.
 
 ## Spikes and their consequences (research R8)
 

@@ -32,6 +32,8 @@ const iconNames: IconName[] = [
     'assistant',
 ];
 
+const workspaceIconNames = ['folder', 'chevron', 'warning', 'refresh'] as const;
+
 it('uses the shared icon size and stroke tokens with explicit overrides', () => {
     const css = readFileSync(resolve(process.cwd(), 'src/ui/primitives/Icon/Icon.module.css'), 'utf8');
     expect(css).toContain('width: var(--icon-size)');
@@ -63,6 +65,22 @@ it('renders every local catalogue glyph as a decorative current-color SVG', () =
     expect(sprite).toContain('stroke-width="1.75"');
     expect(sprite.replace('http://www.w3.org/2000/svg', '')).not.toMatch(/https?:\/\//);
     expect(sprite).not.toMatch(/[\u2600-\u27bf\u{1f300}-\u{1faff}]/u);
+});
+
+it.each(workspaceIconNames)('renders the %s workspace glyph as decorative SVG geometry', (name) => {
+    const { container } = render(<Icon name={name as IconName} />);
+    const svg = container.querySelector('svg');
+
+    expect(svg).toHaveAttribute('data-icon-name', name);
+    expect(svg).toHaveAttribute('viewBox', '0 0 15 15');
+    expect(svg).toHaveAttribute('aria-hidden', 'true');
+    expect(svg?.querySelector('path, circle, rect, polygon, polyline')).not.toBeNull();
+});
+
+it('renders the refresh glyph with a separate arrowhead', () => {
+    const { container } = render(<Icon name="refresh" />);
+
+    expect(container.querySelectorAll('svg path')).toHaveLength(2);
 });
 
 it('does not expose decorative icon geometry as an accessible name', () => {

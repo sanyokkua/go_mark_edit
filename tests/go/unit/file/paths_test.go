@@ -134,17 +134,31 @@ func TestCanonicalizeDocumentPath(t *testing.T) {
 
 	unsafeName := "bad-\x01-\x7f-\u202e.md"
 	unsafePath := filepath.Join(root, unsafeName)
-	if err := os.WriteFile(unsafePath, []byte("unsafe\n"), 0o644); err != nil {
-		t.Fatalf("write hostile-name file: %v", err)
+	// Windows forbids control characters in filenames, so exercise the
+	// existing-file path only on platforms that can create this fixture.
+	if runtime.GOOS != "windows" {
+		if err := os.WriteFile(unsafePath, []byte("unsafe\n"), 0o644); err != nil {
+			t.Fatalf("write hostile-name file: %v", err)
+		}
+		unsafeCanonical, err := CanonicalizeDocumentPath(unsafePath)
+		if err != nil {
+			t.Fatalf("canonicalize hostile name: %v", err)
+		}
+		assertEscapedHostileDisplayName(t, unsafeCanonical.DisplayName)
 	}
-	unsafeCanonical, err := CanonicalizeDocumentPath(unsafePath)
+	unsafeCandidate, err := CanonicalizeCandidateDocumentPath(unsafePath)
 	if err != nil {
-		t.Fatalf("canonicalize hostile name: %v", err)
+		t.Fatalf("canonicalize hostile candidate name: %v", err)
 	}
-	if strings.ContainsAny(unsafeCanonical.DisplayName, "\x00\x01\x1f\x7f\u202e") {
-		t.Fatalf("unsafe display name contains an unescaped control or bidi character: %q", unsafeCanonical.DisplayName)
+	assertEscapedHostileDisplayName(t, unsafeCandidate.DisplayName)
+}
+
+func assertEscapedHostileDisplayName(t *testing.T, displayName string) {
+	t.Helper()
+	if strings.ContainsAny(displayName, "\x00\x01\x1f\x7f\u202e") {
+		t.Fatalf("unsafe display name contains an unescaped control or bidi character: %q", displayName)
 	}
-	if !strings.Contains(unsafeCanonical.DisplayName, `\u0001`) || !strings.Contains(unsafeCanonical.DisplayName, `\u202E`) {
-		t.Fatalf("unsafe display name did not retain visible escapes: %q", unsafeCanonical.DisplayName)
+	if !strings.Contains(displayName, `\u0001`) || !strings.Contains(displayName, `\u202E`) {
+		t.Fatalf("unsafe display name did not retain visible escapes: %q", displayName)
 	}
 }

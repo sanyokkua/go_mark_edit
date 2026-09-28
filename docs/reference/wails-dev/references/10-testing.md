@@ -1,5 +1,8 @@
 # Testing Patterns
 
+These are general Wails testing examples. The LLM and prompt-service snippets are illustrative only;
+GoMarkEdit does not currently include those services.
+
 ---
 
 ## Go: Unit Tests
@@ -66,7 +69,8 @@ func TestLLMService_CallProvider(t *testing.T) {
 }
 ```
 
-See the canonical example: `internal/llms/service_integration_test.go`.
+For current GoMarkEdit test commands and package organization, use the repository's `AGENTS.md` and
+`scripts/test` entry point.
 
 ---
 
@@ -145,8 +149,8 @@ test('processPrompt dispatches fulfilled', async () => {
 });
 ```
 
-**GoMarkEdit note:** this thunk-result-in-a-slice pattern applies only to ephemeral frontend state
-(e.g. the assistant `run` slice). Application-model data (documents/tabs/workspace/UI) is a
+**GoMarkEdit note:** this thunk-result-in-a-slice pattern is a generic example for ephemeral frontend
+state. Application-model data (documents/tabs/workspace/UI) is a
 **projection** (DD-62/DD-63): command thunks return no model data — the store updates when the
 backend's `state:patch` event is applied, so tests assert the reconciled projection after dispatching
 `applyStatePatch`, never a thunk's fulfilled payload.

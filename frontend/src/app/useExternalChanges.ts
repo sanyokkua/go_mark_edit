@@ -32,12 +32,14 @@ export function useExternalChanges({ session, conflicts, bootstrapStatus, blocke
     const lifecycle = useRef(0);
     const flight = useRef<Promise<void> | null>(null);
     const deciding = useRef(false);
+    const receivedGeneration = useRef(0);
     useEffect(() => {
         latest.current = { session, blocked, bootstrapStatus };
     }, [session, blocked, bootstrapStatus]);
 
     const receiveConflict = useCallback((preview: ConflictPreview): void => {
         if (latest.current.session.documentsById[preview.documentId] === undefined) return;
+        receivedGeneration.current += 1;
         setPending({ preview, needsRecheck: latest.current.blocked });
     }, []);
 
@@ -85,6 +87,43 @@ export function useExternalChanges({ session, conflicts, bootstrapStatus, blocke
         if (session.documentsById[pending.preview.documentId] === undefined) setPending(null);
         else if (blocked && !pending.needsRecheck) setPending({ ...pending, needsRecheck: true });
     }
+
+    const pendingDocumentId = pending?.preview.documentId;
+    const pendingDocumentStatus =
+        pendingDocumentId === undefined ? undefined : session.documentsById[pendingDocumentId]?.status;
+    const pendingNeedsRecheck = pending?.needsRecheck ?? false;
+    useEffect(() => {
+        if (pendingDocumentId === undefined || pendingDocumentStatus !== 'saved' || blocked || pendingNeedsRecheck)
+            return;
+        let disposed = false;
+        const generation = receivedGeneration.current;
+        // A deferred write may finish while an older foreground check is in flight.
+        // Wait for it, then compare the saved document against its new disk baseline.
+        void (async (): Promise<void> => {
+            await flight.current;
+            if (disposed || latest.current.blocked) return;
+            try {
+                const result = await documentConflictAdapter.checkExternalChanges(pendingDocumentId);
+                if (disposed) return;
+                setPending((current) =>
+                    receivedGeneration.current !== generation ||
+                    current?.preview.documentId !== pendingDocumentId ||
+                    result.error !== undefined
+                        ? current
+                        : result.status === 'detected' && result.preview !== undefined
+                          ? { preview: result.preview, needsRecheck: latest.current.blocked }
+                          : result.status === 'unchanged'
+                            ? null
+                            : current,
+                );
+            } catch {
+                // A later foreground event can retry the comparison.
+            }
+        })();
+        return () => {
+            disposed = true;
+        };
+    }, [blocked, pendingNeedsRecheck, pendingDocumentId, pendingDocumentStatus]);
 
     useEffect(() => {
         if (blocked || pending === null || !pending.needsRecheck || bootstrapStatus !== 'ready') return;

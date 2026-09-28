@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { t } from '../i18n';
 import { appModelAdapter, closePlanAdapter } from '../logic/adapter';
-import { useAppDispatch } from '../logic/store';
+import { useAppDispatch, useAppSelector } from '../logic/store';
 import { hydrateProjection } from '../logic/store/appModelProjectionActions';
 import { reportClassifiedError } from '../logic/store/classifiedNotification';
 import { notifyError } from '../logic/store/notificationsSlice';
@@ -38,13 +38,25 @@ interface CloseWorkflowOptions {
     recoverySurface: RecoverySurface | null;
 }
 
+export type CloseAllWindowTabsResult = 'closed' | 'cancelled' | 'refused';
+
 /** Owns close plans and their prompts; the shutdown controller owns native request identity. */
 export function useCloseWorkflow({ session, shutdown, conflicts, recoverySurface }: CloseWorkflowOptions) {
     const dispatch = useAppDispatch();
+    const tabSetRevision = useAppSelector((state) => state.documents.tabSetRevision);
     const [state, setState] = useState<CloseState>({ phase: 'idle' });
     const current = useRef<CloseState>(state);
     const mounted = useRef(false);
     const deciding = useRef(false);
+    const pendingWindowClose = useRef<{
+        origin: CloseOrigin;
+        resolve: (result: CloseAllWindowTabsResult) => void;
+    } | null>(null);
+    const settleWindowClose = useCallback((origin: CloseOrigin, result: CloseAllWindowTabsResult): void => {
+        if (pendingWindowClose.current?.origin !== origin) return;
+        pendingWindowClose.current.resolve(result);
+        pendingWindowClose.current = null;
+    }, []);
     const publish = useCallback((next: CloseState): void => {
         current.current = next;
         setState(next);
@@ -58,6 +70,10 @@ export function useCloseWorkflow({ session, shutdown, conflicts, recoverySurface
         mounted.current = true;
         return () => {
             mounted.current = false;
+            if (pendingWindowClose.current !== null) {
+                pendingWindowClose.current.resolve('refused');
+                pendingWindowClose.current = null;
+            }
         };
     }, []);
 
@@ -102,9 +118,10 @@ export function useCloseWorkflow({ session, shutdown, conflicts, recoverySurface
                     return;
                 }
             }
+            settleWindowClose(context.origin, 'cancelled');
             if (isCurrent(context.origin)) publish({ phase: 'idle' });
         },
-        [isCurrent, publish, reportUnknownError, shutdown],
+        [isCurrent, publish, reportUnknownError, settleWindowClose, shutdown],
     );
 
     const fail = useCallback(
@@ -116,9 +133,10 @@ export function useCloseWorkflow({ session, shutdown, conflicts, recoverySurface
                 reportUnknownError(error);
             }
             publish({ ...context, phase: 'failed' });
+            settleWindowClose(context.origin, 'refused');
             if (context.origin.type === 'native') await cancel(context);
         },
-        [cancel, isCurrent, publish, reportError, reportUnknownError],
+        [cancel, isCurrent, publish, reportError, reportUnknownError, settleWindowClose],
     );
 
     useEffect(() => {
@@ -127,6 +145,7 @@ export function useCloseWorkflow({ session, shutdown, conflicts, recoverySurface
         if (state.plan.targets.every((target) => session.documentsById[target.documentId] !== undefined)) return;
         // A new origin object invalidates any in-flight decision for the removed target.
         const context: CloseContext = { ...state, origin: { ...state.origin } };
+        settleWindowClose(state.origin, 'cancelled');
         current.current = { ...context, phase: 'cancelling' };
         void (async (): Promise<void> => {
             try {
@@ -137,7 +156,7 @@ export function useCloseWorkflow({ session, shutdown, conflicts, recoverySurface
                 await fail(error, context);
             }
         })();
-    }, [cancel, fail, publish, session.documentsById, state]);
+    }, [cancel, fail, publish, session.documentsById, settleWindowClose, state]);
 
     const complete = useCallback(
         async (plan: ClosePlanSummary, context: CloseContext): Promise<TabTransitionResult | undefined> => {
@@ -149,6 +168,14 @@ export function useCloseWorkflow({ session, shutdown, conflicts, recoverySurface
                 if (!isCurrent(context.origin)) return result;
                 if (result.error !== undefined) {
                     await fail(result.error, context);
+                    return result;
+                }
+                if (
+                    pendingWindowClose.current?.origin === context.origin &&
+                    (result.status !== 'closed' || result.orderedDocumentIds.length !== 0)
+                ) {
+                    settleWindowClose(context.origin, 'refused');
+                    publish({ ...context, phase: 'failed' });
                     return result;
                 }
                 session.activation.acknowledge(generation, result.activeBuffer);
@@ -168,13 +195,14 @@ export function useCloseWorkflow({ session, shutdown, conflicts, recoverySurface
                     shutdown.clearPendingClose(context.origin.closeId);
                 }
                 if (isCurrent(context.origin)) publish({ phase: 'idle' });
+                settleWindowClose(context.origin, 'closed');
                 return result;
             } catch (error) {
                 await fail(error, context);
                 return undefined;
             }
         },
-        [dispatch, fail, isCurrent, publish, session.activation, shutdown],
+        [dispatch, fail, isCurrent, publish, session.activation, settleWindowClose, shutdown],
     );
 
     const processResult = useCallback(
@@ -187,6 +215,7 @@ export function useCloseWorkflow({ session, shutdown, conflicts, recoverySurface
             const plan = result.data;
             if (plan === undefined) return undefined;
             if (plan.status === 'cancelled' || plan.status === 'failed' || plan.status === 'complete') {
+                if (plan.status === 'failed') settleWindowClose(context.origin, 'refused');
                 await cancel(context);
                 return undefined;
             }
@@ -204,7 +233,7 @@ export function useCloseWorkflow({ session, shutdown, conflicts, recoverySurface
             if (next.phase === 'executing') return complete(plan, context);
             return undefined;
         },
-        [cancel, complete, fail, isCurrent, publish, session.orderedDocumentIds],
+        [cancel, complete, fail, isCurrent, publish, session.orderedDocumentIds, settleWindowClose],
     );
 
     const prepare = useCallback(
@@ -299,6 +328,33 @@ export function useCloseWorkflow({ session, shutdown, conflicts, recoverySurface
         },
         [fail, isCurrent, prepare, publish, session.activeBuffer, session.orderedDocumentIds],
     );
+
+    const closeAllWindowTabs = useCallback((): Promise<CloseAllWindowTabsResult> => {
+        if (current.current.phase !== 'idle' && current.current.phase !== 'failed') return Promise.resolve('refused');
+        if (pendingWindowClose.current !== null) return Promise.resolve('refused');
+        const targets = [...session.orderedDocumentIds];
+        if (targets.length === 0) return Promise.resolve('closed');
+        return new Promise((resolve) => {
+            // onCloseDocument creates the origin synchronously before its first await.
+            const close = onCloseDocument(targets[0], tabSetRevision, 'window', targets);
+            const progress = current.current;
+            if (
+                progress.phase === 'preparing' &&
+                progress.origin.type === 'tabs' &&
+                progress.origin.kind === 'window'
+            ) {
+                pendingWindowClose.current = { origin: progress.origin, resolve };
+                void close.then((result) => {
+                    if (pendingWindowClose.current?.origin !== progress.origin) return;
+                    if (result.status === 'refused' || current.current.phase === 'preparing') {
+                        settleWindowClose(progress.origin, 'refused');
+                    }
+                });
+            } else {
+                resolve('refused');
+            }
+        });
+    }, [onCloseDocument, session.orderedDocumentIds, settleWindowClose, tabSetRevision]);
 
     const choose = useCallback(
         async (choice: CloseChoice): Promise<void> => {
@@ -496,6 +552,7 @@ export function useCloseWorkflow({ session, shutdown, conflicts, recoverySurface
         state: presentationState,
         conflict,
         onCloseDocument,
+        closeAllWindowTabs,
         choose,
         decideNormalization,
         decideRecovery,

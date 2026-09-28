@@ -1,7 +1,7 @@
 import { createSlice } from '@reduxjs/toolkit';
 
 import { applyStatePatch, hydrateProjection, resetProjection } from './appModelProjectionActions';
-import type { DocumentMetadata } from './appModelTypes';
+import type { DocumentMetadata, RecentItem } from './appModelTypes';
 
 export interface DocumentsState {
     revision: number;
@@ -9,7 +9,7 @@ export interface DocumentsState {
     orderedIds: string[];
     byId: Record<string, DocumentMetadata>;
     activeDocumentId: string | null;
-    recentFiles?: string[];
+    recentItems?: RecentItem[];
     canReopenLastFile?: boolean;
 }
 
@@ -78,7 +78,7 @@ const documentsSlice = createSlice({
     extraReducers: (builder) => {
         builder
             .addCase(hydrateProjection, (state, action): void => {
-                if (action.payload.revision <= state.revision) {
+                if (action.payload.revision < state.revision) {
                     return;
                 }
 
@@ -93,7 +93,7 @@ const documentsSlice = createSlice({
                 if (state.orderedIds.length === 0) {
                     state.activeDocumentId = null;
                 }
-                state.recentFiles = [...(action.payload.recentFiles ?? [])];
+                state.recentItems = [...(action.payload.recentItems ?? [])];
                 state.canReopenLastFile = action.payload.canReopenLastFile ?? false;
             })
             .addCase(applyStatePatch, (state, action): void => {
@@ -132,8 +132,8 @@ const documentsSlice = createSlice({
                 if (state.orderedIds.length === 0) {
                     state.activeDocumentId = null;
                 }
-                if (patch.recentFiles !== undefined) {
-                    state.recentFiles = [...patch.recentFiles];
+                if (patch.recentItems !== undefined) {
+                    state.recentItems = [...patch.recentItems];
                 }
                 if (patch.canReopenLastFile !== undefined) {
                     state.canReopenLastFile = patch.canReopenLastFile;

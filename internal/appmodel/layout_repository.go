@@ -3,12 +3,13 @@ package appmodel
 import "context"
 
 const (
-	LayoutWindowWidth       = "window.width"
-	LayoutWindowHeight      = "window.height"
-	LayoutWindowMaximized   = "window.maximized"
-	LayoutWorkspaceVisible  = "workspace.visible"
-	LayoutWorkspaceWidth    = "workspace.width"
-	LayoutArrangementBackup = "document.arrangementFallback"
+	LayoutWindowWidth            = "window.width"
+	LayoutWindowHeight           = "window.height"
+	LayoutWindowMaximized        = "window.maximized"
+	LayoutWorkspaceVisible       = "workspace.visible"
+	LayoutWorkspaceWidth         = "workspace.width"
+	LayoutWorkspaceHiddenFolders = "workspace.showHiddenFolders"
+	LayoutArrangementBackup      = "document.arrangementFallback"
 )
 
 // VersionedLayoutValue is the durable, per-field layout envelope. Its identity

@@ -63,6 +63,26 @@ func (handler *ApplicationHandler) RetryStartup(request bridge.Request) (result 
 	})
 }
 
+// OpenNewWindow starts another independent application process, optionally
+// opening a folder in that process.
+func (handler *ApplicationHandler) OpenNewWindow(request bridge.Request, folderPath string) (result apperr.VoidResult) {
+	defer bridge.Guard(&result)
+	return bridge.Once(handler.outcomes, request, func() apperr.VoidResult {
+		service, ok := handler.service.(NewWindowServiceAPI)
+		if !ok {
+			return newWindowRefusal()
+		}
+		if err := service.LaunchNewWindow(handler.context(), folderPath); err != nil {
+			logger := handler.zlog()
+			logger.Warn().
+				Str("category", string(apperr.ClassifiedSystemCommandFailure)).
+				Msg("new application window could not be opened")
+			return newWindowRefusal()
+		}
+		return apperr.VoidResult{}
+	})
+}
+
 // AuthorizeQuit completes the frontend close plan and arms one native close
 // permit. Wails calls this without a context argument; the captured lifecycle
 // context is the only runtime context used by the handler.

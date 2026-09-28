@@ -7,9 +7,11 @@ export type IconName =
     | 'bold'
     | 'bullet-list'
     | 'check'
+    | 'chevron'
     | 'close'
     | 'editor'
     | 'file'
+    | 'folder'
     | 'heading-1'
     | 'heading-2'
     | 'heading-3'
@@ -22,11 +24,13 @@ export type IconName =
     | 'numbered-list'
     | 'preview'
     | 'quote'
+    | 'refresh'
     | 'sidebar'
     | 'split'
     | 'strike'
     | 'table'
     | 'task-list'
+    | 'warning'
     | 'assistant';
 
 export interface IconProps extends Omit<SVGProps<SVGSVGElement>, 'name' | 'stroke'> {
@@ -47,6 +51,7 @@ const iconShapes: Record<IconName, React.JSX.Element> = {
         </>
     ),
     check: <path d="m3 7.5 3 3 6-6" />,
+    chevron: <path d="m5.5 2.5 4 5-4 5" />,
     close: <path d="m3.5 3.5 8 8m0-8-8 8" />,
     editor: <path d="M2.5 2.5h10v10h-10zm2.5 2.5h5m-5 2.5h5m-5 2.5h3" />,
     /*
@@ -60,6 +65,7 @@ const iconShapes: Record<IconName, React.JSX.Element> = {
             <path d="M8 13h8M8 17h5" />
         </>
     ),
+    folder: <path d="M1.75 4.25h4l1.5 1.5h6v5.5a1.25 1.25 0 0 1-1.25 1.25h-9.25z" />,
     'heading-1': <path d="M2.5 3v9m0-4.5h4M6.5 3v9m3-7.5 2-1.5v9" />,
     'heading-2': <path d="M2.5 3v9m0-4.5h4M6.5 3v9m3 1c0-3.5 3-3 3-5.2 0-1.8-2.5-2.3-3-.4" />,
     'heading-3': (
@@ -103,6 +109,12 @@ const iconShapes: Record<IconName, React.JSX.Element> = {
     quote: (
         <path d="M2.5 6.8A2.8 2.8 0 0 1 5.3 4h.2v2.1H5a1.1 1.1 0 0 0-1.1 1.1v.1h1.6v3.2H2.5zm6 0A2.8 2.8 0 0 1 11.3 4h.2v2.1H11a1.1 1.1 0 0 0-1.1 1.1v.1h1.6v3.2H8.5z" />
     ),
+    refresh: (
+        <>
+            <path d="M11.75 5.75A4.5 4.5 0 1 0 12 8.75" />
+            <path d="m11.75 2.5 1.75 1.75L11.75 6" />
+        </>
+    ),
     sidebar: <path d="M2.5 3.5h10m-10 4h10m-10 4h10" />,
     split: <path d="M2.5 2.5h10v10h-10zm5 0v10" />,
     strike: <path d="M3 5a2.5 2.5 0 0 1 4.7-1.2M12 10a2.5 2.5 0 0 1-4.7 1.2M2.5 7.5h10" />,
@@ -119,6 +131,7 @@ const iconShapes: Record<IconName, React.JSX.Element> = {
             <path d="m2.5 7.7 1 1 1.7-2" />
         </>
     ),
+    warning: <path d="M7.5 2 13 12H2zM7.5 5v3m0 1.5v.01" />,
     assistant: <path d="m7.5 1.8.9 3.8 3.8.9-3.8.9-.9 3.8-.9-3.8-3.8-.9 3.8-.9z" />,
 };
 
