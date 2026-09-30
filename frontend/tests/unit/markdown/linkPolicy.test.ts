@@ -10,6 +10,20 @@ it('classifies an in-document anchor without involving the document path', () =>
     });
 });
 
+it('decodes an anchor fragment once and refuses malformed percent encoding', () => {
+    expect(classifyLink('#%C3%BCber-uns')).toEqual({
+        kind: 'anchor',
+        href: '#%C3%BCber-uns',
+        fragment: 'über-uns',
+    });
+    expect(classifyLink('#a%2520b')).toEqual({
+        kind: 'anchor',
+        href: '#a%2520b',
+        fragment: 'a%20b',
+    });
+    expect(classifyLink('#broken%')).toEqual({ kind: 'refused', href: '#broken%', reason: 'malformed' });
+});
+
 it('classifies accepted local documents and resolves their lexical path', () => {
     expect(classifyLink('./next.MARKDOWN#heading', documentPath)).toEqual({
         kind: 'localDocument',

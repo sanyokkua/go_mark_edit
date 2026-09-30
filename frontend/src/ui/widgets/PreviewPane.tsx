@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { t } from '../../i18n';
 import type { LivePreviewAdapter } from '../../logic/hooks/useLivePreview';
 import type { LinkRefusalReason, LinkTarget } from '../../logic/markdown/linkPolicy';
+import { scrollToAnchor } from '../../logic/markdown/headings';
 import type { MarkdownStandard } from '../../logic/markdown/pipeline';
 import { classifyImageSource } from '../../logic/markdown/imagePolicy';
 import type { OpenResult } from '../../logic/store/appModelTypes';
@@ -229,6 +230,7 @@ export const PreviewPaneContent: React.FC<PreviewPaneContentProps> = ({
     const linkAdapterRef = useRef(linkAdapter);
     const notificationOwnerRef = useRef(notificationOwner);
     const focusedDocumentOpenRef = useRef(onFocusedDocumentOpen);
+    const previewContainerRef = useRef<HTMLElement>(null);
 
     useEffect((): void => {
         linkAdapterRef.current = linkAdapter;
@@ -266,8 +268,9 @@ export const PreviewPaneContent: React.FC<PreviewPaneContentProps> = ({
     const activateLink = useCallback((sourceDocumentId: string, target: LinkTarget): void => {
         switch (target.kind) {
             case 'anchor': {
-                const element = document.getElementById(target.fragment);
-                element?.scrollIntoView?.({ block: 'start' });
+                if (previewContainerRef.current !== null) {
+                    scrollToAnchor(previewContainerRef.current, target.fragment);
+                }
                 return;
             }
             case 'external': {
@@ -310,6 +313,7 @@ export const PreviewPaneContent: React.FC<PreviewPaneContentProps> = ({
             aria-label={ariaLabel ?? undefined}
             data-preview-revision={controller.rendered?.revision}
             data-preview-state={!settingsLoaded ? 'loading' : controller.isPaused ? 'paused' : 'rendered'}
+            ref={previewContainerRef}
         >
             {!settingsLoaded || standard === undefined ? (
                 <span role="status">{t('preview.loading')}</span>

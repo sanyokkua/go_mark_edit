@@ -73,7 +73,8 @@ export function classifyLink(href: string, documentPath?: string): LinkTarget {
     if (trimmed === '') return refused(href, 'empty');
 
     if (trimmed.startsWith('#')) {
-        return { kind: 'anchor', href, fragment: trimmed.slice(1) };
+        const fragment = decodePath(trimmed.slice(1));
+        return fragment === undefined ? refused(href, 'malformed') : { kind: 'anchor', href, fragment };
     }
 
     if (hasExplicitScheme(trimmed)) {

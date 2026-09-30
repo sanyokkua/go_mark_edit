@@ -407,7 +407,7 @@ standard)`); `frontend/src/ui/widgets/PreviewPane.tsx` and `EditorStage.tsx` (wi
 
     **Verify**: `scripts/test unit`, `scripts/test integration`, `scripts/verify lint`.
 
-- [ ] T008 [US1] Give headings shared anchors and scroll links inside the preview container in `frontend/src/logic/markdown/headings.ts`, `frontend/src/logic/markdown/pipeline.ts`, `frontend/src/ui/components/MarkdownView.tsx`, `frontend/src/ui/widgets/PreviewPane.tsx`
+- [x] T008 [US1] Give headings shared anchors and scroll links inside the preview container in `frontend/src/logic/markdown/headings.ts`, `frontend/src/logic/markdown/pipeline.ts`, `frontend/src/ui/components/MarkdownView.tsx`, `frontend/src/ui/widgets/PreviewPane.tsx`
 
     **Story / Priority**: US1 (P1). Needs T006. T033 and T036 reuse `extractHeadings`.
 

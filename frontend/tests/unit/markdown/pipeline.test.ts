@@ -53,6 +53,31 @@ it('returns stable pipeline and syntax lists per standard', () => {
     for (const standard of ['minimal', 'gfm', 'full'] as const) {
         expect(createPipeline(standard)).toBe(createPipeline(standard));
         expect(syntaxPlugins(standard)).toBe(syntaxPlugins(standard));
-        expect(createPipeline(standard).remarkPlugins).toBe(syntaxPlugins(standard));
+        expect(createPipeline(standard).remarkPlugins).toBe(createPipeline(standard).remarkPlugins);
+        expect(createPipeline(standard).remarkPlugins).toHaveLength(syntaxPlugins(standard).length + 1);
     }
+});
+
+it('assigns ids to parsed headings without changing raw or footnote headings', () => {
+    const rendered = preview(
+        '# Notes\n\n<h2 id="notes-1">Raw Notes</h2>\n\n## Notes\n\n## Notes\n\nReference[^a].\n\n[^a]: Footnote',
+        'gfm',
+    );
+    const headings = Array.from(rendered.querySelectorAll('h1, h2'));
+    expect(headings.slice(0, 4).map((heading) => heading.id)).toEqual(['notes', 'notes-1', 'notes-1', 'notes-2']);
+    expect(headings.slice(0, 4).map((heading) => heading.textContent)).toEqual([
+        'Notes',
+        'Raw Notes',
+        'Notes',
+        'Notes',
+    ]);
+    expect(headings.at(-1)).toHaveAttribute('class', 'sr-only');
+    expect(headings.at(-1)).toHaveAttribute('id', 'footnote-label');
+});
+
+it('keeps same-line raw heading ids while numbering only Markdown headings', () => {
+    const rendered = preview('## Notes <h2 id="raw">Raw</h2>\n\n## Notes <h2>Raw</h2>', 'gfm');
+    const headings = Array.from(rendered.querySelectorAll('h2'));
+
+    expect(headings.map((heading) => heading.id)).toEqual(['notes-raw', 'raw', 'notes-raw-1', '']);
 });

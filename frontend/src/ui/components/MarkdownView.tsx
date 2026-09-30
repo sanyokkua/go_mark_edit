@@ -1,15 +1,5 @@
-import {
-    Children,
-    Component,
-    createContext,
-    isValidElement,
-    memo,
-    useContext,
-    useMemo,
-    useState,
-    type ReactNode,
-} from 'react';
-import Markdown, { type Components, type ExtraProps } from 'react-markdown';
+import { Component, createContext, memo, useContext, useMemo, useState, type ReactNode } from 'react';
+import Markdown, { type Components } from 'react-markdown';
 
 import { t } from '../../i18n';
 import { classifyLink, type LinkTarget } from '../../logic/markdown/linkPolicy';
@@ -53,38 +43,6 @@ function PreviewImage({ alt, source, title }: PreviewImageProps): React.JSX.Elem
     );
 }
 
-function textContent(children: ReactNode): string {
-    return Children.toArray(children)
-        .map((child): string => {
-            if (typeof child === 'string' || typeof child === 'number') {
-                return String(child);
-            }
-            if (isValidElement<{ children?: ReactNode }>(child)) {
-                return textContent(child.props.children);
-            }
-            return '';
-        })
-        .join('');
-}
-
-function headingId(children: ReactNode): string | undefined {
-    const value = textContent(children)
-        .trim()
-        .toLowerCase()
-        .normalize('NFKD')
-        .replace(/[\u0300-\u036f]/gu, '')
-        .replace(/[^\p{Letter}\p{Number}]+/gu, '-')
-        .replace(/^-+|-+$/gu, '');
-    return value === '' ? undefined : value;
-}
-
-/**
- * `react-markdown` forwards a sanitized `data-source-line` (see
- * `logic/markdown/sourceLines.ts`) as this hyphenated prop; it is not part of
- * `ExtraProps`, which only covers the `node` field.
- */
-type HeadingProps = React.JSX.IntrinsicElements['h1'] & ExtraProps & { 'data-source-line'?: number };
-
 type PreviewRuntimeProps = Pick<
     MarkdownViewProps,
     'documentId' | 'documentPath' | 'onActivateLink' | 'imageSourceResolver'
@@ -125,48 +83,6 @@ const components: Components = {
             >
                 {children}
             </a>
-        );
-    },
-    h1({ children, id, 'data-source-line': dataSourceLine }: HeadingProps): React.JSX.Element {
-        return (
-            <h1 data-source-line={dataSourceLine} id={id ?? headingId(children)}>
-                {children}
-            </h1>
-        );
-    },
-    h2({ children, id, 'data-source-line': dataSourceLine }: HeadingProps): React.JSX.Element {
-        return (
-            <h2 data-source-line={dataSourceLine} id={id ?? headingId(children)}>
-                {children}
-            </h2>
-        );
-    },
-    h3({ children, id, 'data-source-line': dataSourceLine }: HeadingProps): React.JSX.Element {
-        return (
-            <h3 data-source-line={dataSourceLine} id={id ?? headingId(children)}>
-                {children}
-            </h3>
-        );
-    },
-    h4({ children, id, 'data-source-line': dataSourceLine }: HeadingProps): React.JSX.Element {
-        return (
-            <h4 data-source-line={dataSourceLine} id={id ?? headingId(children)}>
-                {children}
-            </h4>
-        );
-    },
-    h5({ children, id, 'data-source-line': dataSourceLine }: HeadingProps): React.JSX.Element {
-        return (
-            <h5 data-source-line={dataSourceLine} id={id ?? headingId(children)}>
-                {children}
-            </h5>
-        );
-    },
-    h6({ children, id, 'data-source-line': dataSourceLine }: HeadingProps): React.JSX.Element {
-        return (
-            <h6 data-source-line={dataSourceLine} id={id ?? headingId(children)}>
-                {children}
-            </h6>
         );
     },
 };

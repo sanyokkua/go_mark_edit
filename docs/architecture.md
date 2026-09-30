@@ -215,7 +215,11 @@ this one mount.
 `frontend/src/ui/components/CodeEditor.tsx` owns the visible Monaco working copy and publishes its scroll
 port for synchronized scrolling. It is paired with `frontend/src/ui/components/MarkdownView.tsx`, which owns
 sanitized preview rendering; each rendered block carries a numeric `data-source-line` annotation that the
-sanitization allowlist admits only as a positive integer. The frontend theme generator produces the editor
+sanitization allowlist admits only as a positive integer. `frontend/src/logic/markdown/headings.ts` extracts
+Markdown heading text, slugs and source lines from the shared syntax rules, then assigns preview ids only to
+matching Markdown headings after sanitization. Its preview scroll helper finds the first exact id inside the
+preview container, including author-supplied raw ids; the link classifier decodes anchor fragments once before
+that lookup. The frontend theme generator produces the editor
 and highlight output from the token families in `frontend/src/ui/styles/tokens.css`.
 
 All appearance values come from `frontend/src/ui/styles/tokens.css`. The three themes and light/dark
