@@ -1920,11 +1920,8 @@ it('restores a document its own preview scroll on activation', async () => {
 
 /*
  * The clause is "restore on activation", not "restore on every render". The
- * preview remounts on every accepted revision — `LivePreview` is keyed on
- * `documentId:content` — so a restore that ran unconditionally would yank the
- * pane back to the saved offset on each keystroke and fight the user's own
- * scrolling. This is the assertion that distinguishes the two, and it fails
- * against the naive fix rather than only against the missing one.
+ * The saved activation offset must not be re-applied when source changes in
+ * the same document. The pane should preserve the user's current scroll.
  */
 it('does not re-apply the saved preview scroll when the content changes', async () => {
     const view = {
@@ -1952,7 +1949,7 @@ it('does not re-apply the saved preview scroll when the content changes', async 
         expect(contentOf().scrollTop).toBe(240);
     });
 
-    // The user scrolls somewhere else, then types — which remounts the pane.
+    // The user scrolls somewhere else, then types in the same document.
     contentOf().scrollTop = 10;
     rerender(
         <Provider store={store}>
@@ -1962,11 +1959,11 @@ it('does not re-apply the saved preview scroll when the content changes', async 
         </Provider>,
     );
 
-    // Whatever the remount produces, it must not be the saved offset reapplied.
+    // The source update keeps the current offset rather than restoring activation scroll.
     await waitFor(() => {
         expect(screen.getByRole('region', { name: 'Preview pane' })).toBeVisible();
     });
-    expect(contentOf().scrollTop).not.toBe(240);
+    expect(contentOf().scrollTop).toBe(10);
 });
 
 /*

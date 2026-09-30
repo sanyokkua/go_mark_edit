@@ -7,6 +7,7 @@ it('reports a focused self-link open so its existing tab can be revealed', async
     const openPreviewLink = jest.fn(async () => ({ status: 'focused' as const, documentId: 'doc-1' }));
     render(
         <PreviewPane
+            standard="gfm"
             accepted={{ byteLength: 19, content: '[self](./a.md)', revision: 1 }}
             documentId="doc-1"
             documentPath="/notes/a.md"
@@ -27,6 +28,7 @@ it('does not request tab reveal for a refused preview link', async () => {
     const openPreviewLink = jest.fn(async () => ({ status: 'refused' as const }));
     render(
         <PreviewPane
+            standard="gfm"
             accepted={{ byteLength: 19, content: '[self](./a.md)', revision: 1 }}
             documentId="doc-1"
             documentPath="/notes/a.md"

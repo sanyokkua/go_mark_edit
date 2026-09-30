@@ -1,11 +1,12 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { t } from '../../i18n';
 import type { LivePreviewAdapter } from '../../logic/hooks/useLivePreview';
 import type { LinkRefusalReason, LinkTarget } from '../../logic/markdown/linkPolicy';
+import type { MarkdownStandard } from '../../logic/markdown/pipeline';
 import { classifyImageSource } from '../../logic/markdown/imagePolicy';
 import type { OpenResult } from '../../logic/store/appModelTypes';
-import MarkdownView from '../components/MarkdownView';
+import MarkdownView, { type CommittedMarkdownPreview } from '../components/MarkdownView';
 import Button from '../primitives/Button';
 import Icon from '../primitives/Icon';
 import styles from './PreviewPane.module.css';
@@ -15,7 +16,24 @@ export const PREVIEW_BYTE_LIMIT = 2_097_152;
 export interface PreviewSnapshot {
     byteLength: number;
     content: string;
+    documentId?: string;
     revision: number;
+}
+
+interface PreviewSourceIdentity {
+    content: string;
+    documentId?: string;
+    revision: number;
+}
+
+function sourceIdentity(snapshot: PreviewSnapshot, documentId?: string): PreviewSourceIdentity {
+    return { content: snapshot.content, documentId: snapshot.documentId ?? documentId, revision: snapshot.revision };
+}
+
+function sameSource(first: PreviewSourceIdentity, second: PreviewSourceIdentity): boolean {
+    return (
+        first.content === second.content && first.documentId === second.documentId && first.revision === second.revision
+    );
 }
 
 export interface PreviewRefreshError {
@@ -24,6 +42,7 @@ export interface PreviewRefreshError {
 
 export interface PreviewPaneProps {
     accepted: PreviewSnapshot;
+    standard: MarkdownStandard;
     ariaLabel?: string | null;
     documentId?: string;
     documentPath?: string;
@@ -43,10 +62,6 @@ export interface PreviewPaneState {
     isRefreshing: boolean;
     refresh: () => void;
     rendered: PreviewSnapshot | null;
-}
-
-function initialRenderedSnapshot(accepted: PreviewSnapshot): PreviewSnapshot | null {
-    return accepted.byteLength <= PREVIEW_BYTE_LIMIT ? accepted : null;
 }
 
 function refusalReason(reason: LinkRefusalReason): string {
@@ -77,53 +92,61 @@ function notifyRefusal(owner: PreviewNotificationOwner | undefined, target: stri
 export function usePreviewPaneState(
     accepted: PreviewSnapshot,
     onRefresh: () => Promise<PreviewSnapshot>,
+    documentId?: string,
 ): PreviewPaneState {
-    const [manualSnapshot, setManualSnapshot] = useState<PreviewSnapshot | null>(() =>
-        initialRenderedSnapshot(accepted),
+    const identity = useMemo<PreviewSourceIdentity>(
+        () => ({
+            content: accepted.content,
+            documentId: accepted.documentId ?? documentId,
+            revision: accepted.revision,
+        }),
+        [accepted.content, accepted.documentId, accepted.revision, documentId],
     );
-    const [refreshError, setRefreshError] = useState<{
-        error: PreviewRefreshError;
-        revision: number;
-    } | null>(null);
+    const [sourceState, setSourceState] = useState<{
+        identity: PreviewSourceIdentity;
+        manualSnapshot: PreviewSnapshot | null;
+        refreshError: PreviewRefreshError | null;
+    }>(() => ({ identity, manualSnapshot: null, refreshError: null }));
     const [isRefreshing, setIsRefreshing] = useState(false);
     const activeRefreshRef = useRef<Promise<void> | null>(null);
-    const acceptedRef = useRef(accepted);
-
-    useEffect((): void => {
-        acceptedRef.current = accepted;
-    }, [accepted]);
+    const sourceChanged = !sameSource(sourceState.identity, identity);
+    if (sourceChanged) {
+        setSourceState({ identity, manualSnapshot: null, refreshError: null });
+    }
 
     const rendered =
         accepted.byteLength <= PREVIEW_BYTE_LIMIT
             ? accepted
-            : manualSnapshot?.revision === accepted.revision
-              ? manualSnapshot
+            : !sourceChanged && sourceState.manualSnapshot !== null
+              ? sourceState.manualSnapshot
               : null;
-    const currentRefreshError = refreshError?.revision === accepted.revision ? refreshError.error : null;
+    const currentRefreshError = sourceChanged ? null : sourceState.refreshError;
 
     const refresh = useCallback((): void => {
         if (activeRefreshRef.current !== null) {
             return;
         }
 
+        const request = identity;
         setIsRefreshing(true);
         const operation = (async (): Promise<void> => {
             try {
                 const refreshed = await onRefresh();
-                if (refreshed.revision !== acceptedRef.current.revision) {
-                    setManualSnapshot(null);
-                    setRefreshError(null);
+                if (!sameSource(sourceIdentity(refreshed, request.documentId), request)) {
                     return;
                 }
 
-                setManualSnapshot(refreshed);
-                setRefreshError(null);
+                setSourceState((current) =>
+                    sameSource(current.identity, request)
+                        ? { ...current, manualSnapshot: refreshed, refreshError: null }
+                        : current,
+                );
             } catch {
-                setManualSnapshot(null);
-                setRefreshError({
-                    error: { code: 'io-failure' },
-                    revision: acceptedRef.current.revision,
-                });
+                setSourceState((current) =>
+                    sameSource(current.identity, request)
+                        ? { ...current, manualSnapshot: null, refreshError: { code: 'io-failure' } }
+                        : current,
+                );
             } finally {
                 activeRefreshRef.current = null;
                 setIsRefreshing(false);
@@ -131,7 +154,7 @@ export function usePreviewPaneState(
         })();
 
         activeRefreshRef.current = operation;
-    }, [onRefresh]);
+    }, [identity, onRefresh]);
 
     return {
         currentRefreshError,
@@ -173,28 +196,35 @@ export const PreviewPausedStatus: React.FC<PreviewPausedStatusProps> = ({
     </div>
 );
 
-export interface PreviewPaneContentProps {
+interface PreviewPaneContentBaseProps {
     ariaLabel?: string | null;
     controller: PreviewPaneState;
+    committedPreview?: CommittedMarkdownPreview | null;
     documentId?: string;
     documentPath?: string;
     linkAdapter?: Pick<LivePreviewAdapter, 'openPreviewLink' | 'openExternalLink' | 'resolvePreviewImage'>;
     notificationOwner?: PreviewNotificationOwner;
     onFocusedDocumentOpen?: (documentId: string) => void;
+    onPreviewCommitted?: (preview: CommittedMarkdownPreview) => void;
     showPausedStatus?: boolean;
-    settingsLoaded?: boolean;
 }
+
+export type PreviewPaneContentProps = PreviewPaneContentBaseProps &
+    ({ settingsLoaded: false; standard?: never } | { settingsLoaded?: true; standard: MarkdownStandard });
 
 export const PreviewPaneContent: React.FC<PreviewPaneContentProps> = ({
     ariaLabel = t('editor.previewPane'),
     controller,
+    committedPreview,
     documentId,
     documentPath,
     linkAdapter,
     notificationOwner,
     onFocusedDocumentOpen,
+    onPreviewCommitted,
     showPausedStatus = true,
     settingsLoaded = true,
+    standard,
 }: PreviewPaneContentProps): React.JSX.Element => {
     const linkAdapterRef = useRef(linkAdapter);
     const notificationOwnerRef = useRef(notificationOwner);
@@ -281,24 +311,29 @@ export const PreviewPaneContent: React.FC<PreviewPaneContentProps> = ({
             data-preview-revision={controller.rendered?.revision}
             data-preview-state={!settingsLoaded ? 'loading' : controller.isPaused ? 'paused' : 'rendered'}
         >
-            {!settingsLoaded ? (
+            {!settingsLoaded || standard === undefined ? (
                 <span role="status">{t('preview.loading')}</span>
-            ) : controller.isPaused ? (
-                showPausedStatus ? (
-                    <PreviewPausedStatus
-                        currentRefreshError={controller.currentRefreshError}
-                        isRefreshing={controller.isRefreshing}
-                        onRefresh={controller.refresh}
-                    />
-                ) : null
             ) : (
-                <MarkdownView
-                    documentId={documentId}
-                    documentPath={documentPath}
-                    imageSourceResolver={resolveImageSource}
-                    onActivateLink={activateLink}
-                    source={controller.rendered?.content ?? ''}
-                />
+                <>
+                    {controller.isPaused && showPausedStatus ? (
+                        <PreviewPausedStatus
+                            currentRefreshError={controller.currentRefreshError}
+                            isRefreshing={controller.isRefreshing}
+                            onRefresh={controller.refresh}
+                        />
+                    ) : null}
+                    <MarkdownView
+                        committedPreview={committedPreview}
+                        documentId={documentId}
+                        documentPath={documentPath}
+                        imageSourceResolver={resolveImageSource}
+                        onActivateLink={activateLink}
+                        onPreviewCommitted={onPreviewCommitted}
+                        source={controller.rendered?.content ?? ''}
+                        standard={standard}
+                        suspended={controller.isPaused}
+                    />
+                </>
             )}
         </section>
     );
@@ -313,8 +348,9 @@ const PreviewPane: React.FC<PreviewPaneProps> = ({
     notificationOwner,
     onFocusedDocumentOpen,
     onRefresh,
+    standard,
 }: PreviewPaneProps): React.JSX.Element => {
-    const controller = usePreviewPaneState(accepted, onRefresh);
+    const controller = usePreviewPaneState(accepted, onRefresh, documentId);
 
     return (
         <PreviewPaneContent
@@ -325,6 +361,7 @@ const PreviewPane: React.FC<PreviewPaneProps> = ({
             linkAdapter={linkAdapter}
             notificationOwner={notificationOwner}
             onFocusedDocumentOpen={onFocusedDocumentOpen}
+            standard={standard}
         />
     );
 };

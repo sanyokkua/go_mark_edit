@@ -374,7 +374,7 @@ blockquote ul ol li pre code em strong hr table thead tbody tr th td input` and 
 
     **Verify**: `scripts/test unit`, `scripts/test integration`, `scripts/verify lint`.
 
-- [ ] T007 [US1] Drive the preview from the stored standard with last-good-render fallback in `frontend/src/ui/components/MarkdownView.tsx`, `frontend/src/ui/widgets/PreviewPane.tsx`, `frontend/src/ui/widgets/EditorStage/EditorStage.tsx`
+- [x] T007 [US1] Drive the preview from the stored standard with last-good-render fallback in `frontend/src/ui/components/MarkdownView.tsx`, `frontend/src/ui/widgets/PreviewPane.tsx`, `frontend/src/ui/widgets/EditorStage/EditorStage.tsx`
 
     **Story / Priority**: US1 (P1). Needs T003, T004, T006.
 

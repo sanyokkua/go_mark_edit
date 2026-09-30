@@ -1,15 +1,33 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
+import type { Plugin } from 'unified';
 
-import MarkdownView from '../../../src/ui/components/MarkdownView';
+import { createPipeline } from '../../../src/logic/markdown/pipeline';
+
+import MarkdownView, { type CommittedMarkdownPreview } from '../../../src/ui/components/MarkdownView';
+
+jest.mock('../../../src/logic/markdown/pipeline', () => {
+    const actual = jest.requireActual<typeof import('../../../src/logic/markdown/pipeline')>(
+        '../../../src/logic/markdown/pipeline',
+    );
+    return { ...actual, createPipeline: jest.fn(actual.createPipeline) };
+});
+
+const actualCreatePipeline = jest.requireActual<typeof import('../../../src/logic/markdown/pipeline')>(
+    '../../../src/logic/markdown/pipeline',
+).createPipeline;
+const mockCreatePipeline = jest.mocked(createPipeline);
+
+afterEach(() => mockCreatePipeline.mockReset().mockImplementation(actualCreatePipeline));
 
 const readSource = (relativePath: string): string => readFileSync(resolve(process.cwd(), relativePath), 'utf8');
 
 it('renders GFM features', () => {
     render(
         <MarkdownView
+            standard="gfm"
             source={`| Feature | Status |
 | --- | --- |
 | table cell | ready |
@@ -45,6 +63,7 @@ it('renders GFM features', () => {
 it('(EC-RENDER-6) leaves higher-tier syntax and Mermaid safe', () => {
     render(
         <MarkdownView
+            standard="gfm"
             source={`Inline math stays $x^2$ and :note[directive syntax] stays literal.
 
 \`\`\`mermaid
@@ -63,6 +82,7 @@ graph TD
 it('(EC-RENDER-5) disables raw HTML and dangerous URLs', () => {
     const { container } = render(
         <MarkdownView
+            standard="gfm"
             source={`<button onclick="window.__rawHtmlExecuted = true">Raw control</button>
 
 [Dangerous command](javascript:alert('unsafe'))`}
@@ -98,6 +118,7 @@ it('(EC-RENDER-7) blocks document-supplied resource requests', () => {
     try {
         render(
             <MarkdownView
+                standard="gfm"
                 source={`![Remote image](https://example.test/preview.png)
 
 ![Local image](../preview.png)`}
@@ -127,6 +148,7 @@ it('routes only the resolver-approved local image and keeps web images as placeh
 
     render(
         <MarkdownView
+            standard="gfm"
             imageSourceResolver={resolveImage}
             source={`![Local image](./local.png)
 
@@ -145,11 +167,245 @@ it('routes only the resolver-approved local image and keeps web images as placeh
     expect(resolveImage).toHaveBeenCalledWith('https://example.test/preview.png');
 });
 
+it('keeps the preview visible when a local image resolver throws', () => {
+    render(
+        <MarkdownView
+            standard="gfm"
+            imageSourceResolver={(): string => {
+                throw new Error('local route unavailable');
+            }}
+            source={'# Still visible\n\n![Missing](./image.png)'}
+        />,
+    );
+
+    expect(screen.getByRole('heading', { name: 'Still visible' })).toBeInTheDocument();
+    expect(screen.getByRole('img', { name: 'Missing' }).tagName).toBe('SPAN');
+});
+
 it('keeps an unchanged heading element when the document text changes after it', () => {
-    const { rerender } = render(<MarkdownView source={'# Title\n\nFirst paragraph.\n'} />);
+    const { rerender } = render(<MarkdownView standard="gfm" source={'# Title\n\nFirst paragraph.\n'} />);
     const heading = screen.getByRole('heading', { level: 1 });
 
-    rerender(<MarkdownView source={'# Title\n\nFirst paragraph.\n\nSecond paragraph.\n'} />);
+    rerender(<MarkdownView standard="gfm" source={'# Title\n\nFirst paragraph.\n\nSecond paragraph.\n'} />);
 
     expect(screen.getByRole('heading', { level: 1 })).toBe(heading);
+});
+
+it('renders GFM syntax at GFM and Full, but shows it literally at Minimal', () => {
+    const source = '| Name |\n| --- |\n| Ada |\n\n~~removed~~';
+    const { rerender } = render(<MarkdownView documentId="one" source={source} standard="gfm" />);
+    expect(screen.getByRole('table')).toBeInTheDocument();
+    expect(screen.getByText('removed').tagName).toBe('DEL');
+
+    rerender(<MarkdownView documentId="one" source={source} standard="full" />);
+    expect(screen.getByRole('table')).toBeInTheDocument();
+
+    rerender(<MarkdownView documentId="one" source={source} standard="minimal" />);
+    expect(screen.queryByRole('table')).not.toBeInTheDocument();
+    expect(screen.getByText(/\| Ada \|/)).toBeInTheDocument();
+    expect(screen.getByText(/~~removed~~/)).toBeInTheDocument();
+});
+
+it.each(['minimal', 'gfm'] as const)('keeps a Go fence plain at %s', (standard) => {
+    const { container } = render(<MarkdownView source={'```go\nfunc main() {}\n```'} standard={standard} />);
+    expect(container.querySelector('pre code')).toHaveTextContent('func main() {}');
+    expect(container.querySelector('pre code span')).toBeNull();
+});
+
+it('keeps committed output above a source-specific render failure and clears the error on recovery', () => {
+    const throwForBadSource: Plugin = () => (_tree, file) => {
+        if (String(file.value).includes('broken source')) throw new Error('parse failed');
+    };
+    mockCreatePipeline.mockImplementation((standard) => {
+        const pipeline = actualCreatePipeline(standard);
+        return { ...pipeline, remarkPlugins: [...pipeline.remarkPlugins, throwForBadSource] };
+    });
+    const { rerender } = render(<MarkdownView documentId="one" source="**safe output**" standard="gfm" />);
+    expect(screen.getByText('safe output').tagName).toBe('STRONG');
+
+    rerender(<MarkdownView documentId="one" source="broken source" standard="gfm" />);
+    expect(screen.getByRole('alert')).toHaveTextContent('Preview could not be rendered');
+    expect(screen.getByText('safe output').tagName).toBe('STRONG');
+    expect(screen.queryByText('broken source')).toBeNull();
+
+    rerender(<MarkdownView documentId="one" source="**recovered output**" standard="gfm" />);
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(screen.getByText('recovered output').tagName).toBe('STRONG');
+    expect(screen.queryByText('safe output')).toBeNull();
+});
+
+it('retains a committed render when every later pipeline attempt throws, including after a standard change', () => {
+    let failAll = false;
+    const throwWhileUnavailable: Plugin = () => () => {
+        if (failAll) throw new Error('pipeline unavailable');
+    };
+    mockCreatePipeline.mockImplementation((standard) => {
+        const pipeline = actualCreatePipeline(standard);
+        return { ...pipeline, remarkPlugins: [...pipeline.remarkPlugins, throwWhileUnavailable] };
+    });
+    const { rerender } = render(<MarkdownView documentId="one" source="**committed**" standard="gfm" />);
+    failAll = true;
+
+    rerender(<MarkdownView documentId="one" source="candidate one" standard="minimal" />);
+    expect(screen.getByRole('alert')).toBeInTheDocument();
+    expect(screen.getByText('committed').tagName).toBe('STRONG');
+
+    rerender(<MarkdownView documentId="one" source="candidate two" standard="full" />);
+    expect(screen.getByRole('alert')).toBeInTheDocument();
+    expect(screen.getByText('committed').tagName).toBe('STRONG');
+
+    failAll = false;
+    rerender(<MarkdownView documentId="one" source="**available again**" standard="full" />);
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(screen.getByText('available again')).toBeInTheDocument();
+});
+
+it('shows only the error without a prior successful render and never carries another document output across identities', () => {
+    const throwForBadSource: Plugin = () => (_tree, file) => {
+        if (String(file.value).includes('broken')) throw new Error('parse failed');
+    };
+    mockCreatePipeline.mockImplementation((standard) => {
+        const pipeline = actualCreatePipeline(standard);
+        return { ...pipeline, remarkPlugins: [...pipeline.remarkPlugins, throwForBadSource] };
+    });
+    const { rerender } = render(<MarkdownView documentId="one" source="broken" standard="gfm" />);
+    expect(screen.getByRole('alert')).toBeInTheDocument();
+    expect(screen.queryByRole('article')).toBeNull();
+
+    rerender(<MarkdownView documentId="one" source="**one only**" standard="gfm" />);
+    expect(screen.getByText('one only')).toBeInTheDocument();
+    rerender(<MarkdownView documentId="two" source="broken" standard="gfm" />);
+    expect(screen.getByRole('alert')).toBeInTheDocument();
+    expect(screen.queryByText('one only')).toBeNull();
+});
+
+it('does not parse or fabricate a successful snapshot while suspended', () => {
+    mockCreatePipeline.mockImplementation(() => {
+        throw new Error('renderer unavailable');
+    });
+    const { rerender } = render(<MarkdownView documentId="one" source="pending" standard="gfm" suspended />);
+    expect(mockCreatePipeline).not.toHaveBeenCalled();
+    expect(screen.queryByRole('article')).toBeNull();
+
+    rerender(<MarkdownView documentId="one" source="pending" standard="gfm" />);
+    expect(screen.getByRole('alert')).toHaveTextContent('Preview could not be rendered');
+    expect(screen.getByRole('alert')).not.toHaveTextContent('Showing the last successful version');
+    expect(screen.queryByRole('article')).toBeNull();
+});
+
+it('uses the current link owner and document path for retained output after a failed remount', () => {
+    const firstOwner = jest.fn();
+    const secondOwner = jest.fn();
+    const thirdOwner = jest.fn();
+    const committed = jest.fn<void, [CommittedMarkdownPreview]>();
+    const first = render(
+        <MarkdownView
+            documentId="one"
+            documentPath="/old/note.md"
+            source="[Sibling](./sibling.md)"
+            standard="gfm"
+            onActivateLink={firstOwner}
+            onPreviewCommitted={committed}
+        />,
+    );
+    const preview = committed.mock.calls[0][0];
+    first.unmount();
+    mockCreatePipeline.mockImplementation(() => {
+        throw new Error('pipeline unavailable');
+    });
+    const { rerender } = render(
+        <MarkdownView
+            documentId="one"
+            documentPath="/new/note.md"
+            source="broken"
+            standard="gfm"
+            committedPreview={preview}
+            onActivateLink={secondOwner}
+        />,
+    );
+    expect(screen.getByRole('alert')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('link', { name: 'Sibling' }));
+    expect(secondOwner).toHaveBeenCalledWith('one', {
+        kind: 'localDocument',
+        href: './sibling.md',
+        path: '/new/sibling.md',
+    });
+    expect(firstOwner).not.toHaveBeenCalled();
+    const attempts = mockCreatePipeline.mock.calls.length;
+
+    rerender(
+        <MarkdownView
+            documentId="one"
+            documentPath="/latest/note.md"
+            source="broken"
+            standard="gfm"
+            committedPreview={preview}
+            onActivateLink={thirdOwner}
+        />,
+    );
+    fireEvent.click(screen.getByRole('link', { name: 'Sibling' }));
+    expect(thirdOwner).toHaveBeenCalledWith('one', {
+        kind: 'localDocument',
+        href: './sibling.md',
+        path: '/latest/sibling.md',
+    });
+    expect(secondOwner).toHaveBeenCalledTimes(1);
+    expect(mockCreatePipeline).toHaveBeenCalledTimes(attempts);
+});
+
+it('uses the current image resolver and local failure handling for retained output without reparsing', () => {
+    const committed = jest.fn<void, [CommittedMarkdownPreview]>();
+    const first = render(
+        <MarkdownView
+            documentId="one"
+            source="![Local](./local.png)"
+            standard="gfm"
+            imageSourceResolver={() => '/preview-image?owner=old'}
+            onPreviewCommitted={committed}
+        />,
+    );
+    const preview = committed.mock.calls[0][0];
+    first.unmount();
+    mockCreatePipeline.mockImplementation(() => {
+        throw new Error('pipeline unavailable');
+    });
+    const { rerender } = render(
+        <MarkdownView
+            documentId="one"
+            source="broken"
+            standard="gfm"
+            committedPreview={preview}
+            imageSourceResolver={() => '/preview-image?owner=current'}
+        />,
+    );
+    expect(screen.getByRole('img', { name: 'Local' })).toHaveAttribute('src', '/preview-image?owner=current');
+    const attempts = mockCreatePipeline.mock.calls.length;
+
+    rerender(
+        <MarkdownView
+            documentId="one"
+            source="broken"
+            standard="gfm"
+            committedPreview={preview}
+            imageSourceResolver={() => {
+                throw new Error('local route unavailable');
+            }}
+        />,
+    );
+    expect(screen.getByRole('img', { name: 'Local' }).tagName).toBe('SPAN');
+
+    rerender(
+        <MarkdownView
+            documentId="one"
+            source="broken"
+            standard="gfm"
+            committedPreview={preview}
+            imageSourceResolver={() => '/preview-image?owner=latest'}
+        />,
+    );
+    const image = screen.getByRole('img', { name: 'Local' });
+    expect(image).toHaveAttribute('src', '/preview-image?owner=latest');
+    fireEvent.error(image);
+    expect(screen.getByRole('img', { name: 'Local' }).tagName).toBe('SPAN');
+    expect(mockCreatePipeline).toHaveBeenCalledTimes(attempts);
 });

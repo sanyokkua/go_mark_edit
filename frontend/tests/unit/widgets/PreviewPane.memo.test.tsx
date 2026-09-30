@@ -52,7 +52,7 @@ it('shows loading instead of the accepted document until settings load, includin
     expect(screen.getByRole('status')).toHaveTextContent('Loading Markdown settings');
     expect(screen.queryByTestId('markdown')).toBeNull();
 
-    rerender(<PreviewPaneContent controller={controller} settingsLoaded />);
+    rerender(<PreviewPaneContent standard="gfm" controller={controller} settingsLoaded />);
     expect(screen.getByTestId('markdown')).toBeInTheDocument();
     expect(mockRenderCount.value).toBe(1);
 });
@@ -60,11 +60,23 @@ it('shows loading instead of the accepted document until settings load, includin
 it('does not re-render the markdown when the pane re-renders with a new notification owner', () => {
     const controller = renderedController();
     const { rerender } = render(
-        <PreviewPaneContent controller={controller} documentId="doc-1" notificationOwner={{ warn: jest.fn() }} />,
+        <PreviewPaneContent
+            standard="gfm"
+            controller={controller}
+            documentId="doc-1"
+            notificationOwner={{ warn: jest.fn() }}
+        />,
     );
     expect(mockRenderCount.value).toBe(1);
 
-    rerender(<PreviewPaneContent controller={controller} documentId="doc-1" notificationOwner={{ warn: jest.fn() }} />);
+    rerender(
+        <PreviewPaneContent
+            standard="gfm"
+            controller={controller}
+            documentId="doc-1"
+            notificationOwner={{ warn: jest.fn() }}
+        />,
+    );
 
     expect(mockRenderCount.value).toBe(1);
 });
@@ -74,10 +86,17 @@ it('warns through the latest notification owner after the pane re-renders', () =
     const firstOwner: PreviewNotificationOwner = { warn: jest.fn() };
     const secondOwner: PreviewNotificationOwner = { warn: jest.fn() };
     const { getByText, rerender } = render(
-        <PreviewPaneContent controller={controller} documentId="doc-1" notificationOwner={firstOwner} />,
+        <PreviewPaneContent standard="gfm" controller={controller} documentId="doc-1" notificationOwner={firstOwner} />,
     );
 
-    rerender(<PreviewPaneContent controller={controller} documentId="doc-1" notificationOwner={secondOwner} />);
+    rerender(
+        <PreviewPaneContent
+            standard="gfm"
+            controller={controller}
+            documentId="doc-1"
+            notificationOwner={secondOwner}
+        />,
+    );
     fireEvent.click(getByText('link'));
 
     expect(secondOwner.warn).toHaveBeenCalledWith('https://example.test/page', expect.any(String));
@@ -89,10 +108,13 @@ it('opens through the latest link adapter after the pane re-renders', () => {
     const firstAdapter = { openExternalLink: jest.fn() };
     const secondAdapter = { openExternalLink: jest.fn() };
     const { getByText, rerender } = render(
-        <PreviewPaneContent controller={controller} documentId="doc-1" linkAdapter={firstAdapter} />,
+        <PreviewPaneContent standard="gfm" controller={controller} documentId="doc-1" linkAdapter={firstAdapter} />,
     );
 
-    rerender(<PreviewPaneContent controller={controller} documentId="doc-1" linkAdapter={secondAdapter} />);
+    rerender(
+        <PreviewPaneContent standard="gfm" controller={controller} documentId="doc-1" linkAdapter={secondAdapter} />,
+    );
+    expect(mockRenderCount.value).toBe(1);
     fireEvent.click(getByText('link'));
 
     expect(secondAdapter.openExternalLink).toHaveBeenCalledWith('https://example.test/page');

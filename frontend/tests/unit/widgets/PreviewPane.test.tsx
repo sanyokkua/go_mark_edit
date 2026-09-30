@@ -27,13 +27,23 @@ it('renders at the inclusive 2 MiB boundary and pauses above it', async () => {
     );
 
     const { rerender } = render(
-        <PreviewPane accepted={snapshot(1, '# exactly 2 MiB', PREVIEW_BYTE_LIMIT)} onRefresh={refresh} />,
+        <PreviewPane
+            standard="gfm"
+            accepted={snapshot(1, '# exactly 2 MiB', PREVIEW_BYTE_LIMIT)}
+            onRefresh={refresh}
+        />,
     );
 
     expect(screen.getByText('exactly 2 MiB')).toBeInTheDocument();
     expect(screen.queryByText(/preview paused/i)).not.toBeInTheDocument();
 
-    rerender(<PreviewPane accepted={snapshot(2, '# over 2 MiB', PREVIEW_BYTE_LIMIT + 1)} onRefresh={refresh} />);
+    rerender(
+        <PreviewPane
+            standard="gfm"
+            accepted={snapshot(2, '# over 2 MiB', PREVIEW_BYTE_LIMIT + 1)}
+            onRefresh={refresh}
+        />,
+    );
 
     await waitFor(() => {
         expect(screen.getByText(/live preview is paused/i)).toBeInTheDocument();
@@ -45,6 +55,7 @@ it('renders at the inclusive 2 MiB boundary and pauses above it', async () => {
 it('presents source-backed paused preview chrome above the pane content', () => {
     render(
         <PreviewPane
+            standard="gfm"
             accepted={snapshot(2, '# over 2 MiB', PREVIEW_BYTE_LIMIT + 1)}
             onRefresh={jest.fn(async () => snapshot(2, '', PREVIEW_BYTE_LIMIT + 1))}
         />,
@@ -61,7 +72,11 @@ it('renders the accepted revision once and coalesces duplicate refresh requests'
     const refresh = jest.fn<Promise<PreviewSnapshot>, []>(() => pending.promise);
 
     render(
-        <PreviewPane accepted={snapshot(17, '# accepted revision 17', PREVIEW_BYTE_LIMIT + 1)} onRefresh={refresh} />,
+        <PreviewPane
+            standard="gfm"
+            accepted={snapshot(17, '# accepted revision 17', PREVIEW_BYTE_LIMIT + 1)}
+            onRefresh={refresh}
+        />,
     );
 
     const refreshButton = screen.getByRole('button', { name: 'Refresh preview' });
@@ -82,7 +97,11 @@ it('renders the accepted revision once and coalesces duplicate refresh requests'
 it('re-pauses after the next accepted edit above the limit', async () => {
     const refresh = jest.fn(async () => snapshot(21, '# accepted revision 21', PREVIEW_BYTE_LIMIT + 1));
     const { rerender } = render(
-        <PreviewPane accepted={snapshot(21, '# accepted revision 21', PREVIEW_BYTE_LIMIT + 1)} onRefresh={refresh} />,
+        <PreviewPane
+            standard="gfm"
+            accepted={snapshot(21, '# accepted revision 21', PREVIEW_BYTE_LIMIT + 1)}
+            onRefresh={refresh}
+        />,
     );
 
     fireEvent.click(screen.getByRole('button', { name: 'Refresh preview' }));
@@ -91,7 +110,11 @@ it('re-pauses after the next accepted edit above the limit', async () => {
     });
 
     rerender(
-        <PreviewPane accepted={snapshot(22, '# accepted revision 22', PREVIEW_BYTE_LIMIT + 1)} onRefresh={refresh} />,
+        <PreviewPane
+            standard="gfm"
+            accepted={snapshot(22, '# accepted revision 22', PREVIEW_BYTE_LIMIT + 1)}
+            onRefresh={refresh}
+        />,
     );
 
     await waitFor(() => {
@@ -106,7 +129,11 @@ it('keeps a failed refresh paused, classifies io-failure, and offers Retry', asy
     const refresh = jest.fn<Promise<PreviewSnapshot>, []>(() => pending.promise);
 
     render(
-        <PreviewPane accepted={snapshot(31, '# accepted revision 31', PREVIEW_BYTE_LIMIT + 1)} onRefresh={refresh} />,
+        <PreviewPane
+            standard="gfm"
+            accepted={snapshot(31, '# accepted revision 31', PREVIEW_BYTE_LIMIT + 1)}
+            onRefresh={refresh}
+        />,
     );
 
     const refreshButton = screen.getByRole('button', { name: 'Refresh preview' });
@@ -128,11 +155,21 @@ it('does not render a stale refresh result for a newer accepted revision', async
     const pending = deferred<PreviewSnapshot>();
     const refresh = jest.fn<Promise<PreviewSnapshot>, []>(() => pending.promise);
     const { rerender } = render(
-        <PreviewPane accepted={snapshot(41, '# stale revision', PREVIEW_BYTE_LIMIT + 1)} onRefresh={refresh} />,
+        <PreviewPane
+            standard="gfm"
+            accepted={snapshot(41, '# stale revision', PREVIEW_BYTE_LIMIT + 1)}
+            onRefresh={refresh}
+        />,
     );
 
     fireEvent.click(screen.getByRole('button', { name: 'Refresh preview' }));
-    rerender(<PreviewPane accepted={snapshot(42, '# current revision', PREVIEW_BYTE_LIMIT + 1)} onRefresh={refresh} />);
+    rerender(
+        <PreviewPane
+            standard="gfm"
+            accepted={snapshot(42, '# current revision', PREVIEW_BYTE_LIMIT + 1)}
+            onRefresh={refresh}
+        />,
+    );
     pending.resolve(snapshot(41, '# stale revision', PREVIEW_BYTE_LIMIT + 1));
 
     await waitFor(() => {
@@ -140,6 +177,50 @@ it('does not render a stale refresh result for a newer accepted revision', async
     });
     expect(screen.queryByText('stale revision')).not.toBeInTheDocument();
     expect(screen.queryByText('current revision')).not.toBeInTheDocument();
+});
+
+it('pauses after an authoritative large source replacement with the same optional revision', async () => {
+    const first = snapshot(0, '# Source A', PREVIEW_BYTE_LIMIT + 1);
+    const second = snapshot(0, '# Source B', PREVIEW_BYTE_LIMIT + 1);
+    const refresh = jest.fn(() => Promise.resolve(first));
+    const { rerender } = render(<PreviewPane standard="gfm" accepted={first} onRefresh={refresh} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Refresh preview' }));
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'Source A' })).toBeInTheDocument());
+
+    rerender(<PreviewPane standard="gfm" accepted={second} onRefresh={refresh} />);
+    expect(screen.getByRole('button', { name: 'Refresh preview' })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Source A' })).toBeNull();
+});
+
+it('discards a stale refresh result when a different source has the same revision', async () => {
+    const pending = deferred<PreviewSnapshot>();
+    const first = snapshot(0, '# Source A', PREVIEW_BYTE_LIMIT + 1);
+    const second = snapshot(0, '# Source B', PREVIEW_BYTE_LIMIT + 1);
+    const refresh = jest.fn(() => pending.promise);
+    const { rerender } = render(<PreviewPane standard="gfm" accepted={first} onRefresh={refresh} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Refresh preview' }));
+    rerender(<PreviewPane standard="gfm" accepted={second} onRefresh={refresh} />);
+    pending.resolve(first);
+
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Refresh preview' })).toBeEnabled());
+    expect(screen.queryByRole('heading', { name: 'Source A' })).toBeNull();
+});
+
+it('does not attach an older refresh failure to a replacement with the same revision', async () => {
+    const pending = deferred<PreviewSnapshot>();
+    const first = snapshot(0, '# Source A', PREVIEW_BYTE_LIMIT + 1);
+    const second = snapshot(0, '# Source B', PREVIEW_BYTE_LIMIT + 1);
+    const refresh = jest.fn(() => pending.promise);
+    const { rerender } = render(<PreviewPane standard="gfm" accepted={first} onRefresh={refresh} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Refresh preview' }));
+    rerender(<PreviewPane standard="gfm" accepted={second} onRefresh={refresh} />);
+    pending.reject(new Error('old read failed'));
+
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Refresh preview' })).toBeEnabled());
+    expect(screen.queryByRole('alert')).toBeNull();
 });
 
 /*

@@ -62,6 +62,8 @@
     "preview.refresh": "Refresh preview",
     "preview.retry": "Retry",
     "preview.refreshFailed": "Preview refresh failed.",
+    "preview.renderError.message": "Preview could not be rendered. Showing the last successful version.",
+    "preview.renderError.empty": "Preview could not be rendered.",
     "preview.linkRefused.title": "Link not opened",
     "preview.linkRefused.message": "{target}: {reason}",
     "preview.linkRefused.reason.empty": "The link target is empty.",

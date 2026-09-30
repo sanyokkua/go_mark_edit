@@ -17,6 +17,11 @@ interface PreviewSnapshot {
     revision: number;
 }
 
+interface PreviewState {
+    accepted: PreviewSnapshot;
+    source: PreviewSnapshot;
+}
+
 export interface LivePreviewSnapshot {
     byteLength: number;
     content: string;
@@ -37,15 +42,34 @@ export function useLivePreviewSnapshot(
     activeBuffer: ActiveBuffer,
     adapter: LivePreviewAdapter = appModelAdapter,
 ): LivePreviewSnapshot {
+    const sourceRevision = activeBuffer.documentRevision ?? 0;
     const acceptedGenerationRef = useRef(0);
-    const [acceptedSnapshot, setAcceptedSnapshot] = useState<PreviewSnapshot>(() => ({
-        documentId: activeBuffer.documentId,
-        content: activeBuffer.content,
-        revision: activeBuffer.documentRevision ?? 0,
-    }));
+    const [previewState, setPreviewState] = useState<PreviewState>(() => {
+        const source = {
+            documentId: activeBuffer.documentId,
+            content: activeBuffer.content,
+            revision: sourceRevision,
+        };
+        return { accepted: source, source };
+    });
+
+    const sourceChanged =
+        previewState.source.documentId !== activeBuffer.documentId ||
+        previewState.source.content !== activeBuffer.content ||
+        previewState.source.revision !== sourceRevision;
+    // Reset accepted edits for each authoritative installation, including A → B → A.
+    if (sourceChanged) {
+        const source = {
+            documentId: activeBuffer.documentId,
+            content: activeBuffer.content,
+            revision: sourceRevision,
+        };
+        setPreviewState({ accepted: source, source });
+    }
 
     useEffect((): (() => void) => {
         const documentId = activeBuffer.documentId;
+        const sourceContent = activeBuffer.content;
         acceptedGenerationRef.current = 0;
         let disposed = false;
 
@@ -55,27 +79,35 @@ export function useLivePreviewSnapshot(
             }
 
             acceptedGenerationRef.current = buffer.generation;
-            setAcceptedSnapshot({
-                documentId: buffer.documentId,
-                content: buffer.content,
-                revision: buffer.generation,
-            });
+            setPreviewState((current) =>
+                current.source.documentId === documentId &&
+                current.source.content === sourceContent &&
+                current.source.revision === sourceRevision
+                    ? {
+                          ...current,
+                          accepted: {
+                              documentId: buffer.documentId,
+                              content: buffer.content,
+                              revision: buffer.generation,
+                          },
+                      }
+                    : current,
+            );
         });
 
         return (): void => {
             disposed = true;
             unsubscribe();
         };
-    }, [activeBuffer.documentId, adapter]);
+    }, [activeBuffer.content, activeBuffer.documentId, adapter, sourceRevision]);
 
-    const current =
-        acceptedSnapshot.documentId === activeBuffer.documentId
-            ? acceptedSnapshot
-            : {
-                  documentId: activeBuffer.documentId,
-                  content: activeBuffer.content,
-                  revision: activeBuffer.documentRevision ?? 0,
-              };
+    const current = !sourceChanged
+        ? previewState.accepted
+        : {
+              documentId: activeBuffer.documentId,
+              content: activeBuffer.content,
+              revision: sourceRevision,
+          };
 
     return {
         ...current,

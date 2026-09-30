@@ -10,6 +10,7 @@ import {
 } from 'react';
 
 import type { EditorPosition } from '../../components/CodeEditor';
+import type { CommittedMarkdownPreview } from '../../components/MarkdownView';
 import CodeEditor from '../../components/CodeEditor';
 import Pane from '../../components/Pane';
 import { appModelAdapter } from '../../../logic/adapter';
@@ -22,6 +23,7 @@ import { dispatchAction } from '../../../logic/actions/actionDispatcher';
 import { useScrollSync } from '../../../logic/hooks/useScrollSync';
 import { type EditorSynchronizationAdapter, useSyncedBuffer } from '../../../logic/hooks/useSyncedBuffer';
 import type { EditorScrollPort } from '../../../logic/scrollSync/scrollSyncTypes';
+import type { MarkdownStandard } from '../../../logic/markdown/pipeline';
 import type { ActiveBuffer, DocumentMetadata, DocumentView } from '../../../logic/store/appModelTypes';
 import EditorContextMenu from '../EditorContextMenu';
 import { EditorSessionEpochContext, useEditorSessionAttachment } from '../editorSession';
@@ -68,6 +70,10 @@ interface ActiveEditorProps {
 
 interface ActiveEditorHandle {
     captureViewState: () => void;
+}
+
+function isMarkdownStandard(value: string): value is MarkdownStandard {
+    return value === 'minimal' || value === 'gfm' || value === 'full';
 }
 
 const ActiveEditor = forwardRef<ActiveEditorHandle, ActiveEditorProps>(function ActiveEditor(
@@ -208,9 +214,19 @@ const LivePreview: React.FC<LivePreviewProps> = ({
     visible,
 }: LivePreviewProps): React.JSX.Element | null => {
     const { markdownSettings } = useEditorSettings();
-    const settingsLoaded = markdownSettings !== undefined;
+    const storedStandard = markdownSettings?.standard;
+    const standard = storedStandard !== undefined && isMarkdownStandard(storedStandard) ? storedStandard : undefined;
+    const settingsLoaded = standard !== undefined;
     const accepted = useLivePreviewSnapshot(activeBuffer, adapter);
     const contentRef = useRef<HTMLDivElement | null>(null);
+    const [committedPreview, setCommittedPreview] = useState<CommittedMarkdownPreview | null>(null);
+    const onPreviewCommitted = useCallback((preview: CommittedMarkdownPreview): void => {
+        setCommittedPreview((current) =>
+            current !== null && current.documentId === preview.documentId && current.content === preview.content
+                ? current
+                : preview,
+        );
+    }, []);
     const onRefresh = useCallback(async (): Promise<LivePreviewSnapshot> => {
         if (onPreviewRefresh !== undefined) {
             return onPreviewRefresh(accepted);
@@ -224,14 +240,15 @@ const LivePreview: React.FC<LivePreviewProps> = ({
         }
         return accepted;
     }, [accepted, onPreviewRefresh]);
-    const controller = usePreviewPaneState(accepted, onRefresh);
+    const controller = usePreviewPaneState(accepted, onRefresh, activeBuffer.documentId);
 
     useLayoutEffect((): void => {
+        if (!visible) return;
         const node = contentRef.current;
         if (node === null) return;
         if (!claimScrollRestore(activeBuffer.documentId)) return;
         node.scrollTop = savedScrollTop;
-    }, [activeBuffer.documentId, claimScrollRestore, savedScrollTop]);
+    }, [activeBuffer.documentId, claimScrollRestore, savedScrollTop, visible]);
 
     /*
      * Published after the restore above, so whoever synchronizes the panes
@@ -245,16 +262,14 @@ const LivePreview: React.FC<LivePreviewProps> = ({
      * a withdrawn container published and nothing synchronized again.
      */
     useLayoutEffect((): (() => void) => {
-        onScrollContainerChange(controller.isPaused || !settingsLoaded ? null : contentRef.current);
+        onScrollContainerChange(controller.isPaused || !settingsLoaded || !visible ? null : contentRef.current);
 
         return (): void => {
             onScrollContainerChange(null);
         };
     }, [controller.isPaused, onScrollContainerChange, settingsLoaded, visible]);
 
-    if (!visible) {
-        return null;
-    }
+    if (!visible) return null;
 
     return (
         <Pane
@@ -279,23 +294,22 @@ const LivePreview: React.FC<LivePreviewProps> = ({
                 >
                     <PreviewPaneContent
                         ariaLabel={null}
+                        committedPreview={committedPreview}
                         controller={controller}
                         documentId={activeBuffer.documentId}
                         documentPath={documentPath}
                         linkAdapter={adapter}
                         notificationOwner={{ warn: onPreviewWarning }}
                         onFocusedDocumentOpen={onFocusedDocumentOpen}
+                        onPreviewCommitted={onPreviewCommitted}
                         showPausedStatus={false}
-                        settingsLoaded={settingsLoaded}
+                        {...(standard === undefined ? { settingsLoaded: false as const } : { standard })}
                     />
                 </div>
             }
             header={{
                 leading: <span className={styles.paneLive}>{t('editor.preview.live')}</span>,
-                trailing:
-                    markdownSettings === undefined ? undefined : (
-                        <span>{t(`editor.preview.standard.${markdownSettings.standard}`)}</span>
-                    ),
+                trailing: standard === undefined ? undefined : <span>{t(`editor.preview.standard.${standard}`)}</span>,
             }}
             identity="preview"
         />
@@ -394,7 +408,7 @@ const EditorStage = forwardRef<EditorStageHandle, EditorStageProps>(function Edi
                 identity="editor"
             />
             <LivePreview
-                key={`${activeBuffer.documentId}:${activeBuffer.content}`}
+                key={activeBuffer.documentId}
                 activeBuffer={activeBuffer}
                 adapter={adapter}
                 claimScrollRestore={claimPreviewScrollRestore}

@@ -67,7 +67,7 @@ it('strips hostile attributes and URL schemes while keeping an authored id', () 
     expect(rendered.querySelector('h2')).toHaveAttribute('id', 'setup');
     expect(rendered.querySelector('[onclick], [style]')).toBeNull();
     for (const anchor of rendered.querySelectorAll('a')) expect(anchor).not.toHaveAttribute('href');
-    const actual = render(createElement(MarkdownView, { source: '<h2 id="setup">Setup</h2>' }));
+    const actual = render(createElement(MarkdownView, { standard: 'gfm', source: '<h2 id="setup">Setup</h2>' }));
     expect(actual.container.querySelector('h2')).toHaveAttribute('id', 'setup');
 });
 
@@ -85,6 +85,7 @@ it('lets the preview visibly refuse file links while removing dangerous schemes'
     const onActivateLink = jest.fn();
     const { container } = render(
         createElement(MarkdownView, {
+            standard: 'gfm',
             documentId: 'doc-1',
             documentPath: '/notes/current.md',
             onActivateLink,

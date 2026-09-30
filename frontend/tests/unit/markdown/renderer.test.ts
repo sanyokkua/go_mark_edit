@@ -37,7 +37,10 @@ const knownViteModulePreloadFetch =
 
 it('renders safe raw HTML and removes unsafe children in the preview', () => {
     const { container } = render(
-        createElement(MarkdownView, { source: '<p>Visible <kbd>key</kbd><script>hidden</script></p>' }),
+        createElement(MarkdownView, {
+            standard: 'gfm',
+            source: '<p>Visible <kbd>key</kbd><script>hidden</script></p>',
+        }),
     );
     expect(container.querySelector('p kbd')).toHaveTextContent('key');
     expect(container.querySelector('script')).toBeNull();
@@ -91,6 +94,7 @@ it('keeps emitted preview assets offline', () => {
 it('renders accessible repeated GFM footnotes and backlinks', () => {
     const { container, unmount } = render(
         createElement(MarkdownView, {
+            standard: 'gfm',
             source: 'First reference[^note] and repeated reference[^note].\n\n[^note]: A footnote.',
         }),
     );
@@ -121,6 +125,7 @@ it('renders accessible repeated GFM footnotes and backlinks', () => {
     unmount();
     render(
         createElement(MarkdownView, {
+            standard: 'gfm',
             source: 'First reference[^note] and repeated reference[^note].\n\n[^note]: A footnote.',
         }),
     );
@@ -131,6 +136,7 @@ it('renders accessible repeated GFM footnotes and backlinks', () => {
 it('sanitizes malicious footnotes and stable ids (EC-RENDER-5)', () => {
     const { container } = render(
         createElement(MarkdownView, {
+            standard: 'gfm',
             source: 'Safe surrounding content. A reference[^safe] and a maliciously labelled reference[^unsafe" onclick="alert(1)].\n\n[^safe]: Safe footnote text <script>alert(1)</script> <img src="https://example.test/raw.png" onerror="alert(1)"> [unsafe](javascript:alert(1))\n\n[^unsafe" onclick="alert(1)]: A second safe footnote.',
         }),
     );
@@ -200,6 +206,7 @@ it('attempts zero runtime requests and keeps higher tiers literal (EC-RENDER-6)'
     try {
         const { container } = render(
             createElement(MarkdownView, {
+                standard: 'gfm',
                 source: 'Footnote[^note] with $x^2$ and :note[directive syntax].\n\n[^note]: ![resource](https://example.test/image.png)\n\n<script src="https://example.test/script.js"></script>',
             }),
         );
