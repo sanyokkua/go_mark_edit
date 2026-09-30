@@ -8,6 +8,7 @@ import {
 } from '../../../src/ui/widgets/PreviewPane';
 
 const mockRenderCount = { value: 0 };
+const mockRenderFailure = { value: false };
 
 /*
  * Stubs `react-markdown` so a render is cheap to count and so the mock can
@@ -18,17 +19,22 @@ const mockRenderCount = { value: 0 };
  */
 jest.mock('react-markdown', () => ({
     __esModule: true,
-    default: ({ components }: { children: string; components?: Components }): React.JSX.Element => {
+    default: ({ children, components }: { children: string; components?: Components }): React.JSX.Element => {
+        if (mockRenderFailure.value) throw new Error('preview render failed');
         mockRenderCount.value += 1;
         const Anchor = components?.a;
         return (
-            <div data-testid="markdown">{Anchor ? <Anchor href="https://example.test/page">link</Anchor> : null}</div>
+            <div data-testid="markdown">
+                {children}
+                {Anchor ? <Anchor href="https://example.test/page">link</Anchor> : null}
+            </div>
         );
     },
 }));
 
 beforeEach((): void => {
     mockRenderCount.value = 0;
+    mockRenderFailure.value = false;
 });
 
 function renderedController(): PreviewPaneState {
@@ -41,7 +47,7 @@ function renderedController(): PreviewPaneState {
     };
 }
 
-it('shows loading instead of the accepted document until settings load, including paused previews', () => {
+it('shows localized loading until settings and the lazy preview module load, including paused previews', async () => {
     const controller = renderedController();
     const { rerender } = render(<PreviewPaneContent controller={controller} settingsLoaded={false} />);
     expect(screen.getByRole('status')).toHaveTextContent('Loading Markdown settings');
@@ -53,8 +59,30 @@ it('shows loading instead of the accepted document until settings load, includin
     expect(screen.queryByTestId('markdown')).toBeNull();
 
     rerender(<PreviewPaneContent standard="gfm" controller={controller} settingsLoaded />);
-    expect(screen.getByTestId('markdown')).toBeInTheDocument();
+    expect(screen.getByRole('status')).toHaveTextContent('Loading Markdown settings');
+    expect(await screen.findByTestId('markdown')).toBeInTheDocument();
     expect(mockRenderCount.value).toBe(1);
+});
+
+it('retains the last committed preview after a pause and a local render failure', async () => {
+    const controller = renderedController();
+    const { rerender } = render(<PreviewPaneContent standard="gfm" controller={controller} documentId="doc-1" />);
+    expect(await screen.findByText(/# title/)).toBeInTheDocument();
+
+    rerender(<PreviewPaneContent standard="gfm" controller={{ ...controller, isPaused: true }} documentId="doc-1" />);
+    expect(screen.queryByTestId('markdown')).toBeNull();
+
+    mockRenderFailure.value = true;
+    rerender(
+        <PreviewPaneContent
+            standard="gfm"
+            controller={{ ...controller, rendered: { byteLength: 12, content: 'new source', revision: 2 } }}
+            documentId="doc-1"
+        />,
+    );
+    expect(screen.getByRole('alert')).toHaveTextContent('Showing the last successful version');
+    expect(screen.getByText(/# title/)).toBeInTheDocument();
+    expect(screen.queryByText('new source')).toBeNull();
 });
 
 it('does not re-render the markdown when the pane re-renders with a new notification owner', () => {

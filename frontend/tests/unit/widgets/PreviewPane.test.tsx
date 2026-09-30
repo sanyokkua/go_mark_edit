@@ -34,7 +34,8 @@ it('renders at the inclusive 2 MiB boundary and pauses above it', async () => {
         />,
     );
 
-    expect(screen.getByText('exactly 2 MiB')).toBeInTheDocument();
+    expect(screen.getByRole('status')).toHaveTextContent('Loading Markdown settings');
+    expect(await screen.findByText('exactly 2 MiB')).toBeInTheDocument();
     expect(screen.queryByText(/preview paused/i)).not.toBeInTheDocument();
 
     rerender(

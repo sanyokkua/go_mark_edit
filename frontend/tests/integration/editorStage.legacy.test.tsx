@@ -200,7 +200,7 @@ it('applies the responsive split layout contract', () => {
     expect(screen.queryByLabelText('Assistant')).not.toBeInTheDocument();
 });
 
-it('renders each arrangement', () => {
+it('renders each arrangement', async () => {
     renderEditorView('editor');
     expect(screen.getByLabelText('Editor pane')).toBeInTheDocument();
     expect(screen.queryByLabelText('Preview pane')).not.toBeInTheDocument();
@@ -213,7 +213,7 @@ it('renders each arrangement', () => {
     expect(screen.getByLabelText('Editor pane')).toBeInTheDocument();
     expect(screen.getByLabelText('Preview pane')).toBeInTheDocument();
     expect(screen.getByRole('radio', { name: 'Split' })).toBeChecked();
-    expect(screen.getByRole('heading', { name: 'Rendered Preview' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Rendered Preview' })).toBeInTheDocument();
 
     cleanup();
     store.dispatch(resetProjection());
@@ -240,7 +240,7 @@ it('keeps only the editor at the minimum window in Editor mode', () => {
     }
 });
 
-it('keeps only the viewer at the minimum window in Preview mode', () => {
+it('keeps only the viewer at the minimum window in Preview mode', async () => {
     setViewportWidth(375);
     try {
         renderEditorView('preview');
@@ -248,7 +248,7 @@ it('keeps only the viewer at the minimum window in Preview mode', () => {
         const previewPane = screen.getByLabelText('Preview pane');
         expect(previewPane).toHaveClass('pane');
         expect(previewPane).not.toHaveClass('paneHidden');
-        expect(within(previewPane).getByRole('heading', { name: 'Rendered Preview' })).toBeInTheDocument();
+        expect(await within(previewPane).findByRole('heading', { name: 'Rendered Preview' })).toBeInTheDocument();
         /*
          * The editor element stays mounted so its model and view state survive the
          * round trip, exactly as it does in Preview mode on a wide window — but it
@@ -325,7 +325,7 @@ it('restores Split when the window widens again without writing an arrangement',
     }
 });
 
-it('replaces the same-document editor model when a Reload acknowledgement changes content', () => {
+it('replaces the same-document editor model when a Reload acknowledgement changes content', async () => {
     const document = documentFor('split');
     store.dispatch(
         hydrateProjection({
@@ -347,7 +347,7 @@ it('replaces the same-document editor model when a Reload acknowledgement change
 
     expect(screen.getByLabelText('Markdown source')).toHaveValue('# mine\n');
     expect(
-        within(screen.getByLabelText('Preview pane')).getByRole('heading', {
+        await within(screen.getByLabelText('Preview pane')).findByRole('heading', {
             name: 'mine',
         }),
     ).toBeInTheDocument();

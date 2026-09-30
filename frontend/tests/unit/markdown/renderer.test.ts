@@ -32,8 +32,26 @@ const remoteHTMLAssetSource = /<(?:script|link)\b[^>]*\b(?:src|href)\s*=\s*['"]\
 const remoteCSSAssetSource =
     /@import\s+(?:url\(\s*)?['"]?\s*(?:https?:)?\/\/|url\(\s*['"]?\s*(?:https?:)?\/\/|@font-face[\s\S]{0,800}?src\s*:[^;}]*?(?:https?:)?\/\//i;
 
-const knownViteModulePreloadFetch =
-    /document\.querySelectorAll\(['"]link\[rel=["']modulepreload["']\]['"]\)[\s\S]{0,800}\bfetch\(\w+\.href,\w+\)/;
+const katexParserFetchDefinition = /consume\(\)\{this\.nextToken=null\}fetch\(\)\{return this\.nextToken==null/u;
+const katexParserFetchCall = /\b(?:[A-Za-z_$][\w$]*|this)\.fetch\(\)/gu;
+
+function unrecognizedFetchCalls(source: string): string[] {
+    let inspected = source;
+    if (source.includes('KaTeX parse error:')) {
+        expect(source).toMatch(katexParserFetchDefinition);
+        // This pinned KaTeX bundle has one parser method and 27 zero-argument
+        // calls to it. A new call site requires an explicit review.
+        expect(source.match(katexParserFetchCall)).toHaveLength(27);
+        inspected = inspected.replace(katexParserFetchDefinition, 'katexParserMethod');
+        inspected = inspected.replace(katexParserFetchCall, 'katexParserCall');
+    }
+    return inspected.match(/\bfetch\s*\(/gu) ?? [];
+}
+
+it('rejects global and argument-bearing fetch calls while allowing only the reviewed KaTeX parser shape', () => {
+    expect(unrecognizedFetchCalls('fetch("https://example.test")')).toHaveLength(1);
+    expect(unrecognizedFetchCalls('parser.fetch("https://example.test")')).toHaveLength(1);
+});
 
 it('renders safe raw HTML and removes unsafe children in the preview', () => {
     const { container } = render(
@@ -65,6 +83,12 @@ it('keeps emitted preview assets offline', () => {
         expect(runtimeAssets.some((asset) => asset.endsWith('.html'))).toBe(true);
         expect(runtimeAssets.some((asset) => asset.endsWith('.css'))).toBe(true);
         expect(runtimeAssets.some((asset) => asset.endsWith('.js'))).toBe(true);
+        const emittedCss = runtimeAssets
+            .filter((asset) => asset.endsWith('.css'))
+            .map((asset) => readFileSync(asset, 'utf8'))
+            .join('');
+        expect(emittedCss).toMatch(/\.katex-error\{color:var\(--err\);overflow-wrap:anywhere\}/u);
+        expect(emittedCss).toMatch(/\.math-display-error\{display:block/u);
 
         for (const asset of runtimeAssets) {
             const contents = readFileSync(asset, 'utf8');
@@ -79,11 +103,7 @@ it('keeps emitted preview assets offline', () => {
                 expect(contents).not.toMatch(remoteImportSource);
                 expect(contents).not.toMatch(/\bXMLHttpRequest\s*\(/);
 
-                const fetchCalls = contents.match(/\bfetch\s*\(/g) ?? [];
-                if (fetchCalls.length > 0) {
-                    expect(fetchCalls).toHaveLength(1);
-                    expect(contents).toMatch(knownViteModulePreloadFetch);
-                }
+                expect(unrecognizedFetchCalls(contents)).toEqual([]);
             }
         }
     } finally {

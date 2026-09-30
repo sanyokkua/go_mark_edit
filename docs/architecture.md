@@ -229,6 +229,17 @@ pipeline uses `frontend/src/logic/markdown/highlight.ts` for its explicit fenced
 200,000-character guard; `MarkdownView.tsx` loads the generated unscoped highlight rules, which follow
 the active tokens without re-parsing the document.
 
+The Full syntax list also registers `syntax/mathStrict.ts` for bounded single-dollar math.
+`renderLimits.ts` counts sanitized formulas in document order and replaces sources over 10,000 characters
+or formulas after the first 1,000 before `math.ts` invokes KaTeX with trust disabled and bounded expansion.
+Shared formula-scope discovery and preformatted text extraction match KaTeX's input, including sanitized raw
+HTML and enclosing preformatted elements. The same source supplies local error markers; display output
+preserves source-line annotations.
+`MarkdownView.tsx` supplies localized limit messages and token-based error styling. `PreviewPane.tsx` loads
+that renderer through a lazy boundary with the existing localized loading state, so its KaTeX dependency
+remains outside the entry bundle. The Vite configuration keeps all KaTeX fonts local, external to CSS, and
+woff2 only; retained previews continue through pause, resume and local rendering failures.
+
 All appearance values come from `frontend/src/ui/styles/tokens.css`. The three themes and light/dark
 values are selected on the document root. Widget stylesheets do not select themes and portalled
 surfaces inherit the root attributes.

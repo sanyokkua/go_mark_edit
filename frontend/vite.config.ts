@@ -22,9 +22,24 @@ function previewImageBackendRoutePlugin(): Plugin {
     };
 }
 
+function katexWoff2OnlyPlugin(): Plugin {
+    return {
+        name: 'katex-woff2-only',
+        enforce: 'pre',
+        transform(source, id): string | undefined {
+            if (!/[\\/]katex[\\/]dist[\\/]katex\.min\.css(?:\?|$)/u.test(id)) return undefined;
+            return source.replace(/,url\([^)]*\.(?:woff|ttf)\) format\("(?:woff|truetype)"\)/gu, '');
+        },
+    };
+}
+
 export default defineConfig({
     base: './',
-    plugins: [previewImageBackendRoutePlugin(), react()],
+    plugins: [previewImageBackendRoutePlugin(), katexWoff2OnlyPlugin(), react()],
+    build: {
+        assetsInlineLimit: 0,
+        modulePreload: { polyfill: false },
+    },
     resolve: {
         alias: {
             wailsjs: path.resolve(rootDir, 'wailsjs'),

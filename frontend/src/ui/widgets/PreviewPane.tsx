@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { t } from '../../i18n';
 import type { LivePreviewAdapter } from '../../logic/hooks/useLivePreview';
@@ -7,12 +7,13 @@ import { scrollToAnchor } from '../../logic/markdown/headings';
 import type { MarkdownStandard } from '../../logic/markdown/pipeline';
 import { classifyImageSource } from '../../logic/markdown/imagePolicy';
 import type { OpenResult } from '../../logic/store/appModelTypes';
-import MarkdownView, { type CommittedMarkdownPreview } from '../components/MarkdownView';
+import type { CommittedMarkdownPreview } from '../components/MarkdownView';
 import Button from '../primitives/Button';
 import Icon from '../primitives/Icon';
 import styles from './PreviewPane.module.css';
 
 export const PREVIEW_BYTE_LIMIT = 2_097_152;
+const MarkdownView = lazy(() => import('../components/MarkdownView'));
 
 export interface PreviewSnapshot {
     byteLength: number;
@@ -326,17 +327,19 @@ export const PreviewPaneContent: React.FC<PreviewPaneContentProps> = ({
                             onRefresh={controller.refresh}
                         />
                     ) : null}
-                    <MarkdownView
-                        committedPreview={committedPreview}
-                        documentId={documentId}
-                        documentPath={documentPath}
-                        imageSourceResolver={resolveImageSource}
-                        onActivateLink={activateLink}
-                        onPreviewCommitted={onPreviewCommitted}
-                        source={controller.rendered?.content ?? ''}
-                        standard={standard}
-                        suspended={controller.isPaused}
-                    />
+                    <Suspense fallback={<span role="status">{t('preview.loading')}</span>}>
+                        <MarkdownView
+                            committedPreview={committedPreview}
+                            documentId={documentId}
+                            documentPath={documentPath}
+                            imageSourceResolver={resolveImageSource}
+                            onActivateLink={activateLink}
+                            onPreviewCommitted={onPreviewCommitted}
+                            source={controller.rendered?.content ?? ''}
+                            standard={standard}
+                            suspended={controller.isPaused}
+                        />
+                    </Suspense>
                 </>
             )}
         </section>

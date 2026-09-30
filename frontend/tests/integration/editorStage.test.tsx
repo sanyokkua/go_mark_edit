@@ -85,7 +85,7 @@ afterEach(() => {
     mockCreatePipeline.mockReset().mockImplementation(actualCreatePipeline);
 });
 
-it('keeps the committed preview through a failed same-document source refresh and isolates the next document', () => {
+it('keeps the committed preview through a failed same-document source refresh and isolates the next document', async () => {
     const failBrokenSource: Plugin = () => (_tree, file) => {
         if (String(file.value).includes('broken document')) throw new Error('parse failed');
     };
@@ -115,7 +115,7 @@ it('keeps the committed preview through a failed same-document source refresh an
         );
     };
     const { rerender } = render(view('document-1', '# Committed output', 1));
-    expect(screen.getByRole('heading', { name: 'Committed output' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Committed output' })).toBeInTheDocument();
 
     rerender(view('document-1', 'broken document', 2));
     expect(screen.getByRole('alert')).toHaveTextContent('Preview could not be rendered');
@@ -130,7 +130,7 @@ it('keeps the committed preview through a failed same-document source refresh an
     expect(screen.queryByRole('heading', { name: 'Recovered output' })).toBeNull();
 });
 
-it('retains a committed preview across editor-only mode without parsing the hidden source', () => {
+it('retains a committed preview across editor-only mode without parsing the hidden source', async () => {
     let unavailable = false;
     mockCreatePipeline.mockImplementation((standard) => {
         if (unavailable) throw new Error('renderer unavailable');
@@ -158,7 +158,7 @@ it('retains a committed preview across editor-only mode without parsing the hidd
         );
     };
     const { rerender } = render(view('# Committed before hiding', true));
-    expect(screen.getByRole('heading', { name: 'Committed before hiding' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Committed before hiding' })).toBeInTheDocument();
     expect(mockCreatePipeline).toHaveBeenCalledTimes(1);
     const parses = mockCreatePipeline.mock.calls.length;
 
@@ -201,7 +201,7 @@ it('retains a committed preview across a large-document pause and failing manual
         );
     };
     const { rerender } = render(view('# Committed before pause'));
-    expect(screen.getByRole('heading', { name: 'Committed before pause' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Committed before pause' })).toBeInTheDocument();
     const parses = mockCreatePipeline.mock.calls.length;
 
     unavailable = true;
@@ -256,7 +256,7 @@ it('pauses after replacing a manually refreshed large source with the same impli
     expect(screen.queryByRole('heading', { name: 'Large source A' })).toBeNull();
 });
 
-it('keeps the editor and preview content in explicit panes for split view', () => {
+it('keeps the editor and preview content in explicit panes for split view', async () => {
     const document = documentFor('split');
     store.dispatch(
         hydrateProjection({
@@ -294,10 +294,10 @@ it('keeps the editor and preview content in explicit panes for split view', () =
     expect(screen.getByLabelText('Editor pane')).toBeInTheDocument();
     expect(screen.getByLabelText('Preview pane')).toBeInTheDocument();
     expect(screen.getByLabelText('Markdown source')).toHaveValue('# Preview');
-    expect(screen.getByRole('heading', { name: 'Preview' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Preview' })).toBeInTheDocument();
 });
 
-it('hides the preview header standard and document until Markdown settings hydrate', () => {
+it('hides the preview header standard and document until Markdown settings hydrate', async () => {
     const document = documentFor('split');
     store.dispatch(resetSettingsProjection());
     store.dispatch(
@@ -335,10 +335,10 @@ it('hides the preview header standard and document until Markdown settings hydra
         store.dispatch(hydrateSettings(loadedMarkdownSettings));
     });
     expect(within(pane).getByText('Full')).toBeInTheDocument();
-    expect(within(pane).getByRole('heading', { name: 'Preview' })).toBeInTheDocument();
+    expect(await within(pane).findByRole('heading', { name: 'Preview' })).toBeInTheDocument();
 });
 
-it('updates the preview syntax when the stored standard changes without remounting the editor', () => {
+it('updates the preview syntax when the stored standard changes without remounting the editor', async () => {
     const document = documentFor('split');
     const content = '| Name |\n| --- |\n| Ada |';
     store.dispatch(
@@ -368,7 +368,7 @@ it('updates the preview syntax when the stored standard changes without remounti
     );
     const editor = screen.getByLabelText('Markdown source');
     const pane = screen.getByRole('region', { name: 'Preview pane' });
-    expect(within(pane).getByRole('table')).toBeInTheDocument();
+    expect(await within(pane).findByRole('table')).toBeInTheDocument();
 
     act(() => {
         store.dispatch(acknowledgeMarkdownSettings({ ...loadedMarkdownSettings.markdown, standard: 'minimal' }));
@@ -379,7 +379,7 @@ it('updates the preview syntax when the stored standard changes without remounti
     expect(screen.getByLabelText('Markdown source')).toBe(editor);
 });
 
-it('uses current pane owners for retained links and images after hiding and a failed remount', () => {
+it('uses current pane owners for retained links and images after hiding and a failed remount', async () => {
     const firstAdapter = {
         ...adapter,
         openExternalLink: jest.fn(),
@@ -430,7 +430,7 @@ it('uses current pane owners for retained links and images after hiding and a fa
             firstWarning,
         ),
     );
-    expect(screen.getByRole('img', { name: 'Local' })).toHaveAttribute('src', '/preview-image?owner=first');
+    expect(await screen.findByRole('img', { name: 'Local' })).toHaveAttribute('src', '/preview-image?owner=first');
     const parses = mockCreatePipeline.mock.calls.length;
     mockCreatePipeline.mockImplementation(() => {
         throw new Error('pipeline unavailable');

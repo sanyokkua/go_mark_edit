@@ -114,6 +114,28 @@
     padding-inline: var(--preview-code-inline-padding);
 }
 
+.preview .mathLimit {
+    border: var(--control-border-width) solid var(--stroke-soft);
+    border-radius: 4px;
+    color: var(--err);
+    padding: 2px 4px;
+}
+
+.preview div.mathLimit {
+    margin-block: var(--preview-block-spacing);
+    padding: 8px 12px;
+}
+
+.preview :global(.katex-error) {
+    color: var(--err);
+    overflow-wrap: anywhere;
+}
+
+.preview :global(.math-display-error) {
+    display: block;
+    margin-block: var(--preview-block-spacing);
+}
+
 /* The design sets no line-height on a code block, nor on the preview around
    it, so the block resolves to `normal` — roughly 14px at this 12px size.
    `.preview`'s own 1.5 would otherwise cascade in as 18px and push every code

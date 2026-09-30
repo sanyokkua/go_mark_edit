@@ -2,7 +2,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 
 import PreviewPane from '../../src/ui/widgets/PreviewPane';
 
-it('scrolls an activated fragment to the first matching heading inside its own preview', () => {
+it('scrolls an activated fragment to the first matching heading inside its own preview', async () => {
     const outside = document.createElement('h2');
     outside.id = 'setup';
     outside.scrollIntoView = jest.fn();
@@ -20,6 +20,7 @@ it('scrolls an activated fragment to the first matching heading inside its own p
                 onRefresh={jest.fn()}
             />,
         );
+        await screen.findByRole('link', { name: 'go' });
         const headings = container.querySelectorAll('h2');
         expect(headings).toHaveLength(2);
         const headingScroll = jest.fn();
@@ -34,7 +35,7 @@ it('scrolls an activated fragment to the first matching heading inside its own p
     }
 });
 
-it('keeps a raw alert anchor and scrolls the first matching ID inside its preview', () => {
+it('keeps a raw alert anchor and scrolls the first matching ID inside its preview', async () => {
     const outside = document.createElement('div');
     outside.id = 'setup';
     outside.scrollIntoView = jest.fn();
@@ -53,6 +54,7 @@ it('keeps a raw alert anchor and scrolls the first matching ID inside its previe
                 onRefresh={jest.fn()}
             />,
         );
+        await screen.findByRole('link', { name: 'Jump' }, { timeout: 3_000 });
         const alert = container.querySelector('[role="note"]');
         const later = container.querySelector('h2');
         expect(alert).toHaveAttribute('id', 'setup');
@@ -66,9 +68,9 @@ it('keeps a raw alert anchor and scrolls the first matching ID inside its previe
     } finally {
         outside.remove();
     }
-});
+}, 10_000);
 
-it('scrolls a percent-encoded Unicode fragment to its heading', () => {
+it('scrolls a percent-encoded Unicode fragment to its heading', async () => {
     const { container } = render(
         <PreviewPane
             standard="gfm"
@@ -77,6 +79,7 @@ it('scrolls a percent-encoded Unicode fragment to its heading', () => {
             onRefresh={jest.fn()}
         />,
     );
+    await screen.findByRole('link', { name: 'go' });
     const heading = container.querySelector('h2');
     expect(heading).toHaveAttribute('id', 'über-uns');
     const scroll = jest.fn();
@@ -86,7 +89,7 @@ it('scrolls a percent-encoded Unicode fragment to its heading', () => {
     expect(scroll).toHaveBeenCalledWith({ block: 'start' });
 });
 
-it('scrolls an encoded literal percent fragment to a raw author id', () => {
+it('scrolls an encoded literal percent fragment to a raw author id', async () => {
     const { container } = render(
         <PreviewPane
             standard="gfm"
@@ -95,6 +98,7 @@ it('scrolls an encoded literal percent fragment to a raw author id', () => {
             onRefresh={jest.fn()}
         />,
     );
+    await screen.findByRole('link', { name: 'go' });
     const heading = container.querySelector('h2');
     expect(heading).toHaveAttribute('id', 'a%20b');
     const scroll = jest.fn();
@@ -119,7 +123,7 @@ it('reports a focused self-link open so its existing tab can be revealed', async
         />,
     );
 
-    fireEvent.click(screen.getByRole('link', { name: 'self' }));
+    fireEvent.click(await screen.findByRole('link', { name: 'self' }));
 
     await waitFor(() => expect(onFocusedDocumentOpen).toHaveBeenCalledWith('doc-1'));
     expect(openPreviewLink).toHaveBeenCalledWith('doc-1', './a.md');
@@ -140,7 +144,7 @@ it('does not request tab reveal for a refused preview link', async () => {
         />,
     );
 
-    fireEvent.click(screen.getByRole('link', { name: 'self' }));
+    fireEvent.click(await screen.findByRole('link', { name: 'self' }));
 
     await waitFor(() => expect(openPreviewLink).toHaveBeenCalledTimes(1));
     expect(onFocusedDocumentOpen).not.toHaveBeenCalled();

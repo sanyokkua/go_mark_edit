@@ -1,4 +1,5 @@
 import '../../logic/theme/generatedHighlight.css';
+import 'katex/dist/katex.min.css';
 import { Component, createContext, memo, useContext, useMemo, useState, type ReactNode } from 'react';
 import Markdown, { type Components } from 'react-markdown';
 
@@ -56,7 +57,30 @@ type PreviewRuntimeProps = Pick<
 const PreviewRuntimeContext = createContext<PreviewRuntimeProps>({});
 const components: Components = {
     ...markdownComponents,
+    span: function PreviewMathLimitInline({ children, node, ...props }): React.JSX.Element {
+        const reason = node?.properties.dataMathLimit;
+        if (reason === 'too-many' || reason === 'too-large') {
+            return (
+                <span className={styles.mathLimit} data-math-limit={reason}>
+                    {t(`preview.math.${reason === 'too-many' ? 'tooMany' : 'tooLarge'}`)}
+                </span>
+            );
+        }
+        return <span {...props}>{children}</span>;
+    },
     div: function PreviewAlert({ children, className, node, ...props }): React.JSX.Element {
+        const mathReason = node?.properties.dataMathLimit;
+        if (mathReason === 'too-many' || mathReason === 'too-large') {
+            return (
+                <div
+                    className={styles.mathLimit}
+                    data-math-limit={mathReason}
+                    data-source-line={node?.properties.dataSourceLine as number | undefined}
+                >
+                    {t(`preview.math.${mathReason === 'too-many' ? 'tooMany' : 'tooLarge'}`)}
+                </div>
+            );
+        }
         const kind = /(?:^|\s)md-alert-(note|tip|important|warning|caution)(?:\s|$)/u.exec(className ?? '')?.[1] as
             AlertKind | undefined;
         if (kind !== undefined && className?.split(/\s+/u).includes('md-alert')) {

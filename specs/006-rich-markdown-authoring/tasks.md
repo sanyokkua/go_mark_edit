@@ -623,7 +623,7 @@ p.md-alert-title`; handles GitHub alerts and rewritten admonitions alike.
 
     **Verify**: `scripts/test unit`, `scripts/verify lint`.
 
-- [ ] T014 [US1] Render formulas with KaTeX, enforce formula limits, and ship KaTeX offline in `frontend/src/logic/markdown/pipeline.ts`, `frontend/src/ui/components/MarkdownView.tsx`, `frontend/vite.config.ts`
+- [x] T014 [US1] Render formulas with KaTeX, enforce formula limits, and ship KaTeX offline in `frontend/src/logic/markdown/pipeline.ts`, `frontend/src/ui/components/MarkdownView.tsx`, `frontend/vite.config.ts`
 
     **Story / Priority**: US1 (P1). Needs T006, T010, T013.
 
