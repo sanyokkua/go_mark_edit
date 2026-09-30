@@ -84,6 +84,51 @@ test('changes all six palettes through keyboard-reachable controls without overf
     }
 });
 
+test('raw mark follows preview colors across all six palettes', async ({ app }) => {
+    const source = await app.writeDocument('mark.md', 'Raw <mark>highlighted</mark> text.');
+    await app.seedRecents([source]);
+    await app.launch();
+
+    const { page } = app;
+    await page
+        .getByRole('tab', { name: 'Untitled' })
+        .locator('..')
+        .getByRole('button', { name: /^Close /u })
+        .click();
+    await page.getByTestId('document-launcher').getByRole('button', { name: 'mark.md' }).click();
+    await page.getByRole('radiogroup', { name: 'View arrangement' }).getByRole('radio', { name: 'Preview' }).click();
+    await expect(page.locator('.gme-preview mark')).toHaveText('highlighted');
+
+    for (const [themeLabel, modeLabel, theme, mode] of palettes) {
+        await openAppearance(page);
+        await page.getByRole('radio', { name: themeLabel, exact: true }).press('Space');
+        await page.getByRole('radio', { name: modeLabel, exact: true }).press('Space');
+        await page.keyboard.press('Escape');
+        await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
+        await expect(page.locator('html')).toHaveAttribute('data-mode', mode);
+
+        const colors = await page.locator('.gme-preview mark').evaluate((mark) => {
+            const probe = document.createElement('span');
+            probe.style.backgroundColor = 'var(--accent-soft)';
+            probe.style.color = 'var(--text)';
+            mark.parentElement?.append(probe);
+            const actual = getComputedStyle(mark);
+            const expected = getComputedStyle(probe);
+            const result = {
+                background: actual.backgroundColor,
+                color: actual.color,
+                expectedBackground: expected.backgroundColor,
+                expectedColor: expected.color,
+            };
+            probe.remove();
+            return result;
+        });
+        expect(colors.background).toBe(colors.expectedBackground);
+        expect(colors.color).toBe(colors.expectedColor);
+    }
+    app.expectNoForeignRequests();
+});
+
 test('keeps compact Settings theme rows labeled, stacked, and frame-bounded', async ({ app }, testInfo) => {
     await app.launch();
 

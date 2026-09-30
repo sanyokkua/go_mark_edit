@@ -101,6 +101,11 @@
     color: var(--md-emphasis);
 }
 
+.preview mark {
+    background: var(--accent-soft);
+    color: var(--text);
+}
+
 .preview :is(code, pre) {
     font-family: var(--preview-code-font-family);
 }

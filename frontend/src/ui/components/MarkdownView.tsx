@@ -2,14 +2,12 @@ import { Children, isValidElement, memo, useMemo, useState, type ReactNode } fro
 import Markdown, { type Components, type ExtraProps } from 'react-markdown';
 
 import { classifyLink, type LinkTarget } from '../../logic/markdown/linkPolicy';
-import {
-    baseGfmRehypePlugins,
-    baseGfmRemarkPlugins,
-    markdownComponents,
-    previewUrlTransform,
-    renderImageFallback,
-} from '../../logic/markdown/renderer';
+import { createPipeline } from '../../logic/markdown/pipeline';
+import { markdownComponents, previewUrlTransform, renderImageFallback } from '../../logic/markdown/renderer';
 import styles from './MarkdownView.module.css';
+
+const gfmPipeline = createPipeline('gfm');
+const remarkRehypeOptions = { allowDangerousHtml: true };
 
 export interface MarkdownViewProps {
     source: string;
@@ -132,44 +130,44 @@ const MarkdownView: React.FC<MarkdownViewProps> = memo(function MarkdownView({
                     </a>
                 );
             },
-            h1({ children, 'data-source-line': dataSourceLine }: HeadingProps): React.JSX.Element {
+            h1({ children, id, 'data-source-line': dataSourceLine }: HeadingProps): React.JSX.Element {
                 return (
-                    <h1 data-source-line={dataSourceLine} id={headingId(children)}>
+                    <h1 data-source-line={dataSourceLine} id={id ?? headingId(children)}>
                         {children}
                     </h1>
                 );
             },
-            h2({ children, 'data-source-line': dataSourceLine }: HeadingProps): React.JSX.Element {
+            h2({ children, id, 'data-source-line': dataSourceLine }: HeadingProps): React.JSX.Element {
                 return (
-                    <h2 data-source-line={dataSourceLine} id={headingId(children)}>
+                    <h2 data-source-line={dataSourceLine} id={id ?? headingId(children)}>
                         {children}
                     </h2>
                 );
             },
-            h3({ children, 'data-source-line': dataSourceLine }: HeadingProps): React.JSX.Element {
+            h3({ children, id, 'data-source-line': dataSourceLine }: HeadingProps): React.JSX.Element {
                 return (
-                    <h3 data-source-line={dataSourceLine} id={headingId(children)}>
+                    <h3 data-source-line={dataSourceLine} id={id ?? headingId(children)}>
                         {children}
                     </h3>
                 );
             },
-            h4({ children, 'data-source-line': dataSourceLine }: HeadingProps): React.JSX.Element {
+            h4({ children, id, 'data-source-line': dataSourceLine }: HeadingProps): React.JSX.Element {
                 return (
-                    <h4 data-source-line={dataSourceLine} id={headingId(children)}>
+                    <h4 data-source-line={dataSourceLine} id={id ?? headingId(children)}>
                         {children}
                     </h4>
                 );
             },
-            h5({ children, 'data-source-line': dataSourceLine }: HeadingProps): React.JSX.Element {
+            h5({ children, id, 'data-source-line': dataSourceLine }: HeadingProps): React.JSX.Element {
                 return (
-                    <h5 data-source-line={dataSourceLine} id={headingId(children)}>
+                    <h5 data-source-line={dataSourceLine} id={id ?? headingId(children)}>
                         {children}
                     </h5>
                 );
             },
-            h6({ children, 'data-source-line': dataSourceLine }: HeadingProps): React.JSX.Element {
+            h6({ children, id, 'data-source-line': dataSourceLine }: HeadingProps): React.JSX.Element {
                 return (
-                    <h6 data-source-line={dataSourceLine} id={headingId(children)}>
+                    <h6 data-source-line={dataSourceLine} id={id ?? headingId(children)}>
                         {children}
                     </h6>
                 );
@@ -181,9 +179,9 @@ const MarkdownView: React.FC<MarkdownViewProps> = memo(function MarkdownView({
         <article className={`${styles.preview} gme-preview`}>
             <Markdown
                 components={components}
-                rehypePlugins={baseGfmRehypePlugins}
-                remarkPlugins={baseGfmRemarkPlugins}
-                skipHtml
+                rehypePlugins={gfmPipeline.rehypePlugins}
+                remarkPlugins={gfmPipeline.remarkPlugins}
+                remarkRehypeOptions={remarkRehypeOptions}
                 urlTransform={previewUrlTransform}
             >
                 {source}

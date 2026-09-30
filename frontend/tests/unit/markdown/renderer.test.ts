@@ -1,24 +1,16 @@
 import { execFileSync } from 'node:child_process';
 import { mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { join } from 'node:path';
 
 import { render, screen } from '@testing-library/react';
 import { createElement } from 'react';
-import rehypeSanitize from 'rehype-sanitize';
-import remarkGfm from 'remark-gfm';
 import remarkParse from 'remark-parse';
 import remarkRehype from 'remark-rehype';
 import { unified } from 'unified';
 
-import {
-    baseGfmRehypePlugins,
-    baseGfmRemarkPlugins,
-    baseGfmSanitizeSchema,
-} from '../../../src/logic/markdown/renderer';
+import { createPipeline } from '../../../src/logic/markdown/pipeline';
 import MarkdownView from '../../../src/ui/components/MarkdownView';
-
-const readSource = (relativePath: string): string => readFileSync(resolve(process.cwd(), relativePath), 'utf8');
 
 const emittedRuntimeAssets = (directory: string): string[] => {
     return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
@@ -43,39 +35,16 @@ const remoteCSSAssetSource =
 const knownViteModulePreloadFetch =
     /document\.querySelectorAll\(['"]link\[rel=["']modulepreload["']\]['"]\)[\s\S]{0,800}\bfetch\(\w+\.href,\w+\)/;
 
-it('centralizes the base GFM pipeline', () => {
-    const rendererSource = readSource('src/logic/markdown/renderer.ts');
-    const previewSource = readSource('src/ui/components/MarkdownView.tsx');
-
-    expect(baseGfmRemarkPlugins).toContain(remarkGfm);
-    expect(baseGfmRehypePlugins.at(-1)).toEqual([rehypeSanitize, baseGfmSanitizeSchema]);
-    expect(rendererSource).not.toMatch(/rehypeRaw|remarkMath/);
-    expect(previewSource).toContain('skipHtml');
+it('renders safe raw HTML and removes unsafe children in the preview', () => {
+    const { container } = render(
+        createElement(MarkdownView, { source: '<p>Visible <kbd>key</kbd><script>hidden</script></p>' }),
+    );
+    expect(container.querySelector('p kbd')).toHaveTextContent('key');
+    expect(container.querySelector('script')).toBeNull();
+    expect(container).not.toHaveTextContent('hidden');
 });
 
-it('keeps renderer dependencies and assets offline', () => {
-    const packageManifest = JSON.parse(readSource('package.json')) as {
-        dependencies: Record<string, string>;
-    };
-    const rendererSource = readSource('src/logic/markdown/renderer.ts');
-    const previewSource = readSource('src/ui/components/MarkdownView.tsx');
-    const previewStylesSource = readSource('src/ui/components/MarkdownView.module.css');
-    const viteSource = readSource('vite.config.ts');
-    const productionSources = [rendererSource, previewSource, previewStylesSource, viteSource].join('\n');
-
-    expect(packageManifest.dependencies).toMatchObject({
-        'react-markdown': expect.any(String),
-        'rehype-sanitize': expect.any(String),
-        'remark-gfm': expect.any(String),
-    });
-    expect(rendererSource).toContain("from 'rehype-sanitize'");
-    expect(rendererSource).toContain("from 'remark-gfm'");
-    expect(previewSource).toContain("from 'react-markdown'");
-    expect(productionSources).not.toMatch(remoteImportSource);
-    expect(productionSources).not.toMatch(/\b(?:fetch|XMLHttpRequest)\s*\(/);
-    expect(productionSources).not.toMatch(remoteHTMLAssetSource);
-    expect(productionSources).not.toMatch(remoteCSSAssetSource);
-
+it('keeps emitted preview assets offline', () => {
     const outputDirectory = mkdtempSync(join(tmpdir(), 'gomarkedit-assets-'));
     try {
         execFileSync(
@@ -295,7 +264,12 @@ it('processes a document of exactly the 2 MiB preview limit', () => {
     source = source.slice(0, PREVIEW_BYTE_LIMIT);
     expect(Buffer.byteLength(source, 'utf8')).toBe(PREVIEW_BYTE_LIMIT);
 
-    const processor = unified().use(remarkParse).use(baseGfmRemarkPlugins).use(remarkRehype).use(baseGfmRehypePlugins);
+    const pipeline = createPipeline('gfm');
+    const processor = unified()
+        .use(remarkParse)
+        .use(pipeline.remarkPlugins)
+        .use(remarkRehype, { allowDangerousHtml: true })
+        .use(pipeline.rehypePlugins);
 
     const startedAt = performance.now();
     const tree = processor.runSync(processor.parse(source));

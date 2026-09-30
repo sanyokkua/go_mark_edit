@@ -4,7 +4,7 @@ import { render, screen } from '@testing-library/react';
 import { sanitize } from 'hast-util-sanitize';
 import type { Element, Root } from 'hast';
 
-import { baseGfmSanitizeSchema } from '../../../src/logic/markdown/renderer';
+import { sanitizeSchema } from '../../../src/logic/markdown/sanitizeSchema';
 import { rehypeSourceLines, SOURCE_LINE_ATTRIBUTE } from '../../../src/logic/markdown/sourceLines';
 import MarkdownView from '../../../src/ui/components/MarkdownView';
 
@@ -131,11 +131,12 @@ it('does not let raw HTML in the source forge a source-line attribute', () => {
     const { container } = render(createElement(MarkdownView, { source }));
 
     const paragraphs = container.querySelectorAll('p');
-    expect(paragraphs).toHaveLength(2);
+    expect(paragraphs).toHaveLength(3);
     expect(paragraphs[0]).toHaveAttribute(SOURCE_LINE_ATTRIBUTE, '1');
-    expect(paragraphs[1]).toHaveAttribute(SOURCE_LINE_ATTRIBUTE, '5');
+    expect(paragraphs[1]).toHaveAttribute(SOURCE_LINE_ATTRIBUTE, '3');
+    expect(paragraphs[2]).toHaveAttribute(SOURCE_LINE_ATTRIBUTE, '5');
     expect(container.querySelector('[data-source-line="999"]')).toBeNull();
-    expect(screen.queryByText(/Injected paragraph/)).not.toBeInTheDocument();
+    expect(screen.getByText('Injected paragraph.')).toBeInTheDocument();
 });
 
 it('keeps a numeric source line through sanitization and strips any other value', () => {
@@ -150,7 +151,7 @@ it('keeps a numeric source line through sanitization and strips any other value'
         children: [paragraph(5), paragraph('drop-table'), paragraph(0), paragraph(-3), paragraph(1.5)],
     };
 
-    const result = sanitize(tree, baseGfmSanitizeSchema) as Root;
+    const result = sanitize(tree, sanitizeSchema) as Root;
     const [valid, nonNumeric, zero, negative, nonInteger] = result.children as Element[];
 
     expect(valid.properties.dataSourceLine).toBe(5);

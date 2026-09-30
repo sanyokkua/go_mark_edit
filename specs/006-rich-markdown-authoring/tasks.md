@@ -317,7 +317,7 @@ what is deliberately **not** copied), `src/common/prompts/skills/mermaid/skill.t
 skeletons covering all 12 required diagram types — unescape the string to source fixtures), tests under
 `test/components/elements/mermaid/`.
 
-- [ ] T006 [US1] Build the per-standard pipeline and the single sanitizer schema in `frontend/src/logic/markdown/pipeline.ts`, `frontend/src/logic/markdown/sanitizeSchema.ts`, `frontend/src/logic/markdown/renderer.ts`
+- [x] T006 [US1] Build the per-standard pipeline and the single sanitizer schema in `frontend/src/logic/markdown/pipeline.ts`, `frontend/src/logic/markdown/sanitizeSchema.ts`, `frontend/src/logic/markdown/renderer.ts`
 
     **Story / Priority**: US1 (P1). Needs T001 (ADR-0036 is already recorded).
 
