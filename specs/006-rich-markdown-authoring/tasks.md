@@ -237,7 +237,7 @@ offline promise uses the guard.
 
     **Verify**: `scripts/test unit`, `scripts/test integration`, `scripts/verify lint`.
 
-- [ ] T004 Show the stored Markdown standard in the preview header and status bar in `frontend/src/ui/widgets/EditorStage/EditorStage.tsx` and `frontend/src/i18n/locales/en.json`
+- [x] T004 Show the stored Markdown standard in the preview header and status bar in `frontend/src/ui/widgets/EditorStage/EditorStage.tsx` and `frontend/src/i18n/locales/en.json`
 
     **Story / Priority**: Foundational (US1, US5)
 

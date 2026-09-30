@@ -292,7 +292,10 @@ const LivePreview: React.FC<LivePreviewProps> = ({
             }
             header={{
                 leading: <span className={styles.paneLive}>{t('editor.preview.live')}</span>,
-                trailing: settingsLoaded ? <span>{t('editor.preview.flavour')}</span> : undefined,
+                trailing:
+                    markdownSettings === undefined ? undefined : (
+                        <span>{t(`editor.preview.standard.${markdownSettings.standard}`)}</span>
+                    ),
             }}
             identity="preview"
         />

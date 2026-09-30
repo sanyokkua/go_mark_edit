@@ -486,7 +486,7 @@ it('renders the translated editor catalogue and preview text', async () => {
     expect(screen.getByRole('radio', { name: 'Split' })).toBeChecked();
     expect(screen.getByRole('radio', { name: 'Preview' })).toBeInTheDocument();
     expect(screen.getByText('● Preview · live')).toBeInTheDocument();
-    expect(screen.getByText('GFM')).toBeInTheDocument();
+    expect(screen.getByText('Full')).toBeInTheDocument();
 });
 
 it('applies every persisted palette to the rendered Settings control', async () => {

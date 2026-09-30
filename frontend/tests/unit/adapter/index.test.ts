@@ -80,7 +80,7 @@ it('guards and unwraps every settings call', async () => {
     await expect(adapter.updateContentPrivacy({ remotePolicy: 'block' })).resolves.toBeUndefined();
     await expect(
         adapter.updateMarkdown({
-            standard: 'commonmark',
+            standard: 'minimal',
             formatOnSave: true,
             lintOnSave: true,
             bulletMarker: '*',
@@ -110,7 +110,7 @@ it('guards and unwraps every settings call', async () => {
             [],
         ) as Promise<void>,
     ).rejects.toThrow('SettingsHandler.UpdateMarkdown expects 1 argument(s), received 0.');
-    expect(calls).toEqual(['get', 'appearance:dark', 'privacy:block', 'markdown:commonmark']);
+    expect(calls).toEqual(['get', 'appearance:dark', 'privacy:block', 'markdown:minimal']);
 });
 
 it('notifies exactly once before throwing the same wire error', () => {

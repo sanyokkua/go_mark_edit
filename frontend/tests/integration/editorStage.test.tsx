@@ -106,7 +106,7 @@ it('keeps the editor and preview content in explicit panes for split view', () =
     expect(screen.getByRole('heading', { name: 'Preview' })).toBeInTheDocument();
 });
 
-it('hides the preview header flavour and document until Markdown settings hydrate', () => {
+it('hides the preview header standard and document until Markdown settings hydrate', () => {
     const document = documentFor('split');
     store.dispatch(resetSettingsProjection());
     store.dispatch(
@@ -136,13 +136,13 @@ it('hides the preview header flavour and document until Markdown settings hydrat
         </Provider>,
     );
     const pane = screen.getByRole('region', { name: 'Preview pane' });
-    expect(within(pane).queryByText('GFM')).toBeNull();
+    expect(within(pane).queryByText('Full')).toBeNull();
     expect(within(pane).getByRole('status')).toHaveTextContent('Loading Markdown settings');
     expect(within(pane).queryByRole('heading', { name: 'Preview' })).toBeNull();
 
     act(() => {
         store.dispatch(hydrateSettings(loadedMarkdownSettings));
     });
-    expect(within(pane).getByText('GFM')).toBeInTheDocument();
+    expect(within(pane).getByText('Full')).toBeInTheDocument();
     expect(within(pane).getByRole('heading', { name: 'Preview' })).toBeInTheDocument();
 });

@@ -4,7 +4,11 @@ import { resolve } from 'node:path';
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { loadedMarkdownSettings } from '../support/loadedMarkdownSettings';
-import { hydrateSettings } from '../../src/logic/store/settingsSlice';
+import {
+    acknowledgeMarkdownSettings,
+    hydrateSettings,
+    resetSettingsProjection,
+} from '../../src/logic/store/settingsSlice';
 import type { DocViewInput } from '../../src/logic/store/appModelTypes';
 
 const mockSetDocView = jest.fn<Promise<void>, [string, DocViewInput]>(async (): Promise<void> => undefined);
@@ -75,7 +79,7 @@ function documentFor(arrangement: ViewArrangement): DocumentMetadata {
     };
 }
 
-function renderEditorView(arrangement: ViewArrangement): void {
+function hydrateDocument(arrangement: ViewArrangement): DocumentMetadata {
     const document = documentFor(arrangement);
     store.dispatch(
         hydrateProjection({
@@ -85,7 +89,11 @@ function renderEditorView(arrangement: ViewArrangement): void {
             ui: {},
         }),
     );
+    return document;
+}
 
+function renderEditorView(arrangement: ViewArrangement): void {
+    const document = hydrateDocument(arrangement);
     render(
         <Provider store={store}>
             <EditorSessionContext.Provider
@@ -95,6 +103,19 @@ function renderEditorView(arrangement: ViewArrangement): void {
                 }}
             >
                 <EditorView />
+            </EditorSessionContext.Provider>
+        </Provider>,
+    );
+}
+
+function renderShellWithDocument(): void {
+    const document = hydrateDocument('split');
+    render(
+        <Provider store={store}>
+            <EditorSessionContext.Provider value={{ documentId: document.documentId, content: '# Rendered Preview' }}>
+                <WorkspaceTreeTestProvider>
+                    <AppShell />
+                </WorkspaceTreeTestProvider>
             </EditorSessionContext.Provider>
         </Provider>,
     );
@@ -384,11 +405,46 @@ it('matches the split-view structure', () => {
 
     const previewPane = screen.getByLabelText('Preview pane');
     expect(within(previewPane).getByText('● Preview · live')).toBeVisible();
-    expect(within(previewPane).getByText('GFM')).toBeVisible();
+    expect(within(previewPane).getByText('Full')).toBeVisible();
 
     const segmentedStyles = readSource('src/ui/primitives/Segmented/Segmented.module.css');
     expect(segmentedStyles).toMatch(/var\(--segmented-[\w-]+\)/);
     expect(segmentedStyles).not.toMatch(/#[\da-f]{3,8}\b|rgba?\(|hsla?\(/i);
+});
+
+it('shows each acknowledged Markdown standard in the preview header and status bar without remounting', () => {
+    renderShellWithDocument();
+
+    const previewPane = screen.getByLabelText('Preview pane');
+    const previewHeader = previewPane.querySelector('header');
+    const status = screen.getByRole('status', { name: 'Document status' });
+    expect(previewHeader).not.toBeNull();
+
+    for (const [standard, name] of [
+        ['full', 'Full'],
+        ['minimal', 'Minimal'],
+        ['gfm', 'GFM'],
+    ] as const) {
+        act((): void => {
+            store.dispatch(acknowledgeMarkdownSettings({ ...loadedMarkdownSettings.markdown, standard }));
+        });
+        expect(within(previewHeader as HTMLElement).getByText(name)).toBeVisible();
+        expect(status.querySelector('[data-status-item="standard-kind"]')).toHaveTextContent(`Markdown · ${name}`);
+        expect(screen.getByLabelText('Preview pane')).toBe(previewPane);
+    }
+});
+
+it('shows no Markdown standard in the preview header or status bar before settings hydration', () => {
+    store.dispatch(resetSettingsProjection());
+    renderShellWithDocument();
+
+    const previewPane = screen.getByLabelText('Preview pane');
+    const previewHeader = previewPane.querySelector('header');
+    expect(previewHeader).not.toBeNull();
+    expect(within(previewHeader as HTMLElement).queryByText(/Minimal|GFM|Full/)).not.toBeInTheDocument();
+    expect(
+        screen.getByRole('status', { name: 'Document status' }).querySelector('[data-status-item="standard-kind"]'),
+    ).toBeNull();
 });
 
 /*
