@@ -64,6 +64,7 @@ const components: Components = {
             return (
                 <AlertBox
                     kind={kind}
+                    id={props.id}
                     sourceLine={
                         typeof sourceLine === 'string' || typeof sourceLine === 'number' ? sourceLine : undefined
                     }

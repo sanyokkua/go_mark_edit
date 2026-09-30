@@ -41,6 +41,9 @@ export function remarkContainers(): (tree: Root, file: { value: unknown }) => vo
                 children: [{ type: 'text', value: `[!${kind.toUpperCase()}]` }],
                 position: node.position,
             };
+            if (node.children[0]?.type === 'paragraph' && node.children[0].data?.directiveLabel === true) {
+                node.children.shift();
+            }
             // Keep the replacement's child array shared with the traversed node so
             // nested directives rewritten later update the rendered blockquote.
             node.children.unshift(marker);

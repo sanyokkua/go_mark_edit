@@ -34,6 +34,40 @@ it('scrolls an activated fragment to the first matching heading inside its own p
     }
 });
 
+it('keeps a raw alert anchor and scrolls the first matching ID inside its preview', () => {
+    const outside = document.createElement('div');
+    outside.id = 'setup';
+    outside.scrollIntoView = jest.fn();
+    document.body.append(outside);
+    try {
+        const { container } = render(
+            <PreviewPane
+                standard="full"
+                accepted={{
+                    byteLength: 120,
+                    content:
+                        '[Jump](#setup)\n\n<blockquote id="setup"><p>[!NOTE]\nBody</p></blockquote>\n\n<h2 id="setup">Later</h2>',
+                    revision: 1,
+                }}
+                documentId="doc-1"
+                onRefresh={jest.fn()}
+            />,
+        );
+        const alert = container.querySelector('[role="note"]');
+        const later = container.querySelector('h2');
+        expect(alert).toHaveAttribute('id', 'setup');
+        const alertScroll = jest.fn();
+        alert!.scrollIntoView = alertScroll;
+        later!.scrollIntoView = jest.fn();
+        fireEvent.click(screen.getByRole('link', { name: 'Jump' }));
+        expect(alertScroll).toHaveBeenCalledWith({ block: 'start' });
+        expect(later!.scrollIntoView).not.toHaveBeenCalled();
+        expect(outside.scrollIntoView).not.toHaveBeenCalled();
+    } finally {
+        outside.remove();
+    }
+});
+
 it('scrolls a percent-encoded Unicode fragment to its heading', () => {
     const { container } = render(
         <PreviewPane

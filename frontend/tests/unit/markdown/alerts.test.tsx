@@ -93,6 +93,42 @@ it('renders a known container nested in another known container', () => {
     expect(alerts[1]).toHaveAttribute('data-source-line', '4');
 });
 
+it('drops known container labels while retaining nested body content', () => {
+    const container = preview('::::note[Outer title]\nOuter body\n\n:::tip[Inner title]\nInner body\n:::\n::::');
+    const alerts = container.querySelectorAll('[role="note"]');
+    expect(alerts).toHaveLength(2);
+    expect(alerts[0]).toHaveTextContent('Note');
+    expect(alerts[0]).toHaveTextContent('Outer body');
+    expect(alerts[1]).toHaveTextContent('Tip');
+    expect(alerts[1]).toHaveTextContent('Inner body');
+    expect(container).not.toHaveTextContent('Outer title');
+    expect(container).not.toHaveTextContent('Inner title');
+});
+
+it('keeps labels in unknown containers as literal source', () => {
+    const container = preview(':::foo[Keep title]\nBody\n:::');
+    expect(container).toHaveTextContent(':::foo[Keep title]');
+    expect(container).toHaveTextContent('Body');
+    expect(container.querySelector('[role="note"]')).toBeNull();
+});
+
+it.each(['  ', '\\'])('recognizes a marker followed by a Markdown hard break %s', (breakSyntax) => {
+    const container = preview(`> [!NOTE]${breakSyntax}\n> Body`);
+    const alert = container.querySelector('[role="note"]');
+    expect(alert).toHaveTextContent('Note');
+    expect(alert).toHaveTextContent('Body');
+    expect(alert).not.toHaveTextContent('[!NOTE]');
+    expect(alert).toHaveAttribute('data-source-line', '1');
+    expect(alert?.querySelector('br')).toBeNull();
+});
+
+it('does not promote a marker followed by a same-line raw break', () => {
+    const container = preview('> [!NOTE]<br>Body');
+    expect(container.querySelector('[role="note"]')).toBeNull();
+    expect(container.querySelector('blockquote')).toHaveTextContent('[!NOTE]');
+    expect(container.querySelector('blockquote')).toHaveTextContent('Body');
+});
+
 it('keeps a nested unknown container literal without counting its heading', () => {
     const source = '# Repeat\n\n::::note\nOuter\n\n:::foo\n# Repeat\n:::\n\n## Visible\n::::\n\n# Repeat';
     const container = preview(source);

@@ -16,12 +16,13 @@ const icons: Record<AlertKind, IconName> = {
 interface AlertBoxProps {
     kind: AlertKind;
     children: ReactNode;
+    id?: string;
     sourceLine?: number | string;
 }
 
-export default function AlertBox({ kind, children, sourceLine }: AlertBoxProps): React.JSX.Element {
+export default function AlertBox({ kind, children, id, sourceLine }: AlertBoxProps): React.JSX.Element {
     return (
-        <div className={`${styles.alert} ${styles[kind]}`} data-source-line={sourceLine} role="note">
+        <div className={`${styles.alert} ${styles[kind]}`} data-source-line={sourceLine} id={id} role="note">
             <p className={styles.title}>
                 <Icon name={icons[kind]} />
                 {t(`preview.alert.${kind}`)}
