@@ -6,7 +6,7 @@ interface GeneratedTheme {
 }
 
 interface GeneratedOutput {
-    highlightCss: string;
+    highlightRules: Array<{ className: string; token: string }>;
     themes: Record<string, GeneratedTheme>;
 }
 
@@ -59,7 +59,7 @@ it('generates six complete named Monaco themes from palette values', () => {
     expect(generated.themes['gme-material-dark'].rules.find((rule) => rule.token === 'keyword.go')?.foreground).toBe(
         '#c58bff',
     );
-    expect(generated.highlightCss).toMatch(/hljs-keyword/);
+    expect(generated.highlightRules).toContainEqual({ className: 'hljs-keyword', token: '--hl-keyword' });
 });
 
 it('converts CSS rgba palette values to Monaco-compatible hex', () => {
@@ -164,18 +164,21 @@ it('rejects duplicate, unresolved, and unsupported palette sources', () => {
     );
 });
 
-it('emits inactive highlight rules for every generated syntax token', () => {
-    const generated = generate(palette);
-    for (const token of [
-        'hljs-keyword',
-        'hljs-string',
-        'hljs-comment',
-        'hljs-number',
-        'hljs-title',
-        'hljs-type',
-        'hljs-attr',
-        'hljs-punctuation',
-    ]) {
-        expect(generated.highlightCss).toMatch(new RegExp(`\\.${token}`));
-    }
+it('maps preview syntax classes to shared palette tokens', () => {
+    expect(generate(palette).highlightRules).toEqual([
+        { className: 'hljs-keyword', token: '--hl-keyword' },
+        { className: 'hljs-string', token: '--hl-string' },
+        { className: 'hljs-regexp', token: '--hl-string' },
+        { className: 'hljs-comment', token: '--hl-comment' },
+        { className: 'hljs-number', token: '--hl-number' },
+        { className: 'hljs-literal', token: '--hl-number' },
+        { className: 'hljs-built_in', token: '--hl-function' },
+        { className: 'hljs-title', token: '--hl-function' },
+        { className: 'hljs-type', token: '--hl-type' },
+        { className: 'hljs-name', token: '--hl-attr' },
+        { className: 'hljs-attr', token: '--hl-attr' },
+        { className: 'hljs-attribute', token: '--hl-attr' },
+        { className: 'hljs-operator', token: '--hl-punct' },
+        { className: 'hljs-punctuation', token: '--hl-punct' },
+    ]);
 });

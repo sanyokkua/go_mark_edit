@@ -206,10 +206,10 @@ it('renders GFM syntax at GFM and Full, but shows it literally at Minimal', () =
     expect(screen.getByText(/~~removed~~/)).toBeInTheDocument();
 });
 
-it.each(['minimal', 'gfm'] as const)('keeps a Go fence plain at %s', (standard) => {
+it.each(['minimal', 'gfm'] as const)('colours a Go fence at %s', (standard) => {
     const { container } = render(<MarkdownView source={'```go\nfunc main() {}\n```'} standard={standard} />);
     expect(container.querySelector('pre code')).toHaveTextContent('func main() {}');
-    expect(container.querySelector('pre code span')).toBeNull();
+    expect(container.querySelector('pre code .hljs-keyword')).toHaveTextContent('func');
 });
 
 it('keeps committed output above a source-specific render failure and clears the error on recovery', () => {

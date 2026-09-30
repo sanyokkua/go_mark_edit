@@ -224,7 +224,10 @@ admonitions into blockquotes; its alert step converts sanitized marker blockquot
 `MarkdownView.tsx` maps those elements to the props-only `AlertBox.tsx`, which supplies localized titles,
 shared icons and token-based styling. Unknown containers remain literal and are excluded from heading
 extraction by the same syntax transform. The frontend theme generator produces the editor
-and highlight output from the token families in `frontend/src/ui/styles/tokens.css`.
+and highlight output from the token families in `frontend/src/ui/styles/tokens.css`. The preview
+pipeline uses `frontend/src/logic/markdown/highlight.ts` for its explicit fenced-language registry and
+200,000-character guard; `MarkdownView.tsx` loads the generated unscoped highlight rules, which follow
+the active tokens without re-parsing the document.
 
 All appearance values come from `frontend/src/ui/styles/tokens.css`. The three themes and light/dark
 values are selected on the document root. Widget stylesheets do not select themes and portalled

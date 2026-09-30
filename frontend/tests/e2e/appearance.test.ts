@@ -293,3 +293,47 @@ test('applies the pre-paint theme mirror before backend reconciliation and keeps
         )
         .toBe('0ms');
 });
+
+test('preview code follows six palettes without replacing syntax spans', async ({ app }) => {
+    const source = await app.writeDocument('highlight.md', '```go\npackage main\nfunc main() {}\n```');
+    await app.seedRecents([source]);
+    await app.launch();
+
+    const { page } = app;
+    await page
+        .getByRole('tab', { name: 'Untitled' })
+        .locator('..')
+        .getByRole('button', { name: /^Close /u })
+        .click();
+    await page.getByTestId('document-launcher').getByRole('button', { name: 'highlight.md' }).click();
+    await page.getByRole('radiogroup', { name: 'View arrangement' }).getByRole('radio', { name: 'Preview' }).click();
+    const keyword = page.locator('.gme-preview pre code .hljs-keyword').first();
+    await expect(keyword).toHaveText('package');
+    await keyword.evaluate((element) => {
+        (window as Window & { highlightProbe?: Element }).highlightProbe = element;
+    });
+
+    for (const [themeLabel, modeLabel, theme, mode] of palettes) {
+        await openAppearance(page);
+        await page.getByRole('radio', { name: themeLabel, exact: true }).press('Space');
+        await page.getByRole('radio', { name: modeLabel, exact: true }).press('Space');
+        await page.keyboard.press('Escape');
+        await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
+        await expect(page.locator('html')).toHaveAttribute('data-mode', mode);
+        const colors = await keyword.evaluate((element) => {
+            const probe = document.createElement('span');
+            probe.style.color = 'var(--hl-keyword)';
+            element.parentElement?.append(probe);
+            const result = {
+                actual: getComputedStyle(element).color,
+                expected: getComputedStyle(probe).color,
+                sameNode: (window as Window & { highlightProbe?: Element }).highlightProbe === element,
+            };
+            probe.remove();
+            return result;
+        });
+        expect(colors.actual).toBe(colors.expected);
+        expect(colors.sameNode).toBe(true);
+    }
+    app.expectNoForeignRequests();
+});

@@ -484,7 +484,7 @@ p.md-alert-title`; handles GitHub alerts and rewritten admonitions alike.
 
     **Verify**: `scripts/test unit`, `scripts/test integration`, `scripts/verify lint`.
 
-- [ ] T010 [US1] Highlight fenced code with the shared palette in `frontend/src/logic/markdown/highlight.ts`, `frontend/scripts/generate-editor-themes-core.cjs`, `frontend/src/logic/theme/generatedHighlight.css`, `frontend/src/ui/components/MarkdownView.tsx`
+- [x] T010 [US1] Highlight fenced code with the shared palette in `frontend/src/logic/markdown/highlight.ts`, `frontend/scripts/generate-editor-themes-core.cjs`, `frontend/src/logic/theme/generatedHighlight.css`, `frontend/src/ui/components/MarkdownView.tsx`
 
     **Story / Priority**: US1 (P1). Needs T006. T041 edits the same generator afterwards.
 

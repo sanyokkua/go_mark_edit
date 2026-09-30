@@ -1,3 +1,4 @@
+import '../../logic/theme/generatedHighlight.css';
 import { Component, createContext, memo, useContext, useMemo, useState, type ReactNode } from 'react';
 import Markdown, { type Components } from 'react-markdown';
 

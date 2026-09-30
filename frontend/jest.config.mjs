@@ -9,6 +9,7 @@ export default {
             testMatch: ['<rootDir>/tests/unit/**/*.test.ts?(x)'],
             moduleNameMapper: {
                 '^.+\\.module\\.css$': '<rootDir>/tests/support/styleMock.ts',
+                '^.+\\.css$': '<rootDir>/tests/support/styleMock.ts',
                 '^wailsjs/(.*)$': '<rootDir>/wailsjs/$1',
             },
             transformIgnorePatterns: [],
@@ -29,6 +30,7 @@ export default {
             testMatch: ['<rootDir>/tests/integration/**/*.test.ts?(x)'],
             moduleNameMapper: {
                 '^.+\\.module\\.css$': '<rootDir>/tests/support/styleMock.ts',
+                '^.+\\.css$': '<rootDir>/tests/support/styleMock.ts',
                 '^wailsjs/(.*)$': '<rootDir>/wailsjs/$1',
             },
             transformIgnorePatterns: [],

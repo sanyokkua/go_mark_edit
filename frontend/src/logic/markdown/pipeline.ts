@@ -3,6 +3,7 @@ import rehypeSanitize from 'rehype-sanitize';
 import type { PluggableList } from 'unified';
 
 import { rehypeHeadingIds, remarkHeadings } from './headings';
+import { rehypeCodeHighlight, rehypeHighlightGuard } from './highlight';
 import { sanitizeSchema } from './sanitizeSchema';
 import { rehypeSourceLines } from './sourceLines';
 import { syntaxPlugins, type MarkdownStandard } from './syntax';
@@ -33,6 +34,8 @@ function makePipeline(standard: MarkdownStandard): MarkdownPipeline {
             [rehypeSanitize, sanitizeSchema],
             rehypeHeadingIds,
             ...(standard === 'full' ? [rehypeAlerts] : []),
+            rehypeHighlightGuard,
+            rehypeCodeHighlight,
         ],
     };
 }
