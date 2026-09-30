@@ -589,7 +589,7 @@ p.md-alert-title`; handles GitHub alerts and rewritten admonitions alike.
 
     **Verify**: `scripts/test e2e` (rich-rendering), `scripts/format --check`, `scripts/verify lint`.
 
-- [ ] T013 [P] [US1] Add the strict `$` math construct in `frontend/src/logic/markdown/syntax/mathStrict.ts`
+- [x] T013 [P] [US1] Add the strict `$` math construct in `frontend/src/logic/markdown/syntax/mathStrict.ts`
 
     **Story / Priority**: US1 (P1). Needs T001 only; file-disjoint from T006-T012, so it may run in parallel with
     them. T014 wires it in.
