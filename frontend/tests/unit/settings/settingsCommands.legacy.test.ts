@@ -33,16 +33,25 @@ it('retains editor projection on a rejected backend acknowledgement', async () =
     expect(dispatch).not.toHaveBeenCalled();
 });
 
-it('dispatches Markdown projection only after backend acknowledgement', async () => {
+it('persists the whole Markdown group and projects a new standard only after acknowledgement', async () => {
     const dispatch = jest.fn();
+    let release: (() => void) | undefined;
     const adapter = {
-        updateMarkdown: jest.fn().mockResolvedValue(undefined),
+        updateMarkdown: jest.fn(
+            () =>
+                new Promise<void>((resolve) => {
+                    release = resolve;
+                }),
+        ),
     };
-    const next = { ...currentMarkdown, emphasisMarker: '_' as const };
+    const next = { ...currentMarkdown, standard: 'full' as const };
 
-    await expect(
-        acknowledgeMarkdownSettingsUpdate(adapter, currentMarkdown, { emphasisMarker: '_' }, dispatch),
-    ).resolves.toBeUndefined();
+    const update = acknowledgeMarkdownSettingsUpdate(adapter, currentMarkdown, { standard: 'full' }, dispatch);
+    expect(adapter.updateMarkdown).toHaveBeenCalledTimes(1);
+    expect(adapter.updateMarkdown).toHaveBeenCalledWith(next);
+    expect(dispatch).not.toHaveBeenCalled();
+    release?.();
+    await update;
     expect(dispatch).toHaveBeenCalledTimes(1);
     expect(dispatch.mock.calls[0]?.[0]).toMatchObject({
         payload: next,
@@ -57,11 +66,11 @@ it('does not write a Markdown group before it has loaded', async () => {
     expect(dispatch).not.toHaveBeenCalled();
 });
 
-it('keeps the acknowledged Markdown group when persistence fails', async () => {
+it('keeps the acknowledged standard when persistence fails', async () => {
     const dispatch = jest.fn();
     const adapter = { updateMarkdown: jest.fn().mockRejectedValue(new Error('write failed')) };
     await expect(
-        acknowledgeMarkdownSettingsUpdate(adapter, currentMarkdown, { bulletMarker: '+' }, dispatch),
+        acknowledgeMarkdownSettingsUpdate(adapter, currentMarkdown, { standard: 'minimal' }, dispatch),
     ).rejects.toThrow('write failed');
     expect(dispatch).not.toHaveBeenCalled();
 });

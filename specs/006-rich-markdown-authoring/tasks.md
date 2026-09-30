@@ -524,7 +524,7 @@ p.md-alert-title`; handles GitHub alerts and rewritten admonitions alike.
 
     **Verify**: `scripts/test unit`, `scripts/verify` through Build (clean tree after generation).
 
-- [ ] T011 [US1] Make the Markdown standard row in the Settings popup work in `frontend/src/logic/actions/actionRegistry.ts`, `frontend/src/ui/widgets/Menubar/SettingsMenu.tsx`
+- [x] T011 [US1] Make the Markdown standard row in the Settings popup work in `frontend/src/logic/actions/actionRegistry.ts`, `frontend/src/ui/widgets/Menubar/SettingsMenu.tsx`
 
     **Story / Priority**: US1 (P1) / US5-1 · Needs T003, T004, T007.
 

@@ -113,6 +113,41 @@ it('guards and unwraps every settings call', async () => {
     expect(calls).toEqual(['get', 'appearance:dark', 'privacy:block', 'markdown:minimal']);
 });
 
+it.each(['envelope', 'transport'] as const)(
+    'reports one notice when a Markdown settings %s failure prevents acknowledgement',
+    async (failure) => {
+        const wireError: WireError = {
+            code: 'validation',
+            title: 'Invalid Markdown setting',
+            message: 'The standard could not be saved.',
+            retryable: false,
+        };
+        const bindings: SettingsBindings = {
+            getSettings: jest.fn(),
+            updateAppearance: jest.fn(),
+            resetAppearance: jest.fn(),
+            updateContentPrivacy: jest.fn(),
+            updateMarkdown: jest.fn(async (nextMarkdown) => {
+                void nextMarkdown;
+                if (failure === 'transport') throw wireError;
+                return { error: wireError };
+            }),
+            updateEditor: jest.fn(),
+            updateFile: jest.fn(),
+        };
+        const before = store.getState().notifications.items.length;
+
+        await expect(
+            createSettingsAdapter(bindings).updateMarkdown(
+                settings.markdown as Parameters<SettingsBindings['updateMarkdown']>[0],
+            ),
+        ).rejects.toMatchObject({
+            code: 'validation',
+        });
+        expect(store.getState().notifications.items).toHaveLength(before + 1);
+    },
+);
+
 it('notifies exactly once before throwing the same wire error', () => {
     const wireError: WireError = {
         code: 'validation',

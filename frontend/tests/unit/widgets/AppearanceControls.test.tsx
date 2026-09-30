@@ -4,7 +4,7 @@ import { Provider } from 'react-redux';
 import { settingsAdapter } from '../../../src/logic/adapter';
 import { useEditorSettings } from '../../../src/logic/settings/editorSettings';
 import { store } from '../../../src/logic/store';
-import { resetSettingsProjection } from '../../../src/logic/store/settingsSlice';
+import { hydrateSettings, resetSettingsProjection } from '../../../src/logic/store/settingsSlice';
 import AppearanceControls from '../../../src/ui/widgets/AppearanceControls';
 import { useAppearanceSettings } from '../../../src/ui/widgets/appearanceSettingsContext';
 import SettingsMenu from '../../../src/ui/widgets/Menubar/SettingsMenu';
@@ -34,6 +34,7 @@ jest.mock('../../../src/logic/adapter', () => ({
             },
         })),
         updateAppearance: jest.fn(async (): Promise<void> => undefined),
+        updateMarkdown: jest.fn(async (): Promise<void> => undefined),
         resetAppearance: jest.fn(async (): Promise<void> => undefined),
     },
 }));
@@ -41,6 +42,7 @@ jest.mock('../../../src/logic/adapter', () => ({
 const updateAppearance = settingsAdapter.updateAppearance as jest.MockedFunction<
     typeof settingsAdapter.updateAppearance
 >;
+const updateMarkdown = settingsAdapter.updateMarkdown as jest.MockedFunction<typeof settingsAdapter.updateMarkdown>;
 const getSettings = settingsAdapter.getSettings as jest.MockedFunction<typeof settingsAdapter.getSettings>;
 const resetAppearance = settingsAdapter.resetAppearance as jest.MockedFunction<typeof settingsAdapter.resetAppearance>;
 
@@ -99,20 +101,29 @@ it('changes appearance from keyboard reachable controls after a successful write
     });
 });
 
-it('keeps Markdown Standard visible but unavailable without persistence', async () => {
+it('persists the selected standard and updates the acknowledged menu state', async () => {
+    store.dispatch(hydrateSettings(await getSettings()));
     render(<AppearanceHarness />);
 
     fireEvent.click(await screen.findByRole('button', { name: 'Settings' }));
-    // The converged popup follows the design, which lists the three
-    // Markdown standard choices directly instead of one combined row. All three
-    // remain visible and unavailable while persistence is deferred.
-    for (const name of ['Minimal (CommonMark)', 'GFM', 'Full (+ math, footnotes…)']) {
-        const option = screen.getByRole('menuitem', {
+    await waitFor(() => expect(store.getState().settings.markdown?.standard).toBe('gfm'));
+    for (const name of ['Minimal (CommonMark)', 'GFM', 'Full (+ math, alerts, admonitions)']) {
+        const option = screen.getByRole('menuitemradio', {
             name: new RegExp(name.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&'), 'u'),
         });
         expect(option).toBeVisible();
-        expect(option).toHaveAttribute('aria-disabled', 'true');
+        await waitFor(() => expect(option).toHaveAttribute('aria-disabled', 'false'));
     }
+    fireEvent.click(screen.getByRole('menuitemradio', { name: 'Full (+ math, alerts, admonitions)' }));
+    await waitFor(() => expect(store.getState().settings.markdown?.standard).toBe('full'));
+    expect(updateMarkdown).toHaveBeenCalledWith({
+        bulletMarker: '-',
+        emphasisMarker: '*',
+        formatOnSave: false,
+        headingStyle: 'atx',
+        lintOnSave: false,
+        standard: 'full',
+    });
     expect(screen.queryByRole('combobox', { name: 'Markdown standard' })).not.toBeInTheDocument();
 });
 

@@ -268,9 +268,7 @@ export const actionRegistry: readonly ActionEntry[] = Object.freeze([
     entry('default-open-mode', 'application', ['settings-menu'], {
         availability: laterDeferred,
     }),
-    entry('markdown-standard', 'application', ['settings-menu'], {
-        availability: deferred('markdown-standard-later-slice'),
-    }),
+    entry('markdown-standard', 'application', ['settings-menu']),
     entry('autosave', 'application', ['settings-menu'], {
         availability: available(),
     }),

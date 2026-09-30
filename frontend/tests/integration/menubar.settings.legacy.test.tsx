@@ -204,7 +204,7 @@ it('keeps the binding popup labels, roles, and acknowledged state', () => {
         'Markdown',
         'Minimal (CommonMark)',
         'GFM',
-        'Full (+ math, footnotes…)',
+        'Full (+ math, alerts, admonitions)',
         'Autosave',
         'Format on save',
         'Lint on save',
@@ -312,7 +312,7 @@ const STATE_ROW_LABELS = [
     'Editor',
     'Minimal (CommonMark)',
     'GFM',
-    'Full (+ math, footnotes…)',
+    'Full (+ math, alerts, admonitions)',
 ] as const;
 
 function settingsRow(label: string): HTMLElement {
@@ -344,37 +344,60 @@ it('disables Autosave when the registry defers it, even with the handler wired',
     expect(settingsRow('Autosave')).toHaveAttribute('data-availability', 'deferred');
 });
 
-// registry's availability rather than a literal, and stay non-activatable while
-// no writer exists for either setting. It does not prove either setting's
-// behaviour; owns default open mode and nothing yet writes the standard.
-it('reports the registry availability on the two Settings state rows', () => {
+it('keeps standard choices unavailable until settings are hydrated', () => {
+    const onMarkdownSettingsChange = jest.fn();
+    render(<SettingsMenu {...props} onMarkdownSettingsChange={onMarkdownSettingsChange} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Settings' }));
+
+    expect(settingsRow('GFM')).toHaveAttribute('aria-disabled', 'true');
+    fireEvent.click(settingsRow('GFM'));
+    expect(onMarkdownSettingsChange).not.toHaveBeenCalled();
+});
+
+it('reports unavailable state for rows with no writer', () => {
     render(<SettingsMenu {...props} />);
     fireEvent.click(screen.getByRole('button', { name: 'Settings' }));
 
     for (const label of STATE_ROW_LABELS) {
-        expect(settingsRow(label)).toHaveAttribute('data-availability', 'deferred');
+        expect(settingsRow(label)).toHaveAttribute(
+            'data-availability',
+            label === 'Reading (Viewer)' || label === 'Editor' ? 'deferred' : 'available',
+        );
         expect(settingsRow(label)).toHaveAttribute('aria-disabled', 'true');
     }
 });
 
-/*
- * The registry saying `available` is necessary for an operable row and not
- * sufficient: nothing in the frontend writes either setting — `persist`
- * (`AppearanceControls.tsx`) accepts only `mode` and `theme` and passes
- * `defaultOpenMode` straight through — so a row drawn operable would call
- * nothing. Both terms are asserted here so neither can be dropped.
- */
-// registry's answer, and refuses to become activatable without a writer.)
-it('follows the registry when it calls a state row available, without inventing a writer', () => {
+/* The open-mode rows still have no writer; Markdown standard now has one. */
+it('activates a hydrated standard exactly once through its settings writer', () => {
+    const onMarkdownSettingsChange = jest.fn();
     withRegistryAvailability({
         'default-open-mode': { kind: 'available' },
         'markdown-standard': { kind: 'available' },
     });
-    render(<SettingsMenu {...props} />);
+    render(
+        <SettingsMenu
+            {...props}
+            markdownSettings={{
+                bulletMarker: '+',
+                emphasisMarker: '_',
+                formatOnSave: true,
+                headingStyle: 'setext',
+                lintOnSave: false,
+                standard: 'full',
+            }}
+            onMarkdownSettingsChange={onMarkdownSettingsChange}
+        />,
+    );
     fireEvent.click(screen.getByRole('button', { name: 'Settings' }));
 
-    for (const label of STATE_ROW_LABELS) {
-        expect(settingsRow(label)).toHaveAttribute('data-availability', 'available');
-        expect(settingsRow(label)).toHaveAttribute('aria-disabled', 'true');
-    }
+    expect(settingsRow('Reading (Viewer)')).toHaveAttribute('aria-disabled', 'true');
+    expect(settingsRow('GFM')).toHaveAttribute('aria-disabled', 'false');
+    expect(screen.getByRole('menuitemradio', { name: 'GFM' })).toHaveAttribute('aria-checked', 'false');
+    expect(screen.getByRole('menuitemradio', { name: 'Full (+ math, alerts, admonitions)' })).toHaveAttribute(
+        'aria-checked',
+        'true',
+    );
+    fireEvent.click(settingsRow('GFM'));
+    expect(onMarkdownSettingsChange).toHaveBeenCalledTimes(1);
+    expect(onMarkdownSettingsChange).toHaveBeenCalledWith({ standard: 'gfm' });
 });

@@ -65,6 +65,18 @@ it('gates marker actions and Markdown controls while settings are loading', () =
     }
 });
 
+it('allows a hydrated Markdown standard selection while save automation remains deferred', () => {
+    expect(getActionAvailability('markdown-standard', { markdownSettingsLoaded: true })).toEqual({ kind: 'available' });
+    expect(getActionAvailability('format-on-save', { markdownSettingsLoaded: true })).toEqual({
+        kind: 'unavailable',
+        reason: 'deferred',
+    });
+    expect(getActionAvailability('lint-on-save', { markdownSettingsLoaded: true })).toEqual({
+        kind: 'unavailable',
+        reason: 'deferred',
+    });
+});
+
 it('exposes the exact canonical file and tab shortcut inventory', () => {
     expect(getAction('new-file').shortcut).toBe('Mod+N');
     expect(getAction('open-file').shortcut).toBe('Mod+O');

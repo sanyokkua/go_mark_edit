@@ -127,11 +127,9 @@ const CompactSettingsContent: React.FC<CompactSettingsContentProps> = ({
      * calls nothing is inoperable. A row is operable only
      * when the registry allows it *and* something is there to receive the change.
      *
-     * `writer` is omitted by the open-mode and Markdown-standard lists, which
-     * genuinely have none: `AppearanceControls.persist` accepts only `mode` and
-     * `theme` patches and passes `defaultOpenMode` through untouched, and nothing
-     * anywhere writes `markdown.standard`. Those rows report a value chosen
-     * elsewhere and retain their unavailable menu-item semantics.
+     * `writer` is omitted by the open-mode list, which has no command here.
+     * Markdown standard uses the same acknowledged settings writer as the
+     * other Markdown controls.
      */
     const rowUnavailable = (id: ActionId, writer?: unknown): boolean => settingUnavailable(id) || writer === undefined;
 
@@ -220,11 +218,14 @@ const CompactSettingsContent: React.FC<CompactSettingsContentProps> = ({
             <PopupGroupLabel>{t('settings.menu.markdown')}</PopupGroupLabel>
             {markdownStandardOptions.map((option) => (
                 <MenuItem
+                    checked={markdownSettings?.standard === option.value}
                     data-availability={availabilityOf('markdown-standard')}
                     data-settings-row={option.label}
-                    disabled={rowUnavailable('markdown-standard')}
+                    disabled={rowUnavailable('markdown-standard', onMarkdownSettingsChange)}
                     key={option.value}
                     label={option.label}
+                    onSelect={(): void => onMarkdownSettingsChange?.({ standard: option.value })}
+                    radio
                     trailing={<MenuItemIndicator checked={markdownSettings?.standard === option.value} />}
                 />
             ))}
@@ -351,7 +352,11 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({
                     }
                     onMarkdownSettingsChange={(patch): void =>
                         dispatchSettingsAction(
-                            patch.formatOnSave === undefined ? 'lint-on-save' : 'format-on-save',
+                            patch.standard !== undefined
+                                ? 'markdown-standard'
+                                : patch.formatOnSave === undefined
+                                  ? 'lint-on-save'
+                                  : 'format-on-save',
                             () => onMarkdownSettingsChange?.(patch),
                         )
                     }

@@ -151,7 +151,7 @@
     "settings.menu.appearance.dark": "Dark",
     "settings.menu.markdown.minimal": "Minimal (CommonMark)",
     "settings.menu.markdown.gfm": "GFM",
-    "settings.menu.markdown.full": "Full (+ math, footnotes…)",
+    "settings.menu.markdown.full": "Full (+ math, alerts, admonitions)",
     "settings.menu.allSettings": "All settings…",
     "appearance.title": "Appearance",
     "appearance.help": "Choose the app theme and appearance.",

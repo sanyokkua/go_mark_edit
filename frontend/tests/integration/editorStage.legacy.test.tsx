@@ -3,6 +3,11 @@ import { resolve } from 'node:path';
 
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { Provider } from 'react-redux';
+import { useAppSelector } from '../../src/logic/store';
+import { createSettingsAdapter, type SettingsBindings } from '../../src/logic/adapter/services';
+import { createSettingsCommandOwner } from '../../src/logic/settings/settingsCommands';
+import SettingsMenu from '../../src/ui/widgets/Menubar/SettingsMenu';
+import { dismissNotification } from '../../src/logic/store/notificationsSlice';
 import { loadedMarkdownSettings } from '../support/loadedMarkdownSettings';
 import {
     acknowledgeMarkdownSettings,
@@ -433,6 +438,139 @@ it('shows each acknowledged Markdown standard in the preview header and status b
         expect(screen.getByLabelText('Preview pane')).toBe(previewPane);
     }
 });
+
+const standardSource =
+    '| Column | Value |\n| --- | --- |\n| Row | Cell |\n\n> [!NOTE]\n> Alert body\n\n:::note\nAdmonition body\n:::';
+
+function StandardMenu({ bindings }: { bindings: SettingsBindings }): React.JSX.Element {
+    const markdownSettings = useAppSelector((state) => state.settings.markdown);
+    const commands = createSettingsCommandOwner(createSettingsAdapter(bindings));
+    return (
+        <SettingsMenu
+            mode="auto"
+            onModeChange={jest.fn()}
+            onOpenAppearance={jest.fn()}
+            onThemeChange={jest.fn()}
+            theme="material"
+            markdownSettings={markdownSettings}
+            onMarkdownSettingsChange={(patch): void => {
+                void commands.updateMarkdown(markdownSettings, patch, store.dispatch).catch((): void => undefined);
+            }}
+        />
+    );
+}
+
+function renderStandardJourney(bindings: SettingsBindings): void {
+    const document = hydrateDocument('split');
+    render(
+        <Provider store={store}>
+            <EditorSessionContext.Provider value={{ documentId: document.documentId, content: standardSource }}>
+                <WorkspaceTreeTestProvider>
+                    <StandardMenu bindings={bindings} />
+                    <AppShell />
+                </WorkspaceTreeTestProvider>
+            </EditorSessionContext.Provider>
+        </Provider>,
+    );
+}
+
+function standardBindings(updateMarkdown: SettingsBindings['updateMarkdown']): SettingsBindings {
+    return {
+        getSettings: jest.fn(),
+        resetAppearance: jest.fn(),
+        updateAppearance: jest.fn(),
+        updateContentPrivacy: jest.fn(),
+        updateMarkdown,
+        updateEditor: jest.fn(),
+        updateFile: jest.fn(),
+    };
+}
+
+it('keeps Full visible until the GFM write succeeds, then updates menu, preview, header, and status together', async () => {
+    let acknowledge: (() => void) | undefined;
+    const updateMarkdown = jest.fn<
+        ReturnType<SettingsBindings['updateMarkdown']>,
+        Parameters<SettingsBindings['updateMarkdown']>
+    >((settings) => {
+        void settings;
+        return new Promise((resolve) => {
+            acknowledge = () => resolve({});
+        });
+    });
+    renderStandardJourney(standardBindings(updateMarkdown));
+
+    const preview = screen.getByLabelText('Preview pane');
+    await waitFor(() => expect(preview.querySelector('[role="note"]')).not.toBeNull());
+    expect(preview.querySelector('table')).not.toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Settings' }));
+    fireEvent.click(screen.getByRole('menuitemradio', { name: 'GFM' }));
+
+    expect(updateMarkdown).toHaveBeenCalledTimes(1);
+    expect(updateMarkdown).toHaveBeenCalledWith({ ...loadedMarkdownSettings.markdown, standard: 'gfm' });
+    expect(screen.getByRole('menuitemradio', { name: 'Full (+ math, alerts, admonitions)' })).toHaveAttribute(
+        'aria-checked',
+        'true',
+    );
+    expect(preview.querySelector('header')).toHaveTextContent('Full');
+    expect(
+        screen.getByRole('status', { name: 'Document status' }).querySelector('[data-status-item="standard-kind"]'),
+    ).toHaveTextContent('Markdown · Full');
+    expect(preview.querySelector('[role="note"]')).not.toBeNull();
+
+    await act(async () => {
+        acknowledge?.();
+    });
+    await waitFor(() =>
+        expect(screen.getByRole('menuitemradio', { name: 'GFM' })).toHaveAttribute('aria-checked', 'true'),
+    );
+    expect(preview.querySelector('header')).toHaveTextContent('GFM');
+    expect(
+        screen.getByRole('status', { name: 'Document status' }).querySelector('[data-status-item="standard-kind"]'),
+    ).toHaveTextContent('Markdown · GFM');
+    expect(preview.querySelector('table')).not.toBeNull();
+    expect(preview.querySelector('[role="note"]')).toBeNull();
+    expect(preview).toHaveTextContent('[!NOTE]');
+    expect(preview).toHaveTextContent(':::note');
+});
+
+it.each(['envelope', 'transport'] as const)(
+    'keeps Full and shows one notice after a %s write failure',
+    async (failure) => {
+        const error = {
+            code: 'validation',
+            title: 'Cannot save standard',
+            message: 'Try again.',
+            retryable: false,
+        } as const;
+        const updateMarkdown = jest.fn<
+            ReturnType<SettingsBindings['updateMarkdown']>,
+            Parameters<SettingsBindings['updateMarkdown']>
+        >((settings) => {
+            void settings;
+            return failure === 'envelope' ? Promise.resolve({ error }) : Promise.reject(error);
+        });
+        renderStandardJourney(standardBindings(updateMarkdown));
+        await waitFor(() =>
+            expect(screen.getByLabelText('Preview pane').querySelector('[role="note"]')).not.toBeNull(),
+        );
+        fireEvent.click(screen.getByRole('button', { name: 'Settings' }));
+        fireEvent.click(screen.getByRole('menuitemradio', { name: 'GFM' }));
+
+        await waitFor(() => expect(store.getState().notifications.items).toHaveLength(1));
+        expect(updateMarkdown).toHaveBeenCalledTimes(1);
+        expect(store.getState().settings.markdown?.standard).toBe('full');
+        expect(screen.getByRole('menuitemradio', { name: 'Full (+ math, alerts, admonitions)' })).toHaveAttribute(
+            'aria-checked',
+            'true',
+        );
+        expect(screen.getByLabelText('Preview pane').querySelector('header')).toHaveTextContent('Full');
+        expect(
+            screen.getByRole('status', { name: 'Document status' }).querySelector('[data-status-item="standard-kind"]'),
+        ).toHaveTextContent('Markdown · Full');
+        for (const notification of store.getState().notifications.items)
+            store.dispatch(dismissNotification(notification.id));
+    },
+);
 
 it('shows no Markdown standard in the preview header or status bar before settings hydration', () => {
     store.dispatch(resetSettingsProjection());
