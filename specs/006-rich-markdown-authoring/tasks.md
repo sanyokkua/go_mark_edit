@@ -268,7 +268,7 @@ offline promise uses the guard.
 
     **Verify**: `scripts/test unit`, `scripts/test integration`, `scripts/verify lint`.
 
-- [ ] T005 Add the shared offline request guard in `frontend/tests/support/harness.ts` and adopt it in `frontend/tests/e2e/preview-images.test.ts`
+- [x] T005 Add the shared offline request guard in `frontend/tests/support/harness.ts` and adopt it in `frontend/tests/e2e/preview-images.test.ts`
 
     **Story / Priority**: Foundational (SC-006 proof used by T012, T017, T028, T035, T039, T042)
 
