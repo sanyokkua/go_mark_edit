@@ -96,7 +96,7 @@ fixtures in `frontend/tests/fixtures/`.
 
 **Purpose**: Dependencies, fixture formatting exclusions and the baseline record.
 
-- [ ] T001 Record the baseline, add the feature's dependencies and the fixture formatting exclusions in `frontend/package.json`, `scripts/format` and `frontend/.prettierignore`
+- [x] T001 Record the baseline, add the feature's dependencies and the fixture formatting exclusions in `frontend/package.json`, `scripts/format` and `frontend/.prettierignore`
 
     **Story / Priority**: Setup (T006 onward import these packages)
 
