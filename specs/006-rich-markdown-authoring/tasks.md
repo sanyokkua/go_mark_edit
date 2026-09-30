@@ -159,7 +159,7 @@ offline promise uses the guard.
 
 **⚠️ CRITICAL**: No task that reads the stored Markdown settings (T006 onward, except the file-disjoint T013, T015 and T018 noted below) may begin until T002–T005 are complete.
 
-- [ ] T002 Make Full the backend default Markdown standard in `internal/settings/model.go`
+- [x] T002 Make Full the backend default Markdown standard in `internal/settings/model.go`
 
     **Story / Priority**: Foundational (US1, US5)
 

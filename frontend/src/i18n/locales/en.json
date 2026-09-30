@@ -16,6 +16,8 @@
     "status.details": "Document details",
     "status.markdown": "Markdown · {standard}",
     "status.markdownStandard.gfm": "GFM",
+    "status.markdownStandard.minimal": "Minimal",
+    "status.markdownStandard.full": "Full",
     "status.markdownStandard.commonmark": "CommonMark",
     "status.autosave.on": "Autosave on",
     "status.autosave.off": "Autosave off",
