@@ -6,6 +6,7 @@ import { rehypeHeadingIds, remarkHeadings } from './headings';
 import { sanitizeSchema } from './sanitizeSchema';
 import { rehypeSourceLines } from './sourceLines';
 import { syntaxPlugins, type MarkdownStandard } from './syntax';
+import { rehypeAlerts } from './syntax/alerts';
 
 export { syntaxPlugins } from './syntax';
 export type { MarkdownStandard } from './syntax';
@@ -26,7 +27,13 @@ function makePipeline(standard: MarkdownStandard): MarkdownPipeline {
         remarkPlugins: [...syntaxPlugins(standard), remarkHeadings],
         // Later render limits, alerts, math and highlighting follow
         // this sanitizer in that order as their respective features are added.
-        rehypePlugins: [rehypeRaw, rehypeSourceLines, [rehypeSanitize, sanitizeSchema], rehypeHeadingIds],
+        rehypePlugins: [
+            rehypeRaw,
+            rehypeSourceLines,
+            [rehypeSanitize, sanitizeSchema],
+            rehypeHeadingIds,
+            ...(standard === 'full' ? [rehypeAlerts] : []),
+        ],
     };
 }
 

@@ -31,6 +31,10 @@ export type IconName =
     | 'table'
     | 'task-list'
     | 'warning'
+    | 'note'
+    | 'tip'
+    | 'important'
+    | 'caution'
     | 'assistant';
 
 export interface IconProps extends Omit<SVGProps<SVGSVGElement>, 'name' | 'stroke'> {
@@ -132,6 +136,28 @@ const iconShapes: Record<IconName, React.JSX.Element> = {
         </>
     ),
     warning: <path d="M7.5 2 13 12H2zM7.5 5v3m0 1.5v.01" />,
+    note: (
+        <>
+            <circle cx="7.5" cy="7.5" r="5.5" />
+            <path d="M7.5 7v3.5m0-6v.01" />
+        </>
+    ),
+    tip: (
+        <>
+            <path d="M5 10h5m-4 2h3M7.5 1.5a4 4 0 0 1 2.5 7.1V10h-5V8.6A4 4 0 0 1 7.5 1.5Z" />
+        </>
+    ),
+    important: (
+        <>
+            <path d="M7.5 1.5 9 5.8l4.5 1.7L9 9.2l-1.5 4.3L6 9.2 1.5 7.5 6 5.8Z" />
+        </>
+    ),
+    caution: (
+        <>
+            <path d="M5 2h5l3 3v5l-3 3H5l-3-3V5Z" />
+            <path d="M7.5 4.7v4m0 1.5v.01" />
+        </>
+    ),
     assistant: <path d="m7.5 1.8.9 3.8 3.8.9-3.8.9-.9 3.8-.9-3.8-3.8-.9 3.8-.9z" />,
 };
 

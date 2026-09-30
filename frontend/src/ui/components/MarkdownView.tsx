@@ -6,6 +6,8 @@ import { classifyLink, type LinkTarget } from '../../logic/markdown/linkPolicy';
 import { createPipeline, type MarkdownStandard } from '../../logic/markdown/pipeline';
 import { markdownComponents, previewUrlTransform, renderImageFallback } from '../../logic/markdown/renderer';
 import styles from './MarkdownView.module.css';
+import AlertBox from './AlertBox';
+import type { AlertKind } from '../../logic/markdown/syntax/alerts';
 
 const remarkRehypeOptions = { allowDangerousHtml: true };
 
@@ -53,6 +55,28 @@ type PreviewRuntimeProps = Pick<
 const PreviewRuntimeContext = createContext<PreviewRuntimeProps>({});
 const components: Components = {
     ...markdownComponents,
+    div: function PreviewAlert({ children, className, node, ...props }): React.JSX.Element {
+        const kind = /(?:^|\s)md-alert-(note|tip|important|warning|caution)(?:\s|$)/u.exec(className ?? '')?.[1] as
+            AlertKind | undefined;
+        if (kind !== undefined && className?.split(/\s+/u).includes('md-alert')) {
+            const sourceLine = node?.properties.dataSourceLine;
+            return (
+                <AlertBox
+                    kind={kind}
+                    sourceLine={
+                        typeof sourceLine === 'string' || typeof sourceLine === 'number' ? sourceLine : undefined
+                    }
+                >
+                    {children}
+                </AlertBox>
+            );
+        }
+        return (
+            <div {...props} className={className}>
+                {children}
+            </div>
+        );
+    },
     img: function PreviewResolvedImage({ alt, node: _node, src, title }): React.JSX.Element {
         void _node;
         const { imageSourceResolver } = useContext(PreviewRuntimeContext);

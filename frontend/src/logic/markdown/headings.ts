@@ -31,7 +31,7 @@ function collectHeadings(tree: MdastRoot): { headings: Heading[]; columns: numbe
 /** Extracts the same Markdown heading model used by the preview pipeline. */
 export function extractHeadings(source: string): Heading[] {
     const parser = unified().use(remarkParse).use(syntaxPlugins('full'));
-    return collectHeadings(parser.parse(source) as MdastRoot).headings;
+    return collectHeadings(parser.runSync(parser.parse(source)) as MdastRoot).headings;
 }
 
 export function headingAnchor(headings: Heading[], slug: string): Heading | undefined {

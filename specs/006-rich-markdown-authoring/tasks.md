@@ -442,7 +442,7 @@ standard)`); `frontend/src/ui/widgets/PreviewPane.tsx` and `EditorStage.tsx` (wi
 
     **Verify**: `scripts/test unit`, `scripts/test integration`, `scripts/verify lint`.
 
-- [ ] T009 [US1] Render GitHub alerts and the five admonition containers in `frontend/src/logic/markdown/syntax/containers.ts`, `frontend/src/logic/markdown/syntax/alerts.ts`, `frontend/src/ui/components/AlertBox.tsx`
+- [x] T009 [US1] Render GitHub alerts and the five admonition containers in `frontend/src/logic/markdown/syntax/containers.ts`, `frontend/src/logic/markdown/syntax/alerts.ts`, `frontend/src/ui/components/AlertBox.tsx`
 
     **Story / Priority**: US1 (P1). Needs T006 (and T008 only for shared pipeline file ordering).
 

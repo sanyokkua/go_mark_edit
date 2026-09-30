@@ -219,7 +219,11 @@ sanitization allowlist admits only as a positive integer. `frontend/src/logic/ma
 Markdown heading text, slugs and source lines from the shared syntax rules, then assigns preview ids only to
 matching Markdown headings after sanitization. Its preview scroll helper finds the first exact id inside the
 preview container, including author-supplied raw ids; the link classifier decodes anchor fragments once before
-that lookup. The frontend theme generator produces the editor
+that lookup. `frontend/src/logic/markdown/syntax.ts` owns the Full-only container syntax and rewrites known
+admonitions into blockquotes; its alert step converts sanitized marker blockquotes into note elements.
+`MarkdownView.tsx` maps those elements to the props-only `AlertBox.tsx`, which supplies localized titles,
+shared icons and token-based styling. Unknown containers remain literal and are excluded from heading
+extraction by the same syntax transform. The frontend theme generator produces the editor
 and highlight output from the token families in `frontend/src/ui/styles/tokens.css`.
 
 All appearance values come from `frontend/src/ui/styles/tokens.css`. The three themes and light/dark
