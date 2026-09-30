@@ -24,7 +24,11 @@ line, including inside a longer word.
   `## Über uns` and `## Getting Started` with a link to it, and hostile HTML: each of the 29 elements FR-RN-008
   removes with its contents (those that can hold text hold visible text; the void elements `embed`, `link`, `meta`, `base` and the parser-ignored `head` and `frame` appear without text and are asserted only to leave no element), an unknown element holding text, an `onclick` and a
   `style` attribute, and `javascript:` and `data:` addresses in several spellings. The hostile HTML comes last,
-  with `plaintext` as the final element, because an HTML parser treats everything after `<plaintext>` as text.
+  with `<plaintext>` as the final opened element inside a stripped SVG subtree. A standalone top-level
+  `<plaintext>` would consume the footnote section appended by the Markdown parser, preventing the same reference
+  document from exercising footnote back-reference navigation. The separate real-backend journey in
+  `rich-rendering.test.ts` opens a top-level `<plaintext>` document and confirms that its content and following
+  source are removed.
 - `messy-document.md`: `*` and `+` bullets, `*` emphasis, Setext headings, an unpadded table, blank-line
   runs, trailing spaces, a two-space hard break, `foo*bar*baz`, a tight list, adjacent `-` and `*` lists,
   `1. 1. 1.` and `1. 2. 3.` lists, fenced and indented code with trailing spaces.

@@ -556,7 +556,7 @@ p.md-alert-title`; handles GitHub alerts and rewritten admonitions alike.
 
     **Verify**: `scripts/test unit`, `scripts/test integration`, `scripts/verify lint`.
 
-- [ ] T012 [US1] Add the reference fixture and the first rich-rendering journey in `frontend/tests/fixtures/reference-document.md`, `frontend/tests/e2e/rich-rendering.test.ts`
+- [x] T012 [US1] Add the reference fixture and the first rich-rendering journey in `frontend/tests/fixtures/reference-document.md`, `frontend/tests/e2e/rich-rendering.test.ts`
 
     **Story / Priority**: US1 (P1). Needs T005–T011.
 
@@ -567,8 +567,9 @@ p.md-alert-title`; handles GitHub alerts and rewritten admonitions alike.
     FR-RN-003 and FR-RN-004, one invalid formula, one invalid Mermaid block, a Go block, an unknown-language block,
     the currency paragraph, two `## Notes`, `## Über uns`, `## Getting Started` with a link to it, and hostile HTML —
     each of the 29 removed elements (those that can hold text hold visible text; the void elements `embed`, `link`, `meta`, `base` and the parser-ignored `head` and `frame` are present without text), an unknown element, an `onclick`, a `style`, and
-    `javascript:`/`data:` addresses; the hostile HTML comes **last** with `plaintext` as the final element because an
-    HTML parser treats everything after `<plaintext>` as text); an existing journey for the harness pattern
+    `javascript:`/`data:` addresses; the hostile HTML comes **last** with `<plaintext>` as the final opened element
+    inside a stripped SVG subtree so the generated footnote back-reference remains available; a separate real-backend
+    case uses top-level `<plaintext>` and proves it removes its content and following source); an existing journey for the harness pattern
     (`frontend/tests/e2e/preview-links.test.ts`, `real-files.test.ts` show how a document is put on disk and
     opened); `frontend/tests/e2e/theme-surfaces.test.ts` for the looped theme pattern.
 
@@ -581,7 +582,8 @@ p.md-alert-title`; handles GitHub alerts and rewritten admonitions alike.
     is coloured and the unknown-language block is plain, every hostile element is absent (with its text for elements that can hold text) and no
     handler ran, `[see](#getting-started)` scrolls the preview, anchors are `notes`, `notes-1`, `über-uns`; switching
     Full → GFM → Minimal in Settings turns the Full-only constructs literal and updates header and status bar within
-    one second; the shared request guard reports zero foreign requests.
+    one second; the shared request guard reports zero foreign requests. The separate top-level `<plaintext>` case
+    proves its content and following source are stripped without suppressing this fixture's generated footnotes.
 
     **Out of scope**: math and Mermaid assertions (T017).
 
