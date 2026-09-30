@@ -112,7 +112,8 @@ const CompactSettingsContent: React.FC<CompactSettingsContentProps> = ({
      * === undefined` alone — and AppearanceControls does supply that handler, so
      * both rows shipped enabled while the registry said deferred.
      */
-    const settingUnavailable = (id: ActionId): boolean => getActionAvailability(id).kind !== 'available';
+    const settingUnavailable = (id: ActionId): boolean =>
+        getActionAvailability(id, { markdownSettingsLoaded: markdownSettings !== undefined }).kind !== 'available';
 
     /*
      * A Settings row is unavailable for either of two independent reasons, and both
@@ -224,7 +225,7 @@ const CompactSettingsContent: React.FC<CompactSettingsContentProps> = ({
                     disabled={rowUnavailable('markdown-standard')}
                     key={option.value}
                     label={option.label}
-                    trailing={<MenuItemIndicator checked={(markdownSettings?.standard ?? 'gfm') === option.value} />}
+                    trailing={<MenuItemIndicator checked={markdownSettings?.standard === option.value} />}
                 />
             ))}
             <PopupSeparator />
@@ -238,14 +239,14 @@ const CompactSettingsContent: React.FC<CompactSettingsContentProps> = ({
             {toggle(
                 'format-on-save',
                 saveToggleLabels.formatOnSave,
-                markdownSettings?.formatOnSave ?? false,
+                markdownSettings?.formatOnSave === true,
                 (checked): void => onMarkdownSettingsChange?.({ formatOnSave: checked }),
                 rowUnavailable('format-on-save', onMarkdownSettingsChange),
             )}
             {toggle(
                 'lint-on-save',
                 saveToggleLabels.lintOnSave,
-                markdownSettings?.lintOnSave ?? true,
+                markdownSettings?.lintOnSave === true,
                 (checked): void => onMarkdownSettingsChange?.({ lintOnSave: checked }),
                 rowUnavailable('lint-on-save', onMarkdownSettingsChange),
             )}

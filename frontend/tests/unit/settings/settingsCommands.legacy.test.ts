@@ -49,6 +49,23 @@ it('dispatches Markdown projection only after backend acknowledgement', async ()
     });
 });
 
+it('does not write a Markdown group before it has loaded', async () => {
+    const dispatch = jest.fn();
+    const adapter = { updateMarkdown: jest.fn() };
+    await acknowledgeMarkdownSettingsUpdate(adapter, undefined, { bulletMarker: '+' }, dispatch);
+    expect(adapter.updateMarkdown).not.toHaveBeenCalled();
+    expect(dispatch).not.toHaveBeenCalled();
+});
+
+it('keeps the acknowledged Markdown group when persistence fails', async () => {
+    const dispatch = jest.fn();
+    const adapter = { updateMarkdown: jest.fn().mockRejectedValue(new Error('write failed')) };
+    await expect(
+        acknowledgeMarkdownSettingsUpdate(adapter, currentMarkdown, { bulletMarker: '+' }, dispatch),
+    ).rejects.toThrow('write failed');
+    expect(dispatch).not.toHaveBeenCalled();
+});
+
 it('autosave setting is acknowledged before it applies', async () => {
     const dispatch = jest.fn();
     let resolveUpdate: (() => void) | undefined;

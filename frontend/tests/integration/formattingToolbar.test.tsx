@@ -1,5 +1,7 @@
-import { createEvent, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, createEvent, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { Provider } from 'react-redux';
+import { loadedMarkdownSettings } from '../support/loadedMarkdownSettings';
+import { hydrateSettings, resetSettingsProjection } from '../../src/logic/store/settingsSlice';
 
 import { store } from '../../src/logic/store';
 import { currentPlatform } from '../../src/logic/actions/shortcutRegistry';
@@ -9,7 +11,10 @@ import FormattingToolbar from '../../src/ui/widgets/FormattingToolbar/Formatting
 
 const renderToolbar = (
     ui: React.ReactNode = <FormattingToolbar arrangement="split" onArrangementChange={jest.fn()} />,
-) => render(<Provider store={store}>{ui}</Provider>);
+) => {
+    store.dispatch(hydrateSettings(loadedMarkdownSettings));
+    return render(<Provider store={store}>{ui}</Provider>);
+};
 
 function rect(width: number, height = 30): DOMRect {
     return {
@@ -24,6 +29,35 @@ function rect(width: number, height = 30): DOMRect {
         toJSON: () => ({}),
     } as DOMRect;
 }
+
+it('gates marker controls across toolbar and context menu until settings load', () => {
+    store.dispatch(resetSettingsProjection());
+    render(
+        <Provider store={store}>
+            <FormattingToolbar arrangement="split" onArrangementChange={jest.fn()} />
+            <EditorContextMenu>
+                <button type="button" data-editor-surface>
+                    Editor surface
+                </button>
+            </EditorContextMenu>
+        </Provider>,
+    );
+    for (const name of ['Italic', 'Bullet list', 'Task list']) {
+        expect(screen.getByRole('button', { name })).toBeDisabled();
+    }
+    expect(screen.getByRole('button', { name: 'Bold' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Numbered list' })).toBeEnabled();
+    fireEvent.contextMenu(screen.getByRole('button', { name: 'Editor surface' }));
+    expect(screen.getByRole('menuitem', { name: /Italic/ })).toBeDisabled();
+
+    act(() => {
+        store.dispatch(hydrateSettings(loadedMarkdownSettings));
+    });
+    for (const name of ['Italic', 'Bullet list', 'Task list']) {
+        expect(screen.getByRole('button', { name })).toBeEnabled();
+    }
+    expect(screen.getByRole('menuitem', { name: /Italic/ })).toBeEnabled();
+});
 
 it('renders grouped formatting controls with a trailing arrangement island', () => {
     renderToolbar();
@@ -132,7 +166,7 @@ it('routes a formatting activation through the editor command context', async ()
 
     fireEvent.click(screen.getByRole('button', { name: 'Italic' }));
 
-    await waitFor(() => expect(replaceRange).toHaveBeenCalledWith(expect.anything(), '*word*', expect.anything()));
+    await waitFor(() => expect(replaceRange).toHaveBeenCalledWith(expect.anything(), '_word_', expect.anything()));
     expect(focus).toHaveBeenCalledTimes(1);
 });
 

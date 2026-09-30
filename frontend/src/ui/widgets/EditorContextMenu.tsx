@@ -22,6 +22,7 @@ import MenuItem from '../components/MenuItem';
 import Popup, { PopupSeparator } from '../components/Popup';
 import { EditorSessionContext } from './editorSession';
 import { useEditorActionExecutor } from './useEditorActionExecutor';
+import { useEditorSettings } from '../../logic/settings/editorSettings';
 import styles from './EditorContextMenu.module.css';
 
 export interface EditorContextMenuProps extends PropsWithChildren {
@@ -46,14 +47,17 @@ const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
 }: EditorContextMenuProps): React.JSX.Element => {
     const activeBuffer = useContext(EditorSessionContext);
     const editingProjection = useEditingProjection(activeBuffer?.documentId);
+    const { markdownSettings } = useEditorSettings();
     const { capture, execute } = useEditorActionExecutor();
     const itemUnavailable = (item: {
         id: Parameters<typeof getActionAvailability>[0];
         availability: { kind: string };
     }): boolean =>
         item.availability.kind === 'deferred' ||
-        (editingProjection !== undefined &&
-            getActionAvailability(item.id, { projectedState: editingProjection }).kind === 'unavailable');
+        getActionAvailability(item.id, {
+            projectedState: editingProjection,
+            markdownSettingsLoaded: markdownSettings !== undefined,
+        }).kind === 'unavailable';
     const openerRef = useRef<HTMLElement | null>(null);
     const actionSnapshotRef = useRef<EditorActionSnapshot | null>(null);
     const [point, setPoint] = useState<{ x: number; y: number } | null>(null);

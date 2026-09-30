@@ -3,13 +3,14 @@ import { resolve } from 'node:path';
 
 import { createEvent, fireEvent, render as rtlRender, screen, within } from '@testing-library/react';
 import { Provider } from 'react-redux';
+import { loadedMarkdownSettings } from '../support/loadedMarkdownSettings';
+import { hydrateSettings } from '../../src/logic/store/settingsSlice';
 
 import * as actionDispatcher from '../../src/logic/actions/actionDispatcher';
 import * as shortcutRegistry from '../../src/logic/actions/shortcutRegistry';
 import { getAction } from '../../src/logic/actions/actionRegistry';
 import { store } from '../../src/logic/store';
 import { hydrateProjection, resetProjection } from '../../src/logic/store/appModelProjectionActions';
-import { hydrateSettings } from '../../src/logic/store/settingsSlice';
 import { DocumentCommandContext } from '../../src/ui/widgets/editorSession';
 import { EditorSessionContext } from '../../src/ui/widgets/editorSession';
 import FormattingToolbar from '../../src/ui/widgets/FormattingToolbar/FormattingToolbar';
@@ -24,7 +25,10 @@ jest.mock('../../src/logic/actions/shortcutRegistry', () => {
     };
 });
 
-const render = (ui: Parameters<typeof rtlRender>[0]) => rtlRender(<Provider store={store}>{ui}</Provider>);
+const render = (ui: Parameters<typeof rtlRender>[0]) => {
+    store.dispatch(hydrateSettings(loadedMarkdownSettings));
+    return rtlRender(<Provider store={store}>{ui}</Provider>);
+};
 
 it('renders the complete formatting groups without owning the tab surface', () => {
     render(<FormattingToolbar arrangement="split" onArrangementChange={jest.fn()} />);

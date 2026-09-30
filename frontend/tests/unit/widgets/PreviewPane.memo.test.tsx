@@ -1,4 +1,4 @@
-import { fireEvent, render } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import type { Components } from 'react-markdown';
 
 import {
@@ -40,6 +40,22 @@ function renderedController(): PreviewPaneState {
         rendered: { byteLength: 8, content: '# title\n', revision: 1 },
     };
 }
+
+it('shows loading instead of the accepted document until settings load, including paused previews', () => {
+    const controller = renderedController();
+    const { rerender } = render(<PreviewPaneContent controller={controller} settingsLoaded={false} />);
+    expect(screen.getByRole('status')).toHaveTextContent('Loading Markdown settings');
+    expect(screen.queryByTestId('markdown')).toBeNull();
+    expect(mockRenderCount.value).toBe(0);
+
+    rerender(<PreviewPaneContent controller={{ ...controller, isPaused: true }} settingsLoaded={false} />);
+    expect(screen.getByRole('status')).toHaveTextContent('Loading Markdown settings');
+    expect(screen.queryByTestId('markdown')).toBeNull();
+
+    rerender(<PreviewPaneContent controller={controller} settingsLoaded />);
+    expect(screen.getByTestId('markdown')).toBeInTheDocument();
+    expect(mockRenderCount.value).toBe(1);
+});
 
 it('does not re-render the markdown when the pane re-renders with a new notification owner', () => {
     const controller = renderedController();

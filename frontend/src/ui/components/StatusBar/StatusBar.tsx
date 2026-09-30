@@ -58,10 +58,12 @@ function legacyFacts(props: StatusBarProps): StatusFact[] {
     const cursor = props.cursor ?? { lineNumber: 1, column: 1 };
     const wordCount = props.wordCount ?? 0;
     const autosave = props.autosave ?? false;
-    const markdownStandard = props.markdownStandard ?? 'gfm';
-    const markdownLabel = t('status.markdown', {
-        standard: t(translationKey('markdownStandard', markdownStandard)),
-    });
+    const markdownLabel =
+        props.markdownStandard === undefined
+            ? undefined
+            : t('status.markdown', {
+                  standard: t(translationKey('markdownStandard', props.markdownStandard)),
+              });
     const cursorLabel = t('status.cursor', {
         column: cursor.column,
         line: cursor.lineNumber,
@@ -72,14 +74,18 @@ function legacyFacts(props: StatusBarProps): StatusFact[] {
     const autosaveLabel = t(autosave ? 'status.autosave.on' : 'status.autosave.off');
 
     return [
-        {
-            id: 'standard-kind',
-            rowLabel: markdownLabel,
-            detailLabel: markdownLabel,
-            value: '',
-            dropPriority: 0,
-            marker: 'accent-dot',
-        },
+        ...(markdownLabel === undefined
+            ? []
+            : [
+                  {
+                      id: 'standard-kind',
+                      rowLabel: markdownLabel,
+                      detailLabel: markdownLabel,
+                      value: '',
+                      dropPriority: 0,
+                      marker: 'accent-dot',
+                  } as StatusFact,
+              ]),
         {
             id: 'cursor',
             rowLabel: cursorLabel,

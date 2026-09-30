@@ -207,6 +207,8 @@ const LivePreview: React.FC<LivePreviewProps> = ({
     scrollSyncActive,
     visible,
 }: LivePreviewProps): React.JSX.Element | null => {
+    const { markdownSettings } = useEditorSettings();
+    const settingsLoaded = markdownSettings !== undefined;
     const accepted = useLivePreviewSnapshot(activeBuffer, adapter);
     const contentRef = useRef<HTMLDivElement | null>(null);
     const onRefresh = useCallback(async (): Promise<LivePreviewSnapshot> => {
@@ -243,12 +245,12 @@ const LivePreview: React.FC<LivePreviewProps> = ({
      * a withdrawn container published and nothing synchronized again.
      */
     useLayoutEffect((): (() => void) => {
-        onScrollContainerChange(controller.isPaused ? null : contentRef.current);
+        onScrollContainerChange(controller.isPaused || !settingsLoaded ? null : contentRef.current);
 
         return (): void => {
             onScrollContainerChange(null);
         };
-    }, [controller.isPaused, onScrollContainerChange, visible]);
+    }, [controller.isPaused, onScrollContainerChange, settingsLoaded, visible]);
 
     if (!visible) {
         return null;
@@ -257,7 +259,7 @@ const LivePreview: React.FC<LivePreviewProps> = ({
     return (
         <Pane
             accessory={
-                controller.isPaused ? (
+                settingsLoaded && controller.isPaused ? (
                     <PreviewPausedStatus
                         currentRefreshError={controller.currentRefreshError}
                         isRefreshing={controller.isRefreshing}
@@ -284,12 +286,13 @@ const LivePreview: React.FC<LivePreviewProps> = ({
                         notificationOwner={{ warn: onPreviewWarning }}
                         onFocusedDocumentOpen={onFocusedDocumentOpen}
                         showPausedStatus={false}
+                        settingsLoaded={settingsLoaded}
                     />
                 </div>
             }
             header={{
                 leading: <span className={styles.paneLive}>{t('editor.preview.live')}</span>,
-                trailing: <span>{t('editor.preview.flavour')}</span>,
+                trailing: settingsLoaded ? <span>{t('editor.preview.flavour')}</span> : undefined,
             }}
             identity="preview"
         />

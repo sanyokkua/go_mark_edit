@@ -46,6 +46,25 @@ it('makes Save and Save As available document actions in the File menu', () => {
     expect(getAction('save-as').scope).toBe('document');
 });
 
+it('gates marker actions and Markdown controls while settings are loading', () => {
+    for (const id of [
+        'italic',
+        'bullet-list',
+        'task-list',
+        'markdown-standard',
+        'format-on-save',
+        'lint-on-save',
+    ] as const) {
+        expect(getActionAvailability(id, { markdownSettingsLoaded: false })).toEqual({
+            kind: 'unavailable',
+            reason: 'settings-loading',
+        });
+    }
+    for (const id of ['bold', 'heading-1', 'numbered-list', 'copy'] as const) {
+        expect(getActionAvailability(id, { markdownSettingsLoaded: false })).toEqual({ kind: 'available' });
+    }
+});
+
 it('exposes the exact canonical file and tab shortcut inventory', () => {
     expect(getAction('new-file').shortcut).toBe('Mod+N');
     expect(getAction('open-file').shortcut).toBe('Mod+O');

@@ -22,6 +22,7 @@ import ToolButton from '../../primitives/ToolButton';
 import styles from './FormattingToolbar.module.css';
 import { ApplicationMenuRequestContext } from '../applicationMenuRequest';
 import { useEditorActionExecutor } from '../useEditorActionExecutor';
+import { useEditorSettings } from '../../../logic/settings/editorSettings';
 
 export interface FormattingToolbarProps {
     arrangement: ViewArrangement;
@@ -64,7 +65,10 @@ function action(id: ActionEntry['id']): ActionEntry {
  * write. Re-deriving the capability rule locally is the `SettingsMenu` defect
  * AGENTS.md records; asking the registry is the fix.
  */
-const ToolbarProjectionContext = createContext<ProjectedActionState | undefined>(undefined);
+const ToolbarProjectionContext = createContext<{
+    projectedState?: ProjectedActionState;
+    markdownSettingsLoaded: boolean;
+}>({ markdownSettingsLoaded: true });
 
 interface ActionButtonProps {
     entry: ActionEntry;
@@ -72,16 +76,10 @@ interface ActionButtonProps {
 }
 
 const ActionButton: React.FC<ActionButtonProps> = ({ entry, onActivate }: ActionButtonProps): React.JSX.Element => {
-    const projectedState = useContext(ToolbarProjectionContext);
+    const { projectedState, markdownSettingsLoaded } = useContext(ToolbarProjectionContext);
     const overflowMenu = useContext(OverflowMenuContext);
-    /*
-     * The static check stays first and unchanged, so a deferred action is still
-     * deferred when no projection has arrived. The registry call only ever *adds*
-     * a refusal, and with no `modalOpen`/tab context passed it can only fire the
-     * capability rule — this widens the disabled set only for unwritable documents
-     * nothing else.
-     */
-    const unavailable = getActionAvailability(entry.id, { projectedState }).kind === 'unavailable';
+    const availability = getActionAvailability(entry.id, { projectedState, markdownSettingsLoaded });
+    const unavailable = availability.kind === 'unavailable';
     const icon = textualControlIds.has(entry.id) ? undefined : (entry.id as IconName);
     if (overflowMenu) {
         const binding = entry.shortcut;
@@ -109,7 +107,13 @@ const ActionButton: React.FC<ActionButtonProps> = ({ entry, onActivate }: Action
             disabled={unavailable}
             icon={icon}
             label={t(entry.accessibilityKey)}
-            title={unavailable ? t('action.unavailable') : controlTooltip(entry)}
+            title={
+                availability.kind === 'unavailable' && availability.reason === 'settings-loading'
+                    ? t('action.settingsLoading')
+                    : unavailable
+                      ? t('action.unavailable')
+                      : controlTooltip(entry)
+            }
             variant={textualControlIds.has(entry.id) ? 'text' : 'icon'}
             onActivate={(): void => onActivate(entry)}
         />
@@ -173,6 +177,7 @@ const FormattingToolbar: React.FC<FormattingToolbarProps> = ({
 }: FormattingToolbarProps): React.JSX.Element => {
     const activeBuffer = useContext(EditorSessionContext);
     const toolbarProjection = useEditingProjection(activeBuffer?.documentId);
+    const { markdownSettings } = useEditorSettings();
     const requestApplicationMenu = useContext(ApplicationMenuRequestContext);
     const { execute } = useEditorActionExecutor({ registerShortcuts: true });
     const onActivate = useCallback(
@@ -183,7 +188,9 @@ const FormattingToolbar: React.FC<FormattingToolbarProps> = ({
     );
 
     return (
-        <ToolbarProjectionContext.Provider value={toolbarProjection}>
+        <ToolbarProjectionContext.Provider
+            value={{ projectedState: toolbarProjection, markdownSettingsLoaded: markdownSettings !== undefined }}
+        >
             <Bar
                 ariaLabel={t('editor.toolbar')}
                 className={styles.toolbar}

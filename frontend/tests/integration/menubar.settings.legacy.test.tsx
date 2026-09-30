@@ -85,6 +85,36 @@ it('renders the acknowledged autosave control and leaves deferred save actions u
     expect(screen.getByRole('checkbox', { name: 'Lint on save' })).toBeDisabled();
 });
 
+it('shows no invented Markdown selection or checked save value before hydration', () => {
+    const { rerender } = render(<SettingsMenu {...props} onMarkdownSettingsChange={jest.fn()} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Settings' }));
+    const format = screen.getByRole('checkbox', { name: 'Format on save' });
+    const lint = screen.getByRole('checkbox', { name: 'Lint on save' });
+    expect(format).toBeDisabled();
+    expect(format).not.toBeChecked();
+    expect(lint).toBeDisabled();
+    expect(lint).not.toBeChecked();
+    const menu = screen.getByRole('menu', { name: 'Settings menu' });
+    expect(menu.querySelectorAll('[data-availability="enabled"][data-settings-row*="Markdown"]')).toHaveLength(0);
+
+    rerender(
+        <SettingsMenu
+            {...props}
+            markdownSettings={{
+                bulletMarker: '+',
+                emphasisMarker: '_',
+                headingStyle: 'setext',
+                standard: 'full',
+                formatOnSave: true,
+                lintOnSave: true,
+            }}
+            onMarkdownSettingsChange={jest.fn()}
+        />,
+    );
+    expect(screen.getByRole('checkbox', { name: 'Format on save' })).toBeChecked();
+    expect(screen.getByRole('checkbox', { name: 'Lint on save' })).toBeChecked();
+});
+
 it('draws every visible Settings popup string from the catalogue', () => {
     render(
         <SettingsMenu

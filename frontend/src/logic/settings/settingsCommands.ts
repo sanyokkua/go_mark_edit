@@ -59,7 +59,7 @@ export interface SettingsCommandOwner {
     ) => Promise<void>;
     updateFile: (current: FileSettings, patch: Partial<FileSettings>, dispatch: SettingsDispatch) => Promise<void>;
     updateMarkdown: (
-        current: MarkdownSettings,
+        current: MarkdownSettings | undefined,
         patch: Partial<MarkdownSettings>,
         dispatch: SettingsDispatch,
     ) => Promise<void>;
@@ -99,10 +99,11 @@ export async function acknowledgeEditorSettingsUpdate(
 
 export async function acknowledgeMarkdownSettingsUpdate(
     adapter: Pick<SettingsAdapter, 'updateMarkdown'>,
-    current: MarkdownSettings,
+    current: MarkdownSettings | undefined,
     patch: Partial<MarkdownSettings>,
     dispatch: SettingsDispatch,
 ): Promise<void> {
+    if (current === undefined) return;
     const next = { ...current, ...patch };
     await adapter.updateMarkdown(next);
     dispatch(acknowledgeMarkdownSettings(next));

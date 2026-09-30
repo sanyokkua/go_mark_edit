@@ -68,18 +68,22 @@ const AppShell: React.FC<AppShellProps> = ({
         activeDocument === undefined
             ? []
             : [
-                  {
-                      id: 'standard-kind',
-                      rowLabel: t('status.markdown', {
-                          standard: t(`status.markdownStandard.${markdownSettings.standard}`),
-                      }),
-                      detailLabel: t('status.markdown', {
-                          standard: t(`status.markdownStandard.${markdownSettings.standard}`),
-                      }),
-                      value: '',
-                      dropPriority: 0,
-                      marker: 'accent-dot',
-                  },
+                  ...(markdownSettings === undefined
+                      ? []
+                      : [
+                            {
+                                id: 'standard-kind',
+                                rowLabel: t('status.markdown', {
+                                    standard: t(`status.markdownStandard.${markdownSettings.standard}`),
+                                }),
+                                detailLabel: t('status.markdown', {
+                                    standard: t(`status.markdownStandard.${markdownSettings.standard}`),
+                                }),
+                                value: '',
+                                dropPriority: 0,
+                                marker: 'accent-dot',
+                            } as StatusFact,
+                        ]),
                   {
                       id: 'cursor',
                       rowLabel: t('status.cursor', {

@@ -1,5 +1,7 @@
-import { render, screen } from '@testing-library/react';
+import { act, render, screen, within } from '@testing-library/react';
 import { Provider } from 'react-redux';
+import { loadedMarkdownSettings } from '../support/loadedMarkdownSettings';
+import { hydrateSettings, resetSettingsProjection } from '../../src/logic/store/settingsSlice';
 
 import type { EditorStageAdapter } from '../../src/ui/widgets/EditorStage/EditorStage';
 import EditorStage from '../../src/ui/widgets/EditorStage/EditorStage';
@@ -55,6 +57,7 @@ function documentFor(arrangement: DocumentMetadata['view']['arrangement']): Docu
 }
 
 beforeEach(() => {
+    store.dispatch(hydrateSettings(loadedMarkdownSettings));
     store.dispatch(resetProjection());
 });
 
@@ -101,4 +104,45 @@ it('keeps the editor and preview content in explicit panes for split view', () =
     expect(screen.getByLabelText('Preview pane')).toBeInTheDocument();
     expect(screen.getByLabelText('Markdown source')).toHaveValue('# Preview');
     expect(screen.getByRole('heading', { name: 'Preview' })).toBeInTheDocument();
+});
+
+it('hides the preview header flavour and document until Markdown settings hydrate', () => {
+    const document = documentFor('split');
+    store.dispatch(resetSettingsProjection());
+    store.dispatch(
+        hydrateProjection({
+            revision: 1,
+            documents: { [document.documentId]: document },
+            activeDocumentId: document.documentId,
+            ui: {},
+        }),
+    );
+    render(
+        <Provider store={store}>
+            <EditorSessionProvider activeBuffer={{ documentId: document.documentId, content: '# Preview' }}>
+                <EditorStage
+                    adapter={adapter}
+                    activeBuffer={{ documentId: document.documentId, content: '# Preview' }}
+                    activeDocument={document}
+                    editorVisible
+                    labelledBy="active-tab"
+                    previewVisible
+                    readOnly={false}
+                    view={document.view}
+                    onLiveCursorChange={jest.fn()}
+                    onPreviewWarning={jest.fn()}
+                />
+            </EditorSessionProvider>
+        </Provider>,
+    );
+    const pane = screen.getByRole('region', { name: 'Preview pane' });
+    expect(within(pane).queryByText('GFM')).toBeNull();
+    expect(within(pane).getByRole('status')).toHaveTextContent('Loading Markdown settings');
+    expect(within(pane).queryByRole('heading', { name: 'Preview' })).toBeNull();
+
+    act(() => {
+        store.dispatch(hydrateSettings(loadedMarkdownSettings));
+    });
+    expect(within(pane).getByText('GFM')).toBeInTheDocument();
+    expect(within(pane).getByRole('heading', { name: 'Preview' })).toBeInTheDocument();
 });

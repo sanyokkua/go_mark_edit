@@ -14,7 +14,16 @@ export type ActionSurface =
 export type NativeActionRole = 'clipboard' | 'none';
 
 export type ActionUnavailableReason =
-    'no-document' | 'no-editor' | 'deferred' | 'modal' | 'unsupported' | 'barrier' | 'limit' | 'edge' | 'no-recent';
+    | 'no-document'
+    | 'no-editor'
+    | 'deferred'
+    | 'modal'
+    | 'unsupported'
+    | 'barrier'
+    | 'limit'
+    | 'edge'
+    | 'no-recent'
+    | 'settings-loading';
 
 export type ActionId =
     | 'new-file'
@@ -123,6 +132,7 @@ export interface ProjectedActionState {
 }
 
 export interface ActionAvailabilityContext {
+    readonly markdownSettingsLoaded?: boolean;
     readonly barrierBlocked?: boolean;
     readonly commandBarrier?: boolean;
     readonly documentId?: string;
@@ -454,11 +464,26 @@ function targetIndexFor(actionId: ActionId, context: ActionAvailabilityContext):
     return currentIndex + (actionId === 'move-tab-left' ? -1 : 1);
 }
 
+const MARKDOWN_SETTINGS_ACTIONS: ReadonlySet<ActionId> = new Set([
+    'markdown-standard',
+    'format-on-save',
+    'lint-on-save',
+    'format',
+    'compact',
+    'lint',
+    'italic',
+    'bullet-list',
+    'task-list',
+]);
+
 export function getActionAvailability(
     id: ActionId,
     context: ActionAvailabilityContext = {},
 ): ResolvedActionAvailability {
     const action = getAction(id);
+    if (context.markdownSettingsLoaded === false && MARKDOWN_SETTINGS_ACTIONS.has(id)) {
+        return { kind: 'unavailable', reason: 'settings-loading' };
+    }
     if (action.availability.kind === 'deferred') {
         return { kind: 'unavailable', reason: 'deferred' };
     }

@@ -1,5 +1,7 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { Provider } from 'react-redux';
+import { loadedMarkdownSettings } from '../support/loadedMarkdownSettings';
+import { hydrateSettings } from '../../src/logic/store/settingsSlice';
 import type { EditorProps } from '@monaco-editor/react';
 import type { editor, IDisposable, IScrollEvent } from 'monaco-editor';
 
@@ -279,6 +281,7 @@ function currentEditor(): MockEditor {
 }
 
 beforeEach((): void => {
+    store.dispatch(hydrateSettings(loadedMarkdownSettings));
     jest.useFakeTimers();
     mockMonaco.instances.length = 0;
     stubPreviewGeometry();

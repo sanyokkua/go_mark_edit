@@ -45,3 +45,21 @@ it('hydrates Redux settings once from the acknowledged adapter authority', async
         markdown: { bulletMarker: '+', emphasisMarker: '_' },
     });
 });
+
+it('keeps Markdown absent while the settings read is pending or rejected', async () => {
+    let rejectRead: ((reason: Error) => void) | undefined;
+    const adapter = {
+        getSettings: jest.fn(
+            () =>
+                new Promise<never>((_resolve, reject) => {
+                    rejectRead = reject;
+                }),
+        ),
+    } as unknown as SettingsAdapter;
+    const pending = bootstrapSettingsProjection(adapter);
+    await Promise.resolve();
+    expect(store.getState().settings.markdown).toBeUndefined();
+    rejectRead?.(new Error('read failed'));
+    await expect(pending).rejects.toThrow('read failed');
+    expect(store.getState().settings.markdown).toBeUndefined();
+});

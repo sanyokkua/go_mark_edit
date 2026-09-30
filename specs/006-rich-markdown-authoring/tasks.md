@@ -193,7 +193,7 @@ offline promise uses the guard.
 
     **Verify**: `scripts/test unit` and `scripts/test integration` (Go parts), then `scripts/verify lint`.
 
-- [ ] T003 Remove frontend Markdown defaults and gate every surface on hydration in `frontend/src/logic/store/settingsSlice.ts`, `frontend/src/ui/widgets/Menubar/SettingsMenu.tsx`, `frontend/src/ui/components/StatusBar/StatusBar.tsx`, `frontend/src/ui/widgets/AppShell.tsx`
+- [x] T003 Remove frontend Markdown defaults and gate every surface on hydration in `frontend/src/logic/store/settingsSlice.ts`, `frontend/src/ui/widgets/Menubar/SettingsMenu.tsx`, `frontend/src/ui/components/StatusBar/StatusBar.tsx`, `frontend/src/ui/widgets/AppShell.tsx`
 
     **Story / Priority**: Foundational (US1, US5)
 

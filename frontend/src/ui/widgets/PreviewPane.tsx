@@ -182,6 +182,7 @@ export interface PreviewPaneContentProps {
     notificationOwner?: PreviewNotificationOwner;
     onFocusedDocumentOpen?: (documentId: string) => void;
     showPausedStatus?: boolean;
+    settingsLoaded?: boolean;
 }
 
 export const PreviewPaneContent: React.FC<PreviewPaneContentProps> = ({
@@ -193,6 +194,7 @@ export const PreviewPaneContent: React.FC<PreviewPaneContentProps> = ({
     notificationOwner,
     onFocusedDocumentOpen,
     showPausedStatus = true,
+    settingsLoaded = true,
 }: PreviewPaneContentProps): React.JSX.Element => {
     const linkAdapterRef = useRef(linkAdapter);
     const notificationOwnerRef = useRef(notificationOwner);
@@ -277,9 +279,11 @@ export const PreviewPaneContent: React.FC<PreviewPaneContentProps> = ({
         <section
             aria-label={ariaLabel ?? undefined}
             data-preview-revision={controller.rendered?.revision}
-            data-preview-state={controller.isPaused ? 'paused' : 'rendered'}
+            data-preview-state={!settingsLoaded ? 'loading' : controller.isPaused ? 'paused' : 'rendered'}
         >
-            {controller.isPaused ? (
+            {!settingsLoaded ? (
+                <span role="status">{t('preview.loading')}</span>
+            ) : controller.isPaused ? (
                 showPausedStatus ? (
                     <PreviewPausedStatus
                         currentRefreshError={controller.currentRefreshError}

@@ -172,6 +172,12 @@ function projectedDocumentIsWritable(context: ActionDispatchContext): boolean {
 
 export async function dispatchAction(actionId: ActionId, context: ActionDispatchContext = {}): Promise<ActionResult> {
     const action = getAction(actionId);
+    if (context.markdownSettingsLoaded === false) {
+        const availability = getActionAvailability(actionId, context);
+        if (availability.kind === 'unavailable' && availability.reason === 'settings-loading') {
+            return { status: 'unavailable', actionId, reason: availability.reason };
+        }
+    }
     if (action.availability.kind === 'deferred') {
         return { status: 'unavailable', actionId, reason: 'deferred' };
     }

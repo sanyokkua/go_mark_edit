@@ -55,7 +55,7 @@ export interface FormatRequest {
     actionId: FormatActionId;
     source: string;
     selection: EditorSelection;
-    markers: MarkdownMarkerPreferences;
+    markers?: MarkdownMarkerPreferences;
 }
 
 export interface FormatEdit {
@@ -67,7 +67,7 @@ export interface FormatEdit {
 export interface FormatRunnerRequest {
     actionId: ActionId;
     commands: DocumentCommandAPI | null;
-    markers: MarkdownMarkerPreferences;
+    markers?: MarkdownMarkerPreferences;
     selection?: EditorSelection | null;
 }
 
@@ -89,7 +89,6 @@ export function runFormatAction(request: FormatRunnerRequest): DocumentCommandRe
     if (formatActionId === undefined || request.commands === null) {
         return { status: 'unavailable' };
     }
-
     const commands =
         request.selection === undefined
             ? request.commands
@@ -112,6 +111,12 @@ export function applyFormatEdit(
     commands: DocumentCommandAPI,
     request: FormatRequest,
 ): DocumentCommandResult<FormatEdit> {
+    if (
+        request.markers === undefined &&
+        (request.actionId === 'italic' || request.actionId === 'bullet-list' || request.actionId === 'task-list')
+    ) {
+        return { status: 'unavailable' };
+    }
     const content = commands.getContent();
     if (content.status !== 'available') return content;
     const selection = commands.getSelection();
@@ -196,12 +201,12 @@ function selectedText(request: FormatRequest): {
     };
 }
 
-function pairFor(actionId: FormatActionId, emphasisMarker: '_' | '*'): string | null {
+function pairFor(actionId: FormatActionId, emphasisMarker?: '_' | '*'): string | null {
     switch (actionId) {
         case 'bold':
             return '**';
         case 'italic':
-            return emphasisMarker;
+            return emphasisMarker ?? null;
         case 'strike':
             return '~~';
         case 'inline-code':
@@ -532,7 +537,7 @@ function parseListLine(line: string): ParsedLine {
 
 function listEdit(request: FormatRequest, kind: ListKind): FormatEdit {
     const bounds = lineBounds(request.source, request.selection);
-    const marker = request.markers.bulletMarker;
+    const marker = kind === 'numbered-list' ? undefined : request.markers?.bulletMarker;
     const text = bounds.lines
         .map((line) => {
             const quoted = parseQuoteLine(line);
@@ -541,6 +546,7 @@ function listEdit(request: FormatRequest, kind: ListKind): FormatEdit {
             if (parsed.kind === kind) return prefix + parsed.indent + parsed.content;
             const content = removeHeading(parsed.content);
             if (kind === 'numbered-list') return prefix + parsed.indent + '1. ' + content;
+            if (marker === undefined) return line;
             if (kind === 'task-list') {
                 return prefix + parsed.indent + marker + ' [ ] ' + content;
             }
@@ -649,7 +655,7 @@ function tableEdit(request: FormatRequest): FormatEdit {
 }
 
 export function formatMarkdown(request: FormatRequest): FormatEdit {
-    const pair = pairFor(request.actionId, request.markers.emphasisMarker);
+    const pair = pairFor(request.actionId, request.actionId === 'italic' ? request.markers?.emphasisMarker : undefined);
     if (pair !== null) return pairEdit(request, pair);
 
     switch (request.actionId) {

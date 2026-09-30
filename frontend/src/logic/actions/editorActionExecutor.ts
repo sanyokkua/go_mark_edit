@@ -10,7 +10,7 @@ export interface EditorActionExecutorContext {
     clipboard: ClipboardPort;
     commands: DocumentCommandAPI | null;
     documentId: string | null;
-    markdownSettings: {
+    markdownSettings?: {
         bulletMarker: string;
         emphasisMarker: string;
         headingStyle: string;
@@ -196,10 +196,14 @@ export function createEditorActionExecutor(context: EditorActionExecutorContext)
                     : runFormatAction({
                           actionId,
                           commands: capturedSelectionCommands(snapshot.commands, snapshot.selection),
-                          markers: formatMarkers(context.markdownSettings),
+                          markers:
+                              context.markdownSettings === undefined
+                                  ? undefined
+                                  : formatMarkers(context.markdownSettings),
                           selection: snapshot.selection,
                       }),
             modalOpen: context.modalOpen,
+            markdownSettingsLoaded: context.markdownSettings !== undefined,
             projectedState: context.projectedState,
             sessionDocumentId: context.documentId ?? undefined,
             writable: context.writable,

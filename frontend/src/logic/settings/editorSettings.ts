@@ -6,7 +6,7 @@ import { createSettingsCommandOwner } from './settingsCommands';
 
 export interface EditorSettingsState {
     fileSettings: FileSettings;
-    markdownSettings: MarkdownSettings;
+    markdownSettings: MarkdownSettings | undefined;
     settings: EditorSettings;
     updateFile: (patch: Partial<FileSettings>) => Promise<void>;
     update: (patch: Partial<EditorSettings>) => Promise<void>;

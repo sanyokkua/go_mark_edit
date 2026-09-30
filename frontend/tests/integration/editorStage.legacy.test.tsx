@@ -3,6 +3,8 @@ import { resolve } from 'node:path';
 
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { Provider } from 'react-redux';
+import { loadedMarkdownSettings } from '../support/loadedMarkdownSettings';
+import { hydrateSettings } from '../../src/logic/store/settingsSlice';
 import type { DocViewInput } from '../../src/logic/store/appModelTypes';
 
 const mockSetDocView = jest.fn<Promise<void>, [string, DocViewInput]>(async (): Promise<void> => undefined);
@@ -146,6 +148,7 @@ function installMinimumWindowQuery(): {
 }
 
 beforeEach((): void => {
+    store.dispatch(hydrateSettings(loadedMarkdownSettings));
     store.dispatch(resetProjection());
     mockSetDocView.mockClear();
 });

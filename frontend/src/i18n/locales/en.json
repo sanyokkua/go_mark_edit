@@ -301,6 +301,8 @@
     "action.command-palette.label": "Command palette",
     "action.undo.label": "Undo",
     "action.unavailable": "This action is not available in this slice.",
+    "action.settingsLoading": "Markdown settings are loading.",
+    "preview.loading": "Loading Markdown settings…",
     "action.retry.label": "Retry",
     "action.available": "Available in this slice",
     "action.scope.editor": "Editor",

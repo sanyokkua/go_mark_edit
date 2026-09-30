@@ -3,6 +3,8 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { useContext, useState } from 'react';
 import { Provider } from 'react-redux';
+import { loadedMarkdownSettings } from '../support/loadedMarkdownSettings';
+import { hydrateSettings } from '../../src/logic/store/settingsSlice';
 import type { EditorProps } from '@monaco-editor/react';
 import type { editor, IRange, ISelection } from 'monaco-editor';
 
@@ -268,6 +270,7 @@ const AppearanceSettingsMenu: React.FC = (): React.JSX.Element => {
 };
 
 beforeEach((): void => {
+    store.dispatch(hydrateSettings(loadedMarkdownSettings));
     jest.useFakeTimers();
     resetMockMonaco();
 });

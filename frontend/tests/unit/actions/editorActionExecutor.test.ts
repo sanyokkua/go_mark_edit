@@ -38,6 +38,40 @@ function executorContext(
     };
 }
 
+it('refuses marker actions while settings are absent but formats independent actions', async () => {
+    const command = documentCommands({
+        start: { lineNumber: 1, column: 1 },
+        end: { lineNumber: 1, column: 5 },
+    });
+    const context = {
+        ...executorContext(command.commands, { readText: async () => '', writeText: async () => true }),
+        markdownSettings: undefined,
+    };
+    const executor = createEditorActionExecutor(context);
+    for (const id of ['italic', 'bullet-list', 'task-list'] as const) {
+        await expect(executor.execute(id)).resolves.toMatchObject({
+            status: 'unavailable',
+            reason: 'settings-loading',
+        });
+    }
+    expect(command.replaceRange).not.toHaveBeenCalled();
+    await expect(executor.execute('bold')).resolves.toMatchObject({ status: 'mutated' });
+    expect(command.replaceRange).toHaveBeenCalledWith(expect.anything(), '**word**', expect.anything());
+    await expect(executor.execute('numbered-list')).resolves.toMatchObject({ status: 'mutated' });
+    expect(command.replaceRange).toHaveBeenCalledWith(expect.anything(), '1. word');
+});
+
+it('uses the hydrated bullet marker for task lists', async () => {
+    const command = documentCommands({ start: { lineNumber: 1, column: 1 }, end: { lineNumber: 1, column: 5 } });
+    const context = executorContext(command.commands, { readText: async () => '', writeText: async () => true });
+    const executor = createEditorActionExecutor({
+        ...context,
+        markdownSettings: { bulletMarker: '+', emphasisMarker: '_', headingStyle: 'setext' },
+    });
+    await expect(executor.execute('task-list')).resolves.toMatchObject({ status: 'mutated' });
+    expect(command.replaceRange).toHaveBeenCalledWith(expect.anything(), '+ [ ] word');
+});
+
 it('copies the selection captured before the popup takes focus and restores editor focus', async () => {
     const command = documentCommands({
         start: { lineNumber: 1, column: 1 },
