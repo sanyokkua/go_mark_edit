@@ -3,11 +3,13 @@ import { MermaidQueue } from '../../../../src/logic/markdown/mermaid/queue';
 const initialize = jest.fn();
 const parse = jest.fn();
 const render = jest.fn();
+const loadMermaidRealm = jest.fn();
+const cleanup = jest.fn((id: string) => {
+    document.getElementById(id)?.remove();
+    document.getElementById(`d${id}`)?.remove();
+});
 
-jest.mock('mermaid', () => ({
-    __esModule: true,
-    default: { initialize, parse, render },
-}));
+jest.mock('../../../../src/logic/markdown/mermaid/realm', () => ({ loadMermaidRealm }));
 
 const theme = JSON.stringify({ darkMode: false, themeVariables: { primaryColor: 'rgb(1, 2, 3)' } });
 
@@ -30,6 +32,14 @@ beforeEach(() => {
     initialize.mockReset();
     parse.mockReset().mockResolvedValue(true);
     render.mockReset().mockImplementation(async (id: string) => ({ svg: `<svg id="${id}"></svg>` }));
+    cleanup.mockClear();
+    loadMermaidRealm.mockReset().mockResolvedValue({ initialize, parse, render, cleanup });
+});
+
+it('loads the isolated Mermaid realm before rendering', async () => {
+    const queue = new MermaidQueue();
+    expect((await queue.render(request('graph TD; A-->B'))).kind).toBe('svg');
+    expect(loadMermaidRealm).toHaveBeenCalledTimes(1);
 });
 
 it('serializes initialization and rendering and captures each request theme', async () => {
@@ -110,6 +120,7 @@ it('removes Mermaid temporary elements after success and render failure', async 
     expect(await queue.render(request('broken'))).toEqual({ kind: 'error', message: 'line 2: exact render error' });
     expect(document.querySelector('[id^="gme-mmd-"]')).toBeNull();
     expect(document.querySelector('[id^="dgme-mmd-"]')).toBeNull();
+    expect(cleanup).toHaveBeenCalledTimes(2);
 });
 
 it('preserves exact render and non-Error rejection messages', async () => {

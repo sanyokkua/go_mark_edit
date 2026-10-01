@@ -1,0 +1,38 @@
+.block {
+    margin-block: var(--preview-block-spacing);
+    max-width: 100%;
+}
+
+.diagram {
+    max-width: 100%;
+    overflow-x: auto;
+}
+
+.diagram svg {
+    display: block;
+    max-width: 100%;
+}
+
+.placeholder,
+.error {
+    border: var(--control-border-width) solid var(--stroke-soft);
+    border-radius: var(--preview-code-block-radius);
+    padding: var(--preview-code-block-padding);
+}
+
+.placeholder,
+.error {
+    color: var(--err);
+}
+
+.errorMessage {
+    color: var(--text);
+    font-family: var(--preview-code-font-family);
+    margin-block-end: 0;
+    overflow-wrap: anywhere;
+    white-space: pre-wrap;
+}
+
+.loading {
+    color: var(--muted);
+}

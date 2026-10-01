@@ -1,10 +1,10 @@
 import { mermaidConfig } from './config';
 import { scrubMermaidSvg } from './scrub';
+import type { MermaidRealm } from './realm';
 
 export type MermaidResult =
     { kind: 'svg'; svg: string } | { kind: 'error'; message: string; stage?: 'load' } | { kind: 'aborted' };
 
-type Mermaid = typeof import('mermaid').default;
 type Request = { source: string; theme: string; signal: AbortSignal };
 
 interface Subscriber {
@@ -33,7 +33,7 @@ export class MermaidQueue {
     private tail: Promise<void> = Promise.resolve();
     private readonly active = new Map<string, Job>();
     private readonly cache = new Map<string, string>();
-    private mermaid?: Mermaid;
+    private mermaid?: MermaidRealm;
     private nextId = 0;
 
     render(request: Request): Promise<MermaidResult> {
@@ -70,12 +70,12 @@ export class MermaidQueue {
         });
     }
 
-    private async load(): Promise<Mermaid> {
+    private async load(): Promise<MermaidRealm> {
         if (this.mermaid) return this.mermaid;
         try {
-            this.mermaid = (await import('mermaid')).default;
+            this.mermaid = await (await import('./realm')).loadMermaidRealm();
         } catch {
-            this.mermaid = (await import('mermaid')).default;
+            this.mermaid = await (await import('./realm')).loadMermaidRealm();
         }
         return this.mermaid;
     }
@@ -94,7 +94,7 @@ export class MermaidQueue {
             this.finish(job, { kind: 'aborted' });
             return;
         }
-        let mermaid: Mermaid;
+        let mermaid: MermaidRealm;
         try {
             mermaid = await this.load();
         } catch (error) {
@@ -116,8 +116,7 @@ export class MermaidQueue {
         } catch (error) {
             result = { kind: 'error', message: errorMessage(error) };
         } finally {
-            document.getElementById(id)?.remove();
-            document.getElementById(`d${id}`)?.remove();
+            mermaid.cleanup(id);
         }
         if (result.kind === 'svg' && job.subscribers.size > 0) {
             this.cache.set(job.key, result.svg);

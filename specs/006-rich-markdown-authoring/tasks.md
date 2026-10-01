@@ -733,7 +733,7 @@ markdownAutoWrap wrap`).
 
     **Verify**: `scripts/test unit`, `scripts/verify lint`.
 
-- [ ] T016 [US1] Render Mermaid blocks as diagrams with limits, theme redraw and stale discard in `frontend/src/ui/components/MermaidBlock.tsx`, `frontend/src/logic/markdown/pipeline.ts`, `frontend/src/ui/components/MarkdownView.tsx`
+- [x] T016 [US1] Render Mermaid blocks as diagrams with limits, theme redraw and stale discard in `frontend/src/ui/components/MermaidBlock.tsx`, `frontend/src/logic/markdown/pipeline.ts`, `frontend/src/ui/components/MarkdownView.tsx`
 
     **Story / Priority**: US1 (P1). Needs T014, T015.
 

@@ -2,14 +2,17 @@ import '../../logic/theme/generatedHighlight.css';
 import 'katex/dist/katex.min.css';
 import { Component, createContext, memo, useContext, useMemo, useState, type ReactNode } from 'react';
 import Markdown, { type Components } from 'react-markdown';
+import { toText } from 'hast-util-to-text';
 
 import { t } from '../../i18n';
 import { classifyLink, type LinkTarget } from '../../logic/markdown/linkPolicy';
 import { createPipeline, type MarkdownStandard } from '../../logic/markdown/pipeline';
+import { hasGeneratedFenceLineFeed } from '../../logic/markdown/renderLimits';
 import { markdownComponents, previewUrlTransform, renderImageFallback } from '../../logic/markdown/renderer';
 import styles from './MarkdownView.module.css';
 import AlertBox from './AlertBox';
 import type { AlertKind } from '../../logic/markdown/syntax/alerts';
+import MermaidBlock from './MermaidBlock';
 
 const remarkRehypeOptions = { allowDangerousHtml: true };
 
@@ -57,6 +60,29 @@ type PreviewRuntimeProps = Pick<
 const PreviewRuntimeContext = createContext<PreviewRuntimeProps>({});
 const components: Components = {
     ...markdownComponents,
+    pre: function PreviewCodeBlock({ children, node, ...props }): React.JSX.Element {
+        const code = node?.children.length === 1 ? node.children[0] : undefined;
+        if (
+            code?.type === 'element' &&
+            code.tagName === 'code' &&
+            Array.isArray(code.properties.className) &&
+            code.properties.className.includes('language-mermaid')
+        ) {
+            const renderedSource = toText(code, { whitespace: 'pre' });
+            const source =
+                node && hasGeneratedFenceLineFeed(code, node) && renderedSource.endsWith('\n')
+                    ? renderedSource.slice(0, -1)
+                    : renderedSource;
+            return (
+                <MermaidBlock
+                    index={Number(code.properties.dataMermaidIndex)}
+                    source={source}
+                    sourceLine={node?.properties.dataSourceLine as number | string | undefined}
+                />
+            );
+        }
+        return <pre {...props}>{children}</pre>;
+    },
     span: function PreviewMathLimitInline({ children, node, ...props }): React.JSX.Element {
         const reason = node?.properties.dataMathLimit;
         if (reason === 'too-many' || reason === 'too-large') {

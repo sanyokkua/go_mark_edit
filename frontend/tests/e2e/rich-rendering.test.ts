@@ -146,7 +146,18 @@ test('the reference document renders rich Markdown safely and follows standard c
             expect(
                 await preview
                     .locator('svg')
-                    .evaluateAll((nodes) => nodes.every((node) => node.closest('[role="note"]') !== null)),
+                    .evaluateAll((nodes) =>
+                        nodes.every(
+                            (node) =>
+                                node.closest('[role="note"]') !== null || node.closest('[data-mermaid-block]') !== null,
+                        ),
+                    ),
+            ).toBe(true);
+        } else if (element === 'style') {
+            expect(
+                await preview
+                    .locator('style')
+                    .evaluateAll((nodes) => nodes.every((node) => node.closest('[data-mermaid-block] svg') !== null)),
             ).toBe(true);
         } else {
             await expect(preview.locator(element)).toHaveCount(0);

@@ -4,18 +4,18 @@ const theme = JSON.stringify({ darkMode: false, themeVariables: { primaryColor: 
 
 it('retries a failed lazy Mermaid import once and then renders successfully', async () => {
     let attempts = 0;
-    jest.doMock('mermaid', () => {
-        attempts += 1;
-        if (attempts === 1) throw new Error('first chunk failure');
-        return {
-            __esModule: true,
-            default: {
+    jest.doMock('../../../../src/logic/markdown/mermaid/realm', () => ({
+        loadMermaidRealm: async () => {
+            attempts += 1;
+            if (attempts === 1) throw new Error('first chunk failure');
+            return {
                 initialize: jest.fn(),
                 parse: jest.fn().mockResolvedValue(true),
                 render: jest.fn().mockResolvedValue({ svg: '<svg/>' }),
-            },
-        };
-    });
+                cleanup: jest.fn(),
+            };
+        },
+    }));
     const result = await new MermaidQueue().render({
         source: 'graph TD; A-->B',
         theme,
@@ -28,10 +28,12 @@ it('retries a failed lazy Mermaid import once and then renders successfully', as
 it('returns the exact second import error as a distinct load failure', async () => {
     jest.resetModules();
     let attempts = 0;
-    jest.doMock('mermaid', () => {
-        attempts += 1;
-        throw new Error('second chunk failure');
-    });
+    jest.doMock('../../../../src/logic/markdown/mermaid/realm', () => ({
+        loadMermaidRealm: async () => {
+            attempts += 1;
+            throw new Error('second chunk failure');
+        },
+    }));
     const result = await new MermaidQueue().render({
         source: 'graph TD; A-->B',
         theme,

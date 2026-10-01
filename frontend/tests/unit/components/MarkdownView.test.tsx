@@ -8,6 +8,18 @@ import { createPipeline } from '../../../src/logic/markdown/pipeline';
 
 import MarkdownView, { type CommittedMarkdownPreview } from '../../../src/ui/components/MarkdownView';
 
+jest.mock('../../../src/logic/markdown/mermaid/queue', () => ({
+    mermaidQueue: {
+        render: jest.fn().mockResolvedValue({
+            kind: 'svg',
+            svg: '<svg xmlns="http://www.w3.org/2000/svg"><text>Rendered diagram</text></svg>',
+        }),
+    },
+}));
+jest.mock('../../../src/logic/markdown/mermaid/theme', () => ({
+    resolveMermaidTheme: jest.fn(() => 'test-theme'),
+}));
+
 jest.mock('../../../src/logic/markdown/pipeline', () => {
     const actual = jest.requireActual<typeof import('../../../src/logic/markdown/pipeline')>(
         '../../../src/logic/markdown/pipeline',
@@ -60,7 +72,7 @@ it('renders GFM features', () => {
     );
 });
 
-it('(EC-RENDER-6) leaves higher-tier syntax and Mermaid safe', () => {
+it('keeps higher-tier syntax literal while rendering Mermaid at GFM', async () => {
     render(
         <MarkdownView
             standard="gfm"
@@ -75,8 +87,8 @@ graph TD
 
     expect(screen.getByText(/\$x\^2\$/)).toBeInTheDocument();
     expect(screen.getByText('Inline math stays $x^2$ and :note[directive syntax] stays literal.')).toBeInTheDocument();
-    expect(screen.getByText(/graph TD\s+A-->B/)).toBeInTheDocument();
-    expect(screen.queryByRole('img')).not.toBeInTheDocument();
+    expect(await screen.findByRole('img', { name: 'Mermaid diagram' })).toHaveTextContent('Rendered diagram');
+    expect(screen.queryByText(/graph TD\s+A-->B/)).not.toBeInTheDocument();
 });
 
 it('(EC-RENDER-5) disables raw HTML and dangerous URLs', () => {

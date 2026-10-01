@@ -1,5 +1,39 @@
 const forbidden = new Set(['script', 'foreignobject', 'img', 'image', 'use']);
 const urlPattern = /url\s*\(\s*(?:(['"])(.*?)\1|([^)]*))\s*\)/gi;
+const safeFunctions = new Set([
+    'rgb',
+    'rgba',
+    'hsl',
+    'hsla',
+    'lab',
+    'lch',
+    'oklab',
+    'oklch',
+    'calc',
+    'min',
+    'max',
+    'clamp',
+    'translate',
+    'translatex',
+    'translatey',
+    'scale',
+    'scalex',
+    'scaley',
+    'rotate',
+    'skew',
+    'matrix',
+    'matrix3d',
+    'cubic-bezier',
+    'steps',
+    'blur',
+    'drop-shadow',
+    'linear-gradient',
+    'radial-gradient',
+    'conic-gradient',
+    'repeating-linear-gradient',
+    'repeating-radial-gradient',
+    'repeating-conic-gradient',
+]);
 
 function decodeCssEscapes(value: string): string {
     return value
@@ -24,14 +58,117 @@ function parseSvg(svg: string): Document {
     return documentRef;
 }
 
-function localUrlOnly(value: string): string {
+/** Reject a whole declaration when a function can load a resource. */
+function safeCssValue(value: string): boolean {
+    let quote = '';
+    let depth = 0;
+    for (let index = 0; index < value.length; index++) {
+        const character = value[index];
+        if (quote) {
+            if (character === '\n' || character === '\r' || character === '\f') return false;
+            if (character === quote) quote = '';
+            continue;
+        }
+        if (character === '"' || character === "'") {
+            quote = character;
+            continue;
+        }
+        if (/[a-z_-]/i.test(character)) {
+            const start = index;
+            while (index < value.length && /[a-z0-9_-]/i.test(value[index])) index++;
+            const name = value.slice(start, index).toLowerCase();
+            while (index < value.length && /\s/.test(value[index])) index++;
+            if (value[index] !== '(') {
+                index--;
+                continue;
+            }
+            if (name === 'url') {
+                const close = value.indexOf(')', index + 1);
+                if (close < 0) return false;
+                const target = value
+                    .slice(index + 1, close)
+                    .trim()
+                    .replace(/^(['"])(.*)\1$/s, '$2');
+                if (!/^#[^\s"'()<>]+$/.test(target)) return false;
+                index = close;
+                continue;
+            }
+            if (!safeFunctions.has(name)) return false;
+            depth++;
+            continue;
+        }
+        if (character === '(') depth++;
+        if (character === ')') {
+            depth -= 1;
+            if (depth < 0) return false;
+        }
+    }
+    return quote === '' && depth === 0;
+}
+
+function safeDeclaration(segment: string): string {
+    const colon = segment.indexOf(':');
+    if (colon < 0) return '';
+    const property = segment.slice(0, colon).trim();
+    if (!/^-?[a-z][a-z0-9-]*$/i.test(property) || property.startsWith('--')) return '';
+    const value = segment.slice(colon + 1);
+    return safeCssValue(value) ? segment.slice(0, colon + 1) + canonicalLocalUrls(value) : '';
+}
+
+function canonicalLocalUrls(value: string): string {
     return value.replace(
         urlPattern,
-        (_match, _quote: string | undefined, quoted: string | undefined, bare: string | undefined) => {
-            const target = (quoted ?? bare ?? '').trim();
-            return /^#[^\s"'()<>]+$/.test(target) ? `url(${target})` : 'none';
-        },
+        (_match, _quote, quoted: string | undefined, bare: string | undefined) =>
+            `url(${(quoted ?? bare ?? '').trim()})`,
     );
+}
+
+function sanitizeCss(css: string, stylesheet: boolean): string {
+    const normalized = decodeCssEscapes(css);
+    const output: string[] = [];
+    const blocks: Array<'rule' | 'at' | 'drop'> = [];
+    let quote = '';
+    let depth = 0;
+    let start = 0;
+    for (let index = 0; index < normalized.length; index++) {
+        const character = normalized[index];
+        if (quote) {
+            if (character === '\n' || character === '\r' || character === '\f') return '';
+            if (character === quote) quote = '';
+            continue;
+        }
+        if (character === '"' || character === "'") {
+            quote = character;
+            continue;
+        }
+        if (character === '(') depth++;
+        if (character === ')') depth--;
+        if (depth !== 0) continue;
+        if (stylesheet && character === '{') {
+            const selector = normalized.slice(start, index);
+            const atRule = selector.trim().startsWith('@');
+            const allowedAtRule = /^@(?:-webkit-)?keyframes\b|^@(?:media|supports)\b/i.test(selector.trim());
+            const kind = blocks.at(-1) === 'drop' || (atRule && !allowedAtRule) ? 'drop' : atRule ? 'at' : 'rule';
+            blocks.push(kind);
+            if (kind !== 'drop') output.push(selector, '{');
+            start = index + 1;
+        } else if (character === ';' || (stylesheet && character === '}')) {
+            const segment = normalized.slice(start, index);
+            if ((stylesheet ? blocks.at(-1) === 'rule' : true) && blocks.at(-1) !== 'drop') {
+                const safe = safeDeclaration(segment);
+                if (safe) output.push(safe, ';');
+            }
+            if (character === '}') {
+                if (blocks.pop() !== 'drop') output.push('}');
+            }
+            start = index + 1;
+        }
+    }
+    if (!stylesheet && quote === '' && depth === 0) {
+        const safe = safeDeclaration(normalized.slice(start));
+        if (safe) output.push(safe);
+    }
+    return output.join('');
 }
 
 /** Keep Mermaid's geometry and local styles but remove execution and external loads. */
@@ -43,8 +180,7 @@ export function scrubMermaidSvg(svg: string): string {
             continue;
         }
         if (element.localName.toLowerCase() === 'style') {
-            const css = decodeCssEscapes(element.textContent ?? '');
-            element.textContent = localUrlOnly(css.replace(/@import[^;{}]*(?:;|$)/gi, ''));
+            element.textContent = sanitizeCss(element.textContent ?? '', true);
         }
         for (const attribute of [...element.attributes]) {
             const name = attribute.localName.toLowerCase();
@@ -54,8 +190,12 @@ export function scrubMermaidSvg(svg: string): string {
                 if (element.localName.toLowerCase() === 'a' || !attribute.value.trim().startsWith('#')) {
                     element.removeAttributeNode(attribute);
                 }
-            } else if (name !== 'id' && (/url\s*\(/i.test(attribute.value) || attribute.value.includes('\\'))) {
-                attribute.value = localUrlOnly(decodeCssEscapes(attribute.value));
+            } else if (name === 'style') {
+                attribute.value = sanitizeCss(attribute.value, false);
+            } else if (name !== 'id' && (attribute.value.includes('(') || attribute.value.includes('\\'))) {
+                const value = decodeCssEscapes(attribute.value);
+                if (safeCssValue(value)) attribute.value = canonicalLocalUrls(value);
+                else element.removeAttributeNode(attribute);
             }
         }
     }

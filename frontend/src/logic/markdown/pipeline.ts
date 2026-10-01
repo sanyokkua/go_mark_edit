@@ -32,7 +32,7 @@ function makePipeline(standard: MarkdownStandard): MarkdownPipeline {
             rehypeRaw,
             rehypeSourceLines,
             [rehypeSanitize, sanitizeSchema],
-            ...(standard === 'full' ? [rehypeRenderLimits] : []),
+            [rehypeRenderLimits, { math: standard === 'full' }],
             rehypeHeadingIds,
             ...(standard === 'full' ? [rehypeAlerts] : []),
             ...(standard === 'full' ? [rehypeMath] : []),

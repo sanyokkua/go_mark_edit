@@ -51,9 +51,10 @@ function normalizeMathPre(tree: Root): void {
 }
 
 /** Match rehype-katex's immediate-pre scope and its preorder traversal. */
-export function collectMathScopes(tree: Root): MathScope[] {
+export function collectMathScopes(tree: Root, numberMermaid = false): MathScope[] {
     const records: MathScope[] = [];
     const seenScopes = new WeakSet<Element>();
+    let diagrams = 0;
     const pending: Array<{ parent: Parent; index: number; parentOwner?: { parent: Parent; index: number } }> = [];
     for (let index = tree.children.length - 1; index >= 0; index--) pending.push({ parent: tree, index });
 
@@ -62,6 +63,16 @@ export function collectMathScopes(tree: Root): MathScope[] {
         const { parent, index, parentOwner } = item;
         const child = parent.children[index];
         if (child.type === 'element') {
+            if (
+                numberMermaid &&
+                child.tagName === 'code' &&
+                parent.type === 'element' &&
+                parent.tagName === 'pre' &&
+                Array.isArray(child.properties.className) &&
+                child.properties.className.includes('language-mermaid')
+            ) {
+                child.properties.dataMermaidIndex = ++diagrams;
+            }
             if (isMathCode(child)) {
                 const display = parent.type === 'element' && parent.tagName === 'pre';
                 const scope = display ? parent : child;
@@ -86,32 +97,32 @@ export function collectMathScopes(tree: Root): MathScope[] {
     return records;
 }
 
-function generatedFenceLineFeed(record: MathScope): boolean {
-    const codeStart = record.code.position?.start.offset;
-    const codeEnd = record.code.position?.end.offset;
+export function hasGeneratedFenceLineFeed(code: Element, scope: Element): boolean {
+    const codeStart = code.position?.start.offset;
+    const codeEnd = code.position?.end.offset;
     return (
-        record.display &&
         codeStart !== undefined &&
         codeEnd !== undefined &&
-        codeStart === record.scope.position?.start.offset &&
-        codeEnd === record.scope.position?.end.offset
+        codeStart === scope.position?.start.offset &&
+        codeEnd === scope.position?.end.offset
     );
 }
 
 /** Source seen by KaTeX, minus the one LF remark-rehype adds to a fence. */
 export function mathSourceOf(record: MathScope): string {
     const renderedSource = toText(record.scope, { whitespace: 'pre' });
-    return generatedFenceLineFeed(record) && renderedSource.endsWith('\n')
+    return record.display && hasGeneratedFenceLineFeed(record.code, record.scope) && renderedSource.endsWith('\n')
         ? renderedSource.slice(0, -1)
         : renderedSource;
 }
 
 /** Count sanitized formulas in document order before KaTeX can expand them. */
-export function rehypeRenderLimits(): (tree: Root) => void {
+export function rehypeRenderLimits(options: { math: boolean }): (tree: Root) => void {
     return (tree: Root): void => {
-        normalizeMathPre(tree);
+        if (options.math) normalizeMathPre(tree);
         let formulas = 0;
-        for (const record of collectMathScopes(tree)) {
+        for (const record of collectMathScopes(tree, true)) {
+            if (!options.math) continue;
             formulas++;
             const reason =
                 formulas > maxFormulas

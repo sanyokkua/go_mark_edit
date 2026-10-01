@@ -83,3 +83,42 @@ it('removes escaped external CSS loads while preserving local fragment styles', 
     expect(diagram.querySelector('rect')?.getAttribute('style')).toContain('url(#paint)');
     expect(diagram.querySelector('rect')?.getAttribute('style')).not.toMatch(/example\.org|u\\72l/i);
 });
+
+it('drops nested and escaped resource functions while keeping safe declarations and fragment paints', () => {
+    const source = `<svg xmlns="http://www.w3.org/2000/svg">
+      <style>
+        @font-face { font-family: danger; src: url(https://example.org/font.woff2) }
+        .safe { fill: url(#paint); stroke: rgb(1, 2, 3) }
+        .bad { fill: image-set("https://example.org/one.png" 1x, url(#paint) 2x); opacity: .7 }
+        .escaped { filter: -webkit-image\\2dset("https://example.org/two.png" 1x); stroke: url(#paint) }
+        .nested { filter: cross-fade(50%, image-set("data:image/png;base64,AAAA" 1x), red); opacity: .8 }
+      </style>
+      <defs><linearGradient id="paint"/></defs>
+      <rect style="fill:url(#paint);filter:image-set('https://example.org/three.png' 1x);stroke:rgb(1,2,3)"/>
+    </svg>`;
+    const diagram = svg(scrubMermaidSvg(source));
+    const css = diagram.querySelector('style')?.textContent ?? '';
+    expect(css).not.toMatch(/image-set|cross-fade|font-face|example\.org|data:image/iu);
+    expect(css).toContain('fill: url(#paint)');
+    expect(css).toContain('stroke: rgb(1, 2, 3)');
+    expect(css).toContain('opacity: .7');
+    expect(css).toContain('opacity: .8');
+    const inline = diagram.querySelector('rect')?.getAttribute('style') ?? '';
+    expect(inline).not.toMatch(/image-set|example\.org/iu);
+    expect(inline).toContain('fill:url(#paint)');
+    expect(inline).toContain('stroke:rgb(1,2,3)');
+});
+
+it('drops CSS declarations with newlines inside quoted strings before browser CSS parsing', () => {
+    const source = `<svg xmlns="http://www.w3.org/2000/svg">
+      <style>rect{font-family:"foo\n;mask:url(https://example.org/newline.svg);x:";fill:red}</style>
+      <rect width="100" height="100" style="font-family:'foo&#10;;filter:url(https://example.org/inline.svg);x:';fill:blue"/>
+    </svg>`;
+    const diagram = svg(scrubMermaidSvg(source));
+    const css = diagram.querySelector('style')?.textContent ?? '';
+    const inline = diagram.querySelector('rect')?.getAttribute('style') ?? '';
+    expect(css).not.toMatch(/example\.org|mask:/iu);
+    expect(inline).not.toMatch(/example\.org|filter:/iu);
+    expect(css).toBe('');
+    expect(inline).toBe('');
+});

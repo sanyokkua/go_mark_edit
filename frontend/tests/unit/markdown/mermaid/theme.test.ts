@@ -29,3 +29,27 @@ it('captures concrete rgb colours and dark mode before a later root-theme change
     expect(second.themeVariables.primaryBorderColor).toBe('rgb(200, 210, 220)');
     expect(first).not.toEqual(second);
 });
+
+it('uses the elevated opaque surface for diagram nodes when the preview surface is translucent', () => {
+    const colors: Record<string, string> = {
+        '--surface': 'rgb(255, 255, 255)',
+        '--elevated': 'rgb(28, 30, 54)',
+        '--surface-raised': 'rgb(30, 39, 76)',
+        '--text': 'rgb(234, 240, 255)',
+        '--accent': 'rgb(120, 150, 240)',
+        '--border': 'rgb(80, 90, 120)',
+    };
+    const getComputed = jest.spyOn(window, 'getComputedStyle').mockImplementation((element) => {
+        const token = (element as HTMLElement).style.color.match(/var\((--[^)]+)\)/)?.[1];
+        return { color: colors[token ?? ''] ?? 'rgb(0, 0, 0)' } as CSSStyleDeclaration;
+    });
+    try {
+        const { themeVariables } = JSON.parse(resolveMermaidTheme()) as { themeVariables: Record<string, string> };
+        expect(themeVariables.primaryColor).toBe('rgb(28, 30, 54)');
+        expect(themeVariables.mainBkg).toBe('rgb(28, 30, 54)');
+        expect(themeVariables.actorBkg).toBe('rgb(28, 30, 54)');
+        expect(themeVariables.tertiaryColor).toBe('rgb(28, 30, 54)');
+    } finally {
+        getComputed.mockRestore();
+    }
+});

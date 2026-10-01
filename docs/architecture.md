@@ -240,6 +240,18 @@ that renderer through a lazy boundary with the existing localized loading state,
 remains outside the entry bundle. The Vite configuration keeps all KaTeX fonts local, external to CSS, and
 woff2 only; retained previews continue through pause, resume and local rendering failures.
 
+The sanitized render-limits step also numbers Mermaid fences in document order at every Markdown standard.
+`MarkdownView.tsx` replaces each numbered fence with the props-only `MermaidBlock.tsx`, preserving its source-line
+annotation. The component enforces the 50-diagram and 50,000-character limits, observes root theme and mode
+changes, aborts stale requests and keeps the preceding SVG visible during redraw. The shared queue under
+`frontend/src/logic/markdown/mermaid/` serializes each theme configuration and render, caches up to 50 scrubbed
+SVGs by source and resolved theme snapshot, and reports exact engine errors. Mermaid executes inside a persistent,
+measurable offscreen iframe that loads a bundled local module under a restrictive CSP before any diagram code runs;
+the queue retains ownership of scheduling, retries and cancellation. The SVG scrub removes executable elements,
+external references and resource-bearing CSS before insertion. Each mounted block namespaces SVG
+ids before insertion, so cached duplicate diagrams have independent references. The existing preview scroll
+port observes asynchronous SVG insertion and re-measures its source-line geometry.
+
 All appearance values come from `frontend/src/ui/styles/tokens.css`. The three themes and light/dark
 values are selected on the document root. Widget stylesheets do not select themes and portalled
 surfaces inherit the root attributes.

@@ -85,7 +85,7 @@ class PlaywrightE2EAppHarness implements E2EAppHarness {
     private disposed = false;
     private readonly frontendOrigin: string;
     private backendOrigin: string | undefined;
-    private readonly foreignRequests: string[] = [];
+    private readonly foreignRequests = new Map<Request, string>();
 
     private readonly observeRequest = (request: Request): void => {
         const url = request.url();
@@ -93,8 +93,13 @@ class PlaywrightE2EAppHarness implements E2EAppHarness {
             isForeignRequest(url, this.frontendOrigin) &&
             (this.backendOrigin === undefined || isForeignRequest(url, this.backendOrigin))
         ) {
-            this.foreignRequests.push(url);
+            this.foreignRequests.set(request, url);
         }
+    };
+
+    private readonly observeFailedRequest = (request: Request): void => {
+        // The isolated diagram frame reports CSP refusals as request events before any network route is reached.
+        if (request.failure()?.errorText === 'csp') this.foreignRequests.delete(request);
     };
 
     get capturedOutput(): string {
@@ -109,6 +114,7 @@ class PlaywrightE2EAppHarness implements E2EAppHarness {
         this.repositoryDirectory = repositoryDirectory;
         this.frontendOrigin = new URL(preparedPaths().frontendURL).origin;
         this.page.on('request', this.observeRequest);
+        this.page.on('requestfailed', this.observeFailedRequest);
     }
 
     static async create(page: Page): Promise<PlaywrightE2EAppHarness> {
@@ -225,7 +231,7 @@ class PlaywrightE2EAppHarness implements E2EAppHarness {
     }
 
     expectNoForeignRequests(): void {
-        expect(this.foreignRequests).toEqual([]);
+        expect([...this.foreignRequests.values()]).toEqual([]);
     }
 
     async waitForAppExit(timeoutMilliseconds = PROCESS_WAIT_TIMEOUT_MS): Promise<void> {
@@ -245,6 +251,7 @@ class PlaywrightE2EAppHarness implements E2EAppHarness {
         if (this.disposed) return;
         this.disposed = true;
         this.page.off('request', this.observeRequest);
+        this.page.off('requestfailed', this.observeFailedRequest);
         await this.stopDevProcess(true);
         if (process.env.KEEP_E2E_ARTEFACTS !== '1') {
             await Promise.all([

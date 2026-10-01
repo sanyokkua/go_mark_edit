@@ -49,6 +49,26 @@ it('keeps unknown and unlabelled fences as plain code', () => {
     }
 });
 
+it.each(['minimal', 'gfm', 'full'] as const)(
+    'numbers Mermaid fences in document order at %s while reserving math for Full',
+    (standard) => {
+        const source =
+            '```mermaid\ngraph TD\n  A-->B\n```\n\n```go\npackage main\n```\n\n```mermaid\ngraph TD\n  B-->C\n```\n\n$x^2$';
+        const rendered = preview(source, standard);
+        expect(
+            [...rendered.querySelectorAll('pre code.language-mermaid')].map((code) =>
+                code.getAttribute('data-mermaid-index'),
+            ),
+        ).toEqual(['1', '2']);
+        if (standard === 'full') {
+            expect(rendered.querySelector('.katex')).not.toBeNull();
+        } else {
+            expect(rendered).toHaveTextContent('$x^2$');
+            expect(rendered.querySelector('.katex')).toBeNull();
+        }
+    },
+);
+
 it('returns stable pipeline and syntax lists per standard', () => {
     for (const standard of ['minimal', 'gfm', 'full'] as const) {
         expect(createPipeline(standard)).toBe(createPipeline(standard));

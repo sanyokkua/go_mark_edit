@@ -45,6 +45,10 @@ export default defineConfig({
             wailsjs: path.resolve(rootDir, 'wailsjs'),
         },
     },
+    optimizeDeps: {
+        // The lazy iframe import must not trigger a shared dev-server reload during active previews.
+        include: ['mermaid'],
+    },
     worker: {
         format: 'es',
     },
