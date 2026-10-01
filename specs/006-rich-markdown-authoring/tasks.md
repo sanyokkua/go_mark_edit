@@ -1037,7 +1037,7 @@ Redux) allows one run at a time.
 
     **Verify**: `scripts/test unit`, `scripts/verify lint`.
 
-- [ ] T023 [US2] Prove Format and Compact on a 30-document corpus in `frontend/tests/fixtures/tidy-corpus/`, `frontend/tests/unit/tidy/corpus.test.ts`
+- [x] T023 [US2] Prove Format and Compact on a 30-document corpus in `frontend/tests/fixtures/tidy-corpus/`, `frontend/tests/unit/tidy/corpus.test.ts`
 
     **Story / Priority**: US2 (P1). Needs T020-T022.
 
