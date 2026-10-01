@@ -874,7 +874,7 @@ Redux) allows one run at a time.
 
     **Verify**: `scripts/test unit`, `scripts/verify lint`.
 
-- [ ] T019 [US2] Build the tidy worker, client, chunking, equivalence guard and Compact in `frontend/src/logic/tidy/` (`runTidy.ts`, `worker.ts`, `protocol.ts`, `chunking.ts`, `prefs.ts`, `equivalence.ts`, `rules.ts`, `edits.ts`, `engine.ts`)
+- [x] T019 [US2] Build the tidy worker, client, chunking, equivalence guard and Compact in `frontend/src/logic/tidy/` (`runTidy.ts`, `worker.ts`, `protocol.ts`, `chunking.ts`, `prefs.ts`, `equivalence.ts`, `rules.ts`, `edits.ts`, `engine.ts`)
 
     **Story / Priority**: US2 (P1). Needs T001, T006 (syntax plugin list), T013/T014 (the Full `$` construct — the parse
     must include math so `$$` blocks are protected) (ADR-0038 is already recorded).

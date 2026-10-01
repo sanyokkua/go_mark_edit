@@ -219,6 +219,15 @@ excludes another run until release, abort signals cancellation without releasing
 handles cannot affect a later run. Progress becomes visible immediately above 1 MiB or after one
 second, retaining the latest completed-chunk counts until then.
 
+`frontend/src/logic/tidy/` owns source tidying independently of Monaco, Redux and the bridge.
+Its pure engine uses the shared Full syntax parser, computes sorted non-overlapping edits, and
+refuses a changed chunk when its normalized Markdown tree differs. Compact preserves protected
+source and hard breaks while removing redundant blank lines and trailing whitespace. Safe heading
+boundaries divide larger inputs; source offsets remain indices into the original text.
+The client lazily starts a dedicated module worker, forwards completed-chunk progress, reuses a
+completed worker, and terminates a cancelled worker. Vite builds the client as an explicit entry
+so the production client and worker are available independently of interface integration.
+
 `frontend/src/ui/components/CodeEditor.tsx` owns the visible Monaco working copy and publishes its scroll
 port for synchronized scrolling. It is paired with `frontend/src/ui/components/MarkdownView.tsx`, which owns
 sanitized preview rendering; each rendered block carries a numeric `data-source-line` annotation that the

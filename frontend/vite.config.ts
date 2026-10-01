@@ -1,9 +1,22 @@
+import { createRequire } from 'node:module';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { defineConfig, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
 
 const rootDir = fileURLToPath(new URL('.', import.meta.url));
+const workerEntityDecoder = createRequire(import.meta.url).resolve('decode-named-character-reference');
+
+function workerEntityDecoderPlugin(): Plugin {
+    return {
+        name: 'worker-entity-decoder',
+        enforce: 'pre',
+        resolveId(source): string | undefined {
+            // The package's browser export touches document at import time; workers use its data-only export.
+            if (source === 'decode-named-character-reference') return workerEntityDecoder;
+        },
+    };
+}
 
 function previewImageBackendRoutePlugin(): Plugin {
     return {
@@ -39,6 +52,13 @@ export default defineConfig({
     build: {
         assetsInlineLimit: 0,
         modulePreload: { polyfill: false },
+        rollupOptions: {
+            preserveEntrySignatures: 'strict',
+            input: {
+                main: path.resolve(rootDir, 'index.html'),
+                tidyClient: path.resolve(rootDir, 'src/logic/tidy/runTidy.ts'),
+            },
+        },
     },
     resolve: {
         alias: {
@@ -51,5 +71,6 @@ export default defineConfig({
     },
     worker: {
         format: 'es',
+        plugins: () => [workerEntityDecoderPlugin()],
     },
 });
