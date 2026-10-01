@@ -15,6 +15,9 @@ function documentCommands(
         getContent: () => ({ status: 'available', value: source }),
         getSelection: jest.fn(() => ({ status: 'available', value: selection })),
         replaceAll: jest.fn(() => ({ status: 'available', value: undefined })),
+        applyEdits: jest.fn(() => ({ status: 'available', value: undefined })),
+        setPosition: jest.fn(() => ({ status: 'available', value: undefined })),
+        setMarkers: jest.fn(() => ({ status: 'available', value: undefined })),
         replaceRange,
     };
     return { commands, focus, replaceRange };

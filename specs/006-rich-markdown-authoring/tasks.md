@@ -1071,7 +1071,7 @@ Redux) allows one run at a time.
 
     **Verify**: `scripts/test unit`, `scripts/format --check`, `scripts/verify lint`.
 
-- [ ] T024 [US2] Add edit, caret, marker and hover support to the editor in `frontend/src/ui/components/CodeEditor.tsx`, `frontend/src/logic/hooks/useDocumentCommands.ts`, `frontend/src/ui/components/monacoSetup.ts`
+- [x] T024 [US2] Add edit, caret, marker and hover support to the editor in `frontend/src/ui/components/CodeEditor.tsx`, `frontend/src/logic/hooks/useDocumentCommands.ts`, `frontend/src/ui/components/monacoSetup.ts`
 
     **Story / Priority**: US2 (P1). Needs T019 (edit type). T033 and T036 reuse `setPosition`.
 

@@ -154,6 +154,9 @@ it('routes a formatting activation through the editor command context', async ()
         })),
         replaceRange,
         replaceAll: jest.fn(),
+        applyEdits: jest.fn(() => ({ status: 'available' as const, value: undefined })),
+        setPosition: jest.fn(() => ({ status: 'available' as const, value: undefined })),
+        setMarkers: jest.fn(() => ({ status: 'available' as const, value: undefined })),
     };
 
     renderToolbar(
@@ -184,6 +187,9 @@ it('uses one focused editor-action path for toolbar, popup, and shortcut formatt
             },
         }),
         replaceAll: jest.fn(),
+        applyEdits: jest.fn(() => ({ status: 'available' as const, value: undefined })),
+        setPosition: jest.fn(() => ({ status: 'available' as const, value: undefined })),
+        setMarkers: jest.fn(() => ({ status: 'available' as const, value: undefined })),
         replaceRange,
     };
 

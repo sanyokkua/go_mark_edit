@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 
-import type { CodeEditorHandle, EditorRange, EditorSelection } from '../../ui/components/CodeEditor';
+import type { CodeEditorHandle, EditorMarker, EditorRange, EditorSelection } from '../../ui/components/CodeEditor';
+import type { TextEdit } from '../tidy/protocol';
 
 export type DocumentCommandResult<T> =
     { status: 'available'; value: T } | { status: 'unavailable' } | { status: 'document-mismatch' };
@@ -17,6 +18,9 @@ export interface DocumentCommandAPI {
     getSelection: () => DocumentCommandResult<EditorSelection | null>;
     replaceRange: (range: EditorRange, text: string, selection?: EditorSelection) => DocumentCommandResult<void>;
     replaceAll: (text: string) => DocumentCommandResult<void>;
+    applyEdits: (edits: TextEdit[]) => DocumentCommandResult<void>;
+    setPosition: (line: number, column: number) => DocumentCommandResult<void>;
+    setMarkers: (markers: EditorMarker[]) => DocumentCommandResult<void>;
 }
 
 export type EditorSessionSource = () => DocumentCommandSession | null;
@@ -91,6 +95,27 @@ export function createDocumentCommands(
             }
 
             return session.value.replaceAll(text)
+                ? { status: 'available', value: undefined }
+                : { status: 'unavailable' };
+        },
+        applyEdits(edits: TextEdit[]): DocumentCommandResult<void> {
+            const session = resolveSession(expectedDocumentId, expectedToken, sessionSource);
+            if (session.status !== 'available') return session;
+            return session.value.applyEdits(edits)
+                ? { status: 'available', value: undefined }
+                : { status: 'unavailable' };
+        },
+        setPosition(line: number, column: number): DocumentCommandResult<void> {
+            const session = resolveSession(expectedDocumentId, expectedToken, sessionSource);
+            if (session.status !== 'available') return session;
+            return session.value.setPosition(line, column)
+                ? { status: 'available', value: undefined }
+                : { status: 'unavailable' };
+        },
+        setMarkers(markers: EditorMarker[]): DocumentCommandResult<void> {
+            const session = resolveSession(expectedDocumentId, expectedToken, sessionSource);
+            if (session.status !== 'available') return session;
+            return session.value.setMarkers(markers)
                 ? { status: 'available', value: undefined }
                 : { status: 'unavailable' };
         },

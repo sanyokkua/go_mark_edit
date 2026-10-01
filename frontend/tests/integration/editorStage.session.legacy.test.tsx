@@ -22,6 +22,9 @@ const mockEditorHandle: CodeEditorHandle = {
         end: { lineNumber: 2, column: 5 },
     })),
     replaceAll: jest.fn(() => true),
+    applyEdits: () => true,
+    setPosition: () => true,
+    setMarkers: () => true,
     replaceRange: jest.fn(() => true),
 };
 

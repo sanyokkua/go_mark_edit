@@ -288,6 +288,9 @@ it('preserves the editor selection when a toolbar format button is pressed', () 
             status: 'available' as const,
             value: undefined,
         })),
+        applyEdits: jest.fn(() => ({ status: 'available' as const, value: undefined })),
+        setPosition: jest.fn(() => ({ status: 'available' as const, value: undefined })),
+        setMarkers: jest.fn(() => ({ status: 'available' as const, value: undefined })),
     };
 
     render(
@@ -323,6 +326,9 @@ it('passes acknowledged marker preferences into toolbar formatting', async () =>
         })),
         replaceRange,
         replaceAll: jest.fn(),
+        applyEdits: jest.fn(() => ({ status: 'available' as const, value: undefined })),
+        setPosition: jest.fn(() => ({ status: 'available' as const, value: undefined })),
+        setMarkers: jest.fn(() => ({ status: 'available' as const, value: undefined })),
     };
 
     store.dispatch(
@@ -380,6 +386,9 @@ it('routes deferred editor shortcuts through the typed dispatcher', () => {
         })),
         replaceRange: jest.fn(),
         replaceAll: jest.fn(),
+        applyEdits: jest.fn(() => ({ status: 'available' as const, value: undefined })),
+        setPosition: jest.fn(() => ({ status: 'available' as const, value: undefined })),
+        setMarkers: jest.fn(() => ({ status: 'available' as const, value: undefined })),
     };
 
     const { container } = render(
@@ -421,6 +430,9 @@ it('suppresses editor shortcuts while the Shortcuts dialog modal state is active
         })),
         replaceRange: jest.fn(),
         replaceAll: jest.fn(),
+        applyEdits: jest.fn(() => ({ status: 'available' as const, value: undefined })),
+        setPosition: jest.fn(() => ({ status: 'available' as const, value: undefined })),
+        setMarkers: jest.fn(() => ({ status: 'available' as const, value: undefined })),
     };
 
     const { container } = render(

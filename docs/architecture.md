@@ -234,7 +234,11 @@ completed worker, and terminates a cancelled worker. Vite builds the client as a
 so the production client and worker are available independently of interface integration.
 
 `frontend/src/ui/components/CodeEditor.tsx` owns the visible Monaco working copy and publishes its scroll
-port for synchronized scrolling. It is paired with `frontend/src/ui/components/MarkdownView.tsx`, which owns
+port for synchronized scrolling. Its handle applies LF-indexed tidy edits as one undo group, retains the
+caret's logical line, navigates and focuses the editor, and maps component-owned lint markers to Monaco's
+`gme-lint` marker owner. `frontend/src/logic/hooks/useDocumentCommands.ts` guards these operations by
+document id and activation token; Monaco stays inside the editor component and its lazy setup, which loads
+the marker hover contribution. The editor is paired with `frontend/src/ui/components/MarkdownView.tsx`, which owns
 sanitized preview rendering; each rendered block carries a numeric `data-source-line` annotation that the
 sanitization allowlist admits only as a positive integer. `frontend/src/logic/markdown/headings.ts` extracts
 Markdown heading text, slugs and source lines from the shared syntax rules, then assigns preview ids only to

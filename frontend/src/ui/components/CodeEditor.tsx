@@ -2,6 +2,7 @@ import { forwardRef, lazy, Suspense, useCallback, useEffect, useImperativeHandle
 import type { editor, IDisposable, IPosition, IRange, ISelection } from 'monaco-editor';
 
 import type { EditorScrollPort, ScrollGeometryChange } from '../../logic/scrollSync/scrollSyncTypes';
+import type { TextEdit } from '../../logic/tidy/protocol';
 import styles from './CodeEditor.module.css';
 
 export interface EditorPosition {
@@ -16,12 +17,24 @@ export interface EditorRange {
 
 export type EditorSelection = EditorRange;
 
+export interface EditorMarker {
+    startLine: number;
+    startColumn: number;
+    endLine: number;
+    endColumn: number;
+    severity: 'error' | 'warning';
+    message: string;
+}
+
 export interface CodeEditorHandle {
     focus(): boolean;
     getContent(): string | null;
     getSelection(): EditorSelection | null;
     replaceRange(range: EditorRange, text: string, selection?: EditorSelection): boolean;
     replaceAll(text: string): boolean;
+    applyEdits(edits: TextEdit[]): boolean;
+    setPosition(line: number, column: number): boolean;
+    setMarkers(markers: EditorMarker[]): boolean;
 }
 
 export interface CodeEditorProps {
@@ -125,8 +138,7 @@ function modelPath(documentId: string, activationId?: string): string {
 
 function applyEdit(
     editorInstance: editor.IStandaloneCodeEditor | null,
-    range: IRange,
-    text: string,
+    edits: Array<{ range: IRange; text: string }>,
     selection?: EditorSelection,
 ): boolean {
     if (editorInstance === null || editorInstance.getModel() === null) {
@@ -134,19 +146,59 @@ function applyEdit(
     }
 
     editorInstance.pushUndoStop();
-    editorInstance.executeEdits('gomarkedit', [
-        {
-            range,
-            text,
-            forceMoveMarkers: true,
-        },
-    ]);
+    editorInstance.executeEdits(
+        'gomarkedit',
+        edits.map(({ range, text }) => ({ range, text, forceMoveMarkers: true })),
+    );
     if (selection !== undefined) {
         editorInstance.setSelection(toMonacoRange(selection));
     }
     editorInstance.pushUndoStop();
 
     return true;
+}
+
+function lineStarts(text: string): number[] {
+    const starts = [0];
+    for (let index = 0; index < text.length; index += 1) {
+        if (text.charCodeAt(index) === 10) starts.push(index + 1);
+    }
+    return starts;
+}
+
+function positionAt(offset: number, starts: number[]): IPosition {
+    let low = 0;
+    let high = starts.length - 1;
+    while (low < high) {
+        const middle = Math.ceil((low + high) / 2);
+        if (starts[middle] <= offset) low = middle;
+        else high = middle - 1;
+    }
+    return { lineNumber: low + 1, column: offset - starts[low] + 1 };
+}
+
+function editedText(text: string, edits: TextEdit[]): string {
+    const chunks: string[] = [];
+    let last = 0;
+    for (const edit of edits) {
+        chunks.push(text.slice(last, edit.from), edit.text);
+        last = edit.to;
+    }
+    chunks.push(text.slice(last));
+    return chunks.join('');
+}
+
+function movedLineStart(anchor: number, edits: TextEdit[]): number {
+    let delta = 0;
+    for (const edit of edits) {
+        if (edit.to < anchor || (edit.to === anchor && (edit.from < anchor || edit.from === edit.to))) {
+            delta += edit.text.length - (edit.to - edit.from);
+            continue;
+        }
+        if (edit.from <= anchor) return edit.from + delta;
+        break;
+    }
+    return anchor + delta;
 }
 
 /** The editor's padding in pixels; Monaco's line offsets include the top padding but not the bottom one. */
@@ -240,6 +292,7 @@ const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(function CodeEd
     ref,
 ): React.JSX.Element {
     const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
+    const monacoRef = useRef<typeof import('monaco-editor') | null>(null);
     const onChangeRef = useRef(onChange);
     const onBlurRef = useRef(onBlur);
     const onCursorPositionChangeRef = useRef(onCursorPositionChange);
@@ -356,7 +409,7 @@ const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(function CodeEd
                 return selection === null || selection === undefined ? null : toEditorSelection(selection);
             },
             replaceRange(range: EditorRange, text: string, selection?: EditorSelection): boolean {
-                return applyEdit(editorRef.current, toMonacoRange(range), text, selection);
+                return applyEdit(editorRef.current, [{ range: toMonacoRange(range), text }], selection);
             },
             replaceAll(text: string): boolean {
                 const model = editorRef.current?.getModel();
@@ -365,14 +418,87 @@ const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(function CodeEd
                     return false;
                 }
 
-                return applyEdit(editorRef.current, model.getFullModelRange(), text);
+                return applyEdit(editorRef.current, [{ range: model.getFullModelRange(), text }]);
+            },
+            applyEdits(edits: TextEdit[]): boolean {
+                const instance = editorRef.current;
+                const model = instance?.getModel();
+                if (instance === null || model === null || model === undefined) return false;
+                if (edits.length === 0) return true;
+
+                const source = model.getValue().replace(/\r\n?/g, '\n');
+                const ordered = [...edits].sort((a, b) => a.from - b.from || a.to - b.to);
+                const result = editedText(source, ordered);
+                const starts = lineStarts(source);
+                const cursor = instance.getPosition();
+                const anchor =
+                    cursor === null ? null : starts[Math.min(Math.max(cursor.lineNumber, 1), starts.length) - 1];
+                const changed =
+                    ordered.length > 20000
+                        ? applyEdit(instance, [{ range: model.getFullModelRange(), text: result }])
+                        : applyEdit(
+                              instance,
+                              ordered.map((edit) => {
+                                  const start = positionAt(edit.from, starts);
+                                  const end = positionAt(edit.to, starts);
+                                  return {
+                                      range: {
+                                          startLineNumber: start.lineNumber,
+                                          startColumn: start.column,
+                                          endLineNumber: end.lineNumber,
+                                          endColumn: end.column,
+                                      },
+                                      text: edit.text,
+                                  };
+                              }),
+                          );
+                if (changed && cursor !== null && anchor !== null) {
+                    const resultStarts = lineStarts(result);
+                    const line = positionAt(movedLineStart(anchor, ordered), resultStarts).lineNumber;
+                    const lineEnd = line < resultStarts.length ? resultStarts[line] - 1 : result.length;
+                    instance.setPosition({
+                        lineNumber: line,
+                        column: Math.min(cursor.column, lineEnd - resultStarts[line - 1] + 1),
+                    });
+                }
+                return changed;
+            },
+            setPosition(line: number, column: number): boolean {
+                if (editorRef.current?.getModel() === null || editorRef.current === null) return false;
+                editorRef.current.setPosition({ lineNumber: line, column });
+                editorRef.current.revealLineInCenter(line);
+                editorRef.current.focus();
+                return true;
+            },
+            setMarkers(markers: EditorMarker[]): boolean {
+                const model = editorRef.current?.getModel();
+                const monaco = monacoRef.current;
+                if (model === null || model === undefined || monaco === null) return false;
+                monaco.editor.setModelMarkers(
+                    model,
+                    'gme-lint',
+                    markers.map((marker) => ({
+                        startLineNumber: marker.startLine,
+                        startColumn: marker.startColumn,
+                        endLineNumber: marker.endLine,
+                        endColumn: marker.endColumn,
+                        severity:
+                            marker.severity === 'error' ? monaco.MarkerSeverity.Error : monaco.MarkerSeverity.Warning,
+                        message: marker.message,
+                    })),
+                );
+                return true;
             },
         }),
         [],
     );
 
-    const handleMount = (editorInstance: editor.IStandaloneCodeEditor): void => {
+    const handleMount = (
+        editorInstance: editor.IStandaloneCodeEditor,
+        monaco: typeof import('monaco-editor'),
+    ): void => {
         editorRef.current = editorInstance;
+        monacoRef.current = monaco;
         editorInstance.onDidBlurEditorText((): void => {
             onBlurRef.current?.();
         });

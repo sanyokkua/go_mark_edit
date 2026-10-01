@@ -40,6 +40,9 @@ it.each(['italic', 'bullet-list', 'task-list'] as const)(
             getSelection,
             replaceRange,
             replaceAll: jest.fn(() => ({ status: 'available', value: undefined })),
+            applyEdits: jest.fn(() => ({ status: 'available', value: undefined })),
+            setPosition: jest.fn(() => ({ status: 'available', value: undefined })),
+            setMarkers: jest.fn(() => ({ status: 'available', value: undefined })),
         };
 
         expect(
@@ -65,6 +68,9 @@ it.each([
         getSelection: jest.fn(() => ({ status: 'available', value: selection(1, 1, 1, 5) })),
         replaceRange,
         replaceAll: jest.fn(() => ({ status: 'available', value: undefined })),
+        applyEdits: jest.fn(() => ({ status: 'available', value: undefined })),
+        setPosition: jest.fn(() => ({ status: 'available', value: undefined })),
+        setMarkers: jest.fn(() => ({ status: 'available', value: undefined })),
     };
 
     expect(
@@ -359,6 +365,9 @@ it('routes a bounded result through the existing document-command seam', () => {
         }),
         replaceRange,
         replaceAll: jest.fn(),
+        applyEdits: jest.fn(() => ({ status: 'available', value: undefined })),
+        setPosition: jest.fn(() => ({ status: 'available', value: undefined })),
+        setMarkers: jest.fn(() => ({ status: 'available', value: undefined })),
     };
 
     expect(applyFormatEdit(commands, request('bold', 'ignored', selection(1, 1, 1, 6)))).toMatchObject({
@@ -394,6 +403,9 @@ it('forwards the formatter selection intent through document commands', () => {
         }),
         replaceRange,
         replaceAll: jest.fn(),
+        applyEdits: jest.fn(() => ({ status: 'available', value: undefined })),
+        setPosition: jest.fn(() => ({ status: 'available', value: undefined })),
+        setMarkers: jest.fn(() => ({ status: 'available', value: undefined })),
     };
 
     expect(applyFormatEdit(commands, request('bold', 'ignored', selection(1, 1, 1, 6)))).toMatchObject({
@@ -423,6 +435,9 @@ it('forwards empty-pair caret intent as well as selected-range intent', () => {
         }),
         replaceRange,
         replaceAll: jest.fn(),
+        applyEdits: jest.fn(() => ({ status: 'available', value: undefined })),
+        setPosition: jest.fn(() => ({ status: 'available', value: undefined })),
+        setMarkers: jest.fn(() => ({ status: 'available', value: undefined })),
     };
 
     expect(applyFormatEdit(commands, request('bold', 'ignored', selection(1, 1)))).toMatchObject({

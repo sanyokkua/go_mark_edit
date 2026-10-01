@@ -211,6 +211,9 @@ it('moves keyboard focus into the created file editor after the modal closes', a
         getSelection: () => null,
         replaceRange: () => true,
         replaceAll: () => true,
+        applyEdits: () => true,
+        setPosition: () => true,
+        setMarkers: () => true,
     };
     const commands = createDocumentCommands('created', token, () => ({ documentId: 'created', token, handle }));
     const renderEditor = (modalOpen: boolean) => (
@@ -243,6 +246,9 @@ it('leaves editor input focused after creating a file from the real tree prompt'
         getSelection: () => null,
         replaceRange: () => true,
         replaceAll: () => true,
+        applyEdits: () => true,
+        setPosition: () => true,
+        setMarkers: () => true,
     };
     const documentCommands = createDocumentCommands('created', token, () => ({ documentId: 'created', token, handle }));
     const Harness = (): React.JSX.Element => {

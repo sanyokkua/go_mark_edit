@@ -102,6 +102,9 @@ it('clamps context-menu placement and uses the selection captured at opening', a
             value: undefined,
         })),
         replaceAll: jest.fn(),
+        applyEdits: jest.fn(() => ({ status: 'available' as const, value: undefined })),
+        setPosition: jest.fn(() => ({ status: 'available' as const, value: undefined })),
+        setMarkers: jest.fn(() => ({ status: 'available' as const, value: undefined })),
     };
     render(
         <EditorSessionContext.Provider value={{ documentId: 'doc-1', content: 'word' }}>
@@ -247,6 +250,9 @@ it('passes acknowledged marker preferences into context formatting', () => {
         })),
         replaceRange,
         replaceAll: jest.fn(),
+        applyEdits: jest.fn(() => ({ status: 'available' as const, value: undefined })),
+        setPosition: jest.fn(() => ({ status: 'available' as const, value: undefined })),
+        setMarkers: jest.fn(() => ({ status: 'available' as const, value: undefined })),
     };
 
     store.dispatch(
@@ -308,6 +314,9 @@ function clipboardCommands() {
             value: undefined,
         })),
         replaceAll: jest.fn(),
+        applyEdits: jest.fn(() => ({ status: 'available' as const, value: undefined })),
+        setPosition: jest.fn(() => ({ status: 'available' as const, value: undefined })),
+        setMarkers: jest.fn(() => ({ status: 'available' as const, value: undefined })),
     };
 }
 
