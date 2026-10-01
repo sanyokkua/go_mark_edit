@@ -184,42 +184,52 @@ function replaceRegion(
     edits.push({ from, to, text: next });
 }
 
+export function headingReplacement(
+    source: string,
+    heading: Heading,
+    current: string,
+    preferred: 'atx' | 'setext',
+): string | null {
+    const from = heading.position?.start.offset;
+    const to = heading.position?.end.offset;
+    if (from === undefined || to === undefined) return null;
+    const lineStart = source.lastIndexOf('\n', from - 1) + 1;
+    const prefix = source.slice(lineStart, from);
+    const continuation = continuationPrefix(prefix);
+    if (continuation === null) return null;
+    const lines = current.split('\n');
+    const underline =
+        lines.length === 2 && lines[1].startsWith(continuation)
+            ? /^(=+|-+)[ \t]*$/u.exec(lines[1].slice(continuation.length))
+            : null;
+    if (underline !== null) {
+        if (preferred === 'setext') return null;
+        const depth = underline[1][0] === '=' ? 1 : 2;
+        return depth === heading.depth ? `${'#'.repeat(depth)} ${lines[0]}` : null;
+    }
+    if (preferred !== 'setext' || heading.depth > 2 || current.includes('\n')) return null;
+    const atx = /^(#{1,6})(?:[ \t]+(.*))?$/u.exec(current);
+    if (atx === null || atx[1].length !== heading.depth) return null;
+    const content = (atx[2] ?? '').replace(/[ \t]+#+[ \t]*$/u, '').trimEnd();
+    if (content === '') return null;
+    const underlineText = (heading.depth === 1 ? '=' : '-').repeat(Math.max(3, displayWidth(toString(heading))));
+    const candidate = `${content}\n${continuation}${underlineText}`;
+    const parsed = parseFull(`${prefix}${candidate}`);
+    let found = 0;
+    let sameDepth = false;
+    visit(parsed, 'heading', (node) => {
+        found++;
+        if (node.depth === heading.depth) sameDepth = true;
+    });
+    if (parsed.children.length !== 1 || found !== 1 || !sameDepth) return null;
+    return candidate;
+}
+
 function formatHeading(source: string, heading: Heading, prefs: TidyPreferences, edits: TextEdit[]): void {
     const from = heading.position?.start.offset;
     const to = heading.position?.end.offset;
     if (from === undefined || to === undefined) return;
-    const lineStart = source.lastIndexOf('\n', from - 1) + 1;
-    const prefix = source.slice(lineStart, from);
-    const continuation = continuationPrefix(prefix);
-    if (continuation === null) return;
-    replaceRegion(source, edits, from, to, (current) => {
-        const lines = current.split('\n');
-        const underline =
-            lines.length === 2 && lines[1].startsWith(continuation)
-                ? /^(=+|-+)[ \t]*$/u.exec(lines[1].slice(continuation.length))
-                : null;
-        if (underline !== null) {
-            if (prefs.heading === 'setext') return null;
-            const depth = underline[1][0] === '=' ? 1 : 2;
-            return depth === heading.depth ? `${'#'.repeat(depth)} ${lines[0]}` : null;
-        }
-        if (prefs.heading !== 'setext' || heading.depth > 2 || current.includes('\n')) return null;
-        const atx = /^(#{1,6})(?:[ \t]+(.*))?$/u.exec(current);
-        if (atx === null || atx[1].length !== heading.depth) return null;
-        const content = (atx[2] ?? '').replace(/[ \t]+#+[ \t]*$/u, '').trimEnd();
-        if (content === '') return null;
-        const underlineText = (heading.depth === 1 ? '=' : '-').repeat(Math.max(3, displayWidth(toString(heading))));
-        const candidate = `${content}\n${continuation}${underlineText}`;
-        const parsed = parseFull(`${prefix}${candidate}`);
-        let found = 0;
-        let sameDepth = false;
-        visit(parsed, 'heading', (node) => {
-            found++;
-            if (node.depth === heading.depth) sameDepth = true;
-        });
-        if (parsed.children.length !== 1 || found !== 1 || !sameDepth) return null;
-        return candidate;
-    });
+    replaceRegion(source, edits, from, to, (current) => headingReplacement(source, heading, current, prefs.heading));
 }
 
 interface TableLine {

@@ -998,7 +998,7 @@ Redux) allows one run at a time.
 
     **Verify**: `scripts/test unit`, `scripts/verify lint`.
 
-- [ ] T022 [US2] Implement the ten lint rules in `frontend/src/logic/tidy/lint.ts`, `frontend/src/logic/tidy/rules.ts`, `frontend/src/i18n/locales/en.json`
+- [x] T022 [US2] Implement the ten lint rules in `frontend/src/logic/tidy/lint.ts`, `frontend/src/logic/tidy/rules.ts`, `frontend/src/i18n/locales/en.json`
 
     **Story / Priority**: US2 (P1). Needs T020 (shared predicates), T021.
 

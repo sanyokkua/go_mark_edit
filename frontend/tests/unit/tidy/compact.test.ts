@@ -62,7 +62,3 @@ test('when inline math spans lines, Compact preserves whitespace inside it', () 
 test('when a document is already compact, Compact returns no edits', () => {
     expect(runOnText('compact', 'one\n\ntwo\n', prefs)).toEqual({ kind: 'edits', edits: [] });
 });
-
-test('when Lint is requested before its rules exist, the engine fails explicitly', () => {
-    expect(runOnText('lint', 'one', prefs)).toEqual({ kind: 'failed' });
-});
