@@ -632,6 +632,7 @@ export {
 export { EVENTS, type AdapterEventName } from './events';
 export {
     BUFFER_SYNC_MS,
+    VIEW_SYNC_MS,
     createAppModelAdapter,
     type AppModelAdapter,
     type AppModelBindings,

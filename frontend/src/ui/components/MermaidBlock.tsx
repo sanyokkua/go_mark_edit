@@ -1,4 +1,4 @@
-import { useEffect, useId, useState } from 'react';
+import { memo, useEffect, useId, useMemo, useState } from 'react';
 
 import { t } from '../../i18n';
 import { mermaidQueue, type MermaidResult } from '../../logic/markdown/mermaid/queue';
@@ -17,7 +17,7 @@ interface DisplayedResult {
     result: MermaidResult;
 }
 
-export default function MermaidBlock({ source, index, sourceLine }: MermaidBlockProps): React.JSX.Element {
+function MermaidBlock({ source, index, sourceLine }: MermaidBlockProps): React.JSX.Element {
     const namespace = useId();
     const [theme, setTheme] = useState<string>();
     const [displayed, setDisplayed] = useState<DisplayedResult>();
@@ -57,6 +57,11 @@ export default function MermaidBlock({ source, index, sourceLine }: MermaidBlock
     }, [source, theme, limit]);
 
     const current = displayed?.source === source ? displayed.result : undefined;
+    const svg = current?.kind === 'svg' ? current.svg : undefined;
+    const namespacedSvg = useMemo(
+        () => (svg === undefined ? '' : namespaceMermaidSvg(svg, namespace)),
+        [svg, namespace],
+    );
     return (
         <div className={styles.block} data-mermaid-block={index} data-source-line={sourceLine}>
             {limit !== null ? (
@@ -68,7 +73,7 @@ export default function MermaidBlock({ source, index, sourceLine }: MermaidBlock
                     aria-label={t('preview.mermaid.diagram')}
                     className={styles.diagram}
                     role="img"
-                    dangerouslySetInnerHTML={{ __html: namespaceMermaidSvg(current.svg, namespace) }}
+                    dangerouslySetInnerHTML={{ __html: namespacedSvg }}
                 />
             ) : current?.kind === 'error' ? (
                 <div className={styles.error} role="alert">
@@ -85,3 +90,5 @@ export default function MermaidBlock({ source, index, sourceLine }: MermaidBlock
         </div>
     );
 }
+
+export default memo(MermaidBlock);

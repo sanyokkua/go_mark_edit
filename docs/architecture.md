@@ -296,11 +296,13 @@ dev and setup. Hooks and CI call the scripts directly. A developer may use the f
   and Jest/Playwright/Go test reports from `.local_tmp_files/runs/`; compiler, linter, Jest,
   Playwright and TypeScript build-info caches are not uploaded.
 
-The E2E stage builds the standard Wails development executable and seed helper once, then starts one
-owned Vite server for the run. Its E2E-only Vite configuration extends the selected repository's
+The E2E stage builds the standard Wails development executable and seed helper once, then starts two
+owned frontend listeners for the run: Vite development assets for functional cases by default and
+Vite preview of the built production assets for cases that select the shipping bundle, including
+performance benchmarks. Its E2E-only Vite configuration extends the selected repository's
 configuration and serves inert HTML to the hidden native host's `GET /` and `GET /index.html`
-requests, identified by Wails' `wails.io` user-agent marker. The browser is the sole active React
-frontend; its real Wails IPC and the native host's lifecycle and quit callbacks remain in use.
+requests on both listeners, identified by Wails' `wails.io` user-agent marker. The browser is the
+sole active React frontend for each case; its real Wails IPC and the native host's lifecycle and quit callbacks remain in use.
 This avoids competing React clients hydrating and commanding one backend. Native webview rendering
 remains part of the walkthrough.
 
@@ -310,10 +312,10 @@ with `lsof` and that the existing Wails getters observe backend initialization o
 failure before loading React. A relaunch gracefully stops the old app and keeps that case's
 profile, folder and browser origin. Final fixture disposal stops the owned app process group and
 removes per-case state. `lsof` is required on Linux test hosts as well as macOS. The runner stops
-its owned preparation processes and removes temporary state; `KEEP_E2E_ARTEFACTS=1` retains the
+both owned frontend processes and removes temporary state; `KEEP_E2E_ARTEFACTS=1` retains the
 case and preparation files for diagnosis.
 
-The two OS clipboard writers run through the serial
+The OS clipboard writer cases run through the serial
 `chromium-native` Playwright project; the other cases run through `chromium`. Playwright retries are
 zero. Global workers are capped at four and the CPU capacity available to Node. Automatic failure
 screenshots and app output are retained, while traces require explicit `--trace`.
@@ -354,6 +356,9 @@ metadata at the current revision; stale or duplicate partial patches remain reje
 not install an active buffer or replay a command. A failed recovery can retry on a later state event,
 and disposal ignores late recovery results. The active Monaco buffer is the only frontend working
 copy and is not the backend source of truth.
+`appModelAdapter.ts` coalesces editor content for 150 ms and restorable cursor, selection and scroll view
+changes for 200 ms. Only backend-accepted buffer generations reach live preview; lifecycle drains flush
+both pending queues in order.
 `frontend/src/ui/widgets/editorSession.ts` binds commands to the expected document identity and session;
 its results explicitly distinguish available, unavailable and document-mismatch outcomes.
 `useDocumentSession` owns the installed buffer and clears it when the projection has no active document
@@ -594,7 +599,9 @@ The owner decisions that shaped this refactor are recorded here so they are not 
   of earlier feature specs; the superseded wording was removed from D5 and planning decisions 1
   and 7.
 - **D15 — E2E invocation:** the real-backend E2E harness prepares the standard Wails dev executable
-  and an owned Vite server once per run, then starts an isolated application for each case. This
+  and owned development and production-asset frontend listeners once per run, then starts an isolated
+  application for each case. Functional cases use development assets by default; cases that select
+  the shipping bundle use the production-asset listener. This
   supersedes the per-case `wails dev` invocation in feature 004's real-backend E2E contract;
   application and browser state remain isolated, and the same canonical E2E stage runs full or
   targeted selection. Test transport keeps the browser as the sole active React frontend while

@@ -776,7 +776,7 @@ markdownAutoWrap wrap`).
 
     **Verify**: `scripts/test unit`, `scripts/build`, `node tools/lint/bundle-scan.mjs frontend/dist`, `scripts/verify lint`.
 
-- [ ] T017 [US1] Complete the rich-rendering journeys: math, Mermaid, limits, theme redraw, performance and offline in `frontend/tests/e2e/rich-rendering.test.ts`, `frontend/tests/fixtures/`
+- [x] T017 [US1] Complete the rich-rendering journeys: math, Mermaid, limits, theme redraw, performance and offline in `frontend/tests/e2e/rich-rendering.test.ts`, `frontend/tests/fixtures/`
 
     **Story / Priority**: US1 (P1). Needs T012, T016.
 
@@ -810,6 +810,14 @@ $10` is plain, no construct of FR-RN-003/004 remains literal (SC-001); all twelv
 
     **Definition of done**: the journeys pass; the timings are recorded in the completion note with the platform
     (E2E performance is macOS arm64 only).
+
+    **Completion note (2026-10-01, macOS arm64)**: all seven rich-rendering journeys and all 69 browser journeys
+    pass. The production-asset benchmark uses a 99,950-byte document with ten distinct diagrams: full verification
+    measured 675 ms for diagrams and 242 ms from last input to preview; explicit baseline comparison measured
+    718 ms and 260 ms. Six appearance redraws stayed within 69 ms. Both six-stage runs passed without baseline
+    drift. Independent final review and the packaged native application walkthrough passed, including diagram,
+    exact parser error, formula, alert and light/dark redraw; the earlier native limits walkthrough verified
+    50 diagrams, the 51st-block placeholder and the oversized-formula placeholder.
 
     **Verify**: `scripts/test e2e` (rich-rendering), `scripts/verify lint`, `scripts/format --check`.
 

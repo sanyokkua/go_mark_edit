@@ -30,7 +30,8 @@ import { isWireError, type WireError } from '../utils/parseError';
 import { t } from '../../i18n';
 import { EVENTS } from './events';
 
-export const BUFFER_SYNC_MS = 200;
+export const BUFFER_SYNC_MS = 150;
+export const VIEW_SYNC_MS = 200;
 
 interface VoidResult {
     error?: import('../utils/parseError').WireError;
@@ -596,7 +597,7 @@ export function createAppModelAdapter(bindings: AppModelBindings, runtime: AppMo
         record.timer = setTimeout((): void => {
             record.timer = undefined;
             void sendPendingView(documentId).catch((): void => undefined);
-        }, BUFFER_SYNC_MS);
+        }, VIEW_SYNC_MS);
     }
 
     async function flushQueuedSession(documentId: string): Promise<void> {

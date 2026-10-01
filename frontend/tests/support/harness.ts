@@ -83,6 +83,7 @@ class PlaywrightE2EAppHarness implements E2EAppHarness {
     private port: number | undefined;
     private hasLaunched = false;
     private disposed = false;
+    private readonly frontendURL: string;
     private readonly frontendOrigin: string;
     private backendOrigin: string | undefined;
     private readonly foreignRequests = new Map<Request, string>();
@@ -106,25 +107,33 @@ class PlaywrightE2EAppHarness implements E2EAppHarness {
         return this.devOutput;
     }
 
-    private constructor(page: Page, tempDirectory: string, documentDirectory: string, repositoryDirectory: string) {
+    private constructor(
+        page: Page,
+        tempDirectory: string,
+        documentDirectory: string,
+        repositoryDirectory: string,
+        frontendAssets: 'development' | 'production',
+    ) {
         this.page = page;
         this.tempDirectory = tempDirectory;
         this.profileDirectory = profileDirectory(tempDirectory);
         this.documentDirectory = documentDirectory;
         this.repositoryDirectory = repositoryDirectory;
-        this.frontendOrigin = new URL(preparedPaths().frontendURL).origin;
+        const paths = preparedPaths();
+        this.frontendURL = frontendAssets === 'production' ? paths.productionFrontendURL : paths.frontendURL;
+        this.frontendOrigin = new URL(this.frontendURL).origin;
         this.page.on('request', this.observeRequest);
         this.page.on('requestfailed', this.observeFailedRequest);
     }
 
-    static async create(page: Page): Promise<PlaywrightE2EAppHarness> {
+    static async create(page: Page, frontendAssets: 'development' | 'production'): Promise<PlaywrightE2EAppHarness> {
         if (process.platform !== 'darwin' && process.platform !== 'linux') {
             throw new Error(`real-backend E2E harness is supported on macOS and Linux only (got ${process.platform})`);
         }
         const tempDirectory = await mkdtemp(join(tmpdir(), 'gomarkedit-e2e-'));
         const documentDirectory = await mkdtemp(join(tmpdir(), 'gomarkedit-e2e-docs-'));
         const repositoryDirectory = selectedRepository();
-        return new PlaywrightE2EAppHarness(page, tempDirectory, documentDirectory, repositoryDirectory);
+        return new PlaywrightE2EAppHarness(page, tempDirectory, documentDirectory, repositoryDirectory, frontendAssets);
     }
 
     async writeDocument(relativePath: string, contents: string): Promise<string> {
@@ -182,7 +191,7 @@ class PlaywrightE2EAppHarness implements E2EAppHarness {
             const child = spawn(preparedPaths().executable, [], {
                 cwd: this.repositoryDirectory,
                 detached: process.platform !== 'win32',
-                env: childEnvironment(this.tempDirectory, preparedPaths().frontendURL, this.port),
+                env: childEnvironment(this.tempDirectory, this.frontendURL, this.port),
                 stdio: ['ignore', 'pipe', 'pipe'],
             });
             this.devProcess = child;
@@ -321,10 +330,15 @@ type E2EFixtures = {
     app: E2EAppHarness;
 };
 
-export const test = base.extend<E2EFixtures>({
-    app: async ({ page }, use, testInfo: TestInfo) => {
+type E2EOptions = {
+    frontendAssets: 'development' | 'production';
+};
+
+export const test = base.extend<E2EFixtures & E2EOptions>({
+    frontendAssets: ['development', { option: true }],
+    app: async ({ page, frontendAssets }, use, testInfo: TestInfo) => {
         testInfo.setTimeout(Math.max(testInfo.timeout, 180_000));
-        const app = await PlaywrightE2EAppHarness.create(page);
+        const app = await PlaywrightE2EAppHarness.create(page, frontendAssets);
         try {
             await use(app);
         } finally {
