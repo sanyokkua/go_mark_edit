@@ -676,7 +676,7 @@ p.md-alert-title`; handles GitHub alerts and rewritten admonitions alike.
 
     **Verify**: `scripts/test unit`, `scripts/build`, `node tools/lint/bundle-scan.mjs frontend/dist`, `scripts/verify lint`.
 
-- [ ] T015 [P] [US1] Build the hardened Mermaid engine modules in `frontend/src/logic/markdown/mermaid/queue.ts`, `config.ts`, `scrub.ts`, `theme.ts`
+- [x] T015 [P] [US1] Build the hardened Mermaid engine modules in `frontend/src/logic/markdown/mermaid/queue.ts`, `config.ts`, `scrub.ts`, `theme.ts`
 
     **Story / Priority**: US1 (P1). Needs T001; new files only, so it may run in parallel with T013/T014.
 

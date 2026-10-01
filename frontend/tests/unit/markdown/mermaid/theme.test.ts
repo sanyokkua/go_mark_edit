@@ -1,0 +1,31 @@
+import { resolveMermaidTheme } from '../../../../src/logic/markdown/mermaid/theme';
+
+it('captures concrete rgb colours and dark mode before a later root-theme change', () => {
+    const root = document.documentElement;
+    root.setAttribute('data-theme', 'material');
+    root.setAttribute('data-mode', 'light');
+    const colors: Record<string, string> = {
+        '--surface': 'rgb(255, 255, 255)',
+        '--surface-raised': 'rgb(245, 245, 245)',
+        '--text': 'rgb(20, 21, 22)',
+        '--accent': 'rgb(10, 20, 30)',
+        '--border': 'rgb(30, 40, 50)',
+        '--accent-ink': 'rgb(11, 12, 13)',
+    };
+    const getComputed = jest.spyOn(window, 'getComputedStyle').mockImplementation((element) => {
+        const value = (element as HTMLElement).style.color;
+        const token = value.match(/var\((--[^)]+)\)/)?.[1];
+        return { color: colors[token ?? ''] ?? 'rgb(0, 0, 0)' } as CSSStyleDeclaration;
+    });
+    const first = JSON.parse(resolveMermaidTheme());
+    root.setAttribute('data-mode', 'dark');
+    colors['--accent'] = 'rgb(200, 210, 220)';
+    const second = JSON.parse(resolveMermaidTheme());
+    getComputed.mockRestore();
+    expect(first.darkMode).toBe(false);
+    expect(first.themeVariables.primaryColor).toMatch(/^rgb\(/);
+    expect(first.themeVariables.primaryBorderColor).toBe('rgb(10, 20, 30)');
+    expect(second.darkMode).toBe(true);
+    expect(second.themeVariables.primaryBorderColor).toBe('rgb(200, 210, 220)');
+    expect(first).not.toEqual(second);
+});
