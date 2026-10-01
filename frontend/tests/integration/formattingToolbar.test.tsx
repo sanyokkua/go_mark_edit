@@ -8,6 +8,8 @@ import { currentPlatform } from '../../src/logic/actions/shortcutRegistry';
 import EditorContextMenu from '../../src/ui/widgets/EditorContextMenu';
 import { DocumentCommandContext, EditorSessionContext } from '../../src/ui/widgets/editorSession';
 import FormattingToolbar from '../../src/ui/widgets/FormattingToolbar/FormattingToolbar';
+import { acquire } from '../../src/logic/operations/operationSlot';
+import { TidyCommandsContext } from '../../src/ui/widgets/tidyCommandsContext';
 
 const renderToolbar = (
     ui: React.ReactNode = <FormattingToolbar arrangement="split" onArrangementChange={jest.fn()} />,
@@ -71,6 +73,28 @@ it('renders grouped formatting controls with a trailing arrangement island', () 
     expect(toolbar.querySelector('[data-bar-slot="trailing"] [role="radiogroup"]')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Bold' })).toHaveAttribute('data-tool-button-variant', 'icon');
     expect(screen.getByRole('button', { name: 'Format' })).toHaveAttribute('data-tool-button-variant', 'text');
+});
+
+it('replaces the matching always-visible tidy control with Cancel while progress is visible', () => {
+    const slot = acquire('compact', { documentId: 'doc-1', size: 1024 * 1024 + 1 });
+    expect(slot).not.toBeNull();
+    const cancel = jest.fn();
+    try {
+        renderToolbar(
+            <TidyCommandsContext.Provider value={{ run: jest.fn(), cancel, documentChanged: jest.fn() }}>
+                <FormattingToolbar arrangement="editor" onArrangementChange={jest.fn()} />
+            </TidyCommandsContext.Provider>,
+        );
+        const toolbar = screen.getByRole('toolbar', { name: 'Document toolbar' });
+        const control = within(toolbar).getByRole('button', { name: 'Cancel' });
+        expect(control.closest('[data-bar-overflow="never"]')).toBeInTheDocument();
+        expect(within(toolbar).queryByRole('button', { name: 'Compact' })).not.toBeInTheDocument();
+        expect(within(toolbar).getByRole('button', { name: 'Format' })).toBeDisabled();
+        fireEvent.click(control);
+        expect(cancel).toHaveBeenCalledTimes(1);
+    } finally {
+        slot?.release();
+    }
 });
 
 it('moves measured groups into the shared overflow Popup below 768px', async () => {

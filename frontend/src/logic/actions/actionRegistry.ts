@@ -4,6 +4,7 @@ export type ActionSurface =
     | 'settings-menu'
     | 'view-menu'
     | 'about-menu'
+    | 'format-menu'
     | 'toolbar'
     | 'preview'
     | 'overflow'
@@ -23,7 +24,9 @@ export type ActionUnavailableReason =
     | 'limit'
     | 'edge'
     | 'no-recent'
-    | 'settings-loading';
+    | 'settings-loading'
+    | 'read-only'
+    | 'slot-busy';
 
 export type ActionId =
     | 'new-file'
@@ -138,6 +141,7 @@ export interface ActionAvailabilityContext {
     readonly documentId?: string;
     readonly limitReached?: boolean;
     readonly modalOpen?: boolean;
+    readonly slotBusy?: boolean;
     readonly projectedState?: ProjectedActionState;
     readonly projection?: ProjectedActionState;
     readonly tabLimit?: number;
@@ -361,21 +365,19 @@ export const actionRegistry: readonly ActionEntry[] = Object.freeze([
     entry('table', 'editor', ['toolbar', 'overflow', 'shortcuts'], {
         shortcut: 'Mod+Shift+T',
     }),
-    entry('format', 'document', ['toolbar', 'overflow', 'context', 'shortcuts'], {
+    entry('format', 'document', ['toolbar', 'overflow', 'context', 'format-menu', 'shortcuts'], {
         shortcut: 'Alt+Shift+F',
-        availability: deferred('formatting-later-slice'),
         surfaceOrder: { context: 7 },
         separatorBefore: ['context'],
         surfaceLabelKeys: { context: 'action.format-document.label' },
     }),
-    entry('compact', 'document', ['toolbar', 'overflow', 'context', 'shortcuts'], {
+    entry('compact', 'document', ['toolbar', 'overflow', 'context', 'format-menu', 'shortcuts'], {
         shortcut: 'Alt+Shift+C',
-        availability: deferred('tidy-later-slice'),
         surfaceOrder: { context: 8 },
     }),
-    entry('lint', 'document', ['toolbar', 'overflow', 'shortcuts'], {
+    entry('lint', 'document', ['toolbar', 'overflow', 'context', 'format-menu', 'shortcuts'], {
         shortcut: 'Alt+Shift+L',
-        availability: deferred('lint-later-slice'),
+        surfaceOrder: { context: 9 },
     }),
 
     entry('cut', 'editor', ['context'], { nativeRole: 'clipboard' }),
@@ -384,7 +386,7 @@ export const actionRegistry: readonly ActionEntry[] = Object.freeze([
     entry('paste-plain', 'editor', ['context'], { nativeRole: 'clipboard' }),
     entry('command-palette', 'window', ['context', 'shortcuts'], {
         availability: deferred('command-palette-deferred'),
-        surfaceOrder: { context: 9 },
+        surfaceOrder: { context: 10 },
         separatorBefore: ['context'],
     }),
     entry('next-tab', 'window', ['shortcuts'], {
@@ -473,6 +475,7 @@ const MARKDOWN_SETTINGS_ACTIONS: ReadonlySet<ActionId> = new Set([
     'bullet-list',
     'task-list',
 ]);
+const TIDY_ACTIONS: ReadonlySet<ActionId> = new Set(['format', 'compact', 'lint']);
 
 export function getActionAvailability(
     id: ActionId,
@@ -514,6 +517,17 @@ export function getActionAvailability(
     const document = projectedDocument(context);
     const hasProjectedDocument =
         projected === undefined ? undefined : documentId !== undefined && document !== undefined;
+
+    if (TIDY_ACTIONS.has(id)) {
+        if (documentId === undefined || document === undefined) {
+            return { kind: 'unavailable', reason: 'no-document' };
+        }
+        if (context.slotBusy === true) return { kind: 'unavailable', reason: 'slot-busy' };
+        if (id !== 'lint' && document.capability !== 'writable') {
+            return { kind: 'unavailable', reason: 'read-only' };
+        }
+        return { kind: 'available' };
+    }
 
     if ((id === 'new-file' || id === 'open-file') && isAtTabLimit(context)) {
         return { kind: 'unavailable', reason: 'limit' };
@@ -640,5 +654,20 @@ export function actionsForSurface(surface: ActionSurface): readonly ActionEntry[
             return leftOrder - rightOrder || left.index - right.index;
         })
         .map(({ action }) => action);
+}
+
+export function actionUnavailableLabelKey(reason: ActionUnavailableReason): string {
+    switch (reason) {
+        case 'settings-loading':
+            return 'action.settingsLoading';
+        case 'no-document':
+            return 'action.noDocument';
+        case 'read-only':
+            return 'action.readOnly';
+        case 'slot-busy':
+            return 'action.slotBusy';
+        default:
+            return 'action.unavailable';
+    }
 }
 import type { RecentItem } from '../store/appModelTypes';

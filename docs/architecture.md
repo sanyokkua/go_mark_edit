@@ -135,8 +135,9 @@ breakpoint. Bar removes overflowed groups from layout while retaining their meas
 key, so repeated measurements keep the same overflow decision until the available space changes.
 
 `frontend/src/ui/components/Island/` owns a labelled visual group. Its consumer is the formatting
-toolbar's text, heading, list, insertion, deferred-action and arrangement groups. The deferred-action
-group is unpainted; the arrangement Island provides only layout and labeling, with Segmented owning
+toolbar's text, heading, list, insertion, tidy-action and arrangement groups. The tidy-action
+group never overflows, so its running action's Cancel remains reachable. The arrangement Island
+provides only layout and labeling, with Segmented owning
 its single visible frame and selected-option treatment.
 In `OverflowMenuContext`, the FormattingToolbar renders relocated actions as MenuItems with visible
 labels, icons and registry-derived shortcuts. Its groups stack vertically without Island paint or
@@ -234,6 +235,15 @@ is an ephemeral subscribed store for the active document: edits mark it stale wi
 markers; activation or close clears it. User runs report refused, cancelled, failed and stale
 outcomes through localized notices; on-save runs return the outcome without those notices.
 
+The action registry now exposes Format, Compact and Lint on the toolbar, editor context menu,
+Format menu and editor-scoped shortcuts. Its availability check distinguishes loading settings,
+no document, read-only Format/Compact and a busy operation slot; read-only Lint remains available.
+`editorActionExecutor.ts` invokes the single tidy command owner and maps its terminal outcomes
+into dispatcher results. The Format menu uses the captured editor session even after the popup
+takes focus. The operation slot's kind and visible progress replace the matching toolbar or
+Format-menu action with Cancel; the toolbar's never-overflowing control also serves runs started
+from context menus or shortcuts.
+
 `frontend/src/logic/tidy/` owns source tidying independently of Monaco, Redux and the bridge.
 Its pure engine uses the shared Full syntax parser, computes sorted non-overlapping edits, and
 refuses a changed chunk when its normalized Markdown tree differs. Compact preserves protected
@@ -250,14 +260,22 @@ reports a heading-style finding only when the shared safe heading conversion can
 change without changing the parsed tree.
 The client lazily starts a dedicated module worker, forwards completed-chunk progress, reuses a
 completed worker, and terminates a cancelled worker. Vite builds the client as an explicit entry
-so the production client and worker are available independently of interface integration.
+so the production client and worker are available independently of interface integration. The dev
+optimizer prebundles the worker's direct width and character-classification dependencies so its first
+lazy run cannot reload the active editor.
 
 `frontend/src/ui/components/CodeEditor.tsx` owns the visible Monaco working copy and publishes its scroll
 port for synchronized scrolling. Its handle applies LF-indexed tidy edits as one undo group, retains the
 caret's logical line, navigates and focuses the editor, and maps component-owned lint markers to Monaco's
 `gme-lint` marker owner. `frontend/src/logic/hooks/useDocumentCommands.ts` guards these operations by
 document id and activation token; Monaco stays inside the editor component and its lazy setup, which loads
-the marker hover contribution. The editor is paired with `frontend/src/ui/components/MarkdownView.tsx`, which owns
+the marker hover contribution. CodeEditor renders validation markers on read-only files and hosts Monaco's
+overflow hover outside the clipped pane. CodeEditor measures Monaco once at mount before publishing editor
+readiness, because native WebKit can initially report a 5-pixel viewport inside a full-sized pane;
+Monaco's automatic layout handles later resizes. Generated themes give the hover the existing elevated
+surface color, and CodeEditor's hover style applies the shared blur token; other Monaco widgets keep their
+surface colors. The editor is paired with
+`frontend/src/ui/components/MarkdownView.tsx`, which owns
 sanitized preview rendering; each rendered block carries a numeric `data-source-line` annotation that the
 sanitization allowlist admits only as a positive integer. `frontend/src/logic/markdown/headings.ts` extracts
 Markdown heading text, slugs and source lines from the shared syntax rules, then assigns preview ids only to

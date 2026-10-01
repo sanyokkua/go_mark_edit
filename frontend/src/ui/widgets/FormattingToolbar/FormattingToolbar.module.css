@@ -237,3 +237,13 @@
     outline: var(--segmented-focus-outline-width) solid var(--segmented-outline-color);
     outline-offset: var(--segmented-focus-outline-offset);
 }
+.runningControl {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--toolbar-group-gap);
+}
+
+.progress {
+    color: var(--muted);
+    font: inherit;
+}

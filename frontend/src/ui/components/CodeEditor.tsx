@@ -1,4 +1,14 @@
-import { forwardRef, lazy, Suspense, useCallback, useEffect, useImperativeHandle, useRef } from 'react';
+import {
+    forwardRef,
+    lazy,
+    Suspense,
+    useCallback,
+    useEffect,
+    useImperativeHandle,
+    useLayoutEffect,
+    useRef,
+    useState,
+} from 'react';
 import type { editor, IDisposable, IPosition, IRange, ISelection } from 'monaco-editor';
 
 import type { EditorScrollPort, ScrollGeometryChange } from '../../logic/scrollSync/scrollSyncTypes';
@@ -306,6 +316,15 @@ const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(function CodeEd
     const restoreViewStateFrameRef = useRef<number | undefined>(undefined);
     const viewStateRef = useRef<editor.ICodeEditorViewState | null>(null);
     const wasVisibleRef = useRef(visible);
+    const [overflowWidgetsHost, setOverflowWidgetsHost] = useState<HTMLDivElement | null>(null);
+
+    useLayoutEffect(() => {
+        const host = document.createElement('div');
+        host.className = `monaco-editor ${styles.overflowWidgetsHost}`;
+        document.body.append(host);
+        setOverflowWidgetsHost(host);
+        return (): void => host.remove();
+    }, []);
 
     onChangeRef.current = onChange;
     onBlurRef.current = onBlur;
@@ -497,8 +516,10 @@ const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(function CodeEd
         editorInstance: editor.IStandaloneCodeEditor,
         monaco: typeof import('monaco-editor'),
     ): void => {
+        const newlyMounted = editorRef.current !== editorInstance;
         editorRef.current = editorInstance;
         monacoRef.current = monaco;
+        if (newlyMounted) editorInstance.layout();
         editorInstance.onDidBlurEditorText((): void => {
             onBlurRef.current?.();
         });
@@ -527,28 +548,35 @@ const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(function CodeEd
 
     return (
         <div className={styles.editor} data-editor-surface>
-            <Suspense fallback={<div aria-busy="true" className={styles.loading} />}>
-                <MonacoEditor
-                    key={`${documentId}:${activationId ?? 'legacy'}`}
-                    defaultValue={initialValue}
-                    language="markdown"
-                    path={modelPath(documentId, activationId)}
-                    className={styles.editor}
-                    options={{
-                        lineNumbers,
-                        lineNumbersMinChars: 3,
-                        wordWrap,
-                        minimap: { enabled: minimap },
-                        readOnly,
-                        fontSize: fontSize ?? getEditorFontSize(),
-                        padding: EDITOR_PADDING,
-                    }}
-                    onChange={(value: string | undefined): void => {
-                        onChangeRef.current?.(value ?? '');
-                    }}
-                    onMount={handleMount}
-                />
-            </Suspense>
+            {overflowWidgetsHost === null ? (
+                <div aria-busy="true" className={styles.loading} />
+            ) : (
+                <Suspense fallback={<div aria-busy="true" className={styles.loading} />}>
+                    <MonacoEditor
+                        key={`${documentId}:${activationId ?? 'legacy'}`}
+                        defaultValue={initialValue}
+                        language="markdown"
+                        path={modelPath(documentId, activationId)}
+                        className={styles.editor}
+                        options={{
+                            lineNumbers,
+                            lineNumbersMinChars: 3,
+                            wordWrap,
+                            minimap: { enabled: minimap },
+                            readOnly,
+                            renderValidationDecorations: 'on',
+                            fontSize: fontSize ?? getEditorFontSize(),
+                            padding: EDITOR_PADDING,
+                            fixedOverflowWidgets: true,
+                            overflowWidgetsDomNode: overflowWidgetsHost,
+                        }}
+                        onChange={(value: string | undefined): void => {
+                            onChangeRef.current?.(value ?? '');
+                        }}
+                        onMount={handleMount}
+                    />
+                </Suspense>
+            )}
         </div>
     );
 });

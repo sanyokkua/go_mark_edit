@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import type { EditorProps } from '@monaco-editor/react';
 import type { editor, IDisposable, IPosition, IRange, IScrollEvent, ISelection } from 'monaco-editor';
 
@@ -66,6 +66,7 @@ interface MockMonacoRuntime {
     model: MockModel;
     /** How many times the fake Monaco component has called `onMount`. */
     mountCount: number;
+    layoutWidth: number;
     props: EditorProps | null;
     scrollTop: number;
     selection: ISelection | null;
@@ -161,7 +162,9 @@ function installMockEditor(): void {
         executeEdits: jest.fn(),
         focus: jest.fn(),
         getBottomForLineNumber: jest.fn((lineNumber: number): number => mockPadding + lineNumber * mockLineHeight),
-        getLayoutInfo: jest.fn(() => ({ height: mockViewportHeight }) as editor.EditorLayoutInfo),
+        getLayoutInfo: jest.fn(
+            () => ({ width: mockRuntime.layoutWidth, height: mockViewportHeight }) as editor.EditorLayoutInfo,
+        ),
         getModel: jest.fn(() => mockRuntime.model as unknown as editor.ITextModel),
         getScrollHeight: jest.fn(mockScrollHeight),
         getScrollTop: jest.fn(() => mockRuntime.scrollTop),
@@ -206,6 +209,9 @@ function installMockEditor(): void {
         onDidContentSizeChange: events.contentSize.subscribe,
         onDidLayoutChange: events.layout.subscribe,
         onDidScrollChange: events.scroll.subscribe,
+        layout: jest.fn((): void => {
+            mockRuntime.layoutWidth = 300;
+        }),
         pushUndoStop: jest.fn(),
         dispose: jest.fn(),
     } as unknown as editor.IStandaloneCodeEditor;
@@ -231,6 +237,7 @@ function resetMockMonaco(): void {
     };
     installMockEditor();
     mockRuntime.mountCount = 0;
+    mockRuntime.layoutWidth = 5;
     mockRuntime.props = null;
     mockRuntime.scrollTop = 0;
 }
@@ -457,6 +464,37 @@ it('exposes the Monaco focus operation through the editor command handle', async
 
     expect(ref.current?.focus()).toBe(true);
     expect(mockRuntime.editor.focus).toHaveBeenCalledTimes(1);
+});
+
+it('publishes a measured editor when a document first mounts and when its activation changes', async () => {
+    const publishedWidths: number[] = [];
+    const onEditorMounted = (instance: editor.IStandaloneCodeEditor): void => {
+        publishedWidths.push(instance.getLayoutInfo().width);
+    };
+    const { rerender } = render(
+        <CodeEditor
+            documentId="document-1"
+            initialValue="one"
+            activationId="first"
+            onEditorMounted={onEditorMounted}
+        />,
+    );
+    await screen.findByRole('textbox', { name: 'Markdown source' });
+    await waitFor(() => expect(publishedWidths).toHaveLength(1));
+    expect(publishedWidths).toEqual([300]);
+
+    mockRuntime.layoutWidth = 5;
+    installMockEditor();
+    rerender(
+        <CodeEditor
+            documentId="document-1"
+            initialValue="one"
+            activationId="second"
+            onEditorMounted={onEditorMounted}
+        />,
+    );
+    await waitFor(() => expect(publishedWidths).toHaveLength(2));
+    expect(publishedWidths).toEqual([300, 300]);
 });
 
 const readSource = (relativePath: string): string => readFileSync(resolve(process.cwd(), relativePath), 'utf8');

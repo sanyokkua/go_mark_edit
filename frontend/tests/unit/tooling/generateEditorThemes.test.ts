@@ -17,7 +17,7 @@ function generate(css: string): GeneratedOutput {
 const materialPalette = `
 :root { --editor-content-background: rgba(0,0,0,0); }
 :root[data-theme='material'][data-mode='light'] {
-  --app-bg: #faf8ff; --surface: #ffffff; --stroke: #e3e1ee; --text: #1b1b22;
+  --app-bg: #faf8ff; --surface: #ffffff; --elevated: rgba(255,255,255,.8); --stroke: #e3e1ee; --text: #1b1b22;
   --gutter: #c9ccd3; --accent: #4f6bed; --accent-soft: #dfe4ff;
   --selection-bg: #dfe4ff; --hover: rgba(0,0,0,.05); --scrollbar-thumb: #aeb6c9;
   --scrollbar-thumb-hover: #8994ad; --err: #b3261e; --warn: #b7791f;
@@ -28,7 +28,7 @@ const materialPalette = `
   --hl-function: #3056d3; --hl-type: #0f766e; --hl-attr: #be123c; --hl-punct: #5c5c69;
 }
 :root[data-theme='material'][data-mode='dark'] {
-  --app-bg: #171820; --surface: #20212b; --stroke: #3c4050; --text: #eef0f8;
+  --app-bg: #171820; --surface: #20212b; --elevated: rgba(28,30,54,.82); --stroke: #3c4050; --text: #eef0f8;
   --gutter: rgba(255,255,255,.22); --accent: #4f6bed; --accent-soft: #dfe4ff;
   --selection-bg: #3a4b87; --hover: rgba(255,255,255,.16); --scrollbar-thumb: #555b70;
   --scrollbar-thumb-hover: #707892; --err: #ff7a90; --warn: #ffcf6b;
@@ -65,6 +65,17 @@ it('generates six complete named Monaco themes from palette values', () => {
 it('converts CSS rgba palette values to Monaco-compatible hex', () => {
     const translucentPalette = palette.replace('--surface: #ffffff;', '--surface: rgba(255,255,255,.42);');
     expect(generate(translucentPalette).themes['gme-glass-light'].colors['editorWidget.background']).toBe('#ffffff6b');
+});
+
+it('gives Glass hover text an elevated background independent of its translucent widget surface', () => {
+    const glassPalette = palette
+        .replace('--surface: #ffffff;', '--surface: rgba(255,255,255,.34);')
+        .replace('--surface: #20212b;', '--surface: rgba(255,255,255,.10);');
+    const generated = generate(glassPalette);
+
+    expect(generated.themes['gme-glass-light'].colors['editorWidget.background']).toBe('#ffffff57');
+    expect(generated.themes['gme-glass-light'].colors['editorHoverWidget.background']).toBe('#ffffffcc');
+    expect(generated.themes['gme-glass-dark'].colors['editorHoverWidget.background']).toBe('#1c1e36d1');
 });
 
 it('leaves the editor, gutter, and minimap transparent in every palette', () => {

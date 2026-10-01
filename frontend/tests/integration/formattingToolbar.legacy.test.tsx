@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-import { createEvent, fireEvent, render as rtlRender, screen, within } from '@testing-library/react';
+import { act, createEvent, fireEvent, render as rtlRender, screen, within } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { loadedMarkdownSettings } from '../support/loadedMarkdownSettings';
 import { hydrateSettings } from '../../src/logic/store/settingsSlice';
@@ -15,6 +15,7 @@ import { DocumentCommandContext } from '../../src/ui/widgets/editorSession';
 import { EditorSessionContext } from '../../src/ui/widgets/editorSession';
 import FormattingToolbar from '../../src/ui/widgets/FormattingToolbar/FormattingToolbar';
 import { ModalStateProvider } from '../../src/ui/widgets/modalState';
+import { acquire } from '../../src/logic/operations/operationSlot';
 
 jest.mock('../../src/logic/actions/shortcutRegistry', () => {
     const actual = jest.requireActual('../../src/logic/actions/shortcutRegistry');
@@ -163,13 +164,7 @@ it('assigns every toolbar group to the overflow bucket its width owns', () => {
         { ids: ['format', 'compact', 'lint'], priority: '0', never: true },
     ]);
 
-    /*
-     * Availability is the registry's answer, never a wiring accident:
-     * `actionRegistry.ts:349` marks `image` deferred
-     * (`image-lifecycle-deferred`), and `:356`, `:367`, `:373` do the same for
-     * `format`, `compact` and `lint`. Nothing else in the toolbar is deferred, at
-     * either width.
-     */
+    // With no open document, tidy actions are unavailable; image remains deferred.
     const disabled = Array.from(document.body.querySelectorAll<HTMLButtonElement>('[data-action-id]'))
         .filter((element) => element.disabled)
         .map((element) => element.getAttribute('data-action-id'));
@@ -365,11 +360,11 @@ it('passes acknowledged marker preferences into toolbar formatting', async () =>
     await expect(replaceRange).toHaveBeenCalledWith(expect.anything(), '_word_', expect.anything());
 });
 
-it('routes deferred editor shortcuts through the typed dispatcher', () => {
+it('routes editor-scoped tidy shortcuts through the typed dispatcher', () => {
     const dispatch = jest.spyOn(actionDispatcher, 'dispatchAction').mockResolvedValue({
         status: 'unavailable',
         actionId: 'format',
-        reason: 'deferred',
+        reason: 'no-document',
     });
     const commands = {
         focus: jest.fn(() => ({ status: 'available' as const, value: undefined })),
@@ -525,6 +520,24 @@ it('disables the formatting toolbar for a non-writable document', () => {
     for (const name of ['Bold', 'Italic', 'Heading 1', 'Table']) {
         expect(screen.getByRole('button', { name })).toBeDisabled();
     }
+    for (const name of ['Format', 'Compact']) {
+        expect(screen.getByRole('button', { name })).toBeDisabled();
+        expect(screen.getByRole('button', { name })).toHaveAttribute('title', 'This document is read-only.');
+    }
+    expect(screen.getByRole('button', { name: 'Lint' })).toBeEnabled();
+
+    let slot: ReturnType<typeof acquire> = null;
+    act(() => {
+        slot = acquire('lint', { documentId: 'doc-1', size: 0 });
+    });
+    try {
+        act(() => slot?.setProgress(1, 2));
+        for (const name of ['Format', 'Compact', 'Lint']) {
+            expect(screen.getByRole('button', { name })).toHaveAttribute('title', 'Another operation is in progress.');
+        }
+    } finally {
+        act(() => slot?.release());
+    }
 });
 
 /*
@@ -572,6 +585,9 @@ it('leaves the formatting toolbar live for a writable document', () => {
     );
 
     for (const name of ['Bold', 'Italic', 'Heading 1', 'Table']) {
+        expect(screen.getByRole('button', { name })).toBeEnabled();
+    }
+    for (const name of ['Format', 'Compact', 'Lint']) {
         expect(screen.getByRole('button', { name })).toBeEnabled();
     }
 });

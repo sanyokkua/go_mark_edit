@@ -6,6 +6,7 @@ const modes = ['light', 'dark'];
 const required = [
     '--editor-content-background',
     '--surface',
+    '--elevated',
     '--stroke',
     '--text',
     '--gutter',
@@ -142,6 +143,7 @@ function generateEditorThemes(css) {
                     'editor.lineHighlightBackground': monacoColor(values['--hover']),
                     'editorGutter.background': monacoColor(values['--editor-content-background']),
                     'editorWidget.background': monacoColor(values['--surface']),
+                    'editorHoverWidget.background': monacoColor(values['--elevated']),
                     'editorWidget.border': monacoColor(values['--stroke']),
                     'editorSuggestWidget.background': monacoColor(values['--surface']),
                     'editorSuggestWidget.foreground': monacoColor(values['--text']),

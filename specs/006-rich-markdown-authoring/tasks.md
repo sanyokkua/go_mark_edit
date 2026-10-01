@@ -1165,7 +1165,7 @@ Redux) allows one run at a time.
 
     **Verify**: `scripts/test unit`, `scripts/test integration`, `scripts/verify lint`.
 
-- [ ] T026 [US2] Wire Format, Compact and Lint into every tidy surface and availability rule in `frontend/src/logic/actions/actionRegistry.ts`, `frontend/src/logic/actions/actionDispatcher.ts`, `frontend/src/ui/widgets/FormattingToolbar/FormattingToolbar.tsx`, `frontend/src/ui/widgets/EditorContextMenu.tsx`, `frontend/src/ui/widgets/useEditorActionExecutor.ts`, `frontend/src/ui/widgets/Menubar/`
+- [x] T026 [US2] Wire Format, Compact and Lint into every tidy surface and availability rule in `frontend/src/logic/actions/actionRegistry.ts`, `frontend/src/logic/actions/actionDispatcher.ts`, `frontend/src/ui/widgets/FormattingToolbar/FormattingToolbar.tsx`, `frontend/src/ui/widgets/EditorContextMenu.tsx`, `frontend/src/ui/widgets/useEditorActionExecutor.ts`, `frontend/src/ui/widgets/Menubar/`
 
     **Story / Priority**: US2 (P1). Needs T025.
 

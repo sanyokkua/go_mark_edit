@@ -5,6 +5,7 @@ import { useEditingProjection } from '../../../logic/hooks/useEditingProjection'
 import {
     getAction,
     getActionAvailability,
+    actionUnavailableLabelKey,
     type ActionEntry,
     type ProjectedActionState,
 } from '../../../logic/actions/actionRegistry';
@@ -23,6 +24,9 @@ import styles from './FormattingToolbar.module.css';
 import { ApplicationMenuRequestContext } from '../applicationMenuRequest';
 import { useEditorActionExecutor } from '../useEditorActionExecutor';
 import { useEditorSettings } from '../../../logic/settings/editorSettings';
+import { useOperationSlot } from '../../../logic/operations/useOperationSlot';
+import type { OperationSlotState } from '../../../logic/operations/operationSlot';
+import { TidyCommandsContext } from '../tidyCommandsContext';
 
 export interface FormattingToolbarProps {
     arrangement: ViewArrangement;
@@ -33,7 +37,7 @@ const textActions = ['bold', 'italic', 'strike', 'inline-code'] as const;
 const headingActions = ['heading-1', 'heading-2', 'heading-3'] as const;
 const listActions = ['bullet-list', 'numbered-list', 'task-list', 'quote'] as const;
 const insertActions = ['link', 'image', 'table'] as const;
-const deferredActions = ['format', 'compact', 'lint'] as const;
+const tidyActions = ['format', 'compact', 'lint'] as const;
 const arrangementValues = ['editor', 'split', 'preview'] as const;
 const arrangementOptions: readonly SegmentedOption<ViewArrangement>[] = arrangementValues.map((value) => ({
     label: t(action(value).accessibilityKey),
@@ -45,6 +49,7 @@ const textualControlIds = new Set<ActionEntry['id']>(['format', 'compact', 'lint
 const applicationOverflowLabels = {
     about: t('shell.about'),
     file: t('shell.file'),
+    format: t('shell.format'),
     settings: t('shell.settings'),
     view: t('action.view.label'),
 } as const;
@@ -68,7 +73,9 @@ function action(id: ActionEntry['id']): ActionEntry {
 const ToolbarProjectionContext = createContext<{
     projectedState?: ProjectedActionState;
     markdownSettingsLoaded: boolean;
-}>({ markdownSettingsLoaded: true });
+    slot: OperationSlotState;
+    cancel?: () => void;
+}>({ markdownSettingsLoaded: true, slot: { state: 'idle' } });
 
 interface ActionButtonProps {
     entry: ActionEntry;
@@ -76,11 +83,17 @@ interface ActionButtonProps {
 }
 
 const ActionButton: React.FC<ActionButtonProps> = ({ entry, onActivate }: ActionButtonProps): React.JSX.Element => {
-    const { projectedState, markdownSettingsLoaded } = useContext(ToolbarProjectionContext);
+    const { projectedState, markdownSettingsLoaded, slot, cancel } = useContext(ToolbarProjectionContext);
     const overflowMenu = useContext(OverflowMenuContext);
-    const availability = getActionAvailability(entry.id, { projectedState, markdownSettingsLoaded });
+    const availability = getActionAvailability(entry.id, {
+        projectedState,
+        markdownSettingsLoaded,
+        slotBusy: slot.state === 'running',
+    });
     const unavailable = availability.kind === 'unavailable';
     const icon = textualControlIds.has(entry.id) ? undefined : (entry.id as IconName);
+    const cancellable = slot.state === 'running' && slot.progress !== null && slot.kind === entry.id;
+    const progress = slot.state === 'running' ? slot.progress : null;
     if (overflowMenu) {
         const binding = entry.shortcut;
         return (
@@ -88,17 +101,40 @@ const ActionButton: React.FC<ActionButtonProps> = ({ entry, onActivate }: Action
                 accelerator={binding === undefined ? undefined : formatShortcut(binding, currentPlatform())}
                 data-action-id={entry.id}
                 data-icon={icon === undefined ? undefined : entry.id}
-                disabled={unavailable}
+                disabled={cancellable ? false : unavailable}
                 icon={icon === undefined ? undefined : <Icon name={icon} />}
-                label={t(entry.labelKey)}
+                label={cancellable ? t('tidy.cancel') : t(entry.labelKey)}
+                title={
+                    cancellable
+                        ? t('tidy.running')
+                        : unavailable
+                          ? t(actionUnavailableLabelKey(availability.reason))
+                          : undefined
+                }
+                trailing={cancellable && progress !== null ? `${progress.done}/${progress.total}` : undefined}
                 onMouseDown={(event): void => {
                     if (!unavailable) event.preventDefault();
                 }}
-                onSelect={(): void => onActivate(entry)}
+                onSelect={(): void => (cancellable ? cancel?.() : onActivate(entry))}
             />
         );
     }
-    return (
+    return cancellable ? (
+        <span className={styles.runningControl}>
+            <ToolButton
+                aria-label={t('tidy.cancel')}
+                className={styles.action}
+                data-action-id={entry.id}
+                label={t('tidy.cancel')}
+                title={t('tidy.running')}
+                variant="text"
+                onActivate={cancel}
+            />
+            <span role="status" aria-label={t('tidy.running')} className={styles.progress}>
+                {progress?.done}/{progress?.total}
+            </span>
+        </span>
+    ) : (
         <ToolButton
             aria-label={t(entry.accessibilityKey)}
             className={styles.action}
@@ -107,13 +143,7 @@ const ActionButton: React.FC<ActionButtonProps> = ({ entry, onActivate }: Action
             disabled={unavailable}
             icon={icon}
             label={t(entry.accessibilityKey)}
-            title={
-                availability.kind === 'unavailable' && availability.reason === 'settings-loading'
-                    ? t('action.settingsLoading')
-                    : unavailable
-                      ? t('action.unavailable')
-                      : controlTooltip(entry)
-            }
+            title={unavailable ? t(actionUnavailableLabelKey(availability.reason)) : controlTooltip(entry)}
             variant={textualControlIds.has(entry.id) ? 'text' : 'icon'}
             onActivate={(): void => onActivate(entry)}
         />
@@ -178,6 +208,8 @@ const FormattingToolbar: React.FC<FormattingToolbarProps> = ({
     const activeBuffer = useContext(EditorSessionContext);
     const toolbarProjection = useEditingProjection(activeBuffer?.documentId);
     const { markdownSettings } = useEditorSettings();
+    const slot = useOperationSlot();
+    const tidyCommands = useContext(TidyCommandsContext);
     const requestApplicationMenu = useContext(ApplicationMenuRequestContext);
     const { execute } = useEditorActionExecutor({ registerShortcuts: true });
     const onActivate = useCallback(
@@ -189,7 +221,12 @@ const FormattingToolbar: React.FC<FormattingToolbarProps> = ({
 
     return (
         <ToolbarProjectionContext.Provider
-            value={{ projectedState: toolbarProjection, markdownSettingsLoaded: markdownSettings !== undefined }}
+            value={{
+                projectedState: toolbarProjection,
+                markdownSettingsLoaded: markdownSettings !== undefined,
+                slot,
+                cancel: tidyCommands === null ? undefined : () => tidyCommands.cancel(),
+            }}
         >
             <Bar
                 ariaLabel={t('editor.toolbar')}
@@ -221,7 +258,7 @@ const FormattingToolbar: React.FC<FormattingToolbarProps> = ({
                             400,
                         )}
                         {actionButtons(
-                            deferredActions.map((id) => action(id).id),
+                            tidyActions.map((id) => action(id).id),
                             onActivate,
                             styles.utilityGroup,
                             0,
@@ -256,7 +293,7 @@ const FormattingToolbar: React.FC<FormattingToolbarProps> = ({
                 }
                 overflowContent={
                     <div className={styles.applicationOverflowItems}>
-                        {(['file', 'settings', 'view', 'about'] as const).map((target, index) => (
+                        {(['file', 'format', 'settings', 'view', 'about'] as const).map((target, index) => (
                             <Fragment key={target}>
                                 {index === 0 ? <PopupSeparator /> : null}
                                 <MenuItem

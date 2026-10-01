@@ -66,8 +66,21 @@ export default defineConfig({
         },
     },
     optimizeDeps: {
-        // The lazy iframe import must not trigger a shared dev-server reload during active previews.
-        include: ['mermaid'],
+        // Lazy preview and tidy imports must not reload the shared dev server during an active command.
+        include: ['mermaid', 'get-east-asian-width', 'micromark-util-classify-character'],
+        esbuildOptions: {
+            // Dev prebundling bypasses worker.plugins and otherwise selects the DOM-only browser export.
+            plugins: [
+                {
+                    name: 'worker-entity-decoder',
+                    setup(build): void {
+                        build.onResolve({ filter: /^decode-named-character-reference$/ }, () => ({
+                            path: workerEntityDecoder,
+                        }));
+                    },
+                },
+            ],
+        },
     },
     worker: {
         format: 'es',

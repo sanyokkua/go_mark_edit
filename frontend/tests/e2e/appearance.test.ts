@@ -55,7 +55,7 @@ test('changes all six palettes through keyboard-reachable controls without overf
             await expect.poll(() => page.locator('html').getAttribute('data-mode')).toBe(mode);
             await expect(modeControl).toBeFocused();
             await expectCompactMenuRows(page.getByRole('menu', { name: 'Settings menu' }));
-            await expect(page.locator('.monaco-editor')).toBeVisible();
+            await expect(page.locator('[data-editor-surface] .monaco-editor')).toBeVisible();
             await expect
                 .poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth))
                 .toBe(true);

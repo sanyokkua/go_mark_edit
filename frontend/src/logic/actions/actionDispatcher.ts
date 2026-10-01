@@ -92,7 +92,10 @@ function actionResultFromInvocation(
             record.reason === 'barrier' ||
             record.reason === 'limit' ||
             record.reason === 'edge' ||
-            record.reason === 'no-recent'
+            record.reason === 'no-recent' ||
+            record.reason === 'read-only' ||
+            record.reason === 'slot-busy' ||
+            record.reason === 'settings-loading'
                 ? record.reason
                 : undefined;
         return {
@@ -163,6 +166,7 @@ const tabActionIds: ReadonlySet<ActionId> = new Set([
     'copy-path',
     'reveal-in-file-manager',
 ]);
+const tidyActionIds: ReadonlySet<ActionId> = new Set(['format', 'compact', 'lint']);
 
 function projectedDocumentIsWritable(context: ActionDispatchContext): boolean {
     const projected = context.projectedState ?? context.projection;
@@ -200,6 +204,7 @@ export async function dispatchAction(actionId: ActionId, context: ActionDispatch
         action.scope === 'document' &&
         context.targetPath === undefined &&
         !tabActionIds.has(actionId) &&
+        !tidyActionIds.has(actionId) &&
         context.writable !== true &&
         !projectedDocumentIsWritable(context)
     ) {

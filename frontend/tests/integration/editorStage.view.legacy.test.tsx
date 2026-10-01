@@ -1364,6 +1364,8 @@ it('restores the exact Monaco session and saved scroll state without bootstrap r
         restoreViewState: jest.Mock<void, [editor.ICodeEditorViewState | null]>;
         saveViewState: jest.Mock<editor.ICodeEditorViewState, []>;
     };
+    expect(mockedEditor.layout).toHaveBeenCalledTimes(1);
+    mockedEditor.layout.mockClear();
     const mountedModel = mockRuntime.model;
     mockRuntime.selection = {
         selectionStartLineNumber: 2,

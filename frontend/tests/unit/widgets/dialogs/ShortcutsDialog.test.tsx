@@ -28,7 +28,7 @@ it('closes on Escape and restores focus to the opener', () => {
     expect(onOpenChange).toHaveBeenCalledWith(false);
 });
 
-it('renders registry scope and localized deferred availability metadata', () => {
+it('explains that tidy shortcuts need an open document while the command palette stays deferred', () => {
     render(<ShortcutsDialog open onOpenChange={jest.fn()} />);
 
     for (const [id, label] of [
@@ -39,8 +39,8 @@ it('renders registry scope and localized deferred availability metadata', () => 
         const row = screen.getByText(label).closest(`[data-action-id="${id}"]`);
         expect(row).toBeInTheDocument();
         expect(row).toHaveTextContent('Document');
-        expect(row).toHaveTextContent('This action is not available in this slice.');
-        expect(row).toHaveAttribute('data-availability', 'deferred');
+        expect(row).toHaveTextContent('No document is open.');
+        expect(row).toHaveAttribute('data-availability', 'available');
     }
 
     const commandPalette = screen.getByText('Command palette').closest('[data-action-id="command-palette"]');
