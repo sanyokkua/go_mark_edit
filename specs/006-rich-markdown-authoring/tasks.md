@@ -1112,7 +1112,7 @@ Redux) allows one run at a time.
 
     **Verify**: `scripts/test unit`, `scripts/test integration`, `scripts/verify lint`.
 
-- [ ] T025 [US2] Run Format, Compact and Lint through one action handler with slot, stale detection, notices and the problems summary in `frontend/src/app/useTidyCommands.ts`, `frontend/src/logic/operations/problemsSummary.ts`, `frontend/src/i18n/locales/en.json`
+- [x] T025 [US2] Run Format, Compact and Lint through one action handler with slot, stale detection, notices and the problems summary in `frontend/src/app/useTidyCommands.ts`, `frontend/src/logic/operations/problemsSummary.ts`, `frontend/src/i18n/locales/en.json`
 
     **Story / Priority**: US2 (P1). Needs T018, T022, T024.
 

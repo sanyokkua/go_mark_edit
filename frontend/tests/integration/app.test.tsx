@@ -2,6 +2,9 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 
 jest.mock('../../src/logic/adapter/events', () => ({ subscribeFileDrops: jest.fn(() => jest.fn()) }));
 
+// JSDOM cannot load Vite's ?worker module; App only needs the browser factory when a tidy action runs.
+jest.mock('../../src/logic/tidy/workerFactory', () => ({ createTidyWorker: jest.fn() }));
+
 jest.mock('../../src/app/useBootstrap', () => ({
     useBootstrap: jest.fn(),
 }));
@@ -42,6 +45,7 @@ import App from '../../src/app/App';
 import { appModelAdapter } from '../../src/logic/adapter';
 import { store } from '../../src/logic/store';
 import { applyStatePatch, hydrateProjection } from '../../src/logic/store/appModelProjectionActions';
+import { createTidyWorker } from '../../src/logic/tidy/workerFactory';
 import { createCommandRecorder } from '../support/commandRecorder';
 
 const mockedUseBootstrap = useBootstrap as jest.MockedFunction<typeof useBootstrap>;
@@ -94,6 +98,7 @@ it('routes a failed startup through the recovery surface with Quit available', a
     render(<App />);
     await waitForAppearanceHydration();
 
+    expect(createTidyWorker).not.toHaveBeenCalled();
     expect(screen.getByRole('status', { name: /could not initialize/i })).toHaveTextContent('Settings: database');
     expect(screen.getByRole('button', { name: 'Quit' })).toBeEnabled();
 });
@@ -105,6 +110,7 @@ it('composes the four application menus at the app boundary', async () => {
     render(<App />);
     await waitForAppearanceHydration();
 
+    expect(createTidyWorker).not.toHaveBeenCalled();
     const menu = screen.getByRole('navigation', { name: 'Application actions' });
     expect(within(menu).getByRole('button', { name: 'File' })).toBeEnabled();
     expect(within(menu).getByRole('button', { name: 'Settings' })).toBeEnabled();

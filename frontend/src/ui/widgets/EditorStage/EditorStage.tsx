@@ -27,6 +27,7 @@ import type { MarkdownStandard } from '../../../logic/markdown/pipeline';
 import type { ActiveBuffer, DocumentMetadata, DocumentView } from '../../../logic/store/appModelTypes';
 import EditorContextMenu from '../EditorContextMenu';
 import { EditorSessionEpochContext, useEditorSessionAttachment } from '../editorSession';
+import { TidyCommandsContext } from '../tidyCommandsContext';
 import { PreviewPaneContent, PreviewPausedStatus, usePreviewPaneState } from '../PreviewPane';
 import { EDITOR_TABPANEL_ID } from '../editorTabPanel';
 import styles from './EditorStage.module.css';
@@ -93,6 +94,7 @@ const ActiveEditor = forwardRef<ActiveEditorHandle, ActiveEditorProps>(function 
     const editorSettings = useEditorSettings().settings;
     const viewStateCaptureRef = useRef<(() => void) | null>(null);
     const attachEditor = useEditorSessionAttachment();
+    const tidyCommands = useContext(TidyCommandsContext);
     const externalEpoch = useContext(EditorSessionEpochContext);
     const synchronizedBuffer = useSyncedBuffer(
         activeBuffer.documentId,
@@ -174,7 +176,10 @@ const ActiveEditor = forwardRef<ActiveEditorHandle, ActiveEditorProps>(function 
                 viewStateCaptureRef.current = capture;
             }}
             onBlur={synchronizedBuffer.onBlur}
-            onChange={synchronizedBuffer.onChange}
+            onChange={(text: string): void => {
+                synchronizedBuffer.onChange(text);
+                tidyCommands?.documentChanged(activeBuffer.documentId, text);
+            }}
             onCursorPositionChange={synchronizedBuffer.onCursorPositionChange}
             onScrollChange={synchronizedBuffer.onEditorScrollChange}
             onScrollPortReady={onScrollPortReady}

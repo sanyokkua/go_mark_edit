@@ -325,9 +325,11 @@ test('when a folder opens, the tree filters and orders rows and refreshes stale 
     await unlink(join(root, 'todo.txt'));
     await page.getByRole('button', { name: 'Refresh' }).click();
     await expect(page.getByRole('treeitem', { name: 'todo.txt', exact: true })).toHaveCount(0);
+    const readme = page.getByRole('treeitem', { name: 'readme.md', exact: true });
+    await expect(readme).toBeVisible();
 
     await unlink(join(root, 'readme.md'));
-    await page.getByRole('treeitem', { name: 'readme.md', exact: true }).click();
+    await readme.click();
     await expect(page.getByRole('status').filter({ hasText: /no longer|not found|missing/iu })).toBeVisible();
     await expect(page.getByRole('treeitem', { name: 'readme.md', exact: true })).toHaveCount(0);
     await expect(page.getByRole('tab', { name: 'readme.md' })).toHaveCount(0);

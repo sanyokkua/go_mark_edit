@@ -10,6 +10,7 @@ import { TabRemediationContext } from '../ui/widgets/tabRemediation';
 import { WorkspaceTreeCommandsContext } from '../ui/widgets/WorkspaceTree/workspaceTreeCommands';
 import { AppDialogs } from './AppDialogs';
 import { AppFrame } from './AppFrame';
+import { TidyCommandsProvider } from './TidyCommandsProvider';
 import { useAppPresentation } from './useAppPresentation';
 import { useBootstrap } from './useBootstrap';
 import { useCloseWorkflow } from './useCloseWorkflow';
@@ -75,41 +76,43 @@ const AppContents: React.FC = (): React.JSX.Element => {
         <ModalStateProvider modalOpen={presentation.modalOpen}>
             <TabRemediationContext.Provider value={notifications.tabRemediationRef}>
                 <EditorSessionProvider activeBuffer={session.activeBuffer} externalEpoch={session.externalEpoch}>
-                    <WorkspaceTreeCommandsContext.Provider value={commands}>
-                        <ApplicationMenuRequestContext.Provider value={presentation.requestMenu}>
-                            <AppFrame
-                                bootstrap={bootstrap}
-                                menuState={presentation.menuState}
-                                settingsOpen={presentation.settingsOpen}
-                                onSettingsOpenChange={presentation.setSettingsOpen}
-                                onQuit={shutdown.requestQuit}
-                                onRetry={bootstrap.retry}
-                                notices={notifications.notices}
-                                banners={notifications.banners}
-                                onDismiss={notifications.onDismiss}
-                                recovery={writes.recoverySurface}
-                                shell={{
-                                    ...commands,
-                                    dropEpoch: drops.dropEpoch,
-                                    onCloseDocument: close.onCloseDocument,
-                                    onOpenFolder: commands.onOpenFolder,
-                                    onExternalConflict: external.receiveConflict,
-                                }}
-                            >
-                                <AppDialogs
-                                    status={bootstrap.status}
-                                    version={bootstrap.result?.applicationVersion ?? ''}
-                                    about={presentation.about}
-                                    shortcuts={presentation.shortcuts}
-                                    prompts={prompts}
-                                    folderCommands={commands}
-                                    drops={drops}
+                    <TidyCommandsProvider>
+                        <WorkspaceTreeCommandsContext.Provider value={commands}>
+                            <ApplicationMenuRequestContext.Provider value={presentation.requestMenu}>
+                                <AppFrame
+                                    bootstrap={bootstrap}
+                                    menuState={presentation.menuState}
+                                    settingsOpen={presentation.settingsOpen}
+                                    onSettingsOpenChange={presentation.setSettingsOpen}
+                                    onQuit={shutdown.requestQuit}
+                                    onRetry={bootstrap.retry}
+                                    notices={notifications.notices}
+                                    banners={notifications.banners}
+                                    onDismiss={notifications.onDismiss}
                                     recovery={writes.recoverySurface}
-                                    announcement={notifications.announcement}
-                                />
-                            </AppFrame>
-                        </ApplicationMenuRequestContext.Provider>
-                    </WorkspaceTreeCommandsContext.Provider>
+                                    shell={{
+                                        ...commands,
+                                        dropEpoch: drops.dropEpoch,
+                                        onCloseDocument: close.onCloseDocument,
+                                        onOpenFolder: commands.onOpenFolder,
+                                        onExternalConflict: external.receiveConflict,
+                                    }}
+                                >
+                                    <AppDialogs
+                                        status={bootstrap.status}
+                                        version={bootstrap.result?.applicationVersion ?? ''}
+                                        about={presentation.about}
+                                        shortcuts={presentation.shortcuts}
+                                        prompts={prompts}
+                                        folderCommands={commands}
+                                        drops={drops}
+                                        recovery={writes.recoverySurface}
+                                        announcement={notifications.announcement}
+                                    />
+                                </AppFrame>
+                            </ApplicationMenuRequestContext.Provider>
+                        </WorkspaceTreeCommandsContext.Provider>
+                    </TidyCommandsProvider>
                 </EditorSessionProvider>
             </TabRemediationContext.Provider>
         </ModalStateProvider>

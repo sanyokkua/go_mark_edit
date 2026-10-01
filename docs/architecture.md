@@ -219,6 +219,21 @@ excludes another run until release, abort signals cancellation without releasing
 handles cannot affect a later run. Progress becomes visible immediately above 1 MiB or after one
 second, retaining the latest completed-chunk counts until then.
 
+`frontend/src/app/TidyCommandsProvider.tsx` mounts the single tidy command owner beneath the
+guarded editor session. `useTidyCommands.ts` snapshots the active editor text, activation-bound
+commands and Markdown preferences, acquires the operation slot using UTF-8 text size, and releases
+it after one terminal outcome. Editor changes reach this owner from the actual `EditorStage`
+`onChange` path immediately after buffer synchronization. A changed text, activation, close or
+reload invalidates a pending result even if the user later returns to the same text. The owner
+subscribes to projected active-document identity changes so an intervening switch invalidates a
+run even when multiple projection updates share one React render; a content revision for the
+same active document leaves the editor session intact. The owner
+applies edits through the guarded editor handle, localizes the first 1,000 lint markers and
+publishes the exact findings and count through `logic/operations/problemsSummary.ts`. The summary
+is an ephemeral subscribed store for the active document: edits mark it stale without removing
+markers; activation or close clears it. User runs report refused, cancelled, failed and stale
+outcomes through localized notices; on-save runs return the outcome without those notices.
+
 `frontend/src/logic/tidy/` owns source tidying independently of Monaco, Redux and the bridge.
 Its pure engine uses the shared Full syntax parser, computes sorted non-overlapping edits, and
 refuses a changed chunk when its normalized Markdown tree differs. Compact preserves protected
@@ -229,6 +244,10 @@ style conversion is limited by safe reparsing, and table padding uses display wi
 cell text, row cell counts and container prefixes. Safe heading boundaries divide larger inputs; source offsets
 remain indices into the original text. Definition-shaped candidates are confirmed with the Full parser;
 ambiguous container-fence contexts use its code ranges before selecting boundaries.
+Lint shares the Format rule predicates and reports exact totals across chunks. It skips inline
+marker findings inside table cells, where changing delimiters can alter the parsed table, and
+reports a heading-style finding only when the shared safe heading conversion can perform that
+change without changing the parsed tree.
 The client lazily starts a dedicated module worker, forwards completed-chunk progress, reuses a
 completed worker, and terminates a cancelled worker. Vite builds the client as an explicit entry
 so the production client and worker are available independently of interface integration.
