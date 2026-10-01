@@ -930,7 +930,7 @@ Redux) allows one run at a time.
 
     **Verify**: `scripts/test unit`, `scripts/build`, `scripts/verify lint`.
 
-- [ ] T020 [US2] Add Format bullet, emphasis and strong-marker edits with the line pass in `frontend/src/logic/tidy/rules.ts`, `frontend/src/logic/tidy/edits.ts`
+- [x] T020 [US2] Add Format bullet, emphasis and strong-marker edits with the line pass in `frontend/src/logic/tidy/rules.ts`, `frontend/src/logic/tidy/edits.ts`
 
     **Story / Priority**: US2 (P1). Needs T019.
 

@@ -1,7 +1,17 @@
 import type { Root } from 'mdast';
+import { visit } from 'unist-util-visit';
 
+import type { TidyPreferences } from './prefs';
 import type { TextEdit } from './protocol';
-import { hardBreakRanges, protectedRanges } from './rules';
+import {
+    expectedBulletMarker,
+    expectedEmphasisMarker,
+    hardBreakRanges,
+    inlineMarkerRanges,
+    protectedRanges,
+    unorderedMarkerAt,
+    type BulletMarker,
+} from './rules';
 
 export function applyEdits(source: string, edits: TextEdit[]): string {
     let previous = 0;
@@ -61,4 +71,88 @@ export function compactEdits(source: string, tree: Root): TextEdit[] {
         if (!hardBreak) edits.push({ from, to: line.end, text: '' });
     }
     return edits;
+}
+
+function blockGapEdits(source: string, tree: Root): TextEdit[] {
+    const edits: TextEdit[] = [];
+    visit(tree, (node) => {
+        if (node.type !== 'root' && node.type !== 'blockquote' && node.type !== 'containerDirective') return;
+        for (let index = 1; index < node.children.length; index++) {
+            const previous = node.children[index - 1];
+            const current = node.children[index];
+            if (previous.type === 'list' && current.type === 'list') continue;
+            const from = previous.position?.end.offset;
+            const to = current.position?.start.offset;
+            if (from === undefined || to === undefined) continue;
+            const gap = source.slice(from, to);
+            if (!/^\n[^\n]*$/u.test(gap)) continue;
+            const prefix = gap.slice(1);
+            if (!/^[\t >]*$/u.test(prefix)) continue;
+            edits.push({ from, to: from, text: '\n' + prefix.trimEnd() });
+        }
+    });
+    return edits;
+}
+
+function formatLineEdits(source: string, tree: Root, finalChunk: boolean): TextEdit[] {
+    const edits = compactEdits(source, tree);
+    if (!finalChunk) return edits.concat(blockGapEdits(source, tree));
+    const tail = /[ \t\n]+$/u.exec(source);
+    if (tail !== null) {
+        const from = source.length - tail[0].length;
+        const safe = !protectedRanges(tree, source).some((span) => span.from < source.length && span.to > from);
+        if (safe) {
+            if (tail[0] !== '\n') {
+                for (let index = edits.length - 1; index >= 0; index--) {
+                    if (edits[index].to > from || edits[index].from >= from) edits.splice(index, 1);
+                }
+                edits.push({ from, to: source.length, text: '\n' });
+            }
+        } else if (!source.endsWith('\n')) {
+            edits.push({ from: source.length, to: source.length, text: '\n' });
+        }
+    } else {
+        edits.push({ from: source.length, to: source.length, text: '\n' });
+    }
+    return edits.concat(blockGapEdits(source, tree));
+}
+
+export function formatEdits(source: string, tree: Root, prefs: TidyPreferences, finalChunk = true): TextEdit[] {
+    const edits = formatLineEdits(source, tree, finalChunk);
+    const expected = new Map<object, BulletMarker>();
+    visit(tree, 'list', (list, index, parent) => {
+        if (list.ordered) return;
+        const previous = index === undefined ? undefined : parent?.children[index - 1];
+        const previousList = previous?.type === 'list' ? previous : null;
+        const marker = expectedBulletMarker(
+            list,
+            previousList,
+            previousList === null ? null : (expected.get(previousList) ?? null),
+            source,
+            prefs.bullet,
+        );
+        expected.set(list, marker);
+        for (const item of list.children) {
+            const from = item.position?.start.offset;
+            if (from === undefined || source[from] === marker || unorderedMarkerAt(list, source) === null) continue;
+            if (source[from] === '-' || source[from] === '*' || source[from] === '+') {
+                edits.push({ from, to: from + 1, text: marker });
+            }
+        }
+    });
+    visit(tree, (node, _index, parent) => {
+        if (node.type !== 'emphasis' && node.type !== 'strong') return;
+        const ranges = inlineMarkerRanges(node);
+        if (ranges === null) return;
+        const marker =
+            node.type === 'strong'
+                ? '**'
+                : expectedEmphasisMarker(node, source, prefs.emphasis, parent?.type === 'strong' ? parent : null);
+        for (const range of [ranges.open, ranges.close]) {
+            if (source.slice(range.from, range.to) !== marker) {
+                edits.push({ from: range.from, to: range.to, text: marker });
+            }
+        }
+    });
+    return edits.sort((a, b) => a.from - b.from || a.to - b.to);
 }

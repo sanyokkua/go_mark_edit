@@ -222,7 +222,9 @@ second, retaining the latest completed-chunk counts until then.
 `frontend/src/logic/tidy/` owns source tidying independently of Monaco, Redux and the bridge.
 Its pure engine uses the shared Full syntax parser, computes sorted non-overlapping edits, and
 refuses a changed chunk when its normalized Markdown tree differs. Compact preserves protected
-source and hard breaks while removing redundant blank lines and trailing whitespace. Safe heading
+source and hard breaks while removing redundant blank lines and trailing whitespace. Format adds
+preference-aware bullet and emphasis markers, strong markers, block spacing and a final newline; shared
+mdast predicates keep adjacent lists and nested delimiters stable without re-indenting lists. Safe heading
 boundaries divide larger inputs; source offsets remain indices into the original text.
 The client lazily starts a dedicated module worker, forwards completed-chunk progress, reuses a
 completed worker, and terminates a cancelled worker. Vite builds the client as an explicit entry
