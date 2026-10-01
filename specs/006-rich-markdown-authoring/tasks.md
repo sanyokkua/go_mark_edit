@@ -840,7 +840,7 @@ text merged); any difference returns `refused: 'render-differs'` and no edits. L
 predicates with Format; `markdownlint` is a test oracle only. A per-window **operation slot** (frontend, outside
 Redux) allows one run at a time.
 
-- [ ] T018 [P] [US2] Add the per-window operation slot in `frontend/src/logic/operations/operationSlot.ts`
+- [x] T018 [P] [US2] Add the per-window operation slot in `frontend/src/logic/operations/operationSlot.ts`
 
     **Story / Priority**: US2 (P1). Needs nothing beyond the repository (ADR-0039 is already recorded); new files, so it may run in parallel with US1 tasks.
 

@@ -212,6 +212,13 @@ this one mount.
 
 ### Rendering and theme owners
 
+`frontend/src/logic/operations/operationSlot.ts` owns the per-window ephemeral slot for Format,
+Compact and Lint, outside the backend projection. It exposes stable snapshots and subscriptions;
+`frontend/src/logic/operations/useOperationSlot.ts` connects those snapshots to React. Acquisition
+excludes another run until release, abort signals cancellation without releasing the slot, and old
+handles cannot affect a later run. Progress becomes visible immediately above 1 MiB or after one
+second, retaining the latest completed-chunk counts until then.
+
 `frontend/src/ui/components/CodeEditor.tsx` owns the visible Monaco working copy and publishes its scroll
 port for synchronized scrolling. It is paired with `frontend/src/ui/components/MarkdownView.tsx`, which owns
 sanitized preview rendering; each rendered block carries a numeric `data-source-line` annotation that the
