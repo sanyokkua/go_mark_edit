@@ -1,6 +1,9 @@
-import type { Root } from 'mdast';
-import { visit } from 'unist-util-visit';
+import { eastAsianWidth } from 'get-east-asian-width';
+import type { Heading, Root, Table } from 'mdast';
+import { toString } from 'mdast-util-to-string';
+import { SKIP, visit } from 'unist-util-visit';
 
+import { parseFull } from './parser';
 import type { TidyPreferences } from './prefs';
 import type { TextEdit } from './protocol';
 import {
@@ -117,6 +120,209 @@ function formatLineEdits(source: string, tree: Root, finalChunk: boolean): TextE
     return edits.concat(blockGapEdits(source, tree));
 }
 
+function displayWidth(value: string): number {
+    let width = 0;
+    for (const character of value) width += eastAsianWidth(character.codePointAt(0) ?? 0);
+    return width;
+}
+
+function columnAfter(source: string, start: number): number {
+    let column = start;
+    for (const character of source) column += character === '\t' ? 4 - (column % 4) : 1;
+    return column;
+}
+
+function continuationPrefix(prefix: string): string | null {
+    let remaining = prefix;
+    let continuation = '';
+    let column = 0;
+    while (remaining !== '') {
+        const whitespace = /^[ \t]+/u.exec(remaining);
+        if (whitespace !== null) {
+            continuation += whitespace[0];
+            column = columnAfter(whitespace[0], column);
+            remaining = remaining.slice(whitespace[0].length);
+            continue;
+        }
+        if (remaining.startsWith('>')) {
+            continuation += '>';
+            column++;
+            remaining = remaining.slice(1);
+            continue;
+        }
+        const listMarker = /^(?:[-+*]|\d{1,9}[.)])[ \t]+/u.exec(remaining);
+        if (listMarker === null) return null;
+        const afterMarker = columnAfter(listMarker[0], column);
+        continuation += ' '.repeat(afterMarker - column);
+        column = afterMarker;
+        remaining = remaining.slice(listMarker[0].length);
+    }
+    return continuation;
+}
+
+/** Fold existing marker and line edits into a larger source replacement. */
+function replaceRegion(
+    source: string,
+    edits: TextEdit[],
+    from: number,
+    to: number,
+    replacement: (current: string) => string | null,
+): void {
+    if (edits.some((edit) => edit.from < to && edit.to > from && (edit.from < from || edit.to > to))) return;
+    const inside = edits
+        .filter((edit) => edit.from >= from && edit.to <= to && edit.from < to)
+        .sort((left, right) => left.from - right.from || left.to - right.to);
+    const current = applyEdits(
+        source.slice(from, to),
+        inside.map((edit) => ({ from: edit.from - from, to: edit.to - from, text: edit.text })),
+    );
+    const next = replacement(current);
+    if (next === null || next === current) return;
+    for (let index = edits.length - 1; index >= 0; index--) {
+        if (inside.includes(edits[index])) edits.splice(index, 1);
+    }
+    edits.push({ from, to, text: next });
+}
+
+function formatHeading(source: string, heading: Heading, prefs: TidyPreferences, edits: TextEdit[]): void {
+    const from = heading.position?.start.offset;
+    const to = heading.position?.end.offset;
+    if (from === undefined || to === undefined) return;
+    const lineStart = source.lastIndexOf('\n', from - 1) + 1;
+    const prefix = source.slice(lineStart, from);
+    const continuation = continuationPrefix(prefix);
+    if (continuation === null) return;
+    replaceRegion(source, edits, from, to, (current) => {
+        const lines = current.split('\n');
+        const underline =
+            lines.length === 2 && lines[1].startsWith(continuation)
+                ? /^(=+|-+)[ \t]*$/u.exec(lines[1].slice(continuation.length))
+                : null;
+        if (underline !== null) {
+            if (prefs.heading === 'setext') return null;
+            const depth = underline[1][0] === '=' ? 1 : 2;
+            return depth === heading.depth ? `${'#'.repeat(depth)} ${lines[0]}` : null;
+        }
+        if (prefs.heading !== 'setext' || heading.depth > 2 || current.includes('\n')) return null;
+        const atx = /^(#{1,6})(?:[ \t]+(.*))?$/u.exec(current);
+        if (atx === null || atx[1].length !== heading.depth) return null;
+        const content = (atx[2] ?? '').replace(/[ \t]+#+[ \t]*$/u, '').trimEnd();
+        if (content === '') return null;
+        const underlineText = (heading.depth === 1 ? '=' : '-').repeat(Math.max(3, displayWidth(toString(heading))));
+        const candidate = `${content}\n${continuation}${underlineText}`;
+        const parsed = parseFull(`${prefix}${candidate}`);
+        let found = 0;
+        let sameDepth = false;
+        visit(parsed, 'heading', (node) => {
+            found++;
+            if (node.depth === heading.depth) sameDepth = true;
+        });
+        if (parsed.children.length !== 1 || found !== 1 || !sameDepth) return null;
+        return candidate;
+    });
+}
+
+interface TableLine {
+    cells: string[];
+    leadingPipe: boolean;
+    trailingPipe: boolean;
+    ambiguous: boolean;
+}
+
+function splitTableLine(line: string): TableLine {
+    const segments: string[] = [];
+    let previous = 0;
+    let backticks = 0;
+    let ambiguous = false;
+    for (let index = 0; index < line.length; index++) {
+        if (line[index] === '`') {
+            let run = 1;
+            while (line[index + run] === '`') run++;
+            if (backticks === 0) backticks = run;
+            else if (backticks === run) backticks = 0;
+            index += run - 1;
+            continue;
+        }
+        if (line[index] !== '|') continue;
+        let escapes = 0;
+        for (let before = index - 1; before >= 0 && line[before] === '\\'; before--) escapes++;
+        if (escapes % 2 === 1) continue;
+        if (backticks !== 0) ambiguous = true;
+        segments.push(line.slice(previous, index));
+        previous = index + 1;
+    }
+    segments.push(line.slice(previous));
+    const leadingPipe = line.startsWith('|');
+    const trailingPipe = line.includes('|') && /^[ \t]*$/u.test(segments.at(-1) ?? '');
+    return {
+        cells: segments.slice(leadingPipe ? 1 : 0, trailingPipe ? -1 : undefined).map((cell) => cell.trim()),
+        leadingPipe,
+        trailingPipe,
+        ambiguous,
+    };
+}
+
+function formatTable(source: string, table: Table, edits: TextEdit[]): void {
+    const header = table.children[0];
+    const headerFrom = header?.position?.start.offset;
+    const headerTo = header?.position?.end.offset;
+    const headerColumn = header?.position?.start.column;
+    if (headerFrom === undefined || headerTo === undefined || headerColumn === undefined) return;
+    const separatorLineStart = source.indexOf('\n', headerTo);
+    if (separatorLineStart < 0) return;
+    const separatorFrom = separatorLineStart + 1 + headerColumn - 1;
+    const separatorNewline = source.indexOf('\n', separatorFrom);
+    const separatorTo = separatorNewline < 0 ? source.length : separatorNewline;
+    const ranges = [
+        { from: headerFrom, to: headerTo },
+        { from: separatorFrom, to: separatorTo },
+    ];
+    for (const row of table.children.slice(1)) {
+        const from = row.position?.start.offset;
+        const to = row.position?.end.offset;
+        if (from === undefined || to === undefined) return;
+        ranges.push({ from, to });
+    }
+    const current = ranges.map((range) => {
+        const inside = edits
+            .filter((edit) => edit.from >= range.from && edit.to <= range.to && edit.from < range.to)
+            .sort((left, right) => left.from - right.from || left.to - right.to);
+        return applyEdits(
+            source.slice(range.from, range.to),
+            inside.map((edit) => ({ from: edit.from - range.from, to: edit.to - range.from, text: edit.text })),
+        );
+    });
+    const rows = current.map(splitTableLine);
+    const columns = table.children[0]?.children.length ?? 0;
+    if (
+        columns === 0 ||
+        rows.some((row) => row.ambiguous) ||
+        rows[0].cells.length !== columns ||
+        rows[1].cells.length !== columns ||
+        rows.slice(2).some((row, index) => row.cells.length !== table.children[index + 1].children.length) ||
+        rows[1].cells.some((cell) => !/^:?-+:?$/u.test(cell))
+    )
+        return;
+    const widths = Array.from({ length: columns }, (_, column) =>
+        Math.max(3, ...rows.filter((_, index) => index !== 1).map((row) => displayWidth(row.cells[column] ?? ''))),
+    );
+    const formatted = rows.map((row, index) => {
+        const cells = row.cells.map((cell, column) => {
+            if (index === 1) {
+                const left = cell.startsWith(':');
+                const right = cell.endsWith(':');
+                return `${left ? ':' : ''}${'-'.repeat(widths[column] - Number(left) - Number(right))}${right ? ':' : ''}`;
+            }
+            const pad = column < row.cells.length - 1 || row.trailingPipe ? widths[column] - displayWidth(cell) : 0;
+            return cell + ' '.repeat(pad);
+        });
+        return `${row.leadingPipe ? '| ' : ''}${cells.join(' | ')}${row.trailingPipe ? ' |' : ''}`;
+    });
+    for (let index = 0; index < ranges.length; index++) {
+        replaceRegion(source, edits, ranges[index].from, ranges[index].to, () => formatted[index]);
+    }
+}
+
 export function formatEdits(source: string, tree: Root, prefs: TidyPreferences, finalChunk = true): TextEdit[] {
     const edits = formatLineEdits(source, tree, finalChunk);
     const expected = new Map<object, BulletMarker>();
@@ -141,6 +347,8 @@ export function formatEdits(source: string, tree: Root, prefs: TidyPreferences, 
         }
     });
     visit(tree, (node, _index, parent) => {
+        // Table formatting may change surrounding whitespace only, including nested markers.
+        if (node.type === 'table') return SKIP;
         if (node.type !== 'emphasis' && node.type !== 'strong') return;
         const ranges = inlineMarkerRanges(node);
         if (ranges === null) return;
@@ -154,5 +362,7 @@ export function formatEdits(source: string, tree: Root, prefs: TidyPreferences, 
             }
         }
     });
+    visit(tree, 'heading', (heading) => formatHeading(source, heading, prefs, edits));
+    visit(tree, 'table', (table) => formatTable(source, table, edits));
     return edits.sort((a, b) => a.from - b.from || a.to - b.to);
 }

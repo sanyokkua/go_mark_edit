@@ -966,7 +966,7 @@ Redux) allows one run at a time.
 
     **Verify**: `scripts/test unit`, `scripts/verify lint`.
 
-- [ ] T021 [US2] Add Format heading-style and table edits in `frontend/src/logic/tidy/edits.ts`
+- [x] T021 [US2] Add Format heading-style and table edits in `frontend/src/logic/tidy/edits.ts`
 
     **Story / Priority**: US2 (P1). Needs T020.
 

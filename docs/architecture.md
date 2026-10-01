@@ -224,8 +224,11 @@ Its pure engine uses the shared Full syntax parser, computes sorted non-overlapp
 refuses a changed chunk when its normalized Markdown tree differs. Compact preserves protected
 source and hard breaks while removing redundant blank lines and trailing whitespace. Format adds
 preference-aware bullet and emphasis markers, strong markers, block spacing and a final newline; shared
-mdast predicates keep adjacent lists and nested delimiters stable without re-indenting lists. Safe heading
-boundaries divide larger inputs; source offsets remain indices into the original text.
+mdast predicates keep adjacent lists and nested delimiters stable without re-indenting lists. Heading
+style conversion is limited by safe reparsing, and table padding uses display width while preserving
+cell text, row cell counts and container prefixes. Safe heading boundaries divide larger inputs; source offsets
+remain indices into the original text. Definition-shaped candidates are confirmed with the Full parser;
+ambiguous container-fence contexts use its code ranges before selecting boundaries.
 The client lazily starts a dedicated module worker, forwards completed-chunk progress, reuses a
 completed worker, and terminates a cancelled worker. Vite builds the client as an explicit entry
 so the production client and worker are available independently of interface integration.
