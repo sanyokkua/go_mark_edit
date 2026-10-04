@@ -15,3 +15,8 @@
 .overflowWidgetsHost :global(.monaco-hover) {
     backdrop-filter: var(--blur);
 }
+
+.editor :global(.monaco-editor .inputarea:focus-visible) {
+    box-shadow: none;
+    outline: none;
+}

@@ -88,6 +88,8 @@
     border: var(--preview-table-border-width) solid currentColor;
     padding: var(--preview-table-cell-padding);
     text-align: start;
+    overflow-wrap: normal;
+    word-break: normal;
 }
 
 /* Strong text takes `--md-strong` and emphasis takes `--md-emphasis`. Without
