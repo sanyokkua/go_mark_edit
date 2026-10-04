@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Provider } from 'react-redux';
 
 import { store, useAppDispatch, useAppSelector } from '../logic/store';
@@ -10,6 +10,7 @@ import { TabRemediationContext } from '../ui/widgets/tabRemediation';
 import { WorkspaceTreeCommandsContext } from '../ui/widgets/WorkspaceTree/workspaceTreeCommands';
 import { AppDialogs } from './AppDialogs';
 import { AppFrame } from './AppFrame';
+import { TidyCommandsProvider } from './TidyCommandsProvider';
 import { useAppPresentation } from './useAppPresentation';
 import { useBootstrap } from './useBootstrap';
 import { useCloseWorkflow } from './useCloseWorkflow';
@@ -24,7 +25,16 @@ import { useShutdown } from './useShutdown';
 import { useWindowGeometry } from './useWindowGeometry';
 import { useWorkflowPrompts } from './useWorkflowPrompts';
 
-const AppContents: React.FC = (): React.JSX.Element => {
+const AppWorkflows = ({
+    session,
+    bootstrap,
+    shutdown,
+}: {
+    session: ReturnType<typeof useDocumentSession>;
+    bootstrap: ReturnType<typeof useBootstrap>;
+    shutdown: ReturnType<typeof useShutdown>;
+}): React.JSX.Element => {
+    const [problemsOpen, setProblemsOpen] = useState(false);
     const dispatch = useAppDispatch();
     const workspaceRootPath = useAppSelector((state) => state.workspace.snapshot?.rootPath);
     useEffect(() => {
@@ -32,15 +42,9 @@ const AppContents: React.FC = (): React.JSX.Element => {
             void dispatch(setWorkspaceVisible(true));
         }
     }, [dispatch, workspaceRootPath]);
-    const session = useDocumentSession();
-    const bootstrap = useBootstrap({ onReady: session.onBootstrapReady });
-    const shutdown = useShutdown({
-        bootstrapStatus: bootstrap.status,
-        hydratedPendingCloseId: bootstrap.result?.pendingCloseId ?? null,
-    });
     const conflicts = useConflictCommands(session.activation);
     const writes = useDocumentWrites(session, conflicts);
-    const close = useCloseWorkflow({ session, shutdown, conflicts, recoverySurface: writes.recoverySurface });
+    const close = useCloseWorkflow({ session, shutdown, conflicts, recoverySurface: writes.recoverySurface, writes });
     const commands = useCommands(session, close.closeAllWindowTabs);
     const drops = useDropHandler(commands, bootstrap.status === 'ready');
     const external = useExternalChanges({
@@ -74,45 +78,65 @@ const AppContents: React.FC = (): React.JSX.Element => {
     return (
         <ModalStateProvider modalOpen={presentation.modalOpen}>
             <TabRemediationContext.Provider value={notifications.tabRemediationRef}>
-                <EditorSessionProvider activeBuffer={session.activeBuffer} externalEpoch={session.externalEpoch}>
-                    <WorkspaceTreeCommandsContext.Provider value={commands}>
-                        <ApplicationMenuRequestContext.Provider value={presentation.requestMenu}>
-                            <AppFrame
-                                bootstrap={bootstrap}
-                                menuState={presentation.menuState}
-                                settingsOpen={presentation.settingsOpen}
-                                onSettingsOpenChange={presentation.setSettingsOpen}
-                                onQuit={shutdown.requestQuit}
-                                onRetry={bootstrap.retry}
-                                notices={notifications.notices}
-                                banners={notifications.banners}
-                                onDismiss={notifications.onDismiss}
+                <WorkspaceTreeCommandsContext.Provider value={commands}>
+                    <ApplicationMenuRequestContext.Provider value={presentation.requestMenu}>
+                        <AppFrame
+                            problemsOpen={problemsOpen}
+                            onToggleProblems={(): void => setProblemsOpen((open) => !open)}
+                            bootstrap={bootstrap}
+                            menuState={presentation.menuState}
+                            settingsOpen={presentation.settingsOpen}
+                            onSettingsOpenChange={presentation.setSettingsOpen}
+                            onQuit={shutdown.requestQuit}
+                            onRetry={bootstrap.retry}
+                            notices={notifications.notices}
+                            banners={notifications.banners}
+                            onDismiss={notifications.onDismiss}
+                            recovery={writes.recoverySurface}
+                            shell={{
+                                ...commands,
+                                onOpenLink: commands.openLink,
+                                problemsOpen,
+                                onToggleProblems: (): void => setProblemsOpen((open) => !open),
+                                onCloseProblems: (): void => setProblemsOpen(false),
+                                dropEpoch: drops.dropEpoch,
+                                onCloseDocument: close.onCloseDocument,
+                                onOpenFolder: commands.onOpenFolder,
+                                onExternalConflict: external.receiveConflict,
+                            }}
+                        >
+                            <AppDialogs
+                                status={bootstrap.status}
+                                version={bootstrap.result?.applicationVersion ?? ''}
+                                about={presentation.about}
+                                shortcuts={presentation.shortcuts}
+                                prompts={prompts}
+                                folderCommands={commands}
+                                drops={drops}
                                 recovery={writes.recoverySurface}
-                                shell={{
-                                    ...commands,
-                                    dropEpoch: drops.dropEpoch,
-                                    onCloseDocument: close.onCloseDocument,
-                                    onOpenFolder: commands.onOpenFolder,
-                                    onExternalConflict: external.receiveConflict,
-                                }}
-                            >
-                                <AppDialogs
-                                    status={bootstrap.status}
-                                    version={bootstrap.result?.applicationVersion ?? ''}
-                                    about={presentation.about}
-                                    shortcuts={presentation.shortcuts}
-                                    prompts={prompts}
-                                    folderCommands={commands}
-                                    drops={drops}
-                                    recovery={writes.recoverySurface}
-                                    announcement={notifications.announcement}
-                                />
-                            </AppFrame>
-                        </ApplicationMenuRequestContext.Provider>
-                    </WorkspaceTreeCommandsContext.Provider>
-                </EditorSessionProvider>
+                                announcement={notifications.announcement}
+                            />
+                        </AppFrame>
+                    </ApplicationMenuRequestContext.Provider>
+                </WorkspaceTreeCommandsContext.Provider>
             </TabRemediationContext.Provider>
         </ModalStateProvider>
+    );
+};
+
+const AppContents: React.FC = (): React.JSX.Element => {
+    const session = useDocumentSession();
+    const bootstrap = useBootstrap({ onReady: session.onBootstrapReady });
+    const shutdown = useShutdown({
+        bootstrapStatus: bootstrap.status,
+        hydratedPendingCloseId: bootstrap.result?.pendingCloseId ?? null,
+    });
+    return (
+        <EditorSessionProvider activeBuffer={session.activeBuffer} externalEpoch={session.externalEpoch}>
+            <TidyCommandsProvider>
+                <AppWorkflows session={session} bootstrap={bootstrap} shutdown={shutdown} />
+            </TidyCommandsProvider>
+        </EditorSessionProvider>
     );
 };
 

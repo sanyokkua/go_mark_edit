@@ -11,3 +11,7 @@
 .loading {
     min-height: var(--editor-min-height);
 }
+
+.overflowWidgetsHost :global(.monaco-hover) {
+    backdrop-filter: var(--blur);
+}

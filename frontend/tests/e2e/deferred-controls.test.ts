@@ -1,16 +1,53 @@
 import { expect, test } from '../support/harness';
 
-test('keeps deferred Assistant and Export surfaces visible but disabled without a custom frame', async ({ app }) => {
+test('runs tidy from the active document while Assistant and Export stay deferred', async ({ app }) => {
+    const source = await app.writeDocument('tidy-surface.md', '* item\n');
+    await app.seedRecents([source]);
     await app.launch();
 
     const { page } = app;
     await page.setViewportSize({ width: 1280, height: 720 });
     await expect(page.getByTestId('application-shell')).toBeVisible();
 
+    await page
+        .getByRole('tab', { name: /Untitled/u })
+        .locator('..')
+        .getByRole('button', { name: /^Close /u })
+        .click();
+    await page.getByTestId('document-launcher').getByRole('button', { name: 'tidy-surface.md' }).click();
+    await expect(page.getByRole('tab', { name: 'tidy-surface.md' })).toBeVisible();
+    await expect(page.getByRole('textbox', { name: 'Editor content' })).toBeVisible();
+    await expect(page.locator('[data-editor-surface] .view-lines')).toContainText('* item');
+
     const toolbar = page.getByRole('toolbar', { name: 'Document toolbar' });
     for (const id of ['format', 'compact', 'lint'] as const) {
-        await expect(toolbar.locator(`[data-action-id="${id}"]`)).toBeDisabled();
+        await expect(toolbar.locator(`[data-action-id="${id}"]`)).toBeEnabled();
     }
+    await toolbar.locator('[data-action-id="format"]').click();
+    await expect
+        .poll(async () =>
+            page.evaluate(async (): Promise<string> => {
+                const root = window as unknown as {
+                    go?: {
+                        appmodel?: {
+                            AppModelHandler?: {
+                                GetState?: (request: {
+                                    id: string;
+                                }) => Promise<{ data?: { activeBuffer?: { content?: string } } }>;
+                            };
+                        };
+                    };
+                };
+                const state = await root.go?.appmodel?.AppModelHandler?.GetState?.({ id: crypto.randomUUID() });
+                return state?.data?.activeBuffer?.content ?? '';
+            }),
+        )
+        .toBe('- item\n');
+
+    await page.getByRole('menubar').getByRole('button', { name: 'Format', exact: true }).click();
+    const formatMenu = page.getByRole('menu', { name: 'Format' });
+    await expect(formatMenu.getByRole('menuitem', { name: /Lint/u })).toBeEnabled();
+    await page.keyboard.press('Escape');
 
     const assistant = page.getByRole('button', { name: 'Toggle Assistant' });
     await expect(assistant).toBeVisible();

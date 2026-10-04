@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useContext, useMemo } from 'react';
 
 import { t } from '../../../i18n';
 import { setEditorPaneVisible, setPreviewPaneVisible, setViewArrangement } from '../../../logic/store/docViewCommands';
@@ -14,6 +14,9 @@ import type { ApplicationMenuTarget } from '../applicationMenuRequest';
 import Menubar from './Menubar';
 import type { SettingsMenuProps } from './SettingsMenu';
 import type { ActionResult } from '../../../logic/actions/actionDispatcher';
+import { useOperationSlot } from '../../../logic/operations/useOperationSlot';
+import { useEditorActionExecutor } from '../useEditorActionExecutor';
+import { TidyCommandsContext } from '../tidyCommandsContext';
 
 export interface ApplicationMenuState {
     modalOpen: boolean;
@@ -41,11 +44,17 @@ export interface ApplicationMenuState {
 
 export interface ApplicationMenubarProps {
     menuState: ApplicationMenuState;
+    problemsOpen?: boolean;
+    onToggleProblems?: () => void;
 }
 
 const selfReportingActionIds: ReadonlySet<string> = new Set(['save', 'save-as']);
 
-export default function ApplicationMenubar({ menuState }: ApplicationMenubarProps): React.JSX.Element {
+export default function ApplicationMenubar({
+    menuState,
+    problemsOpen = false,
+    onToggleProblems,
+}: ApplicationMenubarProps): React.JSX.Element {
     const dispatch = useAppDispatch();
     const activeDocument = useAppSelector((state) =>
         state.documents.activeDocumentId === null ? undefined : state.documents.byId[state.documents.activeDocumentId],
@@ -57,6 +66,9 @@ export default function ApplicationMenubar({ menuState }: ApplicationMenubarProp
     const canReopenLastFile = useAppSelector((state) => state.documents.canReopenLastFile ?? false);
     const appearanceSettings = useAppearanceSettings();
     const editorSettings = useEditorSettings();
+    const slot = useOperationSlot();
+    const tidyCommands = useContext(TidyCommandsContext);
+    const editorActions = useEditorActionExecutor();
     const settingsMenuProps: SettingsMenuProps = useMemo(
         () => ({
             defaultOpenMode: appearanceSettings.appearance.defaultOpenMode as 'reading' | 'editor',
@@ -86,6 +98,13 @@ export default function ApplicationMenubar({ menuState }: ApplicationMenubarProp
             activeDocument={activeDocument}
             canReopenLastFile={canReopenLastFile}
             documentId={menuState.documentId}
+            formatMenuProps={{
+                markdownSettingsLoaded: editorSettings.markdownSettings !== undefined,
+                slot,
+                capture: editorActions.capture,
+                onExecute: editorActions.execute,
+                onCancel: tidyCommands === null ? undefined : () => tidyCommands.cancel(),
+            }}
             modalOpen={menuState.modalOpen}
             onAbout={menuState.onAbout}
             onActionResult={(result: ActionResult): void => {
@@ -118,6 +137,8 @@ export default function ApplicationMenubar({ menuState }: ApplicationMenubarProp
             sessionDocumentId={menuState.sessionDocumentId}
             settingsMenuProps={settingsMenuProps}
             viewMenuProps={{
+                problemsOpen,
+                onToggleProblems,
                 documentOpen: activeDocument !== undefined,
                 arrangement: (activeDocument?.view.arrangement ?? 'split') as ViewArrangement,
                 editorVisible: activeDocument?.view.editorVisible ?? true,

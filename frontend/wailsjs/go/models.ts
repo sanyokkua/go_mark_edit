@@ -1045,6 +1045,8 @@ export namespace apperr {
 	    status: string;
 	    documentId?: string;
 	    path?: string;
+	    revealPath?: string;
+	    treePath?: string;
 	    projectionRevision?: number;
 	    activeBuffer?: ActiveBuffer;
 	    error?: ClassifiedError;
@@ -1063,6 +1065,8 @@ export namespace apperr {
 	        this.status = source["status"];
 	        this.documentId = source["documentId"];
 	        this.path = source["path"];
+	        this.revealPath = source["revealPath"];
+	        this.treePath = source["treePath"];
 	        this.projectionRevision = source["projectionRevision"];
 	        this.activeBuffer = this.convertValues(source["activeBuffer"], ActiveBuffer);
 	        this.error = this.convertValues(source["error"], ClassifiedError);

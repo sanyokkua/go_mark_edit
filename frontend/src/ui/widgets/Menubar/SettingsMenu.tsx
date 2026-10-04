@@ -105,14 +105,9 @@ const CompactSettingsContent: React.FC<CompactSettingsContentProps> = ({
     onThemeChange,
     theme,
 }: CompactSettingsContentProps): React.JSX.Element => {
-    /*
-     * Availability comes from the canonical registry, not from whether a handler
-     * happened to be wired. `format-on-save` and `lint-on-save` are `laterDeferred`
-     * there, but this menu computed availability from `onMarkdownSettingsChange
-     * === undefined` alone — and AppearanceControls does supply that handler, so
-     * both rows shipped enabled while the registry said deferred.
-     */
-    const settingUnavailable = (id: ActionId): boolean => getActionAvailability(id).kind !== 'available';
+    /* Availability comes from the canonical registry and hydration state. */
+    const settingUnavailable = (id: ActionId): boolean =>
+        getActionAvailability(id, { markdownSettingsLoaded: markdownSettings !== undefined }).kind !== 'available';
 
     /*
      * A Settings row is unavailable for either of two independent reasons, and both
@@ -126,11 +121,9 @@ const CompactSettingsContent: React.FC<CompactSettingsContentProps> = ({
      * calls nothing is inoperable. A row is operable only
      * when the registry allows it *and* something is there to receive the change.
      *
-     * `writer` is omitted by the open-mode and Markdown-standard lists, which
-     * genuinely have none: `AppearanceControls.persist` accepts only `mode` and
-     * `theme` patches and passes `defaultOpenMode` through untouched, and nothing
-     * anywhere writes `markdown.standard`. Those rows report a value chosen
-     * elsewhere and retain their unavailable menu-item semantics.
+     * `writer` is omitted by the open-mode list, which has no command here.
+     * Markdown standard uses the same acknowledged settings writer as the
+     * other Markdown controls.
      */
     const rowUnavailable = (id: ActionId, writer?: unknown): boolean => settingUnavailable(id) || writer === undefined;
 
@@ -148,27 +141,49 @@ const CompactSettingsContent: React.FC<CompactSettingsContentProps> = ({
          * exposed as menu children at all and assistive technology never announced
          * them as part of the menu.
          */
-    ): React.JSX.Element => (
-        <MenuItem
-            checked={checked}
-            data-availability={availabilityOf(actionId)}
-            data-settings-row={label}
-            disabled={disabled}
-            label={label}
-            trailing={
-                <label className={menuItemStyles.toggle} data-checked={checked} data-settings-toggle={label}>
-                    <input
-                        aria-label={label}
-                        checked={checked}
-                        className={styles.toggleInput}
-                        disabled={disabled}
-                        type="checkbox"
-                        onChange={(event): void => onChange(event.target.checked)}
-                    />
-                </label>
-            }
-        />
-    );
+    ): React.JSX.Element => {
+        if (actionId !== 'autosave') {
+            return (
+                <MenuItem
+                    checked={checked}
+                    data-availability={availabilityOf(actionId)}
+                    data-settings-row={label}
+                    disabled={disabled}
+                    label={label}
+                    onSelect={(): void => onChange(!checked)}
+                    trailing={
+                        <span
+                            aria-hidden="true"
+                            className={menuItemStyles.toggle}
+                            data-checked={checked}
+                            data-settings-toggle={label}
+                        />
+                    }
+                />
+            );
+        }
+        return (
+            <MenuItem
+                checked={checked}
+                data-availability={availabilityOf(actionId)}
+                data-settings-row={label}
+                disabled={disabled}
+                label={label}
+                trailing={
+                    <label className={menuItemStyles.toggle} data-checked={checked} data-settings-toggle={label}>
+                        <input
+                            aria-label={label}
+                            checked={checked}
+                            className={styles.toggleInput}
+                            disabled={disabled}
+                            type="checkbox"
+                            onChange={(event): void => onChange(event.target.checked)}
+                        />
+                    </label>
+                }
+            />
+        );
+    };
 
     return (
         <div className={styles.settingsBody} data-settings-content>
@@ -219,12 +234,15 @@ const CompactSettingsContent: React.FC<CompactSettingsContentProps> = ({
             <PopupGroupLabel>{t('settings.menu.markdown')}</PopupGroupLabel>
             {markdownStandardOptions.map((option) => (
                 <MenuItem
+                    checked={markdownSettings?.standard === option.value}
                     data-availability={availabilityOf('markdown-standard')}
                     data-settings-row={option.label}
-                    disabled={rowUnavailable('markdown-standard')}
+                    disabled={rowUnavailable('markdown-standard', onMarkdownSettingsChange)}
                     key={option.value}
                     label={option.label}
-                    trailing={<MenuItemIndicator checked={(markdownSettings?.standard ?? 'gfm') === option.value} />}
+                    onSelect={(): void => onMarkdownSettingsChange?.({ standard: option.value })}
+                    radio
+                    trailing={<MenuItemIndicator checked={markdownSettings?.standard === option.value} />}
                 />
             ))}
             <PopupSeparator />
@@ -238,14 +256,14 @@ const CompactSettingsContent: React.FC<CompactSettingsContentProps> = ({
             {toggle(
                 'format-on-save',
                 saveToggleLabels.formatOnSave,
-                markdownSettings?.formatOnSave ?? false,
+                markdownSettings?.formatOnSave === true,
                 (checked): void => onMarkdownSettingsChange?.({ formatOnSave: checked }),
                 rowUnavailable('format-on-save', onMarkdownSettingsChange),
             )}
             {toggle(
                 'lint-on-save',
                 saveToggleLabels.lintOnSave,
-                markdownSettings?.lintOnSave ?? true,
+                markdownSettings?.lintOnSave === true,
                 (checked): void => onMarkdownSettingsChange?.({ lintOnSave: checked }),
                 rowUnavailable('lint-on-save', onMarkdownSettingsChange),
             )}
@@ -348,11 +366,18 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({
                     onFileSettingsChange={(patch): void =>
                         dispatchSettingsAction('autosave', () => onFileSettingsChange?.(patch))
                     }
-                    onMarkdownSettingsChange={(patch): void =>
-                        dispatchSettingsAction(
-                            patch.formatOnSave === undefined ? 'lint-on-save' : 'format-on-save',
-                            () => onMarkdownSettingsChange?.(patch),
-                        )
+                    onMarkdownSettingsChange={
+                        onMarkdownSettingsChange === undefined
+                            ? undefined
+                            : (patch): void =>
+                                  dispatchSettingsAction(
+                                      patch.standard !== undefined
+                                          ? 'markdown-standard'
+                                          : patch.formatOnSave === undefined
+                                            ? 'lint-on-save'
+                                            : 'format-on-save',
+                                      () => onMarkdownSettingsChange(patch),
+                                  )
                     }
                     onModeChange={(nextMode): void =>
                         dispatchSettingsAction('appearance', () => onModeChange(nextMode))

@@ -20,7 +20,7 @@ function Parent({ source }: { source: string }): React.JSX.Element {
             <button type="button" onClick={(): void => setTick((n) => n + 1)}>
                 re-render
             </button>
-            <MarkdownView source={source} />
+            <MarkdownView standard="gfm" source={source} />
         </div>
     );
 }
@@ -71,11 +71,36 @@ it('does not re-parse the document when a parent re-renders with the same source
 });
 
 it('re-parses when the source actually changes', () => {
-    const { rerender, getByTestId } = render(<MarkdownView source={'# one\n'} />);
+    const { rerender, getByTestId } = render(<MarkdownView standard="gfm" source={'# one\n'} />);
     expect(mockRenderCount.value).toBe(1);
 
-    rerender(<MarkdownView source={'# two\n'} />);
+    rerender(<MarkdownView standard="gfm" source={'# two\n'} />);
 
     expect(mockRenderCount.value).toBe(2);
     expect(getByTestId('markdown')).toHaveTextContent('# two');
+});
+
+it('re-parses when the standard changes, but not for new link callback or theme attribute', () => {
+    const firstLink = jest.fn();
+    const secondLink = jest.fn();
+    const { rerender } = render(
+        <div data-theme="first">
+            <MarkdownView documentId="one" onActivateLink={firstLink} source="note" standard="gfm" />
+        </div>,
+    );
+    expect(mockRenderCount.value).toBe(1);
+
+    rerender(
+        <div data-theme="second">
+            <MarkdownView documentId="one" onActivateLink={secondLink} source="note" standard="gfm" />
+        </div>,
+    );
+    expect(mockRenderCount.value).toBe(1);
+
+    rerender(
+        <div data-theme="second">
+            <MarkdownView documentId="one" onActivateLink={secondLink} source="note" standard="minimal" />
+        </div>,
+    );
+    expect(mockRenderCount.value).toBe(2);
 });

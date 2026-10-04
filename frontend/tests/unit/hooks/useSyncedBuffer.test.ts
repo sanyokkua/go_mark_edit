@@ -1,6 +1,6 @@
 import { act, renderHook } from '@testing-library/react';
 
-import { BUFFER_SYNC_MS, createAppModelAdapter } from '../../../src/logic/adapter';
+import { VIEW_SYNC_MS, createAppModelAdapter } from '../../../src/logic/adapter';
 import type { DocumentView } from '../../../src/logic/store/appModelTypes';
 import { useSyncedBuffer } from '../../../src/logic/hooks/useSyncedBuffer';
 
@@ -59,7 +59,7 @@ it('separates live cursor display from restorable view synchronization', async (
     expect(setDocView).not.toHaveBeenCalled();
 
     await act(async (): Promise<void> => {
-        await jest.advanceTimersByTimeAsync(BUFFER_SYNC_MS);
+        await jest.advanceTimersByTimeAsync(VIEW_SYNC_MS);
     });
 
     expect(setDocView).toHaveBeenCalledWith('document-1', {
@@ -113,7 +113,7 @@ it('does not publish a queued view update after the editor session unmounts', as
     unmount();
 
     await act(async (): Promise<void> => {
-        await jest.advanceTimersByTimeAsync(BUFFER_SYNC_MS);
+        await jest.advanceTimersByTimeAsync(VIEW_SYNC_MS);
     });
 
     expect(setDocView).not.toHaveBeenCalled();

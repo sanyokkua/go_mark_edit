@@ -19,6 +19,81 @@ const (
 // ErrNotDirectory marks an existing path that does not identify a directory.
 var ErrNotDirectory = errors.New("path is not a directory")
 
+// DecodeLinkTarget interprets the local path portion of a Markdown link without
+// accessing the filesystem. The windows argument makes host path spelling
+// testable on every platform; callers use the actual host flavor.
+func DecodeLinkTarget(href string, windows bool) (path, reason string) {
+	if end := strings.IndexAny(href, "?#"); end >= 0 {
+		href = href[:end]
+	}
+	if href == "" {
+		return "", "empty"
+	}
+	decoded, ok := decodeLinkEscapes(href)
+	if !ok {
+		return "", "decode"
+	}
+	if decoded == "" {
+		return "", "empty"
+	}
+	// Windows treats either slash as a separator, including mixed UNC prefixes.
+	// Apply the same refusal on every host before any caller can inspect a file.
+	if len(decoded) >= 2 && isLinkSeparator(decoded[0]) && isLinkSeparator(decoded[1]) {
+		return "", "network"
+	}
+	if colon := strings.IndexByte(decoded, ':'); colon >= 0 {
+		separator := strings.IndexAny(decoded, `/\`)
+		if (separator < 0 || colon < separator) && (colon != 1 || !isASCIILetter(decoded[0])) {
+			return "", "scheme"
+		}
+	}
+	if windows {
+		decoded = strings.ReplaceAll(decoded, `\`, "/")
+	}
+	return decoded, ""
+}
+
+func isLinkSeparator(value byte) bool { return value == '/' || value == '\\' }
+
+func isASCIILetter(value byte) bool {
+	return value >= 'a' && value <= 'z' || value >= 'A' && value <= 'Z'
+}
+
+func decodeLinkEscapes(value string) (string, bool) {
+	var decoded strings.Builder
+	decoded.Grow(len(value))
+	for index := 0; index < len(value); index++ {
+		if value[index] != '%' {
+			decoded.WriteByte(value[index])
+			continue
+		}
+		if index+2 >= len(value) {
+			return "", false
+		}
+		hi, okHi := linkHexValue(value[index+1])
+		lo, okLo := linkHexValue(value[index+2])
+		if !okHi || !okLo {
+			return "", false
+		}
+		decoded.WriteByte(hi<<4 | lo)
+		index += 2
+	}
+	return decoded.String(), true
+}
+
+func linkHexValue(value byte) (byte, bool) {
+	switch {
+	case value >= '0' && value <= '9':
+		return value - '0', true
+	case value >= 'a' && value <= 'f':
+		return value - 'a' + 10, true
+	case value >= 'A' && value <= 'F':
+		return value - 'A' + 10, true
+	default:
+		return 0, false
+	}
+}
+
 // Identity is the stable identity of a local document. Device is signed because
 // Darwin's stat structure exposes dev_t through a signed field; Linux values are
 // represented losslessly for the filesystems supported by the application.
@@ -136,6 +211,20 @@ func CanonicalizeDirectoryPath(path string) (string, error) {
 		return "", fmt.Errorf("directory path is not a directory: %w", ErrNotDirectory)
 	}
 	return resolved, nil
+}
+
+// IdentityForExistingPath returns the shared filesystem identity for a file or
+// directory. It is used when a workspace row and a link use different case.
+func IdentityForExistingPath(path string) (Identity, error) {
+	resolved, err := filepath.EvalSymlinks(path)
+	if err != nil {
+		return Identity{}, err
+	}
+	info, err := os.Stat(resolved)
+	if err != nil {
+		return Identity{}, err
+	}
+	return filesystemIdentity(resolved, info), nil
 }
 
 // IsSupportedDocumentSuffix accepts only the four direct-entry suffixes, case-insensitively.

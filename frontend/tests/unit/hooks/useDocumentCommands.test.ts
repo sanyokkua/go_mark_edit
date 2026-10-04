@@ -3,6 +3,7 @@ import { join, relative, resolve } from 'node:path';
 import * as ts from 'typescript';
 
 import type { CodeEditorHandle, EditorRange, EditorSelection } from '../../../src/ui/components/CodeEditor';
+import type { TextEdit } from '../../../src/logic/tidy/protocol';
 import { createDocumentCommands, type DocumentCommandSession } from '../../../src/logic/hooks/useDocumentCommands';
 
 function createHandle(overrides: Partial<CodeEditorHandle> = {}): CodeEditorHandle {
@@ -12,9 +13,51 @@ function createHandle(overrides: Partial<CodeEditorHandle> = {}): CodeEditorHand
         getSelection: (): EditorSelection | null => null,
         replaceAll: (): boolean => true,
         replaceRange: (): boolean => true,
+        applyEdits: (): boolean => true,
+        setPosition: (): boolean => true,
+        setMarkers: (): boolean => true,
         ...overrides,
     };
 }
+
+it('forwards tidy edits, navigation and markers through the live document session', () => {
+    const applyEdits = jest.fn<boolean, [TextEdit[]]>(() => true);
+    const setPosition = jest.fn<boolean, [number, number]>(() => true);
+    const setMarkers = jest.fn<boolean, [Parameters<CodeEditorHandle['setMarkers']>[0]]>(() => true);
+    const session = createSession('document-1', createHandle({ applyEdits, setPosition, setMarkers }));
+    const commands = createDocumentCommands(session.documentId, session.token, () => session);
+    const edits = [{ from: 0, to: 1, text: 'X' }];
+    const markers = [
+        { startLine: 1, startColumn: 1, endLine: 1, endColumn: 2, severity: 'error' as const, message: 'Hint' },
+    ];
+
+    expect(commands.applyEdits(edits)).toEqual({ status: 'available', value: undefined });
+    expect(commands.setPosition(3, 2)).toEqual({ status: 'available', value: undefined });
+    expect(commands.setMarkers(markers)).toEqual({ status: 'available', value: undefined });
+    expect(applyEdits).toHaveBeenCalledWith(edits);
+    expect(setPosition).toHaveBeenCalledWith(3, 2);
+    expect(setMarkers).toHaveBeenCalledWith(markers);
+});
+
+it('rejects tidy edits, navigation and markers after a document or session change', () => {
+    const applyEdits = jest.fn<boolean, [TextEdit[]]>(() => true);
+    const setPosition = jest.fn<boolean, [number, number]>(() => true);
+    const setMarkers = jest.fn<boolean, [Parameters<CodeEditorHandle['setMarkers']>[0]]>(() => true);
+    const original = createSession('document-1', createHandle({ applyEdits, setPosition, setMarkers }));
+    let liveSession = createSession('document-2', original.handle, original.token);
+    const commands = createDocumentCommands(original.documentId, original.token, () => liveSession);
+
+    expect(commands.applyEdits([])).toEqual({ status: 'document-mismatch' });
+    expect(commands.setPosition(1, 1)).toEqual({ status: 'document-mismatch' });
+    expect(commands.setMarkers([])).toEqual({ status: 'document-mismatch' });
+    liveSession = createSession('document-1', original.handle);
+    expect(commands.applyEdits([])).toEqual({ status: 'document-mismatch' });
+    expect(commands.setPosition(1, 1)).toEqual({ status: 'document-mismatch' });
+    expect(commands.setMarkers([])).toEqual({ status: 'document-mismatch' });
+    expect(applyEdits).not.toHaveBeenCalled();
+    expect(setPosition).not.toHaveBeenCalled();
+    expect(setMarkers).not.toHaveBeenCalled();
+});
 
 it('routes focus through the same identity-bound document command seam', () => {
     const focus = jest.fn<boolean, []>(() => true);
@@ -284,7 +327,15 @@ it('keeps sibling consumers independent of Monaco', () => {
         .map(({ path }) => path)
         .sort();
 
-    expect(directMonacoImports).toEqual(['src/ui/components/CodeEditor.tsx', 'src/ui/components/monacoSetup.ts']);
+    expect(directMonacoImports).toEqual([
+        'src/ui/components/CodeEditor.tsx',
+        'src/ui/components/monaco/basicLanguages.d.ts',
+        'src/ui/components/monaco/diff.ts',
+        'src/ui/components/monaco/json.ts',
+        'src/ui/components/monaco/makefile.ts',
+        'src/ui/components/monaco/mermaid.ts',
+        'src/ui/components/monacoSetup.ts',
+    ]);
     expect(editorInstanceAccess).toEqual(['src/ui/components/CodeEditor.tsx']);
     expect(handleOwnership).toEqual([
         'src/logic/hooks/useDocumentCommands.ts',
@@ -300,6 +351,9 @@ it('keeps sibling consumers independent of Monaco', () => {
         'getSelection',
         'replaceRange',
         'replaceAll',
+        'applyEdits',
+        'setPosition',
+        'setMarkers',
     ]);
     expect(interfaceMembers(activeBufferSource, 'ActiveBuffer')).toContain('content');
 });

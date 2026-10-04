@@ -1,15 +1,17 @@
 import type { PropsWithChildren } from 'react';
-import { act, renderHook } from '@testing-library/react';
+import { act, fireEvent, render, renderHook, screen } from '@testing-library/react';
 import { Provider } from 'react-redux';
 
 jest.mock('../../src/logic/adapter', () => ({
     commandAdapter: { retry: jest.fn(), cancel: jest.fn() },
-    appModelAdapter: { getState: jest.fn() },
+    appModelAdapter: { getState: jest.fn(), revealWorkspacePath: jest.fn() },
 }));
 
 import { appModelAdapter, commandAdapter } from '../../src/logic/adapter';
 import { useNotifications } from '../../src/app/useNotifications';
+import Notifications from '../../src/ui/components/Notifications';
 import { store } from '../../src/logic/store';
+import { buildUnsupportedFileNotice } from '../../src/logic/store/linkNotification';
 import {
     notifyToast,
     resetNotifications,
@@ -85,6 +87,89 @@ function notice(remediations: NotificationRemediation[]): void {
 afterEach(() => {
     store.dispatch(resetNotifications());
     jest.clearAllMocks();
+});
+
+it('reveals an unsupported file using the notice path and dismisses the notice after success', async () => {
+    const path = '/outside/private/report.pdf';
+    const input = buildUnsupportedFileNotice(path, 'report.pdf');
+    if (input === undefined) throw new Error('Expected a notice for an existing file');
+    store.dispatch(notifyToast(input));
+    (appModelAdapter.revealWorkspacePath as jest.Mock).mockResolvedValue({ status: 'revealed' });
+
+    const owner = renderHook(() => useNotifications(commands()), { wrapper });
+    expect(owner.result.current.notices[0].title).toBe('report.pdf');
+    render(<Notifications notices={owner.result.current.notices} />);
+    await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Reveal in file manager' })));
+
+    expect(appModelAdapter.revealWorkspacePath).toHaveBeenCalledWith(path);
+    expect(store.getState().notifications.items).toHaveLength(0);
+});
+
+it('keeps same-named unsupported files as separate Reveal notices for their own paths', async () => {
+    const firstPath = '/a/report.pdf';
+    const secondPath = '/b/report.pdf';
+    const first = buildUnsupportedFileNotice(firstPath, 'report.pdf');
+    const second = buildUnsupportedFileNotice(secondPath, 'report.pdf');
+    if (first === undefined || second === undefined) throw new Error('Expected notices for both files');
+    store.dispatch(notifyToast(first));
+    store.dispatch(notifyToast(second));
+    (appModelAdapter.revealWorkspacePath as jest.Mock).mockResolvedValue({ status: 'revealed' });
+
+    const owner = renderHook(() => useNotifications(commands()), { wrapper });
+    const surface = render(<Notifications notices={owner.result.current.notices} />);
+    expect(screen.getAllByText('report.pdf')).toHaveLength(2);
+    expect(surface.container.textContent).not.toContain(firstPath);
+    expect(surface.container.textContent).not.toContain(secondPath);
+
+    await act(async () => fireEvent.click(screen.getAllByRole('button', { name: 'Reveal in file manager' })[1]));
+    expect(appModelAdapter.revealWorkspacePath).toHaveBeenCalledWith(secondPath);
+    expect(store.getState().notifications.items).toHaveLength(1);
+    expect(store.getState().notifications.items[0].remediations[0].path).toBe(firstPath);
+});
+
+it('keeps the unsupported-file notice when Reveal fails and reports the classified error', async () => {
+    const path = '/outside/private/report.pdf';
+    const input = buildUnsupportedFileNotice(path, 'report.pdf');
+    if (input === undefined) throw new Error('Expected a notice for an existing file');
+    store.dispatch(notifyToast(input));
+    (appModelAdapter.revealWorkspacePath as jest.Mock).mockResolvedValue({
+        status: 'refused',
+        error: {
+            category: 'system-command-failure',
+            dedupKey: 'reveal:report.pdf',
+            message: 'The file manager could not reveal this document.',
+            remediations: ['Retry'],
+            safeSubject: 'report.pdf',
+        },
+    });
+
+    const owner = renderHook(() => useNotifications(commands()), { wrapper });
+    await act(async () => owner.result.current.notices[0].actions?.[0].onActivate());
+
+    expect(appModelAdapter.revealWorkspacePath).toHaveBeenCalledWith(path);
+    expect(store.getState().notifications.items.map((item) => item.code)).toEqual([
+        'link-unsupported-file',
+        'system-command-failure',
+    ]);
+});
+
+it('retains the Reveal action and reports a localized notice when the bridge rejects', async () => {
+    const path = '/outside/private/report.pdf';
+    const input = buildUnsupportedFileNotice(path, 'report.pdf');
+    if (input === undefined) throw new Error('Expected a notice for an existing file');
+    store.dispatch(notifyToast(input));
+    (appModelAdapter.revealWorkspacePath as jest.Mock).mockRejectedValue(new Error(`bridge failed for ${path}`));
+
+    const owner = renderHook(() => useNotifications(commands()), { wrapper });
+    await act(async () => owner.result.current.notices[0].actions?.[0].onActivate());
+
+    expect(store.getState().notifications.items.map((item) => item.code)).toEqual([
+        'link-unsupported-file',
+        'internal',
+    ]);
+    expect(store.getState().notifications.items[0].remediations[0].path).toBe(path);
+    const failure = store.getState().notifications.items[1];
+    expect(`${failure.title} ${failure.message}`).not.toContain(path);
 });
 
 it('passes stuck-command Retry and Cancel the existing request identity', () => {

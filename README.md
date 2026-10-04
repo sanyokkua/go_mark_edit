@@ -10,12 +10,7 @@ release workflow.
 
 ## Current scope
 
-The completed versioned features cover the native shell and settings, editor and preview, real files
-and tabs, repository architecture and verification, and the folder workspace with Recent Items,
-folder browsing, drag-and-drop and new windows. The broader product roadmap still has work to define
-and implement, including extended Markdown rendering, document-wide formatting/lint, PDF export,
-file associations, fuller asset support and the Assistant. These are not part of the completed
-feature set; start future work with a new approved feature specification.
+The application includes rich Markdown rendering with local code highlighting, math and Mermaid; document-wide Format, Compact and Lint; and links to supported local Markdown files through the normal open flow. The command palette, Assistant, export, image authoring, file associations and broader asset support remain candidate work. Remote images retain their placeholder while a user-consent policy remains undefined. Start new product work with an approved numbered feature specification.
 
 ## Run it
 

@@ -1,0 +1,35 @@
+.alert {
+    --alert-accent: var(--accent-ink);
+    background: var(--surface-2);
+    border: var(--control-border-width) solid var(--stroke-soft);
+    border-inline-start: 3px solid var(--alert-accent);
+    border-radius: var(--preview-code-block-radius);
+    color: var(--text);
+    margin: var(--preview-block-spacing) 0;
+    padding: 6px 14px;
+}
+
+.note,
+.important {
+    --alert-accent: var(--accent-ink);
+}
+
+.tip {
+    --alert-accent: var(--md-quote);
+}
+
+.warning {
+    --alert-accent: var(--warn);
+}
+
+.caution {
+    --alert-accent: var(--err);
+}
+
+.alert .title {
+    align-items: center;
+    color: var(--alert-accent);
+    display: flex;
+    font-weight: 700;
+    gap: 0.4em;
+}

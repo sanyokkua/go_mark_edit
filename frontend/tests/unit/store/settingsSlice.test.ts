@@ -37,6 +37,12 @@ it('defaults synchronized scrolling on until settings hydrate', () => {
     expect(initialSettingsState.editor.scrollSync).toBe(true);
 });
 
+it('keeps Markdown settings absent until hydration and after reset', () => {
+    expect(settingsReducer(undefined, { type: 'unrelated' }).markdown).toBeUndefined();
+    const loaded = settingsReducer(undefined, hydrateSettings(settings));
+    expect(settingsReducer(loaded, resetSettingsProjection()).markdown).toBeUndefined();
+});
+
 it('keeps the last acknowledged values until an adapter write is acknowledged', () => {
     const initial = settingsReducer(undefined, hydrateSettings(settings));
     const editor: EditorSettings = {

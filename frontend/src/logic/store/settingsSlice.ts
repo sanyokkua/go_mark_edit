@@ -9,15 +9,6 @@ export const defaultEditorSettings: EditorSettings = {
     fontSize: 14,
 };
 
-export const defaultMarkdownSettings: MarkdownSettings = {
-    standard: 'gfm',
-    formatOnSave: false,
-    lintOnSave: false,
-    bulletMarker: '-',
-    emphasisMarker: '*',
-    headingStyle: 'atx',
-};
-
 export const defaultFileSettings: FileSettings = {
     autosave: true,
 };
@@ -25,14 +16,14 @@ export const defaultFileSettings: FileSettings = {
 export interface SettingsProjectionState {
     hydrated: boolean;
     editor: EditorSettings;
-    markdown: MarkdownSettings;
+    markdown: MarkdownSettings | undefined;
     file: FileSettings;
 }
 
 export const initialSettingsState: SettingsProjectionState = {
     hydrated: false,
     editor: defaultEditorSettings,
-    markdown: defaultMarkdownSettings,
+    markdown: undefined,
     file: defaultFileSettings,
 };
 

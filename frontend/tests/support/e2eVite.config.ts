@@ -1,28 +1,33 @@
 import { join } from 'node:path';
+import type { IncomingMessage, ServerResponse } from 'node:http';
 
 import { defineConfig, loadConfigFromFile, mergeConfig, type Plugin } from 'vite';
 
 function isolatedNativeHost(): Plugin {
+    const respondToNativeHost = (request: IncomingMessage, response: ServerResponse, next: () => void): void => {
+        const path = new URL(request.url ?? '/', 'http://e2e.local').pathname;
+        // Wails 2.15.0 pkg/assetserver uses this same public user-agent
+        // marker to select desktop IPC instead of browser websocket IPC.
+        const native = request.headers['user-agent']?.includes('wails.io') === true;
+        if (request.method !== 'GET' || !native || (path !== '/' && path !== '/index.html')) {
+            next();
+            return;
+        }
+        response.statusCode = 200;
+        response.setHeader('Content-Type', 'text/html; charset=utf-8');
+        response.setHeader('Cache-Control', 'no-store');
+        response.end(
+            '<!doctype html><html><head><meta charset="utf-8"><title>GoMarkEdit native host</title></head><body data-e2e-native-host></body></html>',
+        );
+    };
     return {
         name: 'e2e-isolated-native-host',
         enforce: 'pre',
         configureServer(server): void {
-            server.middlewares.use((request, response, next): void => {
-                const path = new URL(request.url ?? '/', 'http://e2e.local').pathname;
-                // Wails 2.15.0 pkg/assetserver uses this same public user-agent
-                // marker to select desktop IPC instead of browser websocket IPC.
-                const native = request.headers['user-agent']?.includes('wails.io') === true;
-                if (request.method !== 'GET' || !native || (path !== '/' && path !== '/index.html')) {
-                    next();
-                    return;
-                }
-                response.statusCode = 200;
-                response.setHeader('Content-Type', 'text/html; charset=utf-8');
-                response.setHeader('Cache-Control', 'no-store');
-                response.end(
-                    '<!doctype html><html><head><meta charset="utf-8"><title>GoMarkEdit native host</title></head><body data-e2e-native-host></body></html>',
-                );
-            });
+            server.middlewares.use(respondToNativeHost);
+        },
+        configurePreviewServer(server): void {
+            server.middlewares.use(respondToNativeHost);
         },
     };
 }

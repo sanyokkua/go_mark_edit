@@ -1,5 +1,10 @@
 import { t } from '../../../i18n';
-import { actionsForSurface, getActionAvailability, type ActionEntry } from '../../../logic/actions/actionRegistry';
+import {
+    actionUnavailableLabelKey,
+    actionsForSurface,
+    getActionAvailability,
+    type ActionEntry,
+} from '../../../logic/actions/actionRegistry';
 import { currentPlatform, formatShortcut } from '../../../logic/actions/shortcutRegistry';
 import ModalShell from '../../components/ModalShell';
 import Button from '../../primitives/Button';
@@ -54,7 +59,7 @@ const ShortcutsDialog: React.FC<ShortcutsDialogProps> = ({
                                 <span>{t(`action.scope.${entry.scope}`)}</span>
                                 <span>
                                     {availability.kind !== 'available'
-                                        ? t('action.unavailable')
+                                        ? t(actionUnavailableLabelKey(availability.reason))
                                         : t('action.available')}
                                 </span>
                             </span>

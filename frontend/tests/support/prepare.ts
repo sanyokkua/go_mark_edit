@@ -13,6 +13,7 @@ import {
 const RUN_DIRECTORY_ENV = 'GOMARKEDIT_E2E_RUN_DIR';
 const REPOSITORY_ENV = 'GOMARKEDIT_E2E_REPO';
 const FRONTEND_URL_ENV = 'GOMARKEDIT_E2E_FRONTEND_URL';
+const PRODUCTION_FRONTEND_URL_ENV = 'GOMARKEDIT_E2E_PRODUCTION_FRONTEND_URL';
 const defaultRepository = existsSync(join(process.cwd(), 'main.go')) ? process.cwd() : resolve(process.cwd(), '..');
 
 export interface PreparedPaths {
@@ -20,6 +21,7 @@ export interface PreparedPaths {
     readonly executable: string;
     readonly seedExecutable: string;
     readonly frontendURL: string;
+    readonly productionFrontendURL: string;
 }
 
 export function preparedPaths(): PreparedPaths {
@@ -32,11 +34,18 @@ export function preparedPaths(): PreparedPaths {
     if (frontendURL === undefined || frontendURL.length === 0) {
         throw new Error(`${FRONTEND_URL_ENV} is absent; Playwright global setup has not started the frontend server`);
     }
+    const productionFrontendURL = process.env[PRODUCTION_FRONTEND_URL_ENV];
+    if (productionFrontendURL === undefined || productionFrontendURL.length === 0) {
+        throw new Error(
+            `${PRODUCTION_FRONTEND_URL_ENV} is absent; Playwright global setup has not started the production frontend server`,
+        );
+    }
     return {
         runDirectory,
         executable: join(runDirectory, 'GoMarkEdit'),
         seedExecutable: join(runDirectory, 'e2e-seed'),
         frontendURL,
+        productionFrontendURL,
     };
 }
 
@@ -134,17 +143,19 @@ export default async function prepare(): Promise<() => Promise<void>> {
     }
     const started = performance.now();
     const interruption = new AbortController();
-    let frontendProcess: ChildProcess | null = null;
+    const frontendProcesses: ChildProcess[] = [];
     const repository = selectedRepository();
     let restoreGeneratedState: (() => void) | undefined;
     let runDirectory: string | undefined;
     const onInterrupt = (): void => {
         interruption.abort();
-        if (frontendProcess?.pid !== undefined) {
-            try {
-                process.kill(-frontendProcess.pid, 'SIGKILL');
-            } catch {
-                // The owned frontend group may already have exited.
+        for (const frontendProcess of frontendProcesses) {
+            if (frontendProcess.pid !== undefined) {
+                try {
+                    process.kill(-frontendProcess.pid, 'SIGKILL');
+                } catch {
+                    // The owned frontend group may already have exited.
+                }
             }
         }
         // Playwright can exit before its interrupted global setup promise settles.
@@ -199,14 +210,14 @@ export default async function prepare(): Promise<() => Promise<void>> {
             repository,
             interruption.signal,
         );
-        interruption.signal.throwIfAborted();
-        const frontendPort = await availableLocalPort();
-        interruption.signal.throwIfAborted();
-        const frontendURL = `http://127.0.0.1:${frontendPort}`;
-        frontendProcess = spawn(
-            process.execPath,
-            [
+        const startFrontend = async (assets: 'development' | 'production'): Promise<string> => {
+            interruption.signal.throwIfAborted();
+            const frontendPort = await availableLocalPort();
+            interruption.signal.throwIfAborted();
+            const frontendURL = `http://127.0.0.1:${frontendPort}`;
+            const viteArgs = [
                 join(repository, 'frontend', 'node_modules', 'vite', 'bin', 'vite.js'),
+                ...(assets === 'production' ? ['preview'] : []),
                 '--config',
                 join(defaultRepository, 'frontend', 'tests', 'support', 'e2eVite.config.ts'),
                 '--mode',
@@ -216,43 +227,53 @@ export default async function prepare(): Promise<() => Promise<void>> {
                 '--port',
                 String(frontendPort),
                 '--strictPort',
-            ],
-            {
+            ];
+            const frontendProcess = spawn(process.execPath, viteArgs, {
                 cwd: join(repository, 'frontend'),
                 detached: true,
                 env: { ...process.env, [REPOSITORY_ENV]: repository },
                 stdio: ['ignore', 'pipe', 'pipe'],
-            },
-        );
-        let frontendOutput = '';
-        const collectOutput = (chunk: Buffer): void => {
-            frontendOutput = `${frontendOutput}${chunk.toString()}`.slice(-4_000);
+            });
+            frontendProcesses.push(frontendProcess);
+            let frontendOutput = '';
+            const collectOutput = (chunk: Buffer): void => {
+                frontendOutput = `${frontendOutput}${chunk.toString()}`.slice(-4_000);
+            };
+            frontendProcess.stdout?.on('data', collectOutput);
+            frontendProcess.stderr?.on('data', collectOutput);
+            frontendProcess.on('error', (error) => collectOutput(Buffer.from(error.message)));
+            try {
+                await waitForOwnedListener(frontendPort, frontendProcess, 20_000);
+                const response = await fetch(frontendURL, {
+                    signal: AbortSignal.any([AbortSignal.timeout(3_000), interruption.signal]),
+                });
+                if (!response.ok) throw new Error(`frontend server returned HTTP ${response.status}`);
+                await response.arrayBuffer();
+                interruption.signal.throwIfAborted();
+            } catch (error) {
+                throw new Error(
+                    `${assets} E2E frontend server did not become ready: ${String(error)}\n${frontendOutput}`,
+                    {
+                        cause: error,
+                    },
+                );
+            }
+            return frontendURL;
         };
-        frontendProcess.stdout?.on('data', collectOutput);
-        frontendProcess.stderr?.on('data', collectOutput);
-        frontendProcess.on('error', (error) => collectOutput(Buffer.from(error.message)));
-        try {
-            await waitForOwnedListener(frontendPort, frontendProcess, 20_000);
-            const response = await fetch(frontendURL, {
-                signal: AbortSignal.any([AbortSignal.timeout(3_000), interruption.signal]),
-            });
-            if (!response.ok) throw new Error(`frontend server returned HTTP ${response.status}`);
-            await response.arrayBuffer();
-            interruption.signal.throwIfAborted();
-        } catch (error) {
-            throw new Error(`shared E2E frontend server did not become ready: ${String(error)}\n${frontendOutput}`, {
-                cause: error,
-            });
-        }
+        const frontendURL = await startFrontend('development');
+        const productionFrontendURL = await startFrontend('production');
         process.env[RUN_DIRECTORY_ENV] = runDirectory;
         process.env[REPOSITORY_ENV] = repository;
         process.env[FRONTEND_URL_ENV] = frontendURL;
+        process.env[PRODUCTION_FRONTEND_URL_ENV] = productionFrontendURL;
         console.log(
-            `[e2e] prepareMs=${Math.round(performance.now() - started)} run=${runDirectory} frontendPid=${frontendProcess.pid ?? 'unknown'}`,
+            `[e2e] prepareMs=${Math.round(performance.now() - started)} run=${runDirectory} devPid=${frontendProcesses[0]?.pid ?? 'unknown'} productionPid=${frontendProcesses[1]?.pid ?? 'unknown'}`,
         );
     } catch (error) {
         try {
-            await terminateOwnedProcess(frontendProcess, interruption.signal.aborted);
+            await Promise.all(
+                frontendProcesses.map((child) => terminateOwnedProcess(child, interruption.signal.aborted)),
+            );
         } finally {
             try {
                 restoreGeneratedState?.();
@@ -269,7 +290,7 @@ export default async function prepare(): Promise<() => Promise<void>> {
         throw new Error('E2E preparation incomplete');
     return async () => {
         try {
-            await terminateOwnedProcess(frontendProcess);
+            await Promise.all(frontendProcesses.map((child) => terminateOwnedProcess(child)));
         } finally {
             try {
                 restoreGeneratedState();
@@ -278,6 +299,7 @@ export default async function prepare(): Promise<() => Promise<void>> {
                 delete process.env[RUN_DIRECTORY_ENV];
                 delete process.env[REPOSITORY_ENV];
                 delete process.env[FRONTEND_URL_ENV];
+                delete process.env[PRODUCTION_FRONTEND_URL_ENV];
             }
         }
     };

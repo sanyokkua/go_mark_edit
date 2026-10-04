@@ -10,7 +10,7 @@ import type {
 } from '../../../src/logic/store/appModelTypes';
 import type { WireError } from '../../../src/logic/utils/parseError';
 import {
-    BUFFER_SYNC_MS,
+    VIEW_SYNC_MS,
     createAppModelAdapter,
     normalizeRecentItems,
     type AppModelAdapter,
@@ -414,7 +414,9 @@ it('coalesces edits in the adapter-owned timer', async () => {
 
     expect(updateBuffer).not.toHaveBeenCalled();
 
-    await jest.advanceTimersByTimeAsync(200);
+    await jest.advanceTimersByTimeAsync(49);
+    expect(updateBuffer).not.toHaveBeenCalled();
+    await jest.advanceTimersByTimeAsync(1);
 
     expect(updateBuffer).toHaveBeenCalledTimes(1);
     expect(updateBuffer).toHaveBeenCalledWith('document-1', 'latest');
@@ -456,7 +458,7 @@ it('keeps a newer view command from being overwritten by stale cursor synchroniz
 
     await adapter.updateDocView('document-1', staleCursorView);
     await adapter.setDocView('document-1', previewView);
-    await jest.advanceTimersByTimeAsync(BUFFER_SYNC_MS);
+    await jest.advanceTimersByTimeAsync(VIEW_SYNC_MS);
 
     expect(setDocView).toHaveBeenCalledTimes(1);
     expect(setDocView).toHaveBeenCalledWith('document-1', previewView);
@@ -498,10 +500,10 @@ it('serializes every document view intent while documents remain independent', a
     const arrangementView = viewAt(3, true);
 
     await adapter.updateDocView('document-1', cursorView);
-    await jest.advanceTimersByTimeAsync(BUFFER_SYNC_MS);
+    await jest.advanceTimersByTimeAsync(VIEW_SYNC_MS);
     const arrangementCommand = adapter.setDocView('document-1', arrangementView);
     await adapter.updateDocView('document-2', viewAt(8));
-    await jest.advanceTimersByTimeAsync(BUFFER_SYNC_MS);
+    await jest.advanceTimersByTimeAsync(VIEW_SYNC_MS);
     const flush = adapter.flushDocView('document-1');
 
     expect(calls).toEqual([
@@ -553,7 +555,7 @@ it('serializes both attempted resolver orders around newer explicit intent', asy
         const newerView = viewAt(2, true);
 
         await adapter.updateDocView('document-1', olderView);
-        await jest.advanceTimersByTimeAsync(BUFFER_SYNC_MS);
+        await jest.advanceTimersByTimeAsync(VIEW_SYNC_MS);
         const newerCommand = adapter.setDocView('document-1', newerView);
 
         if (resolveNewerFirst) {
@@ -596,7 +598,9 @@ it('replaces unsent view intent with the latest immutable snapshot', async () =>
     await adapter.updateDocView('document-1', viewAt(2));
     await adapter.updateDocView('document-1', latest);
     latest.cursor.line = 99;
-    await jest.advanceTimersByTimeAsync(BUFFER_SYNC_MS);
+    await jest.advanceTimersByTimeAsync(199);
+    expect(setDocView).not.toHaveBeenCalled();
+    await jest.advanceTimersByTimeAsync(1);
 
     expect(setDocView).toHaveBeenCalledTimes(1);
     expect(setDocView).toHaveBeenCalledWith('document-1', viewAt(3, true));
@@ -626,7 +630,7 @@ it('flushes the latest document view intent after an in-flight request', async (
     const newestView = viewAt(2, true);
 
     await adapter.updateDocView('document-1', olderView);
-    await jest.advanceTimersByTimeAsync(BUFFER_SYNC_MS);
+    await jest.advanceTimersByTimeAsync(VIEW_SYNC_MS);
     await adapter.updateDocView('document-1', newestView);
     const flush = adapter.flushDocView('document-1');
     let flushed = false;
@@ -676,7 +680,7 @@ it('retains newest unsent intent after failure and reports the existing toast', 
     const newestView = viewAt(2, true);
 
     await adapter.updateDocView('document-1', olderView);
-    await jest.advanceTimersByTimeAsync(BUFFER_SYNC_MS);
+    await jest.advanceTimersByTimeAsync(VIEW_SYNC_MS);
     const newerCommand = adapter.setDocView('document-1', newestView);
     older.resolve({ error: wireError });
 

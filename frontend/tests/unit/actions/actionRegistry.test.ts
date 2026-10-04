@@ -21,7 +21,7 @@ it('exposes one localized registry entry for every Editor-stage identity', () =>
 
     expect(getAction('toggle-assistant')).toBe(getAction('toggle-assistant' as ActionId));
     expect(getAction('toggle-assistant').availability.kind).toBe('deferred');
-    expect(getAction('format').availability.kind).toBe('deferred');
+    expect(getAction('format').availability.kind).toBe('available');
     expect(getAction('command-palette').availability.kind).toBe('deferred');
     expect(getAction('bold').shortcut).toBe('Mod+B');
     expect(getAction('new-file').availability.kind).toBe('available');
@@ -34,7 +34,7 @@ it('exposes one localized registry entry for every Editor-stage identity', () =>
 it('keeps required surface membership and omits deferred actions from native clipboard ownership', () => {
     expect(getAction('bold').surfaces).toEqual(expect.arrayContaining(['toolbar', 'context', 'shortcuts']));
     expect(getAction('heading-1').surfaces).toEqual(expect.arrayContaining(['toolbar', 'shortcuts']));
-    expect(getAction('lint').surfaces).not.toContain('context');
+    expect(getAction('lint').surfaces).toContain('context');
     expect(getAction('paste').nativeRole).toBe('clipboard');
     expect(getAction('bold').nativeRole).toBe('none');
 });
@@ -44,6 +44,39 @@ it('makes Save and Save As available document actions in the File menu', () => {
     expect(getAction('save-as').availability.kind).toBe('available');
     expect(getAction('save').scope).toBe('document');
     expect(getAction('save-as').scope).toBe('document');
+});
+
+it('gates marker actions and Markdown controls while settings are loading', () => {
+    for (const id of [
+        'italic',
+        'bullet-list',
+        'task-list',
+        'markdown-standard',
+        'format-on-save',
+        'lint-on-save',
+    ] as const) {
+        expect(getActionAvailability(id, { markdownSettingsLoaded: false })).toEqual({
+            kind: 'unavailable',
+            reason: 'settings-loading',
+        });
+    }
+    for (const id of ['bold', 'heading-1', 'numbered-list', 'copy'] as const) {
+        expect(getActionAvailability(id, { markdownSettingsLoaded: false })).toEqual({ kind: 'available' });
+    }
+});
+
+it('allows hydrated Markdown controls and save preferences while loading keeps them unavailable', () => {
+    expect(getActionAvailability('markdown-standard', { markdownSettingsLoaded: true })).toEqual({ kind: 'available' });
+    expect(getActionAvailability('format-on-save', { markdownSettingsLoaded: true })).toEqual({ kind: 'available' });
+    expect(getActionAvailability('lint-on-save', { markdownSettingsLoaded: true })).toEqual({ kind: 'available' });
+    expect(getActionAvailability('format-on-save', { markdownSettingsLoaded: false })).toEqual({
+        kind: 'unavailable',
+        reason: 'settings-loading',
+    });
+    expect(getActionAvailability('lint-on-save', { markdownSettingsLoaded: false })).toEqual({
+        kind: 'unavailable',
+        reason: 'settings-loading',
+    });
 });
 
 it('exposes the exact canonical file and tab shortcut inventory', () => {
@@ -120,6 +153,42 @@ it('derives modal, barrier, and edge unavailability deterministically', () => {
     ).toMatchObject({ kind: 'unavailable', reason: 'edge' });
 });
 
+it('gates each tidy action by settings, document capability, and the operation slot', () => {
+    const writable = { activeDocumentId: 'doc', documents: { doc: { capability: 'writable' } } };
+    const readOnly = { activeDocumentId: 'doc', documents: { doc: { capability: 'unsafe-read-only' } } };
+    const missing = { activeDocumentId: null, documents: {} };
+    for (const id of ['format', 'compact', 'lint'] as const) {
+        expect(getActionAvailability(id, { markdownSettingsLoaded: false, projectedState: writable })).toEqual({
+            kind: 'unavailable',
+            reason: 'settings-loading',
+        });
+        expect(getActionAvailability(id, { markdownSettingsLoaded: true, projectedState: missing })).toEqual({
+            kind: 'unavailable',
+            reason: 'no-document',
+        });
+        expect(getActionAvailability(id, { markdownSettingsLoaded: true, projectedState: writable })).toEqual({
+            kind: 'available',
+        });
+        expect(
+            getActionAvailability(id, { markdownSettingsLoaded: true, projectedState: readOnly, slotBusy: true }),
+        ).toEqual({
+            kind: 'unavailable',
+            reason: 'slot-busy',
+        });
+    }
+    for (const id of ['format', 'compact'] as const) {
+        expect(getActionAvailability(id, { markdownSettingsLoaded: true, projectedState: readOnly })).toEqual({
+            kind: 'unavailable',
+            reason: 'read-only',
+        });
+    }
+    expect(getActionAvailability('lint', { markdownSettingsLoaded: true, projectedState: readOnly })).toEqual({
+        kind: 'available',
+    });
+    expect(actionsForSurface('format-menu').map(({ id }) => id)).toEqual(['format', 'compact', 'lint']);
+    expect(actionsForSurface('context').map(({ id }) => id)).toContain('lint');
+});
+
 it('derives the exact context surface order from the canonical registry', () => {
     expect(actionsForSurface('context').map((entry) => entry.id)).toEqual([
         'cut',
@@ -131,6 +200,7 @@ it('derives the exact context surface order from the canonical registry', () => 
         'link',
         'format',
         'compact',
+        'lint',
         'command-palette',
     ]);
 });
@@ -184,7 +254,7 @@ it('keeps File popup actions ordered and classifies deferred items explicitly', 
 // a value `App.tsx:1260-1264` documents as one Go never sends — so the branch
 // that has to hold for a NUL-bearing or invalid-UTF-8 file was exercised only
 // through a string the backend cannot produce.
-it('makes Save, Save As, format and lint unavailable for an unsafe-read-only document', () => {
+it('keeps Lint available while Save, Save As and Format are unavailable for an unsafe-read-only document', () => {
     const projectedState = {
         activeDocumentId: 'unsafe',
         orderedDocumentIds: ['unsafe', 'writable'],
@@ -204,18 +274,11 @@ it('makes Save, Save As, format and lint unavailable for an unsafe-read-only doc
         expect(getActionAvailability(id, { projectedState, documentId: 'writable' })).toEqual({ kind: 'available' });
     }
 
-    // Formatting and lint are unavailable for every document today, because both
-    // are registry-deferred to a later slice. That satisfies for an
-    // unsafe-read-only document, and the assertion says which reason it is so a
-    // future slice that makes them available cannot quietly make them available
-    // here too.
-    for (const id of ['format', 'lint'] as const) {
-        expect(getAction(id).availability.kind).toBe('deferred');
-        expect(getActionAvailability(id, { projectedState, documentId: 'unsafe' })).toMatchObject({
-            kind: 'unavailable',
-            reason: 'deferred',
-        });
-    }
+    expect(getActionAvailability('format', { projectedState, documentId: 'unsafe' })).toEqual({
+        kind: 'unavailable',
+        reason: 'read-only',
+    });
+    expect(getActionAvailability('lint', { projectedState, documentId: 'unsafe' })).toEqual({ kind: 'available' });
 });
 
 /*

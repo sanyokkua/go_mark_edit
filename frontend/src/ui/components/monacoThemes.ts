@@ -24,8 +24,15 @@ export function themeNameFromRoot(root: Element): ThemeName {
     return candidate in generatedEditorThemes ? candidate : 'gme-material-light';
 }
 
-export function observeRootTheme(root: Element, engine: Pick<MonacoThemeEngine, 'setTheme'>): () => void {
-    const apply = (): void => engine.setTheme(themeNameFromRoot(root));
+export function observeRootTheme(
+    root: Element,
+    engine: Pick<MonacoThemeEngine, 'setTheme'>,
+    afterApply?: () => void,
+): () => void {
+    const apply = (): void => {
+        engine.setTheme(themeNameFromRoot(root));
+        afterApply?.();
+    };
     apply();
     const observer = new MutationObserver(apply);
     observer.observe(root, {

@@ -17,6 +17,99 @@ const viewMenuProps = {
     previewVisible: true,
 };
 
+it.each([1024, 375])('opens the registry Format menu and its tidy rows at width %i', async (width) => {
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: width });
+    const onExecute = jest.fn();
+    render(
+        <Menubar
+            modalOpen={false}
+            onAbout={jest.fn()}
+            settingsMenuProps={settingsMenuProps}
+            formatMenuProps={{
+                markdownSettingsLoaded: true,
+                projectedState: { activeDocumentId: 'doc', documents: { doc: { capability: 'writable' } } },
+                slot: { state: 'idle' },
+                onExecute,
+            }}
+        />,
+    );
+    if (width < 500) fireEvent.click(screen.getByRole('button', { name: 'More actions' }));
+    fireEvent.click(screen.getByRole(width < 500 ? 'menuitem' : 'button', { name: 'Format' }));
+    const menu = screen.getByRole('menu', { name: 'Format' });
+    for (const name of ['Format', 'Compact', 'Lint']) {
+        expect(menu.querySelector(`[data-action-id="${name.toLowerCase()}"]`)).toBeEnabled();
+    }
+    fireEvent.click(menu.querySelector('[data-action-id="lint"]') as HTMLElement);
+    expect(onExecute).toHaveBeenCalledWith('lint', undefined);
+});
+
+it('replaces only the running Format menu row with Cancel and progress', () => {
+    const onCancel = jest.fn();
+    render(
+        <Menubar
+            modalOpen={false}
+            onAbout={jest.fn()}
+            settingsMenuProps={settingsMenuProps}
+            formatMenuProps={{
+                markdownSettingsLoaded: true,
+                projectedState: { activeDocumentId: 'doc', documents: { doc: { capability: 'writable' } } },
+                slot: { state: 'running', kind: 'format', documentId: 'doc', progress: { done: 2, total: 3 } },
+                onCancel,
+                onExecute: jest.fn(),
+            }}
+        />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Format' }));
+    const menu = screen.getByRole('menu', { name: 'Format' });
+    const cancel = menu.querySelector('[data-action-id="format"]') as HTMLElement;
+    expect(cancel).toHaveTextContent('Cancel');
+    expect(cancel).toHaveTextContent('2/3');
+    expect(menu.querySelector('[data-action-id="compact"]')).toBeDisabled();
+    expect(menu.querySelector('[data-action-id="lint"]')).toBeDisabled();
+    fireEvent.click(cancel);
+    expect(onCancel).toHaveBeenCalledTimes(1);
+});
+
+it('keeps the editor snapshot captured when the Format menu opened', () => {
+    const onExecute = jest.fn();
+    const original = { commands: null, documentId: 'original', selection: null };
+    const replacement = { commands: null, documentId: 'replacement', selection: null };
+    const props = {
+        modalOpen: false,
+        onAbout: jest.fn(),
+        settingsMenuProps,
+    };
+    const { rerender } = render(
+        <Menubar
+            {...props}
+            formatMenuProps={{
+                markdownSettingsLoaded: true,
+                projectedState: { activeDocumentId: 'doc', documents: { doc: { capability: 'writable' } } },
+                slot: { state: 'idle' },
+                capture: () => original,
+                onExecute,
+            }}
+        />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Format' }));
+    rerender(
+        <Menubar
+            {...props}
+            formatMenuProps={{
+                markdownSettingsLoaded: true,
+                projectedState: { activeDocumentId: 'doc', documents: { doc: { capability: 'writable' } } },
+                slot: { state: 'idle' },
+                capture: () => replacement,
+                onExecute,
+            }}
+        />,
+    );
+    fireEvent.click(
+        screen.getByRole('menu', { name: 'Format' }).querySelector('[data-action-id="format"]') as HTMLElement,
+    );
+    expect(onExecute).toHaveBeenCalledWith('format', original);
+});
+
 function enabledMenuItems(menu: HTMLElement): HTMLElement[] {
     return Array.from(
         menu.querySelectorAll<HTMLElement>('[role="menuitem"], [role="menuitemcheckbox"], [role="menuitemradio"]'),

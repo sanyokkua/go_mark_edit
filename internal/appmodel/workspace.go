@@ -426,6 +426,73 @@ func cloneWorkspaceNode(node apperr.WorkspaceNode) apperr.WorkspaceNode {
 	return copy
 }
 
+// workspaceTreePath looks only in the published tree, so filtered or truncated
+// entries cannot be revealed. Workspace mutations use workspaceMu before mu.
+func (service *AppModelService) workspaceTreePath(target string) string {
+	service.workspaceMu.Lock()
+	defer service.workspaceMu.Unlock()
+	service.mu.RLock()
+	snapshot := service.state.workspace
+	service.mu.RUnlock()
+	// All workspace replacements and changes hold workspaceMu, so this
+	// snapshot remains stable while identity checks read filesystem metadata.
+	if snapshot == nil {
+		return ""
+	}
+	root := snapshot.RootPath
+	// Rel is lexical on POSIX, even when the volume ignores case. Accept a
+	// case-only spelling of the root only after the filesystem proves identity.
+	if len(target) > len(root) && target[len(root)] == filepath.Separator &&
+		target[:len(root)] != root && strings.EqualFold(target[:len(root)], root) {
+		aliasRoot := target[:len(root)]
+		rootIdentity, rootErr := file.IdentityForExistingPath(root)
+		aliasIdentity, aliasErr := file.IdentityForExistingPath(aliasRoot)
+		if rootErr == nil && aliasErr == nil && rootIdentity.Path == "" && aliasIdentity.Path == "" &&
+			!rootIdentity.IsZero() && rootIdentity.Equal(aliasIdentity) {
+			target = filepath.Join(root, target[len(root)+1:])
+		}
+	}
+	relative, err := filepath.Rel(root, target)
+	if err != nil || relative == "." || relative == ".." || strings.HasPrefix(relative, ".."+string(filepath.Separator)) || filepath.IsAbs(relative) {
+		return ""
+	}
+	node := &snapshot.Root
+	targetPart := snapshot.RootPath
+	for _, segment := range strings.Split(relative, string(filepath.Separator)) {
+		targetPart = filepath.Join(targetPart, segment)
+		var next *apperr.WorkspaceNode
+		for index := range node.Children {
+			child := &node.Children[index]
+			if child.Name == segment {
+				next = child
+				break
+			}
+		}
+		if next == nil {
+			for index := range node.Children {
+				child := &node.Children[index]
+				if !strings.EqualFold(child.Name, segment) {
+					continue
+				}
+				rowIdentity, rowErr := file.IdentityForExistingPath(child.Path)
+				targetIdentity, targetErr := file.IdentityForExistingPath(targetPart)
+				if rowErr == nil && targetErr == nil && rowIdentity.Path == "" && targetIdentity.Path == "" && !rowIdentity.IsZero() && rowIdentity.Equal(targetIdentity) {
+					next = child
+					break
+				}
+			}
+		}
+		if next == nil {
+			return ""
+		}
+		node = next
+	}
+	if node.IsDir {
+		return ""
+	}
+	return node.Path
+}
+
 func workspacePathRefusal(path string, err error) apperr.WorkspaceOutcome {
 	return workspaceRefused(classifyWorkspacePathError(path, err))
 }

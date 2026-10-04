@@ -29,6 +29,7 @@ import {
 import { isConflictCurrent, type ConflictPresentation } from './conflictPresentation';
 import type { ConflictCommands } from './useConflictCommands';
 import type { DocumentSession } from './useDocumentSession';
+import type { DocumentWrites } from './useDocumentWrites';
 import type { ShutdownController } from './useShutdown';
 
 interface CloseWorkflowOptions {
@@ -36,12 +37,13 @@ interface CloseWorkflowOptions {
     shutdown: ShutdownController;
     conflicts: ConflictCommands;
     recoverySurface: RecoverySurface | null;
+    writes: Pick<DocumentWrites, 'saveForClose' | 'notifyInactiveFormatSkipped'>;
 }
 
 export type CloseAllWindowTabsResult = 'closed' | 'cancelled' | 'refused';
 
 /** Owns close plans and their prompts; the shutdown controller owns native request identity. */
-export function useCloseWorkflow({ session, shutdown, conflicts, recoverySurface }: CloseWorkflowOptions) {
+export function useCloseWorkflow({ session, shutdown, conflicts, recoverySurface, writes }: CloseWorkflowOptions) {
     const dispatch = useAppDispatch();
     const tabSetRevision = useAppSelector((state) => state.documents.tabSetRevision);
     const [state, setState] = useState<CloseState>({ phase: 'idle' });
@@ -166,6 +168,32 @@ export function useCloseWorkflow({ session, shutdown, conflicts, recoverySurface
             try {
                 const result = await closePlanAdapter.executeClosePlan(plan.id);
                 if (!isCurrent(context.origin)) return result;
+                const backgroundSaves = plan.targets.filter(
+                    (target) =>
+                        target.choice === 'save' &&
+                        target.documentId !== (session.activeDocument?.documentId ?? session.activeBuffer?.documentId),
+                );
+                if (result.error === undefined && result.status === 'closed') {
+                    for (const target of backgroundSaves) writes.notifyInactiveFormatSkipped(target.documentId);
+                } else if (result.error !== undefined && backgroundSaves.length > 0) {
+                    // The batch stops on its first failed write. A still-open, clean document
+                    // with the same revision and explicit-save status proves its write committed.
+                    try {
+                        const refreshed = await appModelAdapter.getState();
+                        for (const target of backgroundSaves) {
+                            const document = refreshed.snapshot.documents[target.documentId];
+                            if (
+                                document !== undefined &&
+                                document.contentRevision === target.contentRevision &&
+                                !document.dirty &&
+                                document.status === 'saved'
+                            )
+                                writes.notifyInactiveFormatSkipped(target.documentId);
+                        }
+                    } catch {
+                        // An unreadable state cannot prove a background save completed.
+                    }
+                }
                 if (result.error !== undefined) {
                     await fail(result.error, context);
                     return result;
@@ -202,7 +230,18 @@ export function useCloseWorkflow({ session, shutdown, conflicts, recoverySurface
                 return undefined;
             }
         },
-        [dispatch, fail, isCurrent, publish, session.activation, settleWindowClose, shutdown],
+        [
+            dispatch,
+            fail,
+            isCurrent,
+            publish,
+            session.activation,
+            session.activeBuffer,
+            session.activeDocument,
+            settleWindowClose,
+            shutdown,
+            writes,
+        ],
     );
 
     const processResult = useCallback(
@@ -363,6 +402,108 @@ export function useCloseWorkflow({ session, shutdown, conflicts, recoverySurface
             deciding.current = true;
             try {
                 const dirty = progress.plan.targets.filter((target) => target.dirty);
+                const activeDocumentId = session.activeDocument?.documentId ?? session.activeBuffer?.documentId;
+                const saveChoice = choice === 'save' || choice === 'save-all';
+                if (
+                    saveChoice &&
+                    activeDocumentId !== undefined &&
+                    dirty.some((target) => target.documentId === activeDocumentId)
+                ) {
+                    publish({ ...progress, phase: 'saving-active', choice, activeDocumentId });
+                    const cancelled = await closePlanAdapter.resolveClosePlan(progress.plan.id, [{ choice: 'cancel' }]);
+                    if (!isCurrent(progress.origin)) return;
+                    if (cancelled.error !== undefined || cancelled.data?.status !== 'cancelled') {
+                        await fail(cancelled.error ?? new Error('The close plan could not be cancelled.'), progress);
+                        return;
+                    }
+                    const saved = await writes.saveForClose(activeDocumentId);
+                    if (!isCurrent(progress.origin)) return;
+                    if (saved.status !== 'saved' && saved.status !== 'reloaded') {
+                        await cancel(progress);
+                        return;
+                    }
+                    if (saved.status === 'saved') await appModelAdapter.flushActiveSession?.(activeDocumentId);
+                    const refreshed = await appModelAdapter.getState();
+                    if (!isCurrent(progress.origin)) return;
+                    const completedRevision =
+                        saved.status === 'saved' ? saved.writtenContentRevision : saved.contentRevision;
+                    const originals = progress.plan.targets;
+                    const targetIds = originals.map((target) => target.documentId);
+                    const allTabsTargeted = progress.plan.kind === 'window' || progress.plan.kind === 'quit';
+                    const openIds = refreshed.snapshot.orderedDocumentIds ?? [];
+                    const sameOpenSet =
+                        !allTabsTargeted ||
+                        (openIds.length === targetIds.length && openIds.every((id) => targetIds.includes(id)));
+                    const unchanged =
+                        sameOpenSet &&
+                        originals.every((target) => {
+                            const document = refreshed.snapshot.documents[target.documentId];
+                            return (
+                                document !== undefined &&
+                                (target.documentId === activeDocumentId
+                                    ? document.contentRevision === completedRevision && !document.dirty
+                                    : document.contentRevision === target.contentRevision)
+                            );
+                        });
+                    if (!unchanged) {
+                        await fail(
+                            {
+                                category: 'conflict',
+                                message: t('close.changedDuringSave'),
+                                remediations: ['Retry'],
+                                dedupKey: `close:changed:${progress.plan.id}`,
+                            },
+                            progress,
+                        );
+                        return;
+                    }
+                    const freshResult = await closePlanAdapter.prepareClose(
+                        progress.plan.kind,
+                        targetIds,
+                        refreshed.snapshot.tabSetRevision ?? progress.plan.tabSetRevision,
+                    );
+                    if (!isCurrent(progress.origin)) return;
+                    if (freshResult.error !== undefined || freshResult.data === undefined) {
+                        await fail(freshResult.error ?? new Error('The close plan could not be refreshed.'), progress);
+                        return;
+                    }
+                    const fresh = freshResult.data;
+                    if (
+                        fresh.targets.length !== originals.length ||
+                        fresh.targets.some(
+                            (target, index) =>
+                                target.documentId !== originals[index]?.documentId ||
+                                (target.documentId === activeDocumentId
+                                    ? target.contentRevision !== completedRevision || target.dirty
+                                    : target.contentRevision !== originals[index]?.contentRevision),
+                        )
+                    ) {
+                        await fail(
+                            {
+                                category: 'conflict',
+                                message: t('close.changedDuringSave'),
+                                remediations: ['Retry'],
+                                dedupKey: `close:changed:${progress.plan.id}`,
+                            },
+                            progress,
+                        );
+                        return;
+                    }
+                    if (saved.status === 'reloaded') {
+                        await processResult({ data: fresh }, { ...progress, acceptedNormalizations: {} });
+                        return;
+                    }
+                    const remaining = fresh.targets.filter((target) => target.dirty);
+                    const decisions: ClosePlanDecision[] = remaining.map((target) => ({
+                        choice: 'save',
+                        documentId: target.documentId,
+                    }));
+                    await processResult(await closePlanAdapter.resolveClosePlan(fresh.id, decisions), {
+                        ...progress,
+                        acceptedNormalizations: {},
+                    });
+                    return;
+                }
                 const decisions: ClosePlanDecision[] =
                     progress.plan.kind === 'single' && dirty.length === 1
                         ? [{ choice, documentId: dirty[0].documentId }]
@@ -374,7 +515,7 @@ export function useCloseWorkflow({ session, shutdown, conflicts, recoverySurface
                 deciding.current = false;
             }
         },
-        [fail, processResult],
+        [cancel, fail, isCurrent, processResult, publish, session.activeBuffer, session.activeDocument, writes],
     );
 
     const decideNormalization = useCallback(

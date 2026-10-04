@@ -69,7 +69,7 @@ it('positions Settings as a portal menu and restores its trigger focus after dis
     expect(screen.queryByRole('menu', { name: 'Settings menu' })).toBeNull();
 });
 
-it('renders the acknowledged autosave control and leaves deferred save actions unavailable', () => {
+it('renders the acknowledged autosave control and leaves save rows unavailable without a writer', () => {
     const onFileSettingsChange = jest.fn();
     render(<SettingsMenu {...props} fileSettings={{ autosave: true }} onFileSettingsChange={onFileSettingsChange} />);
     fireEvent.click(screen.getByRole('button', { name: 'Settings' }));
@@ -78,11 +78,39 @@ it('renders the acknowledged autosave control and leaves deferred save actions u
     expect(autosave).toBeChecked();
     fireEvent.click(autosave);
     expect(onFileSettingsChange).toHaveBeenCalledWith({ autosave: false });
-    // `format-on-save` and `lint-on-save` are `laterDeferred` in the action
-    // registry, which is the canonical authority for availability. The previous
-    // assertion said the opposite of this test's own name, and of the registry.
-    expect(screen.getByRole('checkbox', { name: 'Format on save' })).toBeDisabled();
-    expect(screen.getByRole('checkbox', { name: 'Lint on save' })).toBeDisabled();
+    // Markdown controls stay unavailable without a hydrated group and writer.
+    expect(screen.getByRole('menuitemcheckbox', { name: 'Format on save' })).toBeDisabled();
+    expect(screen.getByRole('menuitemcheckbox', { name: 'Lint on save' })).toBeDisabled();
+});
+
+it('shows no invented Markdown selection or checked save value before hydration', () => {
+    const { rerender } = render(<SettingsMenu {...props} onMarkdownSettingsChange={jest.fn()} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Settings' }));
+    const format = screen.getByRole('menuitemcheckbox', { name: 'Format on save' });
+    const lint = screen.getByRole('menuitemcheckbox', { name: 'Lint on save' });
+    expect(format).toBeDisabled();
+    expect(format).not.toBeChecked();
+    expect(lint).toBeDisabled();
+    expect(lint).not.toBeChecked();
+    const menu = screen.getByRole('menu', { name: 'Settings menu' });
+    expect(menu.querySelectorAll('[data-availability="enabled"][data-settings-row*="Markdown"]')).toHaveLength(0);
+
+    rerender(
+        <SettingsMenu
+            {...props}
+            markdownSettings={{
+                bulletMarker: '+',
+                emphasisMarker: '_',
+                headingStyle: 'setext',
+                standard: 'full',
+                formatOnSave: true,
+                lintOnSave: true,
+            }}
+            onMarkdownSettingsChange={jest.fn()}
+        />,
+    );
+    expect(screen.getByRole('menuitemcheckbox', { name: 'Format on save' })).toBeChecked();
+    expect(screen.getByRole('menuitemcheckbox', { name: 'Lint on save' })).toBeChecked();
 });
 
 it('draws every visible Settings popup string from the catalogue', () => {
@@ -174,7 +202,7 @@ it('keeps the binding popup labels, roles, and acknowledged state', () => {
         'Markdown',
         'Minimal (CommonMark)',
         'GFM',
-        'Full (+ math, footnotes…)',
+        'Full (+ math, alerts, admonitions)',
         'Autosave',
         'Format on save',
         'Lint on save',
@@ -188,13 +216,12 @@ it('keeps the binding popup labels, roles, and acknowledged state', () => {
     expect(screen.getByRole('radiogroup', { name: 'Theme' })).toBeVisible();
     expect(screen.getByRole('radiogroup', { name: 'Appearance' })).toBeVisible();
     expect(screen.getByRole('checkbox', { name: 'Autosave' })).not.toBeChecked();
-    expect(screen.getByRole('checkbox', { name: 'Format on save' })).toBeChecked();
-    expect(screen.getByRole('checkbox', { name: 'Lint on save' })).not.toBeChecked();
+    expect(screen.getByRole('menuitemcheckbox', { name: 'Format on save' })).toBeChecked();
+    expect(screen.getByRole('menuitemcheckbox', { name: 'Lint on save' })).not.toBeChecked();
 
-    // Format on save and Lint on save are registry-deferred in this feature, so
-    // the real control renders its acknowledged state but performs no write.
-    fireEvent.click(screen.getByRole('checkbox', { name: 'Lint on save' }));
-    expect(onMarkdownSettingsChange).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('menuitemcheckbox', { name: 'Lint on save' }));
+    expect(onMarkdownSettingsChange).toHaveBeenCalledTimes(1);
+    expect(onMarkdownSettingsChange).toHaveBeenCalledWith({ lintOnSave: true });
 });
 
 it('opens All settings from the keyboard and closes the popup', () => {
@@ -282,7 +309,7 @@ const STATE_ROW_LABELS = [
     'Editor',
     'Minimal (CommonMark)',
     'GFM',
-    'Full (+ math, footnotes…)',
+    'Full (+ math, alerts, admonitions)',
 ] as const;
 
 function settingsRow(label: string): HTMLElement {
@@ -314,37 +341,110 @@ it('disables Autosave when the registry defers it, even with the handler wired',
     expect(settingsRow('Autosave')).toHaveAttribute('data-availability', 'deferred');
 });
 
-// registry's availability rather than a literal, and stay non-activatable while
-// no writer exists for either setting. It does not prove either setting's
-// behaviour; owns default open mode and nothing yet writes the standard.
-it('reports the registry availability on the two Settings state rows', () => {
+it('keeps standard choices unavailable until settings are hydrated', () => {
+    const onMarkdownSettingsChange = jest.fn();
+    render(<SettingsMenu {...props} onMarkdownSettingsChange={onMarkdownSettingsChange} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Settings' }));
+
+    expect(settingsRow('GFM')).toHaveAttribute('aria-disabled', 'true');
+    fireEvent.click(settingsRow('GFM'));
+    expect(onMarkdownSettingsChange).not.toHaveBeenCalled();
+});
+
+it('reports unavailable state for rows with no writer', () => {
     render(<SettingsMenu {...props} />);
     fireEvent.click(screen.getByRole('button', { name: 'Settings' }));
 
     for (const label of STATE_ROW_LABELS) {
-        expect(settingsRow(label)).toHaveAttribute('data-availability', 'deferred');
+        expect(settingsRow(label)).toHaveAttribute(
+            'data-availability',
+            label === 'Reading (Viewer)' || label === 'Editor' ? 'deferred' : 'available',
+        );
         expect(settingsRow(label)).toHaveAttribute('aria-disabled', 'true');
     }
 });
 
-/*
- * The registry saying `available` is necessary for an operable row and not
- * sufficient: nothing in the frontend writes either setting — `persist`
- * (`AppearanceControls.tsx`) accepts only `mode` and `theme` and passes
- * `defaultOpenMode` straight through — so a row drawn operable would call
- * nothing. Both terms are asserted here so neither can be dropped.
- */
-// registry's answer, and refuses to become activatable without a writer.)
-it('follows the registry when it calls a state row available, without inventing a writer', () => {
+it('keeps hydrated Markdown rows unavailable when no settings writer is connected', () => {
+    render(
+        <SettingsMenu
+            {...props}
+            markdownSettings={{
+                standard: 'full',
+                bulletMarker: '-',
+                emphasisMarker: '_',
+                headingStyle: 'atx',
+                formatOnSave: false,
+                lintOnSave: true,
+            }}
+        />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Settings' }));
+    expect(settingsRow('GFM')).toHaveAttribute('aria-disabled', 'true');
+    expect(screen.getByRole('menuitemcheckbox', { name: 'Format on save' })).toBeDisabled();
+    expect(screen.getByRole('menuitemcheckbox', { name: 'Lint on save' })).toBeDisabled();
+});
+
+it('updates each live save preference once from its row by click, Space, or Enter', () => {
+    const onMarkdownSettingsChange = jest.fn();
+    render(
+        <SettingsMenu
+            {...props}
+            markdownSettings={{
+                standard: 'full',
+                bulletMarker: '-',
+                emphasisMarker: '_',
+                headingStyle: 'atx',
+                formatOnSave: false,
+                lintOnSave: true,
+            }}
+            onMarkdownSettingsChange={onMarkdownSettingsChange}
+        />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Settings' }));
+    const format = screen.getByRole('menuitemcheckbox', { name: 'Format on save' });
+    const lint = screen.getByRole('menuitemcheckbox', { name: 'Lint on save' });
+    fireEvent.click(format);
+    expect(onMarkdownSettingsChange).toHaveBeenCalledTimes(1);
+    expect(onMarkdownSettingsChange).toHaveBeenLastCalledWith({ formatOnSave: true });
+    fireEvent.keyDown(format, { key: ' ' });
+    expect(onMarkdownSettingsChange).toHaveBeenCalledTimes(2);
+    expect(onMarkdownSettingsChange).toHaveBeenLastCalledWith({ formatOnSave: true });
+    fireEvent.keyDown(lint, { key: 'Enter' });
+    expect(onMarkdownSettingsChange).toHaveBeenCalledTimes(3);
+    expect(onMarkdownSettingsChange).toHaveBeenLastCalledWith({ lintOnSave: false });
+});
+
+/* The open-mode rows still have no writer; Markdown standard now has one. */
+it('activates a hydrated standard exactly once through its settings writer', () => {
+    const onMarkdownSettingsChange = jest.fn();
     withRegistryAvailability({
         'default-open-mode': { kind: 'available' },
         'markdown-standard': { kind: 'available' },
     });
-    render(<SettingsMenu {...props} />);
+    render(
+        <SettingsMenu
+            {...props}
+            markdownSettings={{
+                bulletMarker: '+',
+                emphasisMarker: '_',
+                formatOnSave: true,
+                headingStyle: 'setext',
+                lintOnSave: false,
+                standard: 'full',
+            }}
+            onMarkdownSettingsChange={onMarkdownSettingsChange}
+        />,
+    );
     fireEvent.click(screen.getByRole('button', { name: 'Settings' }));
 
-    for (const label of STATE_ROW_LABELS) {
-        expect(settingsRow(label)).toHaveAttribute('data-availability', 'available');
-        expect(settingsRow(label)).toHaveAttribute('aria-disabled', 'true');
-    }
+    expect(settingsRow('Reading (Viewer)')).toHaveAttribute('aria-disabled', 'true');
+    expect(settingsRow('GFM')).toHaveAttribute('aria-disabled', 'false');
+    expect(screen.getByRole('menuitemradio', { name: 'GFM' })).toHaveAttribute('aria-checked', 'false');
+    expect(screen.getByRole('menuitemradio', { name: 'Full (+ math, alerts, admonitions)' })).toHaveAttribute(
+        'aria-checked',
+        'true',
+    );
+    fireEvent.click(settingsRow('GFM'));
+    expect(onMarkdownSettingsChange).toHaveBeenCalledTimes(1);
+    expect(onMarkdownSettingsChange).toHaveBeenCalledWith({ standard: 'gfm' });
 });

@@ -11,6 +11,8 @@ import StartupFailure from '../ui/widgets/StartupFailure/StartupFailure';
 import type { BootstrapController } from './useBootstrap';
 
 export interface AppFrameProps extends PropsWithChildren {
+    problemsOpen: boolean;
+    onToggleProblems: () => void;
     bootstrap: BootstrapController;
     menuState: ApplicationMenuState;
     settingsOpen: boolean;
@@ -26,6 +28,8 @@ export interface AppFrameProps extends PropsWithChildren {
 
 /** Keeps the frame and portal root mounted across startup attempts. */
 export function AppFrame({
+    problemsOpen,
+    onToggleProblems,
     bootstrap,
     menuState,
     settingsOpen,
@@ -43,7 +47,15 @@ export function AppFrame({
     return (
         <div className="application-frame">
             <AppearanceSettingsProvider settingsOpen={settingsOpen} onSettingsOpenChange={onSettingsOpenChange}>
-                <div className="application-menu">{ready ? <ApplicationMenubar menuState={menuState} /> : null}</div>
+                <div className="application-menu">
+                    {ready ? (
+                        <ApplicationMenubar
+                            menuState={menuState}
+                            problemsOpen={problemsOpen}
+                            onToggleProblems={onToggleProblems}
+                        />
+                    ) : null}
+                </div>
                 <AppearanceControlsContent visible={ready} />
             </AppearanceSettingsProvider>
             <div className="application-content">

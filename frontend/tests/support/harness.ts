@@ -4,11 +4,12 @@ import { tmpdir } from 'node:os';
 import { dirname, isAbsolute, join, relative, resolve } from 'node:path';
 import type { Readable } from 'node:stream';
 
-import { test as base, expect, type Page, type TestInfo } from '@playwright/test';
+import { test as base, expect, type Page, type Request, type TestInfo } from '@playwright/test';
 
 import { availableLocalPort, terminateOwnedProcess, waitForBackendStartup, waitForOwnedListener } from './e2eProcess';
 import { preparedPaths, selectedRepository } from './prepare';
 import { profileDirectory, seedRecents } from './profile';
+import { isForeignRequest } from './requestGuard';
 
 type AppProcess = ChildProcessByStdio<null, Readable, Readable>;
 
@@ -64,6 +65,7 @@ export interface E2EAppHarness {
     openWorkspace(folderPath: string): Promise<'opened' | 'unchanged'>;
     launch(): Promise<void>;
     relaunch(): Promise<void>;
+    expectNoForeignRequests(): void;
     waitForAppExit(timeoutMilliseconds?: number): Promise<void>;
     teardown(): Promise<void>;
 }
@@ -81,27 +83,57 @@ class PlaywrightE2EAppHarness implements E2EAppHarness {
     private port: number | undefined;
     private hasLaunched = false;
     private disposed = false;
+    private readonly frontendURL: string;
+    private readonly frontendOrigin: string;
+    private backendOrigin: string | undefined;
+    private readonly foreignRequests = new Map<Request, string>();
+
+    private readonly observeRequest = (request: Request): void => {
+        const url = request.url();
+        if (
+            isForeignRequest(url, this.frontendOrigin) &&
+            (this.backendOrigin === undefined || isForeignRequest(url, this.backendOrigin))
+        ) {
+            this.foreignRequests.set(request, url);
+        }
+    };
+
+    private readonly observeFailedRequest = (request: Request): void => {
+        // The isolated diagram frame reports CSP refusals as request events before any network route is reached.
+        if (request.failure()?.errorText === 'csp') this.foreignRequests.delete(request);
+    };
 
     get capturedOutput(): string {
         return this.devOutput;
     }
 
-    private constructor(page: Page, tempDirectory: string, documentDirectory: string, repositoryDirectory: string) {
+    private constructor(
+        page: Page,
+        tempDirectory: string,
+        documentDirectory: string,
+        repositoryDirectory: string,
+        frontendAssets: 'development' | 'production',
+    ) {
         this.page = page;
         this.tempDirectory = tempDirectory;
         this.profileDirectory = profileDirectory(tempDirectory);
         this.documentDirectory = documentDirectory;
         this.repositoryDirectory = repositoryDirectory;
+        const paths = preparedPaths();
+        this.frontendURL = frontendAssets === 'production' ? paths.productionFrontendURL : paths.frontendURL;
+        this.frontendOrigin = new URL(this.frontendURL).origin;
+        this.page.on('request', this.observeRequest);
+        this.page.on('requestfailed', this.observeFailedRequest);
     }
 
-    static async create(page: Page): Promise<PlaywrightE2EAppHarness> {
+    static async create(page: Page, frontendAssets: 'development' | 'production'): Promise<PlaywrightE2EAppHarness> {
         if (process.platform !== 'darwin' && process.platform !== 'linux') {
             throw new Error(`real-backend E2E harness is supported on macOS and Linux only (got ${process.platform})`);
         }
         const tempDirectory = await mkdtemp(join(tmpdir(), 'gomarkedit-e2e-'));
         const documentDirectory = await mkdtemp(join(tmpdir(), 'gomarkedit-e2e-docs-'));
         const repositoryDirectory = selectedRepository();
-        return new PlaywrightE2EAppHarness(page, tempDirectory, documentDirectory, repositoryDirectory);
+        return new PlaywrightE2EAppHarness(page, tempDirectory, documentDirectory, repositoryDirectory, frontendAssets);
     }
 
     async writeDocument(relativePath: string, contents: string): Promise<string> {
@@ -155,10 +187,11 @@ class PlaywrightE2EAppHarness implements E2EAppHarness {
         for (let attempt = 0; attempt < 3; attempt++) {
             if (this.port === undefined) this.port = await availableLocalPort();
             const origin = `http://127.0.0.1:${this.port}`;
+            this.backendOrigin = origin;
             const child = spawn(preparedPaths().executable, [], {
                 cwd: this.repositoryDirectory,
                 detached: process.platform !== 'win32',
-                env: childEnvironment(this.tempDirectory, preparedPaths().frontendURL, this.port),
+                env: childEnvironment(this.tempDirectory, this.frontendURL, this.port),
                 stdio: ['ignore', 'pipe', 'pipe'],
             });
             this.devProcess = child;
@@ -206,6 +239,10 @@ class PlaywrightE2EAppHarness implements E2EAppHarness {
         console.log(`[e2e] relaunchMs=${Math.round(performance.now() - started)}`);
     }
 
+    expectNoForeignRequests(): void {
+        expect([...this.foreignRequests.values()]).toEqual([]);
+    }
+
     async waitForAppExit(timeoutMilliseconds = PROCESS_WAIT_TIMEOUT_MS): Promise<void> {
         const pid = this.appChildPid;
         if (pid === undefined) return;
@@ -222,6 +259,8 @@ class PlaywrightE2EAppHarness implements E2EAppHarness {
         const started = performance.now();
         if (this.disposed) return;
         this.disposed = true;
+        this.page.off('request', this.observeRequest);
+        this.page.off('requestfailed', this.observeFailedRequest);
         await this.stopDevProcess(true);
         if (process.env.KEEP_E2E_ARTEFACTS !== '1') {
             await Promise.all([
@@ -291,10 +330,15 @@ type E2EFixtures = {
     app: E2EAppHarness;
 };
 
-export const test = base.extend<E2EFixtures>({
-    app: async ({ page }, use, testInfo: TestInfo) => {
+type E2EOptions = {
+    frontendAssets: 'development' | 'production';
+};
+
+export const test = base.extend<E2EFixtures & E2EOptions>({
+    frontendAssets: ['development', { option: true }],
+    app: async ({ page, frontendAssets }, use, testInfo: TestInfo) => {
         testInfo.setTimeout(Math.max(testInfo.timeout, 180_000));
-        const app = await PlaywrightE2EAppHarness.create(page);
+        const app = await PlaywrightE2EAppHarness.create(page, frontendAssets);
         try {
             await use(app);
         } finally {

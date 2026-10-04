@@ -2,6 +2,12 @@ import { fireEvent, render, screen, within } from '@testing-library/react';
 
 import StatusBar, { type StatusFact } from '../../src/ui/components/StatusBar';
 
+it('omits the legacy Markdown standard until it is supplied', () => {
+    render(<StatusBar saveIdentity="Saved" />);
+    const status = screen.getByRole('status');
+    expect(status.querySelector('[data-status-item="standard-kind"]')).toBeNull();
+});
+
 it('sorts status facts by priority and keeps dropped facts in document details', () => {
     const previousWidth = window.innerWidth;
     Object.defineProperty(window, 'innerWidth', {

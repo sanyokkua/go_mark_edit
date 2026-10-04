@@ -42,6 +42,8 @@ export interface ViewMenuProps {
     scrollSync?: boolean;
     onScrollSyncChange?: (enabled: boolean) => void;
     onFullscreen?: () => void;
+    problemsOpen?: boolean;
+    onToggleProblems?: () => void;
 }
 
 const ViewMenu: React.FC<ViewMenuProps> = ({
@@ -71,6 +73,8 @@ const ViewMenu: React.FC<ViewMenuProps> = ({
     scrollSync,
     onScrollSyncChange,
     onFullscreen,
+    problemsOpen = false,
+    onToggleProblems,
 }: ViewMenuProps): React.JSX.Element => {
     const [internalOpen, setInternalOpen] = useState(false);
     const [triggerElement, setTriggerElement] = useState<HTMLButtonElement | null>(null);
@@ -219,6 +223,29 @@ const ViewMenu: React.FC<ViewMenuProps> = ({
                     </div>
                 )}
                 <PopupSeparator />
+                {onToggleProblems === undefined ? null : (
+                    <MenuItem
+                        checked={problemsOpen}
+                        data-action-id="toggle-problems"
+                        disabled={
+                            getActionAvailability('toggle-problems', {
+                                modalOpen,
+                                documentId: documentOpen ? 'active' : undefined,
+                            }).kind !== 'available'
+                        }
+                        label={t(getAction('toggle-problems').labelKey)}
+                        onSelect={(): void => {
+                            if (!documentOpen) return;
+                            void dispatchAction('toggle-problems', {
+                                invoke: onToggleProblems,
+                                documentId: 'active',
+                                modalOpen,
+                                windowFocused: true,
+                            });
+                            setOpen(false);
+                        }}
+                    />
+                )}
                 {lineNumbers === undefined || onLineNumbersChange === undefined ? null : (
                     <MenuItem
                         checked={lineNumbers}

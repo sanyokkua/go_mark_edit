@@ -3,6 +3,17 @@ import { resolve } from 'node:path';
 
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { Provider } from 'react-redux';
+import { useAppSelector } from '../../src/logic/store';
+import { createSettingsAdapter, type SettingsBindings } from '../../src/logic/adapter/services';
+import { createSettingsCommandOwner } from '../../src/logic/settings/settingsCommands';
+import SettingsMenu from '../../src/ui/widgets/Menubar/SettingsMenu';
+import { dismissNotification } from '../../src/logic/store/notificationsSlice';
+import { loadedMarkdownSettings } from '../support/loadedMarkdownSettings';
+import {
+    acknowledgeMarkdownSettings,
+    hydrateSettings,
+    resetSettingsProjection,
+} from '../../src/logic/store/settingsSlice';
 import type { DocViewInput } from '../../src/logic/store/appModelTypes';
 
 const mockSetDocView = jest.fn<Promise<void>, [string, DocViewInput]>(async (): Promise<void> => undefined);
@@ -73,7 +84,7 @@ function documentFor(arrangement: ViewArrangement): DocumentMetadata {
     };
 }
 
-function renderEditorView(arrangement: ViewArrangement): void {
+function hydrateDocument(arrangement: ViewArrangement): DocumentMetadata {
     const document = documentFor(arrangement);
     store.dispatch(
         hydrateProjection({
@@ -83,7 +94,11 @@ function renderEditorView(arrangement: ViewArrangement): void {
             ui: {},
         }),
     );
+    return document;
+}
 
+function renderEditorView(arrangement: ViewArrangement): void {
+    const document = hydrateDocument(arrangement);
     render(
         <Provider store={store}>
             <EditorSessionContext.Provider
@@ -93,6 +108,19 @@ function renderEditorView(arrangement: ViewArrangement): void {
                 }}
             >
                 <EditorView />
+            </EditorSessionContext.Provider>
+        </Provider>,
+    );
+}
+
+function renderShellWithDocument(): void {
+    const document = hydrateDocument('split');
+    render(
+        <Provider store={store}>
+            <EditorSessionContext.Provider value={{ documentId: document.documentId, content: '# Rendered Preview' }}>
+                <WorkspaceTreeTestProvider>
+                    <AppShell />
+                </WorkspaceTreeTestProvider>
             </EditorSessionContext.Provider>
         </Provider>,
     );
@@ -146,6 +174,7 @@ function installMinimumWindowQuery(): {
 }
 
 beforeEach((): void => {
+    store.dispatch(hydrateSettings(loadedMarkdownSettings));
     store.dispatch(resetProjection());
     mockSetDocView.mockClear();
 });
@@ -171,7 +200,7 @@ it('applies the responsive split layout contract', () => {
     expect(screen.queryByLabelText('Assistant')).not.toBeInTheDocument();
 });
 
-it('renders each arrangement', () => {
+it('renders each arrangement', async () => {
     renderEditorView('editor');
     expect(screen.getByLabelText('Editor pane')).toBeInTheDocument();
     expect(screen.queryByLabelText('Preview pane')).not.toBeInTheDocument();
@@ -184,7 +213,7 @@ it('renders each arrangement', () => {
     expect(screen.getByLabelText('Editor pane')).toBeInTheDocument();
     expect(screen.getByLabelText('Preview pane')).toBeInTheDocument();
     expect(screen.getByRole('radio', { name: 'Split' })).toBeChecked();
-    expect(screen.getByRole('heading', { name: 'Rendered Preview' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Rendered Preview' })).toBeInTheDocument();
 
     cleanup();
     store.dispatch(resetProjection());
@@ -211,7 +240,7 @@ it('keeps only the editor at the minimum window in Editor mode', () => {
     }
 });
 
-it('keeps only the viewer at the minimum window in Preview mode', () => {
+it('keeps only the viewer at the minimum window in Preview mode', async () => {
     setViewportWidth(375);
     try {
         renderEditorView('preview');
@@ -219,7 +248,7 @@ it('keeps only the viewer at the minimum window in Preview mode', () => {
         const previewPane = screen.getByLabelText('Preview pane');
         expect(previewPane).toHaveClass('pane');
         expect(previewPane).not.toHaveClass('paneHidden');
-        expect(within(previewPane).getByRole('heading', { name: 'Rendered Preview' })).toBeInTheDocument();
+        expect(await within(previewPane).findByRole('heading', { name: 'Rendered Preview' })).toBeInTheDocument();
         /*
          * The editor element stays mounted so its model and view state survive the
          * round trip, exactly as it does in Preview mode on a wide window — but it
@@ -296,7 +325,7 @@ it('restores Split when the window widens again without writing an arrangement',
     }
 });
 
-it('replaces the same-document editor model when a Reload acknowledgement changes content', () => {
+it('replaces the same-document editor model when a Reload acknowledgement changes content', async () => {
     const document = documentFor('split');
     store.dispatch(
         hydrateProjection({
@@ -318,7 +347,7 @@ it('replaces the same-document editor model when a Reload acknowledgement change
 
     expect(screen.getByLabelText('Markdown source')).toHaveValue('# mine\n');
     expect(
-        within(screen.getByLabelText('Preview pane')).getByRole('heading', {
+        await within(screen.getByLabelText('Preview pane')).findByRole('heading', {
             name: 'mine',
         }),
     ).toBeInTheDocument();
@@ -381,11 +410,179 @@ it('matches the split-view structure', () => {
 
     const previewPane = screen.getByLabelText('Preview pane');
     expect(within(previewPane).getByText('● Preview · live')).toBeVisible();
-    expect(within(previewPane).getByText('GFM')).toBeVisible();
+    expect(within(previewPane).getByText('Full')).toBeVisible();
 
     const segmentedStyles = readSource('src/ui/primitives/Segmented/Segmented.module.css');
     expect(segmentedStyles).toMatch(/var\(--segmented-[\w-]+\)/);
     expect(segmentedStyles).not.toMatch(/#[\da-f]{3,8}\b|rgba?\(|hsla?\(/i);
+});
+
+it('shows each acknowledged Markdown standard in the preview header and status bar without remounting', () => {
+    renderShellWithDocument();
+
+    const previewPane = screen.getByLabelText('Preview pane');
+    const previewHeader = previewPane.querySelector('header');
+    const status = screen.getByRole('status', { name: 'Document status' });
+    expect(previewHeader).not.toBeNull();
+
+    for (const [standard, name] of [
+        ['full', 'Full'],
+        ['minimal', 'Minimal'],
+        ['gfm', 'GFM'],
+    ] as const) {
+        act((): void => {
+            store.dispatch(acknowledgeMarkdownSettings({ ...loadedMarkdownSettings.markdown, standard }));
+        });
+        expect(within(previewHeader as HTMLElement).getByText(name)).toBeVisible();
+        expect(status.querySelector('[data-status-item="standard-kind"]')).toHaveTextContent(`Markdown · ${name}`);
+        expect(screen.getByLabelText('Preview pane')).toBe(previewPane);
+    }
+});
+
+const standardSource =
+    '| Column | Value |\n| --- | --- |\n| Row | Cell |\n\n> [!NOTE]\n> Alert body\n\n:::note\nAdmonition body\n:::';
+
+function StandardMenu({ bindings }: { bindings: SettingsBindings }): React.JSX.Element {
+    const markdownSettings = useAppSelector((state) => state.settings.markdown);
+    const commands = createSettingsCommandOwner(createSettingsAdapter(bindings));
+    return (
+        <SettingsMenu
+            mode="auto"
+            onModeChange={jest.fn()}
+            onOpenAppearance={jest.fn()}
+            onThemeChange={jest.fn()}
+            theme="material"
+            markdownSettings={markdownSettings}
+            onMarkdownSettingsChange={(patch): void => {
+                void commands.updateMarkdown(markdownSettings, patch, store.dispatch).catch((): void => undefined);
+            }}
+        />
+    );
+}
+
+function renderStandardJourney(bindings: SettingsBindings): void {
+    const document = hydrateDocument('split');
+    render(
+        <Provider store={store}>
+            <EditorSessionContext.Provider value={{ documentId: document.documentId, content: standardSource }}>
+                <WorkspaceTreeTestProvider>
+                    <StandardMenu bindings={bindings} />
+                    <AppShell />
+                </WorkspaceTreeTestProvider>
+            </EditorSessionContext.Provider>
+        </Provider>,
+    );
+}
+
+function standardBindings(updateMarkdown: SettingsBindings['updateMarkdown']): SettingsBindings {
+    return {
+        getSettings: jest.fn(),
+        resetAppearance: jest.fn(),
+        updateAppearance: jest.fn(),
+        updateContentPrivacy: jest.fn(),
+        updateMarkdown,
+        updateEditor: jest.fn(),
+        updateFile: jest.fn(),
+    };
+}
+
+it('keeps Full visible until the GFM write succeeds, then updates menu, preview, header, and status together', async () => {
+    let acknowledge: (() => void) | undefined;
+    const updateMarkdown = jest.fn<
+        ReturnType<SettingsBindings['updateMarkdown']>,
+        Parameters<SettingsBindings['updateMarkdown']>
+    >((settings) => {
+        void settings;
+        return new Promise((resolve) => {
+            acknowledge = () => resolve({});
+        });
+    });
+    renderStandardJourney(standardBindings(updateMarkdown));
+
+    const preview = screen.getByLabelText('Preview pane');
+    await waitFor(() => expect(preview.querySelector('[role="note"]')).not.toBeNull());
+    expect(preview.querySelector('table')).not.toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Settings' }));
+    fireEvent.click(screen.getByRole('menuitemradio', { name: 'GFM' }));
+
+    expect(updateMarkdown).toHaveBeenCalledTimes(1);
+    expect(updateMarkdown).toHaveBeenCalledWith({ ...loadedMarkdownSettings.markdown, standard: 'gfm' });
+    expect(screen.getByRole('menuitemradio', { name: 'Full (+ math, alerts, admonitions)' })).toHaveAttribute(
+        'aria-checked',
+        'true',
+    );
+    expect(preview.querySelector('header')).toHaveTextContent('Full');
+    expect(
+        screen.getByRole('status', { name: 'Document status' }).querySelector('[data-status-item="standard-kind"]'),
+    ).toHaveTextContent('Markdown · Full');
+    expect(preview.querySelector('[role="note"]')).not.toBeNull();
+
+    await act(async () => {
+        acknowledge?.();
+    });
+    await waitFor(() =>
+        expect(screen.getByRole('menuitemradio', { name: 'GFM' })).toHaveAttribute('aria-checked', 'true'),
+    );
+    expect(preview.querySelector('header')).toHaveTextContent('GFM');
+    expect(
+        screen.getByRole('status', { name: 'Document status' }).querySelector('[data-status-item="standard-kind"]'),
+    ).toHaveTextContent('Markdown · GFM');
+    expect(preview.querySelector('table')).not.toBeNull();
+    expect(preview.querySelector('[role="note"]')).toBeNull();
+    expect(preview).toHaveTextContent('[!NOTE]');
+    expect(preview).toHaveTextContent(':::note');
+});
+
+it.each(['envelope', 'transport'] as const)(
+    'keeps Full and shows one notice after a %s write failure',
+    async (failure) => {
+        const error = {
+            code: 'validation',
+            title: 'Cannot save standard',
+            message: 'Try again.',
+            retryable: false,
+        } as const;
+        const updateMarkdown = jest.fn<
+            ReturnType<SettingsBindings['updateMarkdown']>,
+            Parameters<SettingsBindings['updateMarkdown']>
+        >((settings) => {
+            void settings;
+            return failure === 'envelope' ? Promise.resolve({ error }) : Promise.reject(error);
+        });
+        renderStandardJourney(standardBindings(updateMarkdown));
+        await waitFor(() =>
+            expect(screen.getByLabelText('Preview pane').querySelector('[role="note"]')).not.toBeNull(),
+        );
+        fireEvent.click(screen.getByRole('button', { name: 'Settings' }));
+        fireEvent.click(screen.getByRole('menuitemradio', { name: 'GFM' }));
+
+        await waitFor(() => expect(store.getState().notifications.items).toHaveLength(1));
+        expect(updateMarkdown).toHaveBeenCalledTimes(1);
+        expect(store.getState().settings.markdown?.standard).toBe('full');
+        expect(screen.getByRole('menuitemradio', { name: 'Full (+ math, alerts, admonitions)' })).toHaveAttribute(
+            'aria-checked',
+            'true',
+        );
+        expect(screen.getByLabelText('Preview pane').querySelector('header')).toHaveTextContent('Full');
+        expect(
+            screen.getByRole('status', { name: 'Document status' }).querySelector('[data-status-item="standard-kind"]'),
+        ).toHaveTextContent('Markdown · Full');
+        for (const notification of store.getState().notifications.items)
+            store.dispatch(dismissNotification(notification.id));
+    },
+);
+
+it('shows no Markdown standard in the preview header or status bar before settings hydration', () => {
+    store.dispatch(resetSettingsProjection());
+    renderShellWithDocument();
+
+    const previewPane = screen.getByLabelText('Preview pane');
+    const previewHeader = previewPane.querySelector('header');
+    expect(previewHeader).not.toBeNull();
+    expect(within(previewHeader as HTMLElement).queryByText(/Minimal|GFM|Full/)).not.toBeInTheDocument();
+    expect(
+        screen.getByRole('status', { name: 'Document status' }).querySelector('[data-status-item="standard-kind"]'),
+    ).toBeNull();
 });
 
 /*

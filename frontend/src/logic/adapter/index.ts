@@ -262,6 +262,8 @@ function normalizeOpenResult(result: apperr.OpenResult): OpenResult {
     return {
         status: result.status as OpenResult['status'],
         path: result.path,
+        ...(result.revealPath === undefined ? {} : { revealPath: result.revealPath }),
+        ...(result.treePath === undefined ? {} : { treePath: result.treePath }),
         documentId: result.documentId,
         projectionRevision: result.projectionRevision,
         activeBuffer:
@@ -632,6 +634,7 @@ export {
 export { EVENTS, type AdapterEventName } from './events';
 export {
     BUFFER_SYNC_MS,
+    VIEW_SYNC_MS,
     createAppModelAdapter,
     type AppModelAdapter,
     type AppModelBindings,

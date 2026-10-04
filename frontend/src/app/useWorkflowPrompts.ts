@@ -24,7 +24,8 @@ export function useWorkflowPrompts(
         };
     }, [close.active, writeReady, writes.revalidatePrompt]);
 
-    const writeVisible = !close.active && writeReady && !writes.validationFailed;
+    const closeOwnedWriteVisible = close.state.phase === 'saving-active' && writes.closeOwnedPrompt;
+    const writeVisible = (closeOwnedWriteVisible || (!close.active && writeReady)) && !writes.validationFailed;
     const normalization =
         close.state.phase === 'normalization'
             ? {

@@ -30,7 +30,7 @@ last_updated: 2026-09-28
 
 GoMarkEdit is one Wails desktop process. `main.go#main` composes Go-owned application state, file services, SQLite persistence, native integrations and Wails handlers. The React frontend renders that state and sends commands through `frontend/src/logic/adapter/`; generated Wails bindings are only reached there. The Redux store is a disposable projection. Markdown files remain the source of truth for document content.
 
-The application reads and writes user-selected local files, persists settings and UI metadata in a local SQLite database, and uses operating-system dialogs, clipboard, file-manager and browser integrations when the user asks. App runtime makes no background network request, telemetry call or update check. GitHub is used by the release workflow, not by the running application.
+The application reads and writes user-selected local files, persists settings and UI metadata in a local SQLite database, and uses operating-system dialogs, clipboard, file-manager and browser integrations when the user asks. App runtime makes no background network request, telemetry call or update check. GitHub is used by the release workflow, not by the running application. Markdown preview supports Minimal, GFM and Full standards, with local highlighting, math and Mermaid; Format, Compact and Lint operate on the active editor working copy. Preview and editor links share the normal open flow for supported local Markdown files anywhere on disk. Remote images retain their placeholder; remote rendering consent remains out of scope.
 
 ```mermaid
 flowchart LR
@@ -77,6 +77,7 @@ There are no HTTP, gRPC, GraphQL, webhook or message-queue endpoints in the desk
 4. Opening a document canonicalizes and reads the selected path. The app model owns its identity, content revision, disk baseline and tab state. Saves verify revisions and external disk state before replacing bytes.
 5. Opening a folder builds a bounded, filtered tree snapshot. Its root and tree belong to that process; only the app-wide hidden-folder preference and combined Recent Items are persisted.
 6. Settings and layout repositories write to SQLite. On shutdown, pending application work is drained before the database and logger close.
+7. The frontend previews the latest accepted editor buffer and runs tidy against the current editor working copy. Tidy uses a module worker behind one per-window operation slot; progress, cancellation and lint findings are ephemeral frontend state.
 
 Detailed document lifecycle, conflict, close and shutdown flows are in [architecture.md](architecture.md#document-lifecycle), [architecture.md](architecture.md#shutdown) and [architecture.md](architecture.md#persistence).
 
@@ -166,6 +167,8 @@ The Go backend is the source of truth for application state. The Redux store mir
 
 There are no application runtime API keys, service URLs or account credentials. No secret values belong in repository documentation. The release workflow uses GitHub's provided token permission to create a release.
 
+Markdown preferences share the existing settings group in SQLite: standard (`full` by default), bullet marker (`-`), emphasis marker (`_`), heading style (`atx`), Format on save (off) and Lint on save (on). The backend owns defaults and validation; missing or invalid values fall back to defaults. The existing settings table and bridge calls are reused, with no migration.
+
 ## 10. Project Structure and Operation
 
 ### 10.1 Repository Layout
@@ -210,21 +213,21 @@ Use `scripts/build setup --with-browser` to install Chromium for E2E verificatio
 
 ## 11. Current Product Scope and Future Work
 
-Versioned feature specifications 001–005 describe the work completed to date: native shell and settings, inline editor actions and preview, real files/tabs/save lifecycle, architecture and verification refactoring, and the folder workspace with Recent Items, folder tree, drag/drop and independent windows.
+Versioned feature specifications 001–005 describe the completed native shell, editor and preview, real-file lifecycle, architecture refactor and folder workspace. Feature 006 defines the current rich Markdown authoring increment.
 
-The app currently provides editor, split and preview arrangements; GFM rendering, themes/settings, local file operations, external-change handling and folder browsing. It opens `.md`, `.markdown`, `.mdown` and `.txt` documents. The broader initial product roadmap still includes work that is not delivered by the completed feature set: extended Mermaid/KaTeX/code rendering, a dedicated reading experience, document-wide Format/Compact/Lint, PDF export, operating-system file associations, more complete asset handling and the Assistant. Treat this list as candidate work only; create and approve a fresh numbered feature specification and confirm priorities before implementing any item.
+The app provides editor, split and preview arrangements; Minimal, GFM and Full rendering with local code highlighting, math and Mermaid; document-wide Format, Compact and Lint; settings, local file operations, external-change handling and folder browsing. It opens `.md`, `.markdown`, `.mdown` and `.txt` documents. Work still deferred includes the command palette, Assistant, export, image authoring and broader asset handling, a dedicated reading experience, and operating-system file associations. Remote images remain placeholders until a user-consent policy is specified. Treat these as candidate work only; create and approve a fresh numbered feature specification and confirm priorities before implementing any item.
 
 There is no active numbered feature on `app_version_1_codebase` or `master`. Feature 005 remains a completed specification for reference. Future implementation work should start from a new feature branch and its own versioned specification.
 
 ## 12. Searchability Anchors
 
-| Anchor                   | Values                                                                                                                                                                                                                                                                    |
-| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Functional areas**     | `#editor`, `#preview`, `#files`, `#tabs`, `#save`, `#workspace`, `#recents`, `#settings`, `#release`                                                                                                                                                                      |
-| **User-facing features** | Open File, Save, Save As, Recent Items, Reopen Last, Open Folder, Show hidden folders, Refresh, New File, New Folder, Reveal, Copy Path, Open in New Window                                                                                                               |
-| **Key code locations**   | `main.go#main`; `internal/appmodel/service.go`; `internal/appmodel/workspace.go`; `internal/file/paths.go`; `internal/workspace/tree.go`; `internal/application/handler.go`; `frontend/src/logic/adapter/`; `frontend/src/app/`; `frontend/src/ui/widgets/WorkspaceTree/` |
-| **Feature authorities**  | `specs/001-gomarkedit-product/`, `specs/002-editor-stage-formatting/`, `specs/003-real-files-and-tabs/`, `specs/004-codebase-refactoring/`, `specs/005-folder-workspace/`                                                                                                 |
-| **Feature flags**        | No product feature-flag service is present.                                                                                                                                                                                                                               |
+| Anchor                   | Values                                                                                                                                                                                                                                                                                                                                                                                                          |
+| ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Functional areas**     | `#editor`, `#preview`, `#markdown`, `#tidy`, `#links`, `#files`, `#tabs`, `#save`, `#workspace`, `#recents`, `#settings`, `#release`                                                                                                                                                                                                                                                                            |
+| **User-facing features** | Markdown standards, preview, Format, Compact, Lint, local Markdown links, Open File, Save, Save As, Recent Items, Reopen Last, Open Folder, Show hidden folders, Refresh, New File, New Folder, Reveal, Copy Path, Open in New Window                                                                                                                                                                           |
+| **Key code locations**   | `main.go#main`; `internal/appmodel/service.go`; `internal/appmodel/workspace.go`; `internal/file/paths.go`; `internal/workspace/tree.go`; `internal/application/handler.go`; `frontend/src/logic/adapter/`; `frontend/src/app/`; `frontend/src/ui/widgets/WorkspaceTree/`; `frontend/src/logic/markdown/`; `frontend/src/logic/markdown/mermaid/`; `frontend/src/logic/tidy/`; `frontend/src/logic/operations/` |
+| **Feature authorities**  | `specs/001-gomarkedit-product/`, `specs/002-editor-stage-formatting/`, `specs/003-real-files-and-tabs/`, `specs/004-codebase-refactoring/`, `specs/005-folder-workspace/`, `specs/006-rich-markdown-authoring/`                                                                                                                                                                                                 |
+| **Feature flags**        | No product feature-flag service is present.                                                                                                                                                                                                                                                                                                                                                                     |
 
 ## 13. Additional Notes
 

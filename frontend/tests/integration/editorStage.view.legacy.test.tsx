@@ -3,6 +3,8 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { useContext, useState } from 'react';
 import { Provider } from 'react-redux';
+import { loadedMarkdownSettings } from '../support/loadedMarkdownSettings';
+import { hydrateSettings } from '../../src/logic/store/settingsSlice';
 import type { EditorProps } from '@monaco-editor/react';
 import type { editor, IRange, ISelection } from 'monaco-editor';
 
@@ -164,7 +166,9 @@ jest.mock('@monaco-editor/react', () => {
         React.useEffect((): void => {
             mockRuntime.props = props;
             const finishMount = (): void =>
-                props.onMount?.(editorInstance, {} as Parameters<NonNullable<EditorProps['onMount']>>[1]);
+                props.onMount?.(editorInstance, { editor: { ScrollType: { Immediate: 1 } } } as unknown as Parameters<
+                    NonNullable<EditorProps['onMount']>
+                >[1]);
             if (mockRuntime.deferMount) mockRuntime.finishMount = finishMount;
             else finishMount();
         }, [editorInstance, props]);
@@ -190,6 +194,7 @@ jest.mock('../../src/ui/components/monacoSetup', () => ({
     __esModule: true,
     applyMonacoThemeFromRoot: jest.fn(() => jest.fn()),
     monaco: {},
+    registerEditorLinkModel: jest.fn(() => ({ dispose: jest.fn() })),
 }));
 
 import { applyStatePatch, hydrateProjection, resetProjection } from '../../src/logic/store/appModelProjectionActions';
@@ -268,6 +273,7 @@ const AppearanceSettingsMenu: React.FC = (): React.JSX.Element => {
 };
 
 beforeEach((): void => {
+    store.dispatch(hydrateSettings(loadedMarkdownSettings));
     jest.useFakeTimers();
     resetMockMonaco();
 });
@@ -483,7 +489,7 @@ it('renders the translated editor catalogue and preview text', async () => {
     expect(screen.getByRole('radio', { name: 'Split' })).toBeChecked();
     expect(screen.getByRole('radio', { name: 'Preview' })).toBeInTheDocument();
     expect(screen.getByText('● Preview · live')).toBeInTheDocument();
-    expect(screen.getByText('GFM')).toBeInTheDocument();
+    expect(screen.getByText('Full')).toBeInTheDocument();
 });
 
 it('applies every persisted palette to the rendered Settings control', async () => {
@@ -1361,6 +1367,8 @@ it('restores the exact Monaco session and saved scroll state without bootstrap r
         restoreViewState: jest.Mock<void, [editor.ICodeEditorViewState | null]>;
         saveViewState: jest.Mock<editor.ICodeEditorViewState, []>;
     };
+    expect(mockedEditor.layout).toHaveBeenCalledTimes(1);
+    mockedEditor.layout.mockClear();
     const mountedModel = mockRuntime.model;
     mockRuntime.selection = {
         selectionStartLineNumber: 2,
@@ -1917,11 +1925,8 @@ it('restores a document its own preview scroll on activation', async () => {
 
 /*
  * The clause is "restore on activation", not "restore on every render". The
- * preview remounts on every accepted revision — `LivePreview` is keyed on
- * `documentId:content` — so a restore that ran unconditionally would yank the
- * pane back to the saved offset on each keystroke and fight the user's own
- * scrolling. This is the assertion that distinguishes the two, and it fails
- * against the naive fix rather than only against the missing one.
+ * The saved activation offset must not be re-applied when source changes in
+ * the same document. The pane should preserve the user's current scroll.
  */
 it('does not re-apply the saved preview scroll when the content changes', async () => {
     const view = {
@@ -1949,7 +1954,7 @@ it('does not re-apply the saved preview scroll when the content changes', async 
         expect(contentOf().scrollTop).toBe(240);
     });
 
-    // The user scrolls somewhere else, then types — which remounts the pane.
+    // The user scrolls somewhere else, then types in the same document.
     contentOf().scrollTop = 10;
     rerender(
         <Provider store={store}>
@@ -1959,11 +1964,11 @@ it('does not re-apply the saved preview scroll when the content changes', async 
         </Provider>,
     );
 
-    // Whatever the remount produces, it must not be the saved offset reapplied.
+    // The source update keeps the current offset rather than restoring activation scroll.
     await waitFor(() => {
         expect(screen.getByRole('region', { name: 'Preview pane' })).toBeVisible();
     });
-    expect(contentOf().scrollTop).not.toBe(240);
+    expect(contentOf().scrollTop).toBe(10);
 });
 
 /*

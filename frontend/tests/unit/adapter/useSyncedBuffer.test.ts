@@ -45,7 +45,7 @@ afterEach((): void => {
     }
 });
 
-it('coalesces edits in the adapter-owned timer', async () => {
+it('sends only the latest rapid edit within 50 ms of typing stopping', async () => {
     jest.useFakeTimers();
     const updateBuffer = jest.fn<Promise<VoidResult>, [string, string]>(
         async (documentId: string, content: string): Promise<VoidResult> => {
@@ -72,10 +72,13 @@ it('coalesces edits in the adapter-owned timer', async () => {
     );
 
     await adapter.updateBuffer('document-1', 'first');
+    await jest.advanceTimersByTimeAsync(15);
     await adapter.updateBuffer('document-1', 'latest');
 
     expect(updateBuffer).not.toHaveBeenCalled();
-    await jest.advanceTimersByTimeAsync(BUFFER_SYNC_MS);
+    await jest.advanceTimersByTimeAsync(49);
+    expect(updateBuffer).not.toHaveBeenCalled();
+    await jest.advanceTimersByTimeAsync(1);
 
     expect(updateBuffer).toHaveBeenCalledTimes(1);
     expect(updateBuffer).toHaveBeenCalledWith('document-1', 'latest');

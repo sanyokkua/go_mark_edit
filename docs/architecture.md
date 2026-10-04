@@ -72,10 +72,14 @@ receive commands through props and contexts.
 | `frontend/src/logic/store/`                          | A disposable Redux projection of backend state; it is not the source of truth.                                                                    |
 | `frontend/src/logic/store/appModelProjection.ts`     | Initial hydration, ordered state-patch delivery and authoritative metadata recovery after revision gaps.                                          |
 | `frontend/src/logic/store/workspaceSlice.ts`         | Disposable projection of the workspace snapshot and local tree-reading state.                                                                     |
-| `frontend/src/logic/actions/actionRegistry.ts`       | The action catalogue and availability decisions used by every command surface.                                                                    |
+| `frontend/src/logic/actions/actionRegistry.ts`       | The action catalogue and availability decisions used by every command surface, including Markdown hydration, document and tidy-operation state.   |
 | `frontend/src/logic/actions/editorActionExecutor.ts` | The sole editor-action owner for dispatch, clipboard, formatting, selection snapshots and focus restoration.                                      |
 | `frontend/src/logic/format/formatting.ts`            | The inline wrapper-stack resolver and formatting runner called by the editor-action executor.                                                     |
-| `frontend/src/logic/markdown/linkPolicy.ts`          | Link classification before a preview action is dispatched.                                                                                        |
+| `frontend/src/logic/markdown/`                       | Markdown standards, rendering pipeline, sanitization, code highlighting, math, diagrams, headings and shared link classification.                 |
+| `frontend/src/logic/markdown/mermaid/`               | Serialized Mermaid theme/render queue, isolated realm, SVG scrubbing and bounded cache.                                                           |
+| `frontend/src/logic/tidy/`                           | Pure Format, Compact and Lint engine plus its cancellable module worker.                                                                          |
+| `frontend/src/logic/operations/`                     | Per-window tidy operation slot and ephemeral problem summary.                                                                                     |
+| `frontend/src/logic/markdown/linkPolicy.ts`          | Link classification before a preview or editor link action is dispatched.                                                                         |
 | `frontend/src/logic/scrollSync/`                     | The block-level scroll map, the synchronization controller, the scroll-port types and the preview scroll port.                                    |
 | `frontend/src/logic/hooks/useScrollSync.ts`          | Synchronized-scrolling activation and which pane the other aligns to when it starts.                                                              |
 | `frontend/src/ui/widgets/editorSession.ts`           | The document-identity-bound active editor command seam, including Monaco focus restoration.                                                       |
@@ -85,6 +89,7 @@ receive commands through props and contexts.
 | `frontend/src/ui/widgets/WorkspaceTree/`             | Sidebar tree, header controls, empty and unavailable states, context menu and create-entry prompt.                                                |
 | `frontend/src/ui/widgets/FormattingToolbar/`         | Formatting groups, arrangement control and Bar overflow.                                                                                          |
 | `frontend/src/ui/widgets/EditorStage/`               | Editor/preview panes, arrangement, preview accessory state and synchronized scrolling.                                                            |
+| `frontend/src/ui/widgets/ProblemsPanel/`             | Accessible presentation of active-document lint findings; activation returns through the guarded editor command seam.                             |
 | `frontend/src/ui/widgets/dialogs/`                   | Settings, About, Shortcuts, close, conflict and normalization dialogs.                                                                            |
 | `frontend/src/ui/widgets/StartupFailure/`            | Per-step startup failure, Retry and Quit.                                                                                                         |
 
@@ -135,8 +140,9 @@ breakpoint. Bar removes overflowed groups from layout while retaining their meas
 key, so repeated measurements keep the same overflow decision until the available space changes.
 
 `frontend/src/ui/components/Island/` owns a labelled visual group. Its consumer is the formatting
-toolbar's text, heading, list, insertion, deferred-action and arrangement groups. The deferred-action
-group is unpainted; the arrangement Island provides only layout and labeling, with Segmented owning
+toolbar's text, heading, list, insertion, tidy-action and arrangement groups. The tidy-action
+group never overflows, so its running action's Cancel remains reachable. The arrangement Island
+provides only layout and labeling, with Segmented owning
 its single visible frame and selected-option treatment.
 In `OverflowMenuContext`, the FormattingToolbar renders relocated actions as MenuItems with visible
 labels, icons and registry-derived shortcuts. Its groups stack vertically without Island paint or
@@ -210,13 +216,138 @@ and the Details Popup. Its consumer is the shell's status surface.
 consumer is the application shell; save failures, refused links and stuck-call notices enter through
 this one mount.
 
+### Markdown settings consumers
+
+`internal/settings/model.go` owns `DefaultSettings()` and is the sole source of Markdown defaults.
+The Settings dialog and Settings menu edit the same hydrated backend group through the existing
+settings command owner; the Redux projection has no fallback Markdown values before hydration. Format,
+Compact and Lint availability comes from the shared action registry and command owner. ProblemsPanel
+and StatusBar read the same ephemeral active-document findings summary; neither owns a second lint
+result store.
+
 ### Rendering and theme owners
 
+`frontend/src/logic/operations/operationSlot.ts` owns the per-window ephemeral slot for Format,
+Compact and Lint, outside the backend projection. It exposes stable snapshots and subscriptions;
+`frontend/src/logic/operations/useOperationSlot.ts` connects those snapshots to React. Acquisition
+excludes another run until release, abort signals cancellation without releasing the slot, and old
+handles cannot affect a later run. Progress becomes visible immediately above 1 MiB or after one
+second, retaining the latest completed-chunk counts until then.
+
+`frontend/src/app/TidyCommandsProvider.tsx` mounts the single tidy command owner beneath the
+guarded editor session. `AppWorkflows` runs beneath that provider so toolbar commands and explicit
+write/close workflows share the same tidy lifecycle and operation slot. `AppContents` retains bootstrap,
+document-session and native shutdown ownership. `useTidyCommands.ts` snapshots the active editor text, activation-bound
+commands and Markdown preferences, acquires the operation slot using UTF-8 text size, and releases
+it after one terminal outcome. Editor changes reach this owner from the actual `EditorStage`
+`onChange` path immediately after buffer synchronization. A changed text, activation, close or
+reload invalidates a pending result even if the user later returns to the same text. The owner
+subscribes to projected active-document identity changes so an intervening switch invalidates a
+run even when multiple projection updates share one React render; a content revision for the
+same active document leaves the editor session intact. The owner
+applies edits through the guarded editor handle, localizes the first 1,000 lint markers and
+publishes the exact findings and count through `logic/operations/problemsSummary.ts`. The summary
+is an ephemeral subscribed store for the active document: edits mark it stale without removing
+markers; activation or close clears it. User runs report refused, cancelled, failed and stale
+outcomes through localized notices; on-save runs return the outcome without those notices.
+
+`AppShell` subscribes to the problems summary and checks its document identity against the active
+projection before showing the exact status count. `AppWorkflows` owns one transient problems-panel
+visibility value shared by the View menu, status control and panel close button. `EditorView` docks
+the prop-driven `ProblemsPanel` below the editor stage; row activation uses the guarded document
+command seam to move the caret and focus the editor, first restoring the editor arrangement when
+the document is in preview-only mode. The panel renders up to 10,000 ordered findings and reports
+any remaining count without truncating the status total.
+
+The action registry now exposes Format, Compact and Lint on the toolbar, editor context menu,
+Format menu and editor-scoped shortcuts. Its availability check distinguishes loading settings,
+no document, read-only Format/Compact and a busy operation slot; read-only Lint remains available.
+`editorActionExecutor.ts` invokes the single tidy command owner and maps its terminal outcomes
+into dispatcher results. The Format menu uses the captured editor session even after the popup
+takes focus. The operation slot's kind and visible progress replace the matching toolbar or
+Format-menu action with Cancel; the toolbar's never-overflowing control also serves runs started
+from context menus or shortcuts. Feature 006 leaves the command palette, Assistant, Export PDF and
+image insertion deferred.
+
+`frontend/src/logic/tidy/` owns source tidying independently of Monaco, Redux and the bridge.
+Its pure engine uses the shared Full syntax parser, computes sorted non-overlapping edits, and
+refuses a changed chunk when its normalized Markdown tree differs. Compact preserves protected
+source and hard breaks while removing redundant blank lines and trailing whitespace. Format adds
+preference-aware bullet and emphasis markers, strong markers, block spacing and a final newline; shared
+mdast predicates keep adjacent lists and nested delimiters stable without re-indenting lists. Heading
+style conversion is limited by safe reparsing, and table padding uses display width while preserving
+cell text, row cell counts and container prefixes. Safe heading boundaries divide larger inputs; source offsets
+remain indices into the original text. Definition-shaped candidates are confirmed with the Full parser;
+ambiguous container-fence contexts use its code ranges before selecting boundaries.
+Lint shares the Format rule predicates and reports exact totals across chunks. It skips inline
+marker findings inside table cells, where changing delimiters can alter the parsed table, and
+reports a heading-style finding only when the shared safe heading conversion can perform that
+change without changing the parsed tree.
+The client lazily starts a dedicated module worker, forwards completed-chunk progress, reuses a
+completed worker, and terminates a cancelled worker. Vite builds the client as an explicit entry
+so the production client and worker are available independently of interface integration. The dev
+optimizer prebundles the worker's direct width and character-classification dependencies so its first
+lazy run cannot reload the active editor.
+
 `frontend/src/ui/components/CodeEditor.tsx` owns the visible Monaco working copy and publishes its scroll
-port for synchronized scrolling. It is paired with `frontend/src/ui/components/MarkdownView.tsx`, which owns
+port for synchronized scrolling. Its handle applies LF-indexed tidy edits as one undo group, retains the
+caret's logical line, navigates and focuses the editor, and maps component-owned lint markers to Monaco's
+`gme-lint` marker owner. `frontend/src/logic/hooks/useDocumentCommands.ts` guards these operations by
+document id and activation token; Monaco stays inside the editor component and its lazy setup, which loads
+the marker hover contribution. The pinned Monaco marker-decoration service draws only the first 500
+model markers, so CodeEditor supplements markers 501–1,000 with one cleared-on-update decoration
+collection while retaining all 1,000 model markers for diagnostics. CodeEditor renders validation
+markers on read-only files and hosts Monaco's
+overflow hover outside the clipped pane. CodeEditor measures Monaco once at mount before publishing editor
+readiness, because native WebKit can initially report a 5-pixel viewport inside a full-sized pane;
+Monaco's automatic layout handles later resizes. Generated themes give the hover the existing elevated
+surface color, and CodeEditor's hover style applies the shared blur token; other Monaco widgets keep their
+surface colors. The editor is paired with
+`frontend/src/ui/components/MarkdownView.tsx`, which owns
 sanitized preview rendering; each rendered block carries a numeric `data-source-line` annotation that the
-sanitization allowlist admits only as a positive integer. The frontend theme generator produces the editor
-and highlight output from the token families in `frontend/src/ui/styles/tokens.css`.
+sanitization allowlist admits only as a positive integer. `frontend/src/logic/markdown/headings.ts` extracts
+Markdown heading text, slugs and source lines from the shared syntax rules, then assigns preview ids only to
+matching Markdown headings after sanitization. Its preview scroll helper finds the first exact id inside the
+preview container, including author-supplied raw ids; the link classifier decodes anchor fragments once before
+that lookup. `frontend/src/logic/markdown/syntax.ts` owns the Full-only container syntax and rewrites known
+admonitions into blockquotes; its alert step converts sanitized marker blockquotes into note elements.
+`MarkdownView.tsx` maps those elements to the props-only `AlertBox.tsx`, which supplies localized titles,
+shared icons and token-based styling. Unknown containers remain literal and are excluded from heading
+extraction by the same syntax transform. The frontend theme generator produces the editor
+and highlight output from the token families in `frontend/src/ui/styles/tokens.css`. `monacoSetup.ts`
+stays lazy and registers individual fenced-language contributions through asynchronous token providers,
+with explicit aliases and in-repository JSON, diff, makefile and Mermaid grammars under
+`frontend/src/ui/components/monaco/`. The generator resolves inherited qualified Monaco token rules
+from the same highlight palette across all six theme and mode combinations, so base-language selectors
+remain consistent with the shared syntax colors. `CodeEditor.tsx` applies the root palette after
+Monaco mounts and forces a view repaint after palette changes, so unfocused lines do not retain
+token color ids from the previous palette. This does not change editor content, selection or undo. The preview
+pipeline uses `frontend/src/logic/markdown/highlight.ts` for its explicit fenced-language registry and
+200,000-character guard; `MarkdownView.tsx` loads the generated unscoped highlight rules, which follow
+the active tokens without re-parsing the document.
+
+The Full syntax list also registers `syntax/mathStrict.ts` for bounded single-dollar math.
+`renderLimits.ts` counts sanitized formulas in document order and replaces sources over 10,000 characters
+or formulas after the first 1,000 before `math.ts` invokes KaTeX with trust disabled and bounded expansion.
+Shared formula-scope discovery and preformatted text extraction match KaTeX's input, including sanitized raw
+HTML and enclosing preformatted elements. The same source supplies local error markers; display output
+preserves source-line annotations.
+`MarkdownView.tsx` supplies localized limit messages and token-based error styling. `PreviewPane.tsx` loads
+that renderer through a lazy boundary with the existing localized loading state, so its KaTeX dependency
+remains outside the entry bundle. The Vite configuration keeps all KaTeX fonts local, external to CSS, and
+woff2 only; retained previews continue through pause, resume and local rendering failures.
+
+The sanitized render-limits step also numbers Mermaid fences in document order at every Markdown standard.
+`MarkdownView.tsx` replaces each numbered fence with the props-only `MermaidBlock.tsx`, preserving its source-line
+annotation. The component enforces the 50-diagram and 50,000-character limits, observes root theme and mode
+changes, aborts stale requests and keeps the preceding SVG visible during redraw. The shared queue under
+`frontend/src/logic/markdown/mermaid/` serializes each theme configuration and render, caches up to 50 scrubbed
+SVGs by source and resolved theme snapshot, and reports exact engine errors. Mermaid executes inside a persistent,
+measurable offscreen iframe that loads a bundled local module under a restrictive CSP before any diagram code runs;
+the queue retains ownership of scheduling, retries and cancellation. The SVG scrub removes executable elements,
+external references and resource-bearing CSS before insertion. Each mounted block namespaces SVG
+ids before insertion, so cached duplicate diagrams have independent references. The existing preview scroll
+port observes asynchronous SVG insertion and re-measures its source-line geometry.
 
 All appearance values come from `frontend/src/ui/styles/tokens.css`. The three themes and light/dark
 values are selected on the document root. Widget stylesheets do not select themes and portalled
@@ -262,11 +393,13 @@ dev and setup. Hooks and CI call the scripts directly. A developer may use the f
   and Jest/Playwright/Go test reports from `.local_tmp_files/runs/`; compiler, linter, Jest,
   Playwright and TypeScript build-info caches are not uploaded.
 
-The E2E stage builds the standard Wails development executable and seed helper once, then starts one
-owned Vite server for the run. Its E2E-only Vite configuration extends the selected repository's
+The E2E stage builds the standard Wails development executable and seed helper once, then starts two
+owned frontend listeners for the run: Vite development assets for functional cases by default and
+Vite preview of the built production assets for cases that select the shipping bundle, including
+performance benchmarks. Its E2E-only Vite configuration extends the selected repository's
 configuration and serves inert HTML to the hidden native host's `GET /` and `GET /index.html`
-requests, identified by Wails' `wails.io` user-agent marker. The browser is the sole active React
-frontend; its real Wails IPC and the native host's lifecycle and quit callbacks remain in use.
+requests on both listeners, identified by Wails' `wails.io` user-agent marker. The browser is the
+sole active React frontend for each case; its real Wails IPC and the native host's lifecycle and quit callbacks remain in use.
 This avoids competing React clients hydrating and commanding one backend. Native webview rendering
 remains part of the walkthrough.
 
@@ -276,10 +409,10 @@ with `lsof` and that the existing Wails getters observe backend initialization o
 failure before loading React. A relaunch gracefully stops the old app and keeps that case's
 profile, folder and browser origin. Final fixture disposal stops the owned app process group and
 removes per-case state. `lsof` is required on Linux test hosts as well as macOS. The runner stops
-its owned preparation processes and removes temporary state; `KEEP_E2E_ARTEFACTS=1` retains the
+both owned frontend processes and removes temporary state; `KEEP_E2E_ARTEFACTS=1` retains the
 case and preparation files for diagnosis.
 
-The two OS clipboard writers run through the serial
+The OS clipboard writer cases run through the serial
 `chromium-native` Playwright project; the other cases run through `chromium`. Playwright retries are
 zero. Global workers are capped at four and the CPU capacity available to Node. Automatic failure
 screenshots and app output are retained, while traces require explicit `--trace`.
@@ -290,6 +423,20 @@ The Lint stage's owners are `tools/archlint/`, `frontend/eslint.config.js`,
 `frontend/stylelint.config.mjs`, `tools/lint/tokens.mjs`, `tools/lint/repo-rules.mjs` and the declared
 Go/TypeScript compilers. `tools/lint/bundle-scan.mjs` runs after the production build. A rule belongs
 to one executable owner; prose explains intent but does not replace the gate.
+
+### Markdown authoring walkthrough
+
+For a feature-specific runtime check:
+
+1. Open a document with a table, math formula, Mermaid fence and highlighted code fence; confirm its
+   selected standard renders locally. Run Format, undo once, then run Lint and open a finding from
+   ProblemsPanel.
+2. Follow a supported local Markdown link from the preview and another from the editor to a target
+   outside the source folder; confirm each target becomes active. Check that an existing unsupported
+   local file offers Reveal and that network/device paths are refused.
+3. Confirm remote images retain their placeholder. User-controlled remote rendering remains outside
+   current scope. Record packaged-build and platform observations with feature closeout rather than
+   inferring them from this map.
 
 ## Document lifecycle
 
@@ -306,6 +453,13 @@ a second tab. Invalid UTF-8 or NUL-bearing input becomes clearly read-only and i
 UTF-8 BOM, uniform LF/CRLF and the original bytes remain stable. Mixed endings are editable but require
 the one-time, revision-bound normalization authorization before any write.
 
+The file owner also decodes local Markdown link targets and exposes the same filesystem identity for
+existing files and directories. `internal/appmodel/preview_link.go` passes supported local targets
+through Open. Its result may carry a file-manager reveal path for an unsupported file or a tree path
+for a target already present in the bounded workspace snapshot. The workspace lookup compares
+symlink-resolved paths and uses filesystem identity for case-only path segments; filtered and
+truncated entries have no tree path.
+
 ### Backend truth and frontend working copy
 
 `internal/appmodel/lifecycle.go` owns one record per open document, including path identity, revisions,
@@ -320,6 +474,9 @@ metadata at the current revision; stale or duplicate partial patches remain reje
 not install an active buffer or replay a command. A failed recovery can retry on a later state event,
 and disposal ignores late recovery results. The active Monaco buffer is the only frontend working
 copy and is not the backend source of truth.
+`appModelAdapter.ts` coalesces editor content for 50 ms and restorable cursor, selection and scroll view
+changes for 200 ms. Only backend-accepted buffer generations reach live preview; lifecycle drains flush
+both pending queues in order.
 `frontend/src/ui/widgets/editorSession.ts` binds commands to the expected document identity and session;
 its results explicitly distinguish available, unavailable and document-mismatch outcomes.
 `useDocumentSession` owns the installed buffer and clears it when the projection has no active document
@@ -354,8 +511,20 @@ Accepted normalization tokens are remembered by the close workflow so a backend 
 confirmed token does not prompt twice. Classified retries request fresh revisions while preserving
 that original intent and target set; stuck-command retries reuse the existing bridge request identity.
 
+Explicit Save and Save As run the enabled Format before flushing the working copy and reading its
+revision, then run the enabled Lint after successful write reconciliation. Tidy refusal, cancellation,
+failure or stale results leave the write safe; Format skips report their reason and busy Lint is silent.
+Backend autosave does not run either operation. `useDocumentWrites.saveForClose` holds one continuation
+through write-owned normalization and conflict decisions; recovery blocks successful close continuation.
+An active close Save cancels the old revision-bound plan and prepares a fresh one only after safe
+write completion. It flushes again after Lint and checks that the active document is clean at the
+exact written revision. `EditorView` makes only the editor stage inert throughout close processing;
+programmatic Format edits and the sibling toolbar progress/Cancel remain available. Remaining choices
+require the original target identities and content revisions;
+window/quit also requires the original open-tab set. Background Saves retain the backend close batch.
+
 `AppDialogs` mounts one conflict prompt. `useWorkflowPrompts` applies Close → Save → foreground
-priority. Hidden requests retain their workflow identity: writes are revalidated before resuming,
+priority, exposing only the close-owned write prompt while the close waits in `saving-active`. Hidden requests retain their workflow identity: writes are revalidated before resuming,
 foreground comparisons are checked again before display, and requests for closed documents are
 removed. A failed write recheck keeps its intent hidden and offers a fresh validation Retry;
 dismissing that failure releases it, and saving another selected document never redirects to it.
@@ -363,15 +532,54 @@ A failed foreground recheck remains hidden until a later focus/resume check succ
 higher-priority prompt does not authorize or start a deferred write. Shared
 conflict commands only perform transport and guarded reload: write Keep mine continues the original
 write, foreground Keep mine authorizes without saving, and close decisions continue the close plan.
-Reload during a close cancels the old plan before preparing another with the original targets.
+Reload for a close-plan-owned background conflict cancels the old plan before preparing another
+with the original targets. Reload for the close-owned active write carries the exact clean reloaded
+revision into the same fresh-plan checks and completes the original close without overwriting disk.
+It does not run post-save Lint or flush the editor while guarded reload installation is pending.
+An ordinary pending write prompt is suspended inside the write owner while a close-owned write
+runs, then restored and revalidated if its document remains open; cancelling the close never
+authorizes or starts that earlier write.
 Modal keyboard suppression and focus restoration remain with the existing UI owners.
 
 ### Links, files and images
 
 `frontend/src/logic/markdown/linkPolicy.ts` classifies anchors, local document candidates, http/https
-links and refused schemes. `internal/appmodel/preview_link.go` applies the canonical open flow for a
-local candidate; an http/https target goes to the system browser; refused targets produce one warning
-without disturbing the page or editor session.
+links and refused schemes. Before sanitization, `renderer.ts` captures original parsed anchor
+targets in internal AST metadata, including drive-letter paths and web schemes with uppercase letters.
+`MarkdownView.tsx` uses that metadata only for the shared click policy,
+retains existing sanitized link addresses, and supplies an inert fragment link when an address was stripped.
+The metadata is never an HTML attribute; unsafe addresses remain absent from rendered navigation attributes.
+For a local document link, `frontend/src/app/useCommands.ts` flushes the
+outgoing editor session, requests the backend Open flow and acknowledges the target's active buffer
+through the guarded activation owner. It publishes a tab reveal and, when returned, a tree-row path
+and heading-fragment request. Supported local Markdown documents open through this path from anywhere
+on disk, including outside the source document's folder. The editor and visible preview consume each
+fragment request once after the target session and preview content are ready. A self-link fragment
+keeps the installed editor session; an existing unsupported file offers Reveal and is never launched.
+Network and device paths are refused. The backend returns these outcomes in `OpenResult` from
+`internal/apperr/results.go`: `RevealPath` carries an unsupported-file reveal target and `TreePath`
+identifies a matching workspace row. `internal/appmodel/preview_link.go` sets those fields; the adapter
+preserves them and `frontend/src/app/useCommands.ts` consumes them for the reveal notice and tree-row
+selection. An http/https target goes to the system browser; classifier refusals produce one warning
+without disturbing the page or editor session. ADR-0037 records removal
+of the earlier document-folder limit; D11's single classifier and normal open flow remain in force.
+
+`frontend/src/logic/markdown/editorLinks.ts` extracts editor link ranges and targets from the shared
+Full Markdown parser, including reference definitions. A dedicated editor-link worker runs that parser
+off the UI thread; its transport terminates each request on completion, cancellation or failure.
+Failures produce one local diagnostic with a fixed reason, excluding document content, paths, URLs
+and raw errors; normal cancellation stays silent.
+The lazy Monaco setup registers an exclusive Markdown link provider, which excludes URLs inside code
+from Monaco's default link detection. It caches successful results for an unchanged model version and
+checks registration identity, request generation, version and cancellation before publishing an async
+result. Superseding or disposing a model aborts its pending extraction. This worker is separate from
+the tidy operation slot and protocol.
+`CodeEditor` registers its mounted model's activation callback and disposes that registration with the
+editor. Opaque link URLs identify the model, parsed generation and target; the opener checks the model
+version before dispatch and consumes stale links. The provider is released after the last model
+registration is disposed. A single opener remains for the application lifetime so abandoned hover
+actions cannot send synthetic HTTPS addresses to the default browser opener. `PreviewPane` owns the shared activation dispatch used by preview
+links and `EditorStage`; each widget supplies its own fragment scrolling or caret navigation.
 
 `internal/application/preview_image.go` serves the local image route registered by the composition
 root. It resolves symlinks, requires the image to remain inside the document's folder and enforces the
@@ -421,11 +629,23 @@ values migrate into that list. `workspace.showHiddenFolders` stores the app-wide
 preference. The workspace root and tree are session state and are not restored.
 Layout changes write through immediately; continuous window resize is debounced and flushed during
 shutdown. Shared state follows last-writer-wins by change time. Missing or invalid values fall back to
-defaults. No document content, credentials or API keys are stored in the settings database; a future
-provider stores only an environment-variable name.
+defaults. The Markdown group uses the six existing keys `markdown.standard`, `format.bulletMarker`,
+`format.emphasisMarker`, `format.headingStyle`, `format.onSave` and `lint.onSave`; its defaults are
+Full, `-`, `_`, ATX, Format on save off and Lint on save on. No migration or new table is needed.
+No document content, credentials or API keys are stored in the settings database; a future provider
+stores only an environment-variable name.
+
+The Markdown popup and Settings dialog use `useEditorSettings` and one settings command owner.
+Queued Markdown writes read the latest acknowledged group before merging a patch; a rejected write
+keeps the projection unchanged and reports an error notice. All six dialog controls and the popup
+on-save rows stay unavailable until the backend Markdown group is hydrated.
 
 The application opens clean: it does not restore a session or tabs, and it has no crash-recovery or
-swap-file feature. Autosave touches only files that already exist on disk.
+swap-file feature. Autosave touches only files that already exist on disk. Preview rendering uses the
+latest accepted buffer from the editor synchronization path, including unsaved edits. Tidy snapshots
+text from the guarded editor command API, so it also operates on the current editor working copy.
+Worker progress, cancellation and lint findings remain ephemeral frontend state; explicit-save Format
+and Lint use the same tidy command owner, while autosave runs neither.
 
 ## Feature 005 packaged verification walkthrough
 
@@ -478,28 +698,32 @@ These decisions are carried forward from the accepted decision records and are r
 architecture. The assistant records are intentionally listed separately because that capability is not
 part of the current product.
 
-| Record   | Current decision                                                                                                                                                                                                                                                                                                                                                                                      |
-| -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| ADR-0001 | Use stable Wails v2 with a CGO-free Go backend and pure-Go SQLite. Native webviews and file association remain the platform boundary.                                                                                                                                                                                                                                                                 |
-| ADR-0002 | Use Monaco for v1 source editing; keep CodeMirror 6 as a future contained alternative. Bundle editor workers locally.                                                                                                                                                                                                                                                                                 |
-| ADR-0004 | Keep documents file-first and use a small SQLite KV store for settings, recents, layout and view state. Launch clean with no session restore or swap files.                                                                                                                                                                                                                                           |
-| ADR-0005 | Use one token-driven layout with three built-in themes and light/dark modes; keep editor and preview appearance unified and do not support user-authored themes.                                                                                                                                                                                                                                      |
-| ADR-0006 | Allow multiple independent instances; share the small settings database with WAL and busy timeout instead of a single-instance lock.                                                                                                                                                                                                                                                                  |
-| ADR-0011 | The application is offline-first with no background network. Only an explicitly user-invoked request to the configured future provider may use a network; telemetry, automatic updates and unsolicited content fetches remain forbidden.                                                                                                                                                              |
-| ADR-0013 | Persist application layout by write-through, with last-writer-wins change semantics and a debounced window-size write flushed on close.                                                                                                                                                                                                                                                               |
-| ADR-0014 | The Go backend owns live state; Redux is a projection and Monaco is only the visible document's working copy.                                                                                                                                                                                                                                                                                         |
-| ADR-0015 | Derive releases from tags or an explicit version input, keep unversioned builds at `dev`, and derive platform icons from one source asset.                                                                                                                                                                                                                                                            |
-| ADR-0017 | Coordinate backend canonical snapshots with a document-identity-bound frontend command session; neither seam impersonates the other.                                                                                                                                                                                                                                                                  |
-| ADR-0021 | Active-buffer acknowledgements carry document identity and accepted revision; ordinary patches stay content-free, including the true zero-document state.                                                                                                                                                                                                                                             |
-| ADR-0022 | Commit successful writes and resynchronize a failed projection; never pretend an irreversible replacement failed or repeat it.                                                                                                                                                                                                                                                                        |
-| ADR-0024 | Apply one complete document lifecycle policy for open modes, suffixes, tolerant read-only input, line endings, normalization authorization, close plans and external conflicts.                                                                                                                                                                                                                       |
-| ADR-0028 | The earlier custom title-bar/native-menu decision is superseded. The current product keeps the native operating-system frame introduced by feature 001.                                                                                                                                                                                                                                               |
-| ADR-0029 | Generate Monaco and highlight colours at build time from one pair of syntax-token families; runtime theme changes only swap generated names.                                                                                                                                                                                                                                                          |
-| ADR-0030 | Derive raw-HTML sanitization from the selected Markdown standard; keep the explicit bounded allowlist, strict Mermaid security and KaTeX trust disabled.                                                                                                                                                                                                                                              |
-| ADR-0031 | Format and Compact use remark-stringify with the maximal parse plugin set; Prettier remains a repository development tool, not a runtime formatter.                                                                                                                                                                                                                                                   |
-| ADR-0032 | Use one cancellable run registry and one deterministic shutdown order; a run has one terminal outcome and background panics are contained and logged.                                                                                                                                                                                                                                                 |
-| ADR-0033 | Workspace file operations are additive only: create, reveal and copy path are allowed; rename, move, delete and tree reorder are refused.                                                                                                                                                                                                                                                             |
-| ADR-0035 | `internal/workspace/` builds a bounded tree while `internal/appmodel/` owns each window's workspace session. New windows are independent processes; an explicit startup folder argument opens a workspace without session restore. Trees change on open, create or manual refresh, with no watcher. Workspace operations remain additive only as in ADR-0033. The hidden-folders setting is app-wide. |
+| Record   | Current decision                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| ADR-0001 | Use stable Wails v2 with a CGO-free Go backend and pure-Go SQLite. Native webviews and file association remain the platform boundary.                                                                                                                                                                                                                                                                                                                                                                                                   |
+| ADR-0002 | Use Monaco for v1 source editing; keep CodeMirror 6 as a future contained alternative. Bundle editor workers locally.                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| ADR-0004 | Keep documents file-first and use a small SQLite KV store for settings, recents, layout and view state. Launch clean with no session restore or swap files.                                                                                                                                                                                                                                                                                                                                                                             |
+| ADR-0005 | Use one token-driven layout with three built-in themes and light/dark modes; keep editor and preview appearance unified and do not support user-authored themes.                                                                                                                                                                                                                                                                                                                                                                        |
+| ADR-0006 | Allow multiple independent instances; share the small settings database with WAL and busy timeout instead of a single-instance lock.                                                                                                                                                                                                                                                                                                                                                                                                    |
+| ADR-0011 | The application is offline-first with no background network. Only an explicitly user-invoked request to the configured future provider may use a network; telemetry, automatic updates and unsolicited content fetches remain forbidden.                                                                                                                                                                                                                                                                                                |
+| ADR-0013 | Persist application layout by write-through, with last-writer-wins change semantics and a debounced window-size write flushed on close.                                                                                                                                                                                                                                                                                                                                                                                                 |
+| ADR-0014 | The Go backend owns live state; Redux is a projection and Monaco is only the visible document's working copy.                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| ADR-0015 | Derive releases from tags or an explicit version input, keep unversioned builds at `dev`, and derive platform icons from one source asset.                                                                                                                                                                                                                                                                                                                                                                                              |
+| ADR-0017 | Coordinate backend canonical snapshots with a document-identity-bound frontend command session; neither seam impersonates the other.                                                                                                                                                                                                                                                                                                                                                                                                    |
+| ADR-0021 | Active-buffer acknowledgements carry document identity and accepted revision; ordinary patches stay content-free, including the true zero-document state.                                                                                                                                                                                                                                                                                                                                                                               |
+| ADR-0022 | Commit successful writes and resynchronize a failed projection; never pretend an irreversible replacement failed or repeat it.                                                                                                                                                                                                                                                                                                                                                                                                          |
+| ADR-0024 | Apply one complete document lifecycle policy for open modes, suffixes, tolerant read-only input, line endings, normalization authorization, close plans and external conflicts.                                                                                                                                                                                                                                                                                                                                                         |
+| ADR-0028 | The earlier custom title-bar/native-menu decision is superseded. The current product keeps the native operating-system frame introduced by feature 001.                                                                                                                                                                                                                                                                                                                                                                                 |
+| ADR-0029 | Generate Monaco and highlight colours at build time from one pair of syntax-token families; runtime theme changes only swap generated names.                                                                                                                                                                                                                                                                                                                                                                                            |
+| ADR-0030 | Derive raw-HTML sanitization from the selected Markdown standard; keep the explicit bounded allowlist, strict Mermaid security and KaTeX trust disabled. Superseded by ADR-0036.                                                                                                                                                                                                                                                                                                                                                        |
+| ADR-0031 | Format and Compact use remark-stringify with the maximal parse plugin set; Prettier remains a repository development tool, not a runtime formatter. Superseded by ADR-0038; only the rule that Prettier is not a runtime formatter survives, and ADR-0038 restates it.                                                                                                                                                                                                                                                                  |
+| ADR-0032 | Use one cancellable run registry and one deterministic shutdown order; a run has one terminal outcome and background panics are contained and logged. Refined by ADR-0039 for Format, Compact and Lint: the frontend operation slot is used and the run registry described here is not built; the single terminal outcome per run and contained background panics still apply.                                                                                                                                                          |
+| ADR-0033 | Workspace file operations are additive only: create, reveal and copy path are allowed; rename, move, delete and tree reorder are refused.                                                                                                                                                                                                                                                                                                                                                                                               |
+| ADR-0035 | `internal/workspace/` builds a bounded tree while `internal/appmodel/` owns each window's workspace session. New windows are independent processes; an explicit startup folder argument opens a workspace without session restore. Trees change on open, create or manual refresh, with no watcher. Workspace operations remain additive only as in ADR-0033. The hidden-folders setting is app-wide.                                                                                                                                   |
+| ADR-0036 | One raw-HTML policy applies at every Markdown standard: a bounded allowlist of raw HTML elements and Markdown-equivalent elements, removal together with their contents of executing, embedding, foreign-content and form elements, unwrapping of every other element, and no author-supplied style attribute, event handler, `javascript:` or `data:` address. Mermaid security stays strict and KaTeX trust stays off. Supersedes ADR-0030.                                                                                           |
+| ADR-0037 | Preview links open supported Markdown documents anywhere on the local disk through the one shared link handler and the normal open flow. Network and device paths are refused on every platform. An existing local file with an unsupported suffix is refused with an offer to reveal it in the file manager and is never launched. The backend resolver decides containment, symbolic links and folder-tree rows. Replaces the document-folder link limit of the earlier link rule; D11's single classifier and normal open flow stay. |
+| ADR-0038 | Format and Compact compute minimal source edits over the preview's parser with the Full syntax set, whatever standard is selected, apply them as one undo step and are refused when the result would render differently at the Full standard; Prettier stays a repository tool, not a runtime formatter. Lint shares the same parser and predicates. Supersedes ADR-0031.                                                                                                                                                               |
+| ADR-0039 | Format, Compact and Lint share one per-window frontend operation slot: a single run at a time with progress and Cancel for long runs, held from its start until exactly one terminal outcome. The backend run registry of ADR-0032 stays unbuilt. Refines ADR-0032.                                                                                                                                                                                                                                                                     |
 
 The preview link classifier and local image route are also durable current decisions: they are the
 single policy and route described in the lifecycle section, with no remote rendering policy until the
@@ -556,7 +780,9 @@ The owner decisions that shaped this refactor are recorded here so they are not 
   of earlier feature specs; the superseded wording was removed from D5 and planning decisions 1
   and 7.
 - **D15 — E2E invocation:** the real-backend E2E harness prepares the standard Wails dev executable
-  and an owned Vite server once per run, then starts an isolated application for each case. This
+  and owned development and production-asset frontend listeners once per run, then starts an isolated
+  application for each case. Functional cases use development assets by default; cases that select
+  the shipping bundle use the production-asset listener. This
   supersedes the per-case `wails dev` invocation in feature 004's real-backend E2E contract;
   application and browser state remain isolated, and the same canonical E2E stage runs full or
   targeted selection. Test transport keeps the browser as the sole active React frontend while

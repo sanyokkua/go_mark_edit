@@ -8,3 +8,11 @@
     min-width: 0;
     padding: 0;
 }
+
+.problemsDock {
+    display: flex;
+    flex: 0 1 35%;
+    min-height: 0;
+    min-width: 0;
+    padding: 0 var(--editor-stage-padding) var(--editor-stage-padding);
+}

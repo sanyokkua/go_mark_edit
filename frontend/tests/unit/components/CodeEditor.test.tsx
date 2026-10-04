@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import type { EditorProps } from '@monaco-editor/react';
 import type { editor, IDisposable, IPosition, IRange, IScrollEvent, ISelection } from 'monaco-editor';
 
@@ -10,9 +10,29 @@ import CodeEditor, {
     type EditorPosition,
     type EditorSelection,
 } from '../../../src/ui/components/CodeEditor';
-import { applyMonacoThemeFromRoot } from '../../../src/ui/components/monacoSetup';
+import { registerEditorLinkModel } from '../../../src/ui/components/monacoSetup';
 import { createDocumentCommands } from '../../../src/logic/hooks/useDocumentCommands';
 import type { EditorScrollPort, ScrollGeometryChange } from '../../../src/logic/scrollSync/scrollSyncTypes';
+import type { TextEdit } from '../../../src/logic/tidy/protocol';
+
+type NewHandle = CodeEditorHandle & {
+    applyEdits(edits: TextEdit[]): boolean;
+    setPosition(line: number, column: number): boolean;
+    setMarkers(
+        markers: Array<{
+            startLine: number;
+            startColumn: number;
+            endLine: number;
+            endColumn: number;
+            severity: 'error' | 'warning';
+            message: string;
+        }>,
+    ): boolean;
+};
+
+const setModelMarkers = jest.fn();
+const setLintDecorations = jest.fn();
+const clearLintDecorations = jest.fn();
 
 interface MockModel {
     dispose: jest.Mock<void, []>;
@@ -48,6 +68,7 @@ interface MockMonacoRuntime {
     model: MockModel;
     /** How many times the fake Monaco component has called `onMount`. */
     mountCount: number;
+    layoutWidth: number;
     props: EditorProps | null;
     scrollTop: number;
     selection: ISelection | null;
@@ -143,11 +164,21 @@ function installMockEditor(): void {
         executeEdits: jest.fn(),
         focus: jest.fn(),
         getBottomForLineNumber: jest.fn((lineNumber: number): number => mockPadding + lineNumber * mockLineHeight),
-        getLayoutInfo: jest.fn(() => ({ height: mockViewportHeight }) as editor.EditorLayoutInfo),
+        getLayoutInfo: jest.fn(
+            () => ({ width: mockRuntime.layoutWidth, height: mockViewportHeight }) as editor.EditorLayoutInfo,
+        ),
         getModel: jest.fn(() => mockRuntime.model as unknown as editor.ITextModel),
         getScrollHeight: jest.fn(mockScrollHeight),
         getScrollTop: jest.fn(() => mockRuntime.scrollTop),
         getSelection: jest.fn(() => mockRuntime.selection),
+        getPosition: jest.fn(() =>
+            mockRuntime.selection === null
+                ? null
+                : {
+                      lineNumber: mockRuntime.selection.positionLineNumber,
+                      column: mockRuntime.selection.positionColumn,
+                  },
+        ),
         getTopForLineNumber: jest.fn((lineNumber: number): number => mockPadding + (lineNumber - 1) * mockLineHeight),
         setScrollTop: jest.fn((scrollTop: number): void => {
             if (scrollTop !== mockRuntime.scrollTop) {
@@ -156,7 +187,10 @@ function installMockEditor(): void {
             }
         }),
         setSelection: jest.fn(),
+        setPosition: jest.fn(),
+        revealLineInCenter: jest.fn(),
         deltaDecorations: jest.fn(() => []),
+        createDecorationsCollection: jest.fn(() => ({ set: setLintDecorations, clear: clearLintDecorations })),
         onDidBlurEditorText: jest.fn((listener: () => void) => {
             mockRuntime.blurListener = listener;
 
@@ -178,6 +212,10 @@ function installMockEditor(): void {
         onDidContentSizeChange: events.contentSize.subscribe,
         onDidLayoutChange: events.layout.subscribe,
         onDidScrollChange: events.scroll.subscribe,
+        layout: jest.fn((): void => {
+            mockRuntime.layoutWidth = 300;
+        }),
+        render: jest.fn(),
         pushUndoStop: jest.fn(),
         dispose: jest.fn(),
     } as unknown as editor.IStandaloneCodeEditor;
@@ -203,6 +241,7 @@ function resetMockMonaco(): void {
     };
     installMockEditor();
     mockRuntime.mountCount = 0;
+    mockRuntime.layoutWidth = 5;
     mockRuntime.props = null;
     mockRuntime.scrollTop = 0;
 }
@@ -218,7 +257,10 @@ jest.mock('@monaco-editor/react', () => {
 
         React.useEffect(() => {
             mockRuntime.mountCount += 1;
-            onMount?.(editorInstance, {} as unknown as Parameters<NonNullable<EditorProps['onMount']>>[1]);
+            onMount?.(editorInstance, {
+                editor: { setModelMarkers, ScrollType: { Immediate: 1 } },
+                MarkerSeverity: { Error: 8, Warning: 4 },
+            } as unknown as Parameters<NonNullable<EditorProps['onMount']>>[1]);
         }, [editorInstance, onMount]);
 
         return React.createElement('textarea', {
@@ -245,11 +287,242 @@ jest.mock('@monaco-editor/react', () => {
 jest.mock('../../../src/ui/components/monacoSetup', () => ({
     __esModule: true,
     monaco: {},
-    applyMonacoThemeFromRoot: jest.fn(() => jest.fn()),
+    applyMonacoThemeFromRoot: jest.fn((afterApply?: () => void) => {
+        const { observeRootTheme } = jest.requireActual<typeof import('../../../src/ui/components/monacoThemes')>(
+            '../../../src/ui/components/monacoThemes',
+        );
+        return observeRootTheme(document.documentElement, { setTheme: jest.fn() }, afterApply);
+    }),
+    registerEditorLinkModel: jest.fn(() => ({ dispose: jest.fn() })),
 }));
 
 beforeEach((): void => {
     resetMockMonaco();
+    setModelMarkers.mockClear();
+    setLintDecorations.mockClear();
+    clearLintDecorations.mockClear();
+    jest.mocked(registerEditorLinkModel).mockClear();
+});
+
+it('routes a mounted model through its latest link callback and releases it on unmount', async () => {
+    const first = jest.fn();
+    const second = jest.fn();
+    const { rerender, unmount } = render(
+        <CodeEditor documentId="document-1" initialValue="[go](a.md)" onLinkActivate={first} />,
+    );
+    await waitFor(() => expect(registerEditorLinkModel).toHaveBeenCalledTimes(1));
+    const [model, activate] = jest.mocked(registerEditorLinkModel).mock.calls[0];
+    expect(model).toBe(mockRuntime.model);
+    rerender(<CodeEditor documentId="document-1" initialValue="[go](a.md)" onLinkActivate={second} />);
+    activate('a.md');
+    expect(second).toHaveBeenCalledWith('a.md');
+    expect(first).not.toHaveBeenCalled();
+    unmount();
+    expect(jest.mocked(registerEditorLinkModel).mock.results[0].value.dispose).toHaveBeenCalledTimes(1);
+});
+
+function editHandle(ref: { current: CodeEditorHandle | null }): NewHandle {
+    if (ref.current === null) throw new Error('expected mounted editor');
+    return ref.current as NewHandle;
+}
+
+function simulateEdits(): void {
+    (mockRuntime.editor.executeEdits as jest.Mock).mockImplementation(
+        (_source: string, edits: Array<{ range: IRange; text: string }>): void => {
+            const lines = mockRuntime.content.split(/\r\n|\n/);
+            const newline = mockRuntime.content.includes('\r\n') ? '\r\n' : '\n';
+            const offset = (line: number, column: number): number =>
+                lines.slice(0, line - 1).reduce((sum, value): number => sum + value.length + newline.length, 0) +
+                column -
+                1;
+            const patches = edits.map(({ range, text }) => ({
+                from: offset(range.startLineNumber, range.startColumn),
+                to: offset(range.endLineNumber, range.endColumn),
+                text,
+            }));
+            for (const patch of patches.reverse()) {
+                mockRuntime.content =
+                    mockRuntime.content.slice(0, patch.from) + patch.text + mockRuntime.content.slice(patch.to);
+            }
+        },
+    );
+}
+
+it('applies multiple tidy edits in one undo group against the original snapshot', async () => {
+    mockRuntime.content = 'one\ntwo\nthree';
+    simulateEdits();
+    const ref = { current: null as CodeEditorHandle | null };
+    render(<CodeEditor ref={ref} documentId="document-1" initialValue={mockRuntime.content} />);
+    await screen.findByRole('textbox', { name: 'Markdown source' });
+
+    expect(
+        editHandle(ref).applyEdits([
+            { from: 0, to: 3, text: 'ONE' },
+            { from: 8, to: 13, text: 'THREE' },
+        ]),
+    ).toBe(true);
+    expect(mockRuntime.content).toBe('ONE\ntwo\nTHREE');
+    expect(mockRuntime.editor.executeEdits).toHaveBeenCalledTimes(1);
+    expect((mockRuntime.editor.executeEdits as jest.Mock).mock.calls[0]?.[1]).toHaveLength(2);
+    expect(mockRuntime.editor.pushUndoStop).toHaveBeenCalledTimes(2);
+});
+
+it('leaves the model and undo history untouched for an empty tidy edit list', async () => {
+    const ref = { current: null as CodeEditorHandle | null };
+    render(<CodeEditor ref={ref} documentId="document-1" initialValue="one" />);
+    await screen.findByRole('textbox', { name: 'Markdown source' });
+
+    expect(editHandle(ref).applyEdits([])).toBe(true);
+    expect(mockRuntime.editor.executeEdits).not.toHaveBeenCalled();
+    expect(mockRuntime.editor.pushUndoStop).not.toHaveBeenCalled();
+});
+
+it('uses one whole-text edit above the twenty-thousand-edit boundary', async () => {
+    mockRuntime.content = 'x'.repeat(20001);
+    const ref = { current: null as CodeEditorHandle | null };
+    render(<CodeEditor ref={ref} documentId="document-1" initialValue={mockRuntime.content} />);
+    await screen.findByRole('textbox', { name: 'Markdown source' });
+    const edits = Array.from({ length: 20001 }, (_, index): TextEdit => ({ from: index, to: index + 1, text: 'y' }));
+
+    expect(editHandle(ref).applyEdits(edits)).toBe(true);
+    expect(mockRuntime.editor.executeEdits).toHaveBeenCalledWith('gomarkedit', [
+        {
+            range: fullModelRange,
+            text: 'y'.repeat(20001),
+            forceMoveMarkers: true,
+        },
+    ]);
+    expect(mockRuntime.editor.pushUndoStop).toHaveBeenCalledTimes(2);
+});
+
+it('keeps twenty thousand edits in one Monaco edit batch', async () => {
+    mockRuntime.content = 'x'.repeat(20000);
+    const ref = { current: null as CodeEditorHandle | null };
+    render(<CodeEditor ref={ref} documentId="document-1" initialValue={mockRuntime.content} />);
+    await screen.findByRole('textbox', { name: 'Markdown source' });
+    const edits = Array.from({ length: 20000 }, (_, index): TextEdit => ({ from: index, to: index + 1, text: 'y' }));
+
+    expect(editHandle(ref).applyEdits(edits)).toBe(true);
+    expect(mockRuntime.editor.executeEdits).toHaveBeenCalledTimes(1);
+    expect((mockRuntime.editor.executeEdits as jest.Mock).mock.calls[0]?.[1]).toHaveLength(20000);
+    expect(mockRuntime.editor.pushUndoStop).toHaveBeenCalledTimes(2);
+});
+
+it('maps LF edit offsets to CRLF model ranges', async () => {
+    mockRuntime.content = 'one\r\ntwo\r\nthree';
+    const ref = { current: null as CodeEditorHandle | null };
+    render(<CodeEditor ref={ref} documentId="document-1" initialValue={mockRuntime.content} />);
+    await screen.findByRole('textbox', { name: 'Markdown source' });
+
+    expect(editHandle(ref).applyEdits([{ from: 4, to: 7, text: 'TWO' }])).toBe(true);
+    expect(mockRuntime.editor.executeEdits).toHaveBeenCalledWith('gomarkedit', [
+        {
+            range: { startLineNumber: 2, startColumn: 1, endLineNumber: 2, endColumn: 4 },
+            text: 'TWO',
+            forceMoveMarkers: true,
+        },
+    ]);
+});
+
+it('keeps the caret on its logical line when preceding edits add and remove lines', async () => {
+    mockRuntime.content = 'top\nremove\nkeep';
+    mockRuntime.selection = {
+        selectionStartLineNumber: 3,
+        selectionStartColumn: 3,
+        positionLineNumber: 3,
+        positionColumn: 3,
+    } as ISelection;
+    simulateEdits();
+    const ref = { current: null as CodeEditorHandle | null };
+    render(<CodeEditor ref={ref} documentId="document-1" initialValue={mockRuntime.content} />);
+    await screen.findByRole('textbox', { name: 'Markdown source' });
+
+    expect(
+        editHandle(ref).applyEdits([
+            { from: 0, to: 0, text: 'new\n' },
+            { from: 4, to: 11, text: '' },
+        ]),
+    ).toBe(true);
+    expect(mockRuntime.content).toBe('new\ntop\nkeep');
+    expect(mockRuntime.editor.setPosition).toHaveBeenCalledWith({ lineNumber: 3, column: 3 });
+});
+
+it('moves the caret, reveals the line and focuses the editor', async () => {
+    const ref = { current: null as CodeEditorHandle | null };
+    render(<CodeEditor ref={ref} documentId="document-1" initialValue="one\ntwo" />);
+    await screen.findByRole('textbox', { name: 'Markdown source' });
+
+    expect(editHandle(ref).setPosition(2, 2)).toBe(true);
+    expect(mockRuntime.editor.setPosition).toHaveBeenCalledWith({ lineNumber: 2, column: 2 });
+    expect(mockRuntime.editor.revealLineInCenter).toHaveBeenCalledWith(2, 1);
+    expect(mockRuntime.editor.focus).toHaveBeenCalled();
+});
+
+it('sets and clears lint markers under the editor-owned marker namespace', async () => {
+    const ref = { current: null as CodeEditorHandle | null };
+    render(<CodeEditor ref={ref} documentId="document-1" initialValue="one" />);
+    await screen.findByRole('textbox', { name: 'Markdown source' });
+    const marker = {
+        startLine: 1,
+        startColumn: 1,
+        endLine: 1,
+        endColumn: 4,
+        severity: 'warning' as const,
+        message: 'Rule warning hint',
+    };
+
+    expect(editHandle(ref).setMarkers([marker])).toBe(true);
+    expect(setModelMarkers).toHaveBeenCalledWith(mockRuntime.model, 'gme-lint', [
+        {
+            startLineNumber: 1,
+            startColumn: 1,
+            endLineNumber: 1,
+            endColumn: 4,
+            severity: 4,
+            message: 'Rule warning hint',
+        },
+    ]);
+    expect(editHandle(ref).setMarkers([])).toBe(true);
+    expect(setModelMarkers).toHaveBeenLastCalledWith(mockRuntime.model, 'gme-lint', []);
+});
+
+it('underlines and provides hover text for the 1000th lint finding without drawing the 1001st', async () => {
+    const ref = { current: null as CodeEditorHandle | null };
+    const { unmount } = render(<CodeEditor ref={ref} documentId="document-1" initialValue="one" />);
+    await screen.findByRole('textbox', { name: 'Markdown source' });
+    const markers = Array.from({ length: 1001 }, (_, index) => ({
+        startLine: index + 1,
+        startColumn: 1,
+        endLine: index + 1,
+        endColumn: 2,
+        severity: 'warning' as const,
+        message: `Rule warning hint ${index + 1}`,
+    }));
+    markers[500].message = 'Rule *warning* <script> & hint 501';
+
+    expect(editHandle(ref).setMarkers(markers)).toBe(true);
+    expect(setModelMarkers.mock.lastCall?.[2]).toHaveLength(1001);
+    const decorations = setLintDecorations.mock.lastCall?.[0] as editor.IModelDeltaDecoration[] | undefined;
+    expect(decorations).toHaveLength(500);
+    expect(decorations?.[0]).toMatchObject({
+        range: { startLineNumber: 501, endLineNumber: 501 },
+        options: {
+            className: 'squiggly-warning',
+            hoverMessage: {
+                value: 'Rule \\*warning\\* &lt;script&gt; &amp; hint 501',
+                isTrusted: false,
+                supportHtml: false,
+            },
+        },
+    });
+    expect(decorations?.[499]).toMatchObject({
+        range: { startLineNumber: 1000, endLineNumber: 1000 },
+        options: { className: 'squiggly-warning', hoverMessage: { value: 'Rule warning hint 1000' } },
+    });
+    expect(editHandle(ref).setMarkers([])).toBe(true);
+    expect(setLintDecorations).toHaveBeenLastCalledWith([]);
+    unmount();
+    expect(clearLintDecorations).toHaveBeenCalled();
 });
 
 it('exposes the Monaco focus operation through the editor command handle', async () => {
@@ -260,6 +533,37 @@ it('exposes the Monaco focus operation through the editor command handle', async
 
     expect(ref.current?.focus()).toBe(true);
     expect(mockRuntime.editor.focus).toHaveBeenCalledTimes(1);
+});
+
+it('publishes a measured editor when a document first mounts and when its activation changes', async () => {
+    const publishedWidths: number[] = [];
+    const onEditorMounted = (instance: editor.IStandaloneCodeEditor): void => {
+        publishedWidths.push(instance.getLayoutInfo().width);
+    };
+    const { rerender } = render(
+        <CodeEditor
+            documentId="document-1"
+            initialValue="one"
+            activationId="first"
+            onEditorMounted={onEditorMounted}
+        />,
+    );
+    await screen.findByRole('textbox', { name: 'Markdown source' });
+    await waitFor(() => expect(publishedWidths).toHaveLength(1));
+    expect(publishedWidths).toEqual([300]);
+
+    mockRuntime.layoutWidth = 5;
+    installMockEditor();
+    rerender(
+        <CodeEditor
+            documentId="document-1"
+            initialValue="one"
+            activationId="second"
+            onEditorMounted={onEditorMounted}
+        />,
+    );
+    await waitFor(() => expect(publishedWidths).toHaveLength(2));
+    expect(publishedWidths).toEqual([300, 300]);
 });
 
 const readSource = (relativePath: string): string => readFileSync(resolve(process.cwd(), relativePath), 'utf8');
@@ -400,6 +704,8 @@ it('preserves the model cursor and selection on metadata rerender', async () => 
 it('keeps the mounted Monaco model intact when the root palette changes', async (): Promise<void> => {
     const { unmount } = render(<CodeEditor documentId="document-1" initialValue="palette-safe content" />);
     const model = await screen.findByRole('textbox', { name: 'Markdown source' });
+    await waitFor(() => expect(mockRuntime.editor.render).toHaveBeenCalled());
+    jest.mocked(mockRuntime.editor.render).mockClear();
 
     document.documentElement.setAttribute('data-theme', 'minimal');
     document.documentElement.setAttribute('data-mode', 'dark');
@@ -408,7 +714,7 @@ it('keeps the mounted Monaco model intact when the root palette changes', async 
     expect(screen.getByRole('textbox', { name: 'Markdown source' })).toBe(model);
     expect(mockRuntime.editor.getModel()).toBe(mockRuntime.model);
     expect(mockRuntime.model.setValue).not.toHaveBeenCalled();
-    expect(applyMonacoThemeFromRoot).toHaveBeenCalledTimes(1);
+    expect(mockRuntime.editor.render).toHaveBeenCalledWith(true);
 
     unmount();
 });

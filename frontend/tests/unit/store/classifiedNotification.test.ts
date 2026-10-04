@@ -132,3 +132,18 @@ it('still drops a remediation whose command cannot run', () => {
         ),
     ).toEqual([]);
 });
+
+it('offers Reveal retry only when a workspace path is present', () => {
+    const error: ClassifiedError = {
+        category: 'system-command-failure',
+        safeSubject: 'report.pdf',
+        message: 'The file manager could not reveal this document.',
+        remediations: ['Retry'],
+        dedupKey: 'reveal:report.pdf',
+    };
+
+    expect(report(error, { intent: 'reveal-workspace-path', retry: { path: '/elsewhere/report.pdf' } })).toEqual([
+        { action: 'retry', intent: 'reveal-workspace-path' },
+    ]);
+    expect(report(error, { intent: 'reveal-workspace-path', retry: { path: '' } })).toEqual([]);
+});

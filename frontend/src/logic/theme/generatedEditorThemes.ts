@@ -15,6 +15,7 @@ export const generatedEditorThemes = {
             'editor.lineHighlightBackground': '#46548c1f',
             'editorGutter.background': '#00000000',
             'editorWidget.background': '#ffffff57',
+            'editorHoverWidget.background': '#ffffffcc',
             'editorWidget.border': '#46548c3d',
             'editorSuggestWidget.background': '#ffffff57',
             'editorSuggestWidget.foreground': '#1c2338',
@@ -26,6 +27,142 @@ export const generatedEditorThemes = {
             'editorWarning.foreground': '#b7791f',
         },
         rules: [
+            {
+                token: 'keyword',
+                foreground: '#7c3aed',
+            },
+            {
+                token: 'string',
+                foreground: '#0369a1',
+            },
+            {
+                token: 'comment',
+                foreground: '#9aa1ab',
+            },
+            {
+                token: 'number',
+                foreground: '#b45309',
+            },
+            {
+                token: 'type',
+                foreground: '#0f766e',
+            },
+            {
+                token: 'delimiter',
+                foreground: '#5c5c69',
+            },
+            {
+                token: 'operator',
+                foreground: '#5c5c69',
+            },
+            {
+                token: 'annotation',
+                foreground: '#be123c',
+            },
+            {
+                token: 'attribute.name',
+                foreground: '#be123c',
+            },
+            {
+                token: 'tag',
+                foreground: '#be123c',
+            },
+            {
+                token: 'predefined',
+                foreground: '#3056d3',
+            },
+            {
+                token: 'number.hex',
+                foreground: '#b45309',
+            },
+            {
+                token: 'delimiter.html',
+                foreground: '#5c5c69',
+            },
+            {
+                token: 'delimiter.xml',
+                foreground: '#5c5c69',
+            },
+            {
+                token: 'string.key.json',
+                foreground: '#be123c',
+            },
+            {
+                token: 'string.value.json',
+                foreground: '#0369a1',
+            },
+            {
+                token: 'attribute.value',
+                foreground: '#0369a1',
+            },
+            {
+                token: 'attribute.value.number',
+                foreground: '#b45309',
+            },
+            {
+                token: 'attribute.value.unit',
+                foreground: '#b45309',
+            },
+            {
+                token: 'attribute.value.number.css',
+                foreground: '#b45309',
+            },
+            {
+                token: 'attribute.value.unit.css',
+                foreground: '#b45309',
+            },
+            {
+                token: 'attribute.value.hex.css',
+                foreground: '#b45309',
+            },
+            {
+                token: 'attribute.value.html',
+                foreground: '#0369a1',
+            },
+            {
+                token: 'attribute.value.xml',
+                foreground: '#0369a1',
+            },
+            {
+                token: 'string.html',
+                foreground: '#0369a1',
+            },
+            {
+                token: 'string.sql',
+                foreground: '#0369a1',
+            },
+            {
+                token: 'string.yaml',
+                foreground: '#0369a1',
+            },
+            {
+                token: 'keyword.json',
+                foreground: '#7c3aed',
+            },
+            {
+                token: 'keyword.flow',
+                foreground: '#7c3aed',
+            },
+            {
+                token: 'keyword.flow.scss',
+                foreground: '#7c3aed',
+            },
+            {
+                token: 'operator.scss',
+                foreground: '#5c5c69',
+            },
+            {
+                token: 'operator.sql',
+                foreground: '#5c5c69',
+            },
+            {
+                token: 'operator.swift',
+                foreground: '#5c5c69',
+            },
+            {
+                token: 'predefined.sql',
+                foreground: '#3056d3',
+            },
             {
                 token: 'keyword.md',
                 foreground: '#3056d3',
@@ -151,6 +288,7 @@ export const generatedEditorThemes = {
             'editor.lineHighlightBackground': '#ffffff29',
             'editorGutter.background': '#00000000',
             'editorWidget.background': '#ffffff1a',
+            'editorHoverWidget.background': '#1c1e36d1',
             'editorWidget.border': '#ffffff2e',
             'editorSuggestWidget.background': '#ffffff1a',
             'editorSuggestWidget.foreground': '#eaf0ff',
@@ -162,6 +300,142 @@ export const generatedEditorThemes = {
             'editorWarning.foreground': '#ffcf6b',
         },
         rules: [
+            {
+                token: 'keyword',
+                foreground: '#c58bff',
+            },
+            {
+                token: 'string',
+                foreground: '#7fe3b5',
+            },
+            {
+                token: 'comment',
+                foreground: '#8a93b8',
+            },
+            {
+                token: 'number',
+                foreground: '#ffd479',
+            },
+            {
+                token: 'type',
+                foreground: '#5eead4',
+            },
+            {
+                token: 'delimiter',
+                foreground: '#9aa1ab',
+            },
+            {
+                token: 'operator',
+                foreground: '#9aa1ab',
+            },
+            {
+                token: 'annotation',
+                foreground: '#ff9d7a',
+            },
+            {
+                token: 'attribute.name',
+                foreground: '#ff9d7a',
+            },
+            {
+                token: 'tag',
+                foreground: '#ff9d7a',
+            },
+            {
+                token: 'predefined',
+                foreground: '#8fb4ff',
+            },
+            {
+                token: 'number.hex',
+                foreground: '#ffd479',
+            },
+            {
+                token: 'delimiter.html',
+                foreground: '#9aa1ab',
+            },
+            {
+                token: 'delimiter.xml',
+                foreground: '#9aa1ab',
+            },
+            {
+                token: 'string.key.json',
+                foreground: '#ff9d7a',
+            },
+            {
+                token: 'string.value.json',
+                foreground: '#7fe3b5',
+            },
+            {
+                token: 'attribute.value',
+                foreground: '#7fe3b5',
+            },
+            {
+                token: 'attribute.value.number',
+                foreground: '#ffd479',
+            },
+            {
+                token: 'attribute.value.unit',
+                foreground: '#ffd479',
+            },
+            {
+                token: 'attribute.value.number.css',
+                foreground: '#ffd479',
+            },
+            {
+                token: 'attribute.value.unit.css',
+                foreground: '#ffd479',
+            },
+            {
+                token: 'attribute.value.hex.css',
+                foreground: '#ffd479',
+            },
+            {
+                token: 'attribute.value.html',
+                foreground: '#7fe3b5',
+            },
+            {
+                token: 'attribute.value.xml',
+                foreground: '#7fe3b5',
+            },
+            {
+                token: 'string.html',
+                foreground: '#7fe3b5',
+            },
+            {
+                token: 'string.sql',
+                foreground: '#7fe3b5',
+            },
+            {
+                token: 'string.yaml',
+                foreground: '#7fe3b5',
+            },
+            {
+                token: 'keyword.json',
+                foreground: '#c58bff',
+            },
+            {
+                token: 'keyword.flow',
+                foreground: '#c58bff',
+            },
+            {
+                token: 'keyword.flow.scss',
+                foreground: '#c58bff',
+            },
+            {
+                token: 'operator.scss',
+                foreground: '#9aa1ab',
+            },
+            {
+                token: 'operator.sql',
+                foreground: '#9aa1ab',
+            },
+            {
+                token: 'operator.swift',
+                foreground: '#9aa1ab',
+            },
+            {
+                token: 'predefined.sql',
+                foreground: '#8fb4ff',
+            },
             {
                 token: 'keyword.md',
                 foreground: '#8fb4ff',
@@ -287,6 +561,7 @@ export const generatedEditorThemes = {
             'editor.lineHighlightBackground': '#eceaf6',
             'editorGutter.background': '#00000000',
             'editorWidget.background': '#ffffff',
+            'editorHoverWidget.background': '#f3f1fb',
             'editorWidget.border': '#e3e1ee',
             'editorSuggestWidget.background': '#ffffff',
             'editorSuggestWidget.foreground': '#1b1b22',
@@ -298,6 +573,142 @@ export const generatedEditorThemes = {
             'editorWarning.foreground': '#8a5a00',
         },
         rules: [
+            {
+                token: 'keyword',
+                foreground: '#7c3aed',
+            },
+            {
+                token: 'string',
+                foreground: '#0369a1',
+            },
+            {
+                token: 'comment',
+                foreground: '#9aa1ab',
+            },
+            {
+                token: 'number',
+                foreground: '#b45309',
+            },
+            {
+                token: 'type',
+                foreground: '#0f766e',
+            },
+            {
+                token: 'delimiter',
+                foreground: '#5c5c69',
+            },
+            {
+                token: 'operator',
+                foreground: '#5c5c69',
+            },
+            {
+                token: 'annotation',
+                foreground: '#be123c',
+            },
+            {
+                token: 'attribute.name',
+                foreground: '#be123c',
+            },
+            {
+                token: 'tag',
+                foreground: '#be123c',
+            },
+            {
+                token: 'predefined',
+                foreground: '#3056d3',
+            },
+            {
+                token: 'number.hex',
+                foreground: '#b45309',
+            },
+            {
+                token: 'delimiter.html',
+                foreground: '#5c5c69',
+            },
+            {
+                token: 'delimiter.xml',
+                foreground: '#5c5c69',
+            },
+            {
+                token: 'string.key.json',
+                foreground: '#be123c',
+            },
+            {
+                token: 'string.value.json',
+                foreground: '#0369a1',
+            },
+            {
+                token: 'attribute.value',
+                foreground: '#0369a1',
+            },
+            {
+                token: 'attribute.value.number',
+                foreground: '#b45309',
+            },
+            {
+                token: 'attribute.value.unit',
+                foreground: '#b45309',
+            },
+            {
+                token: 'attribute.value.number.css',
+                foreground: '#b45309',
+            },
+            {
+                token: 'attribute.value.unit.css',
+                foreground: '#b45309',
+            },
+            {
+                token: 'attribute.value.hex.css',
+                foreground: '#b45309',
+            },
+            {
+                token: 'attribute.value.html',
+                foreground: '#0369a1',
+            },
+            {
+                token: 'attribute.value.xml',
+                foreground: '#0369a1',
+            },
+            {
+                token: 'string.html',
+                foreground: '#0369a1',
+            },
+            {
+                token: 'string.sql',
+                foreground: '#0369a1',
+            },
+            {
+                token: 'string.yaml',
+                foreground: '#0369a1',
+            },
+            {
+                token: 'keyword.json',
+                foreground: '#7c3aed',
+            },
+            {
+                token: 'keyword.flow',
+                foreground: '#7c3aed',
+            },
+            {
+                token: 'keyword.flow.scss',
+                foreground: '#7c3aed',
+            },
+            {
+                token: 'operator.scss',
+                foreground: '#5c5c69',
+            },
+            {
+                token: 'operator.sql',
+                foreground: '#5c5c69',
+            },
+            {
+                token: 'operator.swift',
+                foreground: '#5c5c69',
+            },
+            {
+                token: 'predefined.sql',
+                foreground: '#3056d3',
+            },
             {
                 token: 'keyword.md',
                 foreground: '#3056d3',
@@ -423,6 +834,7 @@ export const generatedEditorThemes = {
             'editor.lineHighlightBackground': '#2a2a34',
             'editorGutter.background': '#00000000',
             'editorWidget.background': '#1d1d25',
+            'editorHoverWidget.background': '#24242e',
             'editorWidget.border': '#33333f',
             'editorSuggestWidget.background': '#1d1d25',
             'editorSuggestWidget.foreground': '#e6e6ee',
@@ -434,6 +846,142 @@ export const generatedEditorThemes = {
             'editorWarning.foreground': '#ffcf6b',
         },
         rules: [
+            {
+                token: 'keyword',
+                foreground: '#c58bff',
+            },
+            {
+                token: 'string',
+                foreground: '#7fe3b5',
+            },
+            {
+                token: 'comment',
+                foreground: '#8a93b8',
+            },
+            {
+                token: 'number',
+                foreground: '#ffd479',
+            },
+            {
+                token: 'type',
+                foreground: '#5eead4',
+            },
+            {
+                token: 'delimiter',
+                foreground: '#9aa1ab',
+            },
+            {
+                token: 'operator',
+                foreground: '#9aa1ab',
+            },
+            {
+                token: 'annotation',
+                foreground: '#ff9d7a',
+            },
+            {
+                token: 'attribute.name',
+                foreground: '#ff9d7a',
+            },
+            {
+                token: 'tag',
+                foreground: '#ff9d7a',
+            },
+            {
+                token: 'predefined',
+                foreground: '#8fb4ff',
+            },
+            {
+                token: 'number.hex',
+                foreground: '#ffd479',
+            },
+            {
+                token: 'delimiter.html',
+                foreground: '#9aa1ab',
+            },
+            {
+                token: 'delimiter.xml',
+                foreground: '#9aa1ab',
+            },
+            {
+                token: 'string.key.json',
+                foreground: '#ff9d7a',
+            },
+            {
+                token: 'string.value.json',
+                foreground: '#7fe3b5',
+            },
+            {
+                token: 'attribute.value',
+                foreground: '#7fe3b5',
+            },
+            {
+                token: 'attribute.value.number',
+                foreground: '#ffd479',
+            },
+            {
+                token: 'attribute.value.unit',
+                foreground: '#ffd479',
+            },
+            {
+                token: 'attribute.value.number.css',
+                foreground: '#ffd479',
+            },
+            {
+                token: 'attribute.value.unit.css',
+                foreground: '#ffd479',
+            },
+            {
+                token: 'attribute.value.hex.css',
+                foreground: '#ffd479',
+            },
+            {
+                token: 'attribute.value.html',
+                foreground: '#7fe3b5',
+            },
+            {
+                token: 'attribute.value.xml',
+                foreground: '#7fe3b5',
+            },
+            {
+                token: 'string.html',
+                foreground: '#7fe3b5',
+            },
+            {
+                token: 'string.sql',
+                foreground: '#7fe3b5',
+            },
+            {
+                token: 'string.yaml',
+                foreground: '#7fe3b5',
+            },
+            {
+                token: 'keyword.json',
+                foreground: '#c58bff',
+            },
+            {
+                token: 'keyword.flow',
+                foreground: '#c58bff',
+            },
+            {
+                token: 'keyword.flow.scss',
+                foreground: '#c58bff',
+            },
+            {
+                token: 'operator.scss',
+                foreground: '#9aa1ab',
+            },
+            {
+                token: 'operator.sql',
+                foreground: '#9aa1ab',
+            },
+            {
+                token: 'operator.swift',
+                foreground: '#9aa1ab',
+            },
+            {
+                token: 'predefined.sql',
+                foreground: '#8fb4ff',
+            },
             {
                 token: 'keyword.md',
                 foreground: '#8fb4ff',
@@ -559,6 +1107,7 @@ export const generatedEditorThemes = {
             'editor.lineHighlightBackground': '#f4f4f3',
             'editorGutter.background': '#00000000',
             'editorWidget.background': '#fbfbfa',
+            'editorHoverWidget.background': '#ffffff',
             'editorWidget.border': '#e4e4e7',
             'editorSuggestWidget.background': '#fbfbfa',
             'editorSuggestWidget.foreground': '#1f2328',
@@ -570,6 +1119,142 @@ export const generatedEditorThemes = {
             'editorWarning.foreground': '#b45309',
         },
         rules: [
+            {
+                token: 'keyword',
+                foreground: '#7c3aed',
+            },
+            {
+                token: 'string',
+                foreground: '#0369a1',
+            },
+            {
+                token: 'comment',
+                foreground: '#9aa1ab',
+            },
+            {
+                token: 'number',
+                foreground: '#b45309',
+            },
+            {
+                token: 'type',
+                foreground: '#0f766e',
+            },
+            {
+                token: 'delimiter',
+                foreground: '#5c5c69',
+            },
+            {
+                token: 'operator',
+                foreground: '#5c5c69',
+            },
+            {
+                token: 'annotation',
+                foreground: '#be123c',
+            },
+            {
+                token: 'attribute.name',
+                foreground: '#be123c',
+            },
+            {
+                token: 'tag',
+                foreground: '#be123c',
+            },
+            {
+                token: 'predefined',
+                foreground: '#3056d3',
+            },
+            {
+                token: 'number.hex',
+                foreground: '#b45309',
+            },
+            {
+                token: 'delimiter.html',
+                foreground: '#5c5c69',
+            },
+            {
+                token: 'delimiter.xml',
+                foreground: '#5c5c69',
+            },
+            {
+                token: 'string.key.json',
+                foreground: '#be123c',
+            },
+            {
+                token: 'string.value.json',
+                foreground: '#0369a1',
+            },
+            {
+                token: 'attribute.value',
+                foreground: '#0369a1',
+            },
+            {
+                token: 'attribute.value.number',
+                foreground: '#b45309',
+            },
+            {
+                token: 'attribute.value.unit',
+                foreground: '#b45309',
+            },
+            {
+                token: 'attribute.value.number.css',
+                foreground: '#b45309',
+            },
+            {
+                token: 'attribute.value.unit.css',
+                foreground: '#b45309',
+            },
+            {
+                token: 'attribute.value.hex.css',
+                foreground: '#b45309',
+            },
+            {
+                token: 'attribute.value.html',
+                foreground: '#0369a1',
+            },
+            {
+                token: 'attribute.value.xml',
+                foreground: '#0369a1',
+            },
+            {
+                token: 'string.html',
+                foreground: '#0369a1',
+            },
+            {
+                token: 'string.sql',
+                foreground: '#0369a1',
+            },
+            {
+                token: 'string.yaml',
+                foreground: '#0369a1',
+            },
+            {
+                token: 'keyword.json',
+                foreground: '#7c3aed',
+            },
+            {
+                token: 'keyword.flow',
+                foreground: '#7c3aed',
+            },
+            {
+                token: 'keyword.flow.scss',
+                foreground: '#7c3aed',
+            },
+            {
+                token: 'operator.scss',
+                foreground: '#5c5c69',
+            },
+            {
+                token: 'operator.sql',
+                foreground: '#5c5c69',
+            },
+            {
+                token: 'operator.swift',
+                foreground: '#5c5c69',
+            },
+            {
+                token: 'predefined.sql',
+                foreground: '#3056d3',
+            },
             {
                 token: 'keyword.md',
                 foreground: '#3056d3',
@@ -695,6 +1380,7 @@ export const generatedEditorThemes = {
             'editor.lineHighlightBackground': '#1e1e21',
             'editorGutter.background': '#00000000',
             'editorWidget.background': '#141416',
+            'editorHoverWidget.background': '#1c1c1f',
             'editorWidget.border': '#28282c',
             'editorSuggestWidget.background': '#141416',
             'editorSuggestWidget.foreground': '#e7e7ea',
@@ -706,6 +1392,142 @@ export const generatedEditorThemes = {
             'editorWarning.foreground': '#fbbf24',
         },
         rules: [
+            {
+                token: 'keyword',
+                foreground: '#c58bff',
+            },
+            {
+                token: 'string',
+                foreground: '#7fe3b5',
+            },
+            {
+                token: 'comment',
+                foreground: '#8a93b8',
+            },
+            {
+                token: 'number',
+                foreground: '#ffd479',
+            },
+            {
+                token: 'type',
+                foreground: '#5eead4',
+            },
+            {
+                token: 'delimiter',
+                foreground: '#9aa1ab',
+            },
+            {
+                token: 'operator',
+                foreground: '#9aa1ab',
+            },
+            {
+                token: 'annotation',
+                foreground: '#ff9d7a',
+            },
+            {
+                token: 'attribute.name',
+                foreground: '#ff9d7a',
+            },
+            {
+                token: 'tag',
+                foreground: '#ff9d7a',
+            },
+            {
+                token: 'predefined',
+                foreground: '#8fb4ff',
+            },
+            {
+                token: 'number.hex',
+                foreground: '#ffd479',
+            },
+            {
+                token: 'delimiter.html',
+                foreground: '#9aa1ab',
+            },
+            {
+                token: 'delimiter.xml',
+                foreground: '#9aa1ab',
+            },
+            {
+                token: 'string.key.json',
+                foreground: '#ff9d7a',
+            },
+            {
+                token: 'string.value.json',
+                foreground: '#7fe3b5',
+            },
+            {
+                token: 'attribute.value',
+                foreground: '#7fe3b5',
+            },
+            {
+                token: 'attribute.value.number',
+                foreground: '#ffd479',
+            },
+            {
+                token: 'attribute.value.unit',
+                foreground: '#ffd479',
+            },
+            {
+                token: 'attribute.value.number.css',
+                foreground: '#ffd479',
+            },
+            {
+                token: 'attribute.value.unit.css',
+                foreground: '#ffd479',
+            },
+            {
+                token: 'attribute.value.hex.css',
+                foreground: '#ffd479',
+            },
+            {
+                token: 'attribute.value.html',
+                foreground: '#7fe3b5',
+            },
+            {
+                token: 'attribute.value.xml',
+                foreground: '#7fe3b5',
+            },
+            {
+                token: 'string.html',
+                foreground: '#7fe3b5',
+            },
+            {
+                token: 'string.sql',
+                foreground: '#7fe3b5',
+            },
+            {
+                token: 'string.yaml',
+                foreground: '#7fe3b5',
+            },
+            {
+                token: 'keyword.json',
+                foreground: '#c58bff',
+            },
+            {
+                token: 'keyword.flow',
+                foreground: '#c58bff',
+            },
+            {
+                token: 'keyword.flow.scss',
+                foreground: '#c58bff',
+            },
+            {
+                token: 'operator.scss',
+                foreground: '#9aa1ab',
+            },
+            {
+                token: 'operator.sql',
+                foreground: '#9aa1ab',
+            },
+            {
+                token: 'operator.swift',
+                foreground: '#9aa1ab',
+            },
+            {
+                token: 'predefined.sql',
+                foreground: '#8fb4ff',
+            },
             {
                 token: 'keyword.md',
                 foreground: '#8fb4ff',

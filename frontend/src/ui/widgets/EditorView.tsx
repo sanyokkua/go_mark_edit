@@ -4,6 +4,8 @@ import type { EditorPosition } from '../components/CodeEditor';
 import { appModelAdapter } from '../../logic/adapter';
 import { dispatchAction } from '../../logic/actions/actionDispatcher';
 import type { LivePreviewSnapshot } from '../../logic/hooks/useLivePreview';
+import type { ProblemsSummary } from '../../logic/operations/problemsSummary';
+import type { LintFinding } from '../../logic/tidy/protocol';
 import { useAppDispatch, useAppSelector } from '../../logic/store';
 import { setViewArrangement } from '../../logic/store/docViewCommands';
 import { notifyToast } from '../../logic/store/notificationsSlice';
@@ -19,7 +21,12 @@ import { DocumentCommandContext, EditorSessionContext } from './editorSession';
 import type { DocumentTabsProps } from './DocumentTabs/DocumentTabs';
 import DocumentTabs from './DocumentTabs/DocumentTabs';
 import FormattingToolbar from './FormattingToolbar/FormattingToolbar';
-import EditorStage, { type EditorStageAdapter, type EditorStageHandle } from './EditorStage/EditorStage';
+import EditorStage, {
+    type EditorStageAdapter,
+    type EditorStageHandle,
+    type EditorStageProps,
+} from './EditorStage/EditorStage';
+import ProblemsPanel from './ProblemsPanel/ProblemsPanel';
 import { EDITOR_TABPANEL_ID, tabElementId } from './editorTabPanel';
 import { useMinimumWindow } from './minimumWindow';
 import styles from './EditorView.module.css';
@@ -43,6 +50,9 @@ function fallbackView(): DocumentView {
 }
 
 export interface EditorViewProps {
+    problemsOpen?: boolean;
+    problemsSummary?: ProblemsSummary | null;
+    onCloseProblems?: () => void;
     tabRevealRequest?: DocumentTabsProps['revealRequest'];
     editorFocusRequest?: { documentId: string; sequence: number } | null;
     adapter?: EditorViewAdapter;
@@ -56,7 +66,8 @@ export interface EditorViewProps {
         targetDocumentIds?: string[],
     ) => Promise<TabTransitionResult>;
     onExternalConflict?: (preview: ConflictPreview) => void;
-    onFocusedDocumentOpen?: (documentId: string) => void;
+    onOpenLink?: EditorStageProps['onOpenLink'];
+    fragmentRequest?: EditorStageProps['fragmentRequest'];
     onLiveCursorChange?: (cursor: EditorPosition) => void;
 }
 
@@ -71,13 +82,17 @@ function arrangementFor(view: DocumentView): ViewArrangement {
 }
 
 const EditorView: React.FC<EditorViewProps> = ({
+    problemsOpen = false,
+    problemsSummary = null,
+    onCloseProblems,
     adapter = appModelAdapter,
     tabAdapter,
     onNewDocument,
     onActivateDocument,
     onCloseDocument,
     onExternalConflict,
-    onFocusedDocumentOpen,
+    onOpenLink,
+    fragmentRequest,
     onLiveCursorChange: onLiveCursorChangeProp,
     tabRevealRequest,
     editorFocusRequest,
@@ -89,6 +104,7 @@ const EditorView: React.FC<EditorViewProps> = ({
     const documentCommands = useContext(DocumentCommandContext);
     const handledEditorFocus = useRef(0);
     const [editorReadyEpoch, setEditorReadyEpoch] = useState(0);
+    const pendingProblem = useRef<{ documentId: string; finding: LintFinding } | null>(null);
     const stageRef = useRef<EditorStageHandle | null>(null);
     const activeDocument = useAppSelector((state) => {
         if (activeBuffer === null) {
@@ -157,6 +173,38 @@ const EditorView: React.FC<EditorViewProps> = ({
         }
         return accepted;
     }, []);
+    const activateFinding = useCallback(
+        (finding: LintFinding): void => {
+            if (activeDocument?.view.editorVisible === false && activeBuffer !== null) {
+                pendingProblem.current = { documentId: activeBuffer.documentId, finding };
+                void dispatch(setViewArrangement('editor'))
+                    .unwrap()
+                    .catch((): void => {
+                        pendingProblem.current = null;
+                    });
+                return;
+            }
+            if (documentCommands?.setPosition(finding.startLine, finding.startColumn).status === 'available') {
+                documentCommands.focus();
+            }
+        },
+        [activeBuffer, activeDocument?.view.editorVisible, dispatch, documentCommands],
+    );
+    useEffect(() => {
+        const pending = pendingProblem.current;
+        if (pending === null) return;
+        if (activeBuffer?.documentId !== pending.documentId) {
+            pendingProblem.current = null;
+            return;
+        }
+        if (activeDocument?.view.editorVisible !== true) return;
+        if (
+            documentCommands?.setPosition(pending.finding.startLine, pending.finding.startColumn).status === 'available'
+        ) {
+            documentCommands.focus();
+            pendingProblem.current = null;
+        }
+    }, [activeBuffer?.documentId, activeDocument?.view.editorVisible, documentCommands]);
 
     if (activeBuffer === null) {
         return null;
@@ -185,17 +233,24 @@ const EditorView: React.FC<EditorViewProps> = ({
                 activeDocument={activeDocument}
                 adapter={adapter}
                 editorVisible={editorVisible}
+                interactionBlocked={modalOpen}
                 labelledBy={activeBuffer.documentId === '' ? undefined : tabElementId(activeBuffer.documentId)}
                 onLiveCursorChange={onLiveCursorChange}
                 onEditorReady={onEditorReady}
                 onPreviewRefresh={onPreviewRefresh}
                 onPreviewWarning={onPreviewWarning}
-                onFocusedDocumentOpen={onFocusedDocumentOpen}
+                onOpenLink={onOpenLink}
+                fragmentRequest={fragmentRequest}
                 panelId={EDITOR_TABPANEL_ID}
                 previewVisible={previewVisible}
                 readOnly={activeDocumentReadOnly}
                 view={view}
             />
+            {problemsOpen && onCloseProblems !== undefined ? (
+                <div className={styles.problemsDock}>
+                    <ProblemsPanel summary={problemsSummary} onActivate={activateFinding} onClose={onCloseProblems} />
+                </div>
+            ) : null}
         </section>
     );
 };

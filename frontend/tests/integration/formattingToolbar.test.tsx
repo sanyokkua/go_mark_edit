@@ -1,15 +1,22 @@
-import { createEvent, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, createEvent, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { Provider } from 'react-redux';
+import { loadedMarkdownSettings } from '../support/loadedMarkdownSettings';
+import { hydrateSettings, resetSettingsProjection } from '../../src/logic/store/settingsSlice';
 
 import { store } from '../../src/logic/store';
 import { currentPlatform } from '../../src/logic/actions/shortcutRegistry';
 import EditorContextMenu from '../../src/ui/widgets/EditorContextMenu';
 import { DocumentCommandContext, EditorSessionContext } from '../../src/ui/widgets/editorSession';
 import FormattingToolbar from '../../src/ui/widgets/FormattingToolbar/FormattingToolbar';
+import { acquire } from '../../src/logic/operations/operationSlot';
+import { TidyCommandsContext } from '../../src/ui/widgets/tidyCommandsContext';
 
 const renderToolbar = (
     ui: React.ReactNode = <FormattingToolbar arrangement="split" onArrangementChange={jest.fn()} />,
-) => render(<Provider store={store}>{ui}</Provider>);
+) => {
+    store.dispatch(hydrateSettings(loadedMarkdownSettings));
+    return render(<Provider store={store}>{ui}</Provider>);
+};
 
 function rect(width: number, height = 30): DOMRect {
     return {
@@ -25,6 +32,35 @@ function rect(width: number, height = 30): DOMRect {
     } as DOMRect;
 }
 
+it('gates marker controls across toolbar and context menu until settings load', () => {
+    store.dispatch(resetSettingsProjection());
+    render(
+        <Provider store={store}>
+            <FormattingToolbar arrangement="split" onArrangementChange={jest.fn()} />
+            <EditorContextMenu>
+                <button type="button" data-editor-surface>
+                    Editor surface
+                </button>
+            </EditorContextMenu>
+        </Provider>,
+    );
+    for (const name of ['Italic', 'Bullet list', 'Task list']) {
+        expect(screen.getByRole('button', { name })).toBeDisabled();
+    }
+    expect(screen.getByRole('button', { name: 'Bold' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Numbered list' })).toBeEnabled();
+    fireEvent.contextMenu(screen.getByRole('button', { name: 'Editor surface' }));
+    expect(screen.getByRole('menuitem', { name: /Italic/ })).toBeDisabled();
+
+    act(() => {
+        store.dispatch(hydrateSettings(loadedMarkdownSettings));
+    });
+    for (const name of ['Italic', 'Bullet list', 'Task list']) {
+        expect(screen.getByRole('button', { name })).toBeEnabled();
+    }
+    expect(screen.getByRole('menuitem', { name: /Italic/ })).toBeEnabled();
+});
+
 it('renders grouped formatting controls with a trailing arrangement island', () => {
     renderToolbar();
 
@@ -37,6 +73,28 @@ it('renders grouped formatting controls with a trailing arrangement island', () 
     expect(toolbar.querySelector('[data-bar-slot="trailing"] [role="radiogroup"]')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Bold' })).toHaveAttribute('data-tool-button-variant', 'icon');
     expect(screen.getByRole('button', { name: 'Format' })).toHaveAttribute('data-tool-button-variant', 'text');
+});
+
+it('replaces the matching always-visible tidy control with Cancel while progress is visible', () => {
+    const slot = acquire('compact', { documentId: 'doc-1', size: 1024 * 1024 + 1 });
+    expect(slot).not.toBeNull();
+    const cancel = jest.fn();
+    try {
+        renderToolbar(
+            <TidyCommandsContext.Provider value={{ run: jest.fn(), cancel, documentChanged: jest.fn() }}>
+                <FormattingToolbar arrangement="editor" onArrangementChange={jest.fn()} />
+            </TidyCommandsContext.Provider>,
+        );
+        const toolbar = screen.getByRole('toolbar', { name: 'Document toolbar' });
+        const control = within(toolbar).getByRole('button', { name: 'Cancel' });
+        expect(control.closest('[data-bar-overflow="never"]')).toBeInTheDocument();
+        expect(within(toolbar).queryByRole('button', { name: 'Compact' })).not.toBeInTheDocument();
+        expect(within(toolbar).getByRole('button', { name: 'Format' })).toBeDisabled();
+        fireEvent.click(control);
+        expect(cancel).toHaveBeenCalledTimes(1);
+    } finally {
+        slot?.release();
+    }
 });
 
 it('moves measured groups into the shared overflow Popup below 768px', async () => {
@@ -120,6 +178,9 @@ it('routes a formatting activation through the editor command context', async ()
         })),
         replaceRange,
         replaceAll: jest.fn(),
+        applyEdits: jest.fn(() => ({ status: 'available' as const, value: undefined })),
+        setPosition: jest.fn(() => ({ status: 'available' as const, value: undefined })),
+        setMarkers: jest.fn(() => ({ status: 'available' as const, value: undefined })),
     };
 
     renderToolbar(
@@ -132,7 +193,7 @@ it('routes a formatting activation through the editor command context', async ()
 
     fireEvent.click(screen.getByRole('button', { name: 'Italic' }));
 
-    await waitFor(() => expect(replaceRange).toHaveBeenCalledWith(expect.anything(), '*word*', expect.anything()));
+    await waitFor(() => expect(replaceRange).toHaveBeenCalledWith(expect.anything(), '_word_', expect.anything()));
     expect(focus).toHaveBeenCalledTimes(1);
 });
 
@@ -150,6 +211,9 @@ it('uses one focused editor-action path for toolbar, popup, and shortcut formatt
             },
         }),
         replaceAll: jest.fn(),
+        applyEdits: jest.fn(() => ({ status: 'available' as const, value: undefined })),
+        setPosition: jest.fn(() => ({ status: 'available' as const, value: undefined })),
+        setMarkers: jest.fn(() => ({ status: 'available' as const, value: undefined })),
         replaceRange,
     };
 

@@ -6,7 +6,7 @@ interface GeneratedTheme {
 }
 
 interface GeneratedOutput {
-    highlightCss: string;
+    highlightRules: Array<{ className: string; token: string }>;
     themes: Record<string, GeneratedTheme>;
 }
 
@@ -17,7 +17,7 @@ function generate(css: string): GeneratedOutput {
 const materialPalette = `
 :root { --editor-content-background: rgba(0,0,0,0); }
 :root[data-theme='material'][data-mode='light'] {
-  --app-bg: #faf8ff; --surface: #ffffff; --stroke: #e3e1ee; --text: #1b1b22;
+  --app-bg: #faf8ff; --surface: #ffffff; --elevated: rgba(255,255,255,.8); --stroke: #e3e1ee; --text: #1b1b22;
   --gutter: #c9ccd3; --accent: #4f6bed; --accent-soft: #dfe4ff;
   --selection-bg: #dfe4ff; --hover: rgba(0,0,0,.05); --scrollbar-thumb: #aeb6c9;
   --scrollbar-thumb-hover: #8994ad; --err: #b3261e; --warn: #b7791f;
@@ -28,7 +28,7 @@ const materialPalette = `
   --hl-function: #3056d3; --hl-type: #0f766e; --hl-attr: #be123c; --hl-punct: #5c5c69;
 }
 :root[data-theme='material'][data-mode='dark'] {
-  --app-bg: #171820; --surface: #20212b; --stroke: #3c4050; --text: #eef0f8;
+  --app-bg: #171820; --surface: #20212b; --elevated: rgba(28,30,54,.82); --stroke: #3c4050; --text: #eef0f8;
   --gutter: rgba(255,255,255,.22); --accent: #4f6bed; --accent-soft: #dfe4ff;
   --selection-bg: #3a4b87; --hover: rgba(255,255,255,.16); --scrollbar-thumb: #555b70;
   --scrollbar-thumb-hover: #707892; --err: #ff7a90; --warn: #ffcf6b;
@@ -59,12 +59,23 @@ it('generates six complete named Monaco themes from palette values', () => {
     expect(generated.themes['gme-material-dark'].rules.find((rule) => rule.token === 'keyword.go')?.foreground).toBe(
         '#c58bff',
     );
-    expect(generated.highlightCss).toMatch(/hljs-keyword/);
+    expect(generated.highlightRules).toContainEqual({ className: 'hljs-keyword', token: '--hl-keyword' });
 });
 
 it('converts CSS rgba palette values to Monaco-compatible hex', () => {
     const translucentPalette = palette.replace('--surface: #ffffff;', '--surface: rgba(255,255,255,.42);');
     expect(generate(translucentPalette).themes['gme-glass-light'].colors['editorWidget.background']).toBe('#ffffff6b');
+});
+
+it('gives Glass hover text an elevated background independent of its translucent widget surface', () => {
+    const glassPalette = palette
+        .replace('--surface: #ffffff;', '--surface: rgba(255,255,255,.34);')
+        .replace('--surface: #20212b;', '--surface: rgba(255,255,255,.10);');
+    const generated = generate(glassPalette);
+
+    expect(generated.themes['gme-glass-light'].colors['editorWidget.background']).toBe('#ffffff57');
+    expect(generated.themes['gme-glass-light'].colors['editorHoverWidget.background']).toBe('#ffffffcc');
+    expect(generated.themes['gme-glass-dark'].colors['editorHoverWidget.background']).toBe('#1c1e36d1');
 });
 
 it('leaves the editor, gutter, and minimap transparent in every palette', () => {
@@ -101,6 +112,103 @@ it('shares each fenced-language value by appearance across themes', () => {
     expect(generated.themes['gme-glass-light'].rules.find((rule) => rule.token === 'keyword.go')?.foreground).toBe(
         generated.themes['gme-minimal-light'].rules.find((rule) => rule.token === 'keyword.go')?.foreground,
     );
+});
+
+it('maps generic Monaco token families to the shared syntax palette in all six themes', () => {
+    const generated = generate(palette);
+    const expected = {
+        keyword: ['#7c3aed', '#c58bff'],
+        string: ['#0369a1', '#7fe3b5'],
+        comment: ['#9aa1ab', '#8a93b8'],
+        number: ['#b45309', '#ffd479'],
+        type: ['#0f766e', '#5eead4'],
+        delimiter: ['#5c5c69', '#9aa1ab'],
+        operator: ['#5c5c69', '#9aa1ab'],
+        annotation: ['#be123c', '#ff9d7a'],
+        'attribute.name': ['#be123c', '#ff9d7a'],
+        tag: ['#be123c', '#ff9d7a'],
+        predefined: ['#3056d3', '#8fb4ff'],
+    } as const;
+
+    for (const family of ['glass', 'material', 'minimal']) {
+        for (const [modeIndex, mode] of ['light', 'dark'].entries()) {
+            const rules = generated.themes[`gme-${family}-${mode}`].rules;
+            for (const [token, colors] of Object.entries(expected)) {
+                expect(rules.filter((rule) => rule.token === token)).toEqual([
+                    { token, foreground: colors[modeIndex] },
+                ]);
+            }
+            expect(rules.find((rule) => rule.token === 'keyword.md')?.foreground).toBe(
+                mode === 'light' ? '#3056d3' : '#8fb4ff',
+            );
+            expect(rules.find((rule) => rule.token === 'keyword.type.go')?.foreground).toBe(
+                mode === 'light' ? '#0f766e' : '#5eead4',
+            );
+        }
+    }
+});
+
+it('overrides inherited qualified syntax colours with the shared palette in all six themes', () => {
+    const generated = generate(palette);
+    const qualified = {
+        'number.hex': ['#b45309', '#ffd479'],
+        'delimiter.html': ['#5c5c69', '#9aa1ab'],
+        'delimiter.xml': ['#5c5c69', '#9aa1ab'],
+        'string.key.json': ['#be123c', '#ff9d7a'],
+        'string.value.json': ['#0369a1', '#7fe3b5'],
+        'attribute.value': ['#0369a1', '#7fe3b5'],
+        'attribute.value.number': ['#b45309', '#ffd479'],
+        'attribute.value.unit': ['#b45309', '#ffd479'],
+        'attribute.value.number.css': ['#b45309', '#ffd479'],
+        'attribute.value.unit.css': ['#b45309', '#ffd479'],
+        'attribute.value.hex.css': ['#b45309', '#ffd479'],
+        'attribute.value.html': ['#0369a1', '#7fe3b5'],
+        'attribute.value.xml': ['#0369a1', '#7fe3b5'],
+        'string.html': ['#0369a1', '#7fe3b5'],
+        'string.sql': ['#0369a1', '#7fe3b5'],
+        'string.yaml': ['#0369a1', '#7fe3b5'],
+        'keyword.json': ['#7c3aed', '#c58bff'],
+        'keyword.flow': ['#7c3aed', '#c58bff'],
+        'keyword.flow.scss': ['#7c3aed', '#c58bff'],
+        'operator.scss': ['#5c5c69', '#9aa1ab'],
+        'operator.sql': ['#5c5c69', '#9aa1ab'],
+        'operator.swift': ['#5c5c69', '#9aa1ab'],
+        'predefined.sql': ['#3056d3', '#8fb4ff'],
+    };
+    for (const family of ['glass', 'material', 'minimal']) {
+        for (const [index, mode] of ['light', 'dark'].entries()) {
+            const rules = generated.themes[`gme-${family}-${mode}`].rules;
+            for (const [token, colours] of Object.entries(qualified)) {
+                expect(rules.filter((rule) => rule.token === token)).toEqual([{ token, foreground: colours[index] }]);
+            }
+        }
+    }
+});
+
+it('resolves generic syntax colours independently for each theme and mode', () => {
+    const uniqueKeywords = {
+        glass: ['#112233', '#223344'],
+        material: ['#334455', '#445566'],
+        minimal: ['#556677', '#667788'],
+    } as const;
+    const distinctPalette = (['glass', 'material', 'minimal'] as const)
+        .map((family) =>
+            materialPalette
+                .replaceAll("data-theme='material'", `data-theme='${family}'`)
+                .replace('--hl-keyword: #7c3aed;', `--hl-keyword: ${uniqueKeywords[family][0]};`)
+                .replace('--hl-keyword: #c58bff;', `--hl-keyword: ${uniqueKeywords[family][1]};`),
+        )
+        .join('\n');
+    const generated = generate(distinctPalette);
+
+    for (const family of ['glass', 'material', 'minimal'] as const) {
+        for (const [index, mode] of ['light', 'dark'].entries()) {
+            const rules = generated.themes[`gme-${family}-${mode}`].rules;
+            expect(rules.filter((rule) => rule.token === 'keyword')).toEqual([
+                { token: 'keyword', foreground: uniqueKeywords[family][index] },
+            ]);
+        }
+    }
 });
 
 it('rejects a palette missing a required Monaco token', () => {
@@ -164,18 +272,21 @@ it('rejects duplicate, unresolved, and unsupported palette sources', () => {
     );
 });
 
-it('emits inactive highlight rules for every generated syntax token', () => {
-    const generated = generate(palette);
-    for (const token of [
-        'hljs-keyword',
-        'hljs-string',
-        'hljs-comment',
-        'hljs-number',
-        'hljs-title',
-        'hljs-type',
-        'hljs-attr',
-        'hljs-punctuation',
-    ]) {
-        expect(generated.highlightCss).toMatch(new RegExp(`\\.${token}`));
-    }
+it('maps preview syntax classes to shared palette tokens', () => {
+    expect(generate(palette).highlightRules).toEqual([
+        { className: 'hljs-keyword', token: '--hl-keyword' },
+        { className: 'hljs-string', token: '--hl-string' },
+        { className: 'hljs-regexp', token: '--hl-string' },
+        { className: 'hljs-comment', token: '--hl-comment' },
+        { className: 'hljs-number', token: '--hl-number' },
+        { className: 'hljs-literal', token: '--hl-number' },
+        { className: 'hljs-built_in', token: '--hl-function' },
+        { className: 'hljs-title', token: '--hl-function' },
+        { className: 'hljs-type', token: '--hl-type' },
+        { className: 'hljs-name', token: '--hl-attr' },
+        { className: 'hljs-attr', token: '--hl-attr' },
+        { className: 'hljs-attribute', token: '--hl-attr' },
+        { className: 'hljs-operator', token: '--hl-punct' },
+        { className: 'hljs-punctuation', token: '--hl-punct' },
+    ]);
 });

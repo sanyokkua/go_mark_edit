@@ -1,7 +1,18 @@
-import { forwardRef, lazy, Suspense, useCallback, useEffect, useImperativeHandle, useRef } from 'react';
-import type { editor, IDisposable, IPosition, IRange, ISelection } from 'monaco-editor';
+import {
+    forwardRef,
+    lazy,
+    Suspense,
+    useCallback,
+    useEffect,
+    useImperativeHandle,
+    useLayoutEffect,
+    useRef,
+    useState,
+} from 'react';
+import type { editor, IDisposable, IMarkdownString, IPosition, IRange, ISelection } from 'monaco-editor';
 
 import type { EditorScrollPort, ScrollGeometryChange } from '../../logic/scrollSync/scrollSyncTypes';
+import type { TextEdit } from '../../logic/tidy/protocol';
 import styles from './CodeEditor.module.css';
 
 export interface EditorPosition {
@@ -16,12 +27,24 @@ export interface EditorRange {
 
 export type EditorSelection = EditorRange;
 
+export interface EditorMarker {
+    startLine: number;
+    startColumn: number;
+    endLine: number;
+    endColumn: number;
+    severity: 'error' | 'warning';
+    message: string;
+}
+
 export interface CodeEditorHandle {
     focus(): boolean;
     getContent(): string | null;
     getSelection(): EditorSelection | null;
     replaceRange(range: EditorRange, text: string, selection?: EditorSelection): boolean;
     replaceAll(text: string): boolean;
+    applyEdits(edits: TextEdit[]): boolean;
+    setPosition(line: number, column: number): boolean;
+    setMarkers(markers: EditorMarker[]): boolean;
 }
 
 export interface CodeEditorProps {
@@ -48,6 +71,7 @@ export interface CodeEditorProps {
     onCursorPositionChange?: (position: EditorPosition) => void;
     onSelectionChange?: (selection: EditorSelection | null) => void;
     onScrollChange?: (scrollTop: number) => void;
+    onLinkActivate?: (href: string) => void;
     onEditorMounted?: (editor: editor.IStandaloneCodeEditor) => void;
     onViewStateCaptureReady?: (capture: (() => void) | null) => void;
     /**
@@ -102,6 +126,19 @@ function isBeforeOrEqual(first: EditorPosition, second: EditorPosition): boolean
     );
 }
 
+function plainLintHover(message: string): IMarkdownString {
+    return {
+        value: message
+            .replace(/&/gu, '&amp;')
+            .replace(/</gu, '&lt;')
+            .replace(/>/gu, '&gt;')
+            .replace(/([\\`*_{}[\]()#+\-.!|~])/gu, '\\$1')
+            .replace(/\n/gu, '  \n'),
+        isTrusted: false,
+        supportHtml: false,
+    };
+}
+
 function toMonacoRange(range: EditorRange): IRange {
     return {
         startLineNumber: range.start.lineNumber,
@@ -125,8 +162,7 @@ function modelPath(documentId: string, activationId?: string): string {
 
 function applyEdit(
     editorInstance: editor.IStandaloneCodeEditor | null,
-    range: IRange,
-    text: string,
+    edits: Array<{ range: IRange; text: string }>,
     selection?: EditorSelection,
 ): boolean {
     if (editorInstance === null || editorInstance.getModel() === null) {
@@ -134,19 +170,59 @@ function applyEdit(
     }
 
     editorInstance.pushUndoStop();
-    editorInstance.executeEdits('gomarkedit', [
-        {
-            range,
-            text,
-            forceMoveMarkers: true,
-        },
-    ]);
+    editorInstance.executeEdits(
+        'gomarkedit',
+        edits.map(({ range, text }) => ({ range, text, forceMoveMarkers: true })),
+    );
     if (selection !== undefined) {
         editorInstance.setSelection(toMonacoRange(selection));
     }
     editorInstance.pushUndoStop();
 
     return true;
+}
+
+function lineStarts(text: string): number[] {
+    const starts = [0];
+    for (let index = 0; index < text.length; index += 1) {
+        if (text.charCodeAt(index) === 10) starts.push(index + 1);
+    }
+    return starts;
+}
+
+function positionAt(offset: number, starts: number[]): IPosition {
+    let low = 0;
+    let high = starts.length - 1;
+    while (low < high) {
+        const middle = Math.ceil((low + high) / 2);
+        if (starts[middle] <= offset) low = middle;
+        else high = middle - 1;
+    }
+    return { lineNumber: low + 1, column: offset - starts[low] + 1 };
+}
+
+function editedText(text: string, edits: TextEdit[]): string {
+    const chunks: string[] = [];
+    let last = 0;
+    for (const edit of edits) {
+        chunks.push(text.slice(last, edit.from), edit.text);
+        last = edit.to;
+    }
+    chunks.push(text.slice(last));
+    return chunks.join('');
+}
+
+function movedLineStart(anchor: number, edits: TextEdit[]): number {
+    let delta = 0;
+    for (const edit of edits) {
+        if (edit.to < anchor || (edit.to === anchor && (edit.from < anchor || edit.from === edit.to))) {
+            delta += edit.text.length - (edit.to - edit.from);
+            continue;
+        }
+        if (edit.from <= anchor) return edit.from + delta;
+        break;
+    }
+    return anchor + delta;
 }
 
 /** The editor's padding in pixels; Monaco's line offsets include the top padding but not the bottom one. */
@@ -233,6 +309,7 @@ const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(function CodeEd
         onCursorPositionChange,
         onSelectionChange,
         onScrollChange,
+        onLinkActivate,
         onEditorMounted,
         onViewStateCaptureReady,
         onScrollPortReady,
@@ -240,11 +317,15 @@ const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(function CodeEd
     ref,
 ): React.JSX.Element {
     const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
+    const monacoRef = useRef<typeof import('monaco-editor') | null>(null);
+    const lintDecorationsRef = useRef<editor.IEditorDecorationsCollection | null>(null);
     const onChangeRef = useRef(onChange);
     const onBlurRef = useRef(onBlur);
     const onCursorPositionChangeRef = useRef(onCursorPositionChange);
     const onSelectionChangeRef = useRef(onSelectionChange);
     const onScrollChangeRef = useRef(onScrollChange);
+    const onLinkActivateRef = useRef(onLinkActivate);
+    const linkRegistrationRef = useRef<IDisposable | null>(null);
     const onEditorMountedRef = useRef(onEditorMounted);
     const onViewStateCaptureReadyRef = useRef(onViewStateCaptureReady);
     const onScrollPortReadyRef = useRef(onScrollPortReady);
@@ -253,12 +334,22 @@ const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(function CodeEd
     const restoreViewStateFrameRef = useRef<number | undefined>(undefined);
     const viewStateRef = useRef<editor.ICodeEditorViewState | null>(null);
     const wasVisibleRef = useRef(visible);
+    const [overflowWidgetsHost, setOverflowWidgetsHost] = useState<HTMLDivElement | null>(null);
+
+    useLayoutEffect(() => {
+        const host = document.createElement('div');
+        host.className = `monaco-editor ${styles.overflowWidgetsHost}`;
+        document.body.append(host);
+        setOverflowWidgetsHost(host);
+        return (): void => host.remove();
+    }, []);
 
     onChangeRef.current = onChange;
     onBlurRef.current = onBlur;
     onCursorPositionChangeRef.current = onCursorPositionChange;
     onSelectionChangeRef.current = onSelectionChange;
     onScrollChangeRef.current = onScrollChange;
+    onLinkActivateRef.current = onLinkActivate;
     onEditorMountedRef.current = onEditorMounted;
     onViewStateCaptureReadyRef.current = onViewStateCaptureReady;
     onScrollPortReadyRef.current = onScrollPortReady;
@@ -280,7 +371,11 @@ const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(function CodeEd
         let disposed = false;
 
         void import('./monacoSetup').then(({ applyMonacoThemeFromRoot }) => {
-            if (!disposed) disposeThemeObserver = applyMonacoThemeFromRoot();
+            if (!disposed) {
+                disposeThemeObserver = applyMonacoThemeFromRoot((): void => {
+                    editorRef.current?.render(true);
+                });
+            }
         });
 
         return (): void => {
@@ -291,6 +386,10 @@ const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(function CodeEd
 
     useEffect((): (() => void) => {
         return (): void => {
+            linkRegistrationRef.current?.dispose();
+            linkRegistrationRef.current = null;
+            lintDecorationsRef.current?.clear();
+            lintDecorationsRef.current = null;
             if (scrollPortEditorRef.current !== null) {
                 scrollPortEditorRef.current = null;
                 onScrollPortReadyRef.current?.(null);
@@ -356,7 +455,7 @@ const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(function CodeEd
                 return selection === null || selection === undefined ? null : toEditorSelection(selection);
             },
             replaceRange(range: EditorRange, text: string, selection?: EditorSelection): boolean {
-                return applyEdit(editorRef.current, toMonacoRange(range), text, selection);
+                return applyEdit(editorRef.current, [{ range: toMonacoRange(range), text }], selection);
             },
             replaceAll(text: string): boolean {
                 const model = editorRef.current?.getModel();
@@ -365,14 +464,125 @@ const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(function CodeEd
                     return false;
                 }
 
-                return applyEdit(editorRef.current, model.getFullModelRange(), text);
+                return applyEdit(editorRef.current, [{ range: model.getFullModelRange(), text }]);
+            },
+            applyEdits(edits: TextEdit[]): boolean {
+                const instance = editorRef.current;
+                const model = instance?.getModel();
+                if (instance === null || model === null || model === undefined) return false;
+                if (edits.length === 0) return true;
+
+                const source = model.getValue().replace(/\r\n?/g, '\n');
+                const ordered = [...edits].sort((a, b) => a.from - b.from || a.to - b.to);
+                const result = editedText(source, ordered);
+                const starts = lineStarts(source);
+                const cursor = instance.getPosition();
+                const anchor =
+                    cursor === null ? null : starts[Math.min(Math.max(cursor.lineNumber, 1), starts.length) - 1];
+                const changed =
+                    ordered.length > 20000
+                        ? applyEdit(instance, [{ range: model.getFullModelRange(), text: result }])
+                        : applyEdit(
+                              instance,
+                              ordered.map((edit) => {
+                                  const start = positionAt(edit.from, starts);
+                                  const end = positionAt(edit.to, starts);
+                                  return {
+                                      range: {
+                                          startLineNumber: start.lineNumber,
+                                          startColumn: start.column,
+                                          endLineNumber: end.lineNumber,
+                                          endColumn: end.column,
+                                      },
+                                      text: edit.text,
+                                  };
+                              }),
+                          );
+                if (changed && cursor !== null && anchor !== null) {
+                    const resultStarts = lineStarts(result);
+                    const line = positionAt(movedLineStart(anchor, ordered), resultStarts).lineNumber;
+                    const lineEnd = line < resultStarts.length ? resultStarts[line] - 1 : result.length;
+                    instance.setPosition({
+                        lineNumber: line,
+                        column: Math.min(cursor.column, lineEnd - resultStarts[line - 1] + 1),
+                    });
+                }
+                return changed;
+            },
+            setPosition(line: number, column: number): boolean {
+                if (editorRef.current?.getModel() === null || editorRef.current === null || monacoRef.current === null)
+                    return false;
+                if (restoreViewStateFrameRef.current !== undefined) {
+                    window.cancelAnimationFrame(restoreViewStateFrameRef.current);
+                    restoreViewStateFrameRef.current = undefined;
+                }
+                viewStateRef.current = null;
+                editorRef.current.setPosition({ lineNumber: line, column });
+                editorRef.current.revealLineInCenter(line, monacoRef.current.editor.ScrollType.Immediate);
+                editorRef.current.focus();
+                return true;
+            },
+            setMarkers(markers: EditorMarker[]): boolean {
+                const instance = editorRef.current;
+                const model = instance?.getModel();
+                const monaco = monacoRef.current;
+                if (instance === null || model === null || model === undefined || monaco === null) return false;
+                monaco.editor.setModelMarkers(
+                    model,
+                    'gme-lint',
+                    markers.map((marker) => ({
+                        startLineNumber: marker.startLine,
+                        startColumn: marker.startColumn,
+                        endLineNumber: marker.endLine,
+                        endColumn: marker.endColumn,
+                        severity:
+                            marker.severity === 'error' ? monaco.MarkerSeverity.Error : monaco.MarkerSeverity.Warning,
+                        message: marker.message,
+                    })),
+                );
+                // Monaco renders only the first 500 model markers. Keep the full
+                // marker inventory and supplement its visible second half.
+                const extra = markers.slice(500, 1000).map((marker) => ({
+                    range: {
+                        startLineNumber: marker.startLine,
+                        startColumn: marker.startColumn,
+                        endLineNumber: marker.endLine,
+                        endColumn: marker.endColumn,
+                    },
+                    options: {
+                        className: marker.severity === 'error' ? 'squiggly-error' : 'squiggly-warning',
+                        hoverMessage: plainLintHover(marker.message),
+                        showIfCollapsed: true,
+                    },
+                }));
+                if (extra.length > 0 && lintDecorationsRef.current === null) {
+                    lintDecorationsRef.current = instance.createDecorationsCollection();
+                }
+                lintDecorationsRef.current?.set(extra);
+                return true;
             },
         }),
         [],
     );
 
-    const handleMount = (editorInstance: editor.IStandaloneCodeEditor): void => {
+    const handleMount = (
+        editorInstance: editor.IStandaloneCodeEditor,
+        monaco: typeof import('monaco-editor'),
+    ): void => {
+        const newlyMounted = editorRef.current !== editorInstance;
         editorRef.current = editorInstance;
+        monacoRef.current = monaco;
+        const model = editorInstance.getModel();
+        if (newlyMounted && model !== null) {
+            linkRegistrationRef.current?.dispose();
+            void import('./monacoSetup').then(({ registerEditorLinkModel }): void => {
+                if (editorRef.current !== editorInstance || editorInstance.getModel() !== model) return;
+                linkRegistrationRef.current = registerEditorLinkModel(model, (href): void => {
+                    onLinkActivateRef.current?.(href);
+                });
+            });
+        }
+        if (newlyMounted) editorInstance.layout();
         editorInstance.onDidBlurEditorText((): void => {
             onBlurRef.current?.();
         });
@@ -397,32 +607,43 @@ const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(function CodeEd
             );
         }
         onEditorMountedRef.current?.(editorInstance);
+        void import('./monacoSetup').then(({ applyMonacoThemeFromRoot }): void => {
+            if (model === null || editorRef.current !== editorInstance || editorInstance.getModel() !== model) return;
+            applyMonacoThemeFromRoot((): void => editorInstance.render(true))();
+        });
     };
 
     return (
         <div className={styles.editor} data-editor-surface>
-            <Suspense fallback={<div aria-busy="true" className={styles.loading} />}>
-                <MonacoEditor
-                    key={`${documentId}:${activationId ?? 'legacy'}`}
-                    defaultValue={initialValue}
-                    language="markdown"
-                    path={modelPath(documentId, activationId)}
-                    className={styles.editor}
-                    options={{
-                        lineNumbers,
-                        lineNumbersMinChars: 3,
-                        wordWrap,
-                        minimap: { enabled: minimap },
-                        readOnly,
-                        fontSize: fontSize ?? getEditorFontSize(),
-                        padding: EDITOR_PADDING,
-                    }}
-                    onChange={(value: string | undefined): void => {
-                        onChangeRef.current?.(value ?? '');
-                    }}
-                    onMount={handleMount}
-                />
-            </Suspense>
+            {overflowWidgetsHost === null ? (
+                <div aria-busy="true" className={styles.loading} />
+            ) : (
+                <Suspense fallback={<div aria-busy="true" className={styles.loading} />}>
+                    <MonacoEditor
+                        key={`${documentId}:${activationId ?? 'legacy'}`}
+                        defaultValue={initialValue}
+                        language="markdown"
+                        path={modelPath(documentId, activationId)}
+                        className={styles.editor}
+                        options={{
+                            lineNumbers,
+                            lineNumbersMinChars: 3,
+                            wordWrap,
+                            minimap: { enabled: minimap },
+                            readOnly,
+                            renderValidationDecorations: 'on',
+                            fontSize: fontSize ?? getEditorFontSize(),
+                            padding: EDITOR_PADDING,
+                            fixedOverflowWidgets: true,
+                            overflowWidgetsDomNode: overflowWidgetsHost,
+                        }}
+                        onChange={(value: string | undefined): void => {
+                            onChangeRef.current?.(value ?? '');
+                        }}
+                        onMount={handleMount}
+                    />
+                </Suspense>
+            )}
         </div>
     );
 });

@@ -50,7 +50,7 @@ func DefaultSettings() apperr.Settings {
 			DefaultOpenMode: OpenModeEditor,
 		},
 		Markdown: apperr.MarkdownSettings{
-			Standard:       MarkdownGFM,
+			Standard:       MarkdownFull,
 			FormatOnSave:   false,
 			LintOnSave:     true,
 			BulletMarker:   BulletMarkerDash,

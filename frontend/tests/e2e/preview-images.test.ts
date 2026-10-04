@@ -55,13 +55,6 @@ test('case 7 serves bounded in-folder images and keeps every other source inert'
     await app.launch();
 
     const { page } = app;
-    const exampleRequests: string[] = [];
-    page.on('request', (request) => {
-        if (request.url().includes('example.com')) {
-            exampleRequests.push(request.url());
-        }
-    });
-
     const initialTab = page.getByRole('tab', { name: 'Untitled' });
     await initialTab
         .locator('..')
@@ -84,7 +77,7 @@ test('case 7 serves bounded in-folder images and keeps every other source inert'
         await expect(preview.locator(`img[alt="${alt}"]`)).toHaveCount(0);
     }
     await expect(preview.locator('[data-notification-code="preview-link-refused"]')).toHaveCount(0);
-    expect(exampleRequests).toEqual([]);
+    app.expectNoForeignRequests();
 
     const untitledSource = '![untitled](./inside.png)';
     await page.getByRole('button', { name: 'New tab' }).click();
@@ -102,5 +95,5 @@ test('case 7 serves bounded in-folder images and keeps every other source inert'
     await expect(untitledPreview.getByRole('img', { name: 'untitled' })).toBeVisible();
     await expect(untitledPreview.locator('img[alt="untitled"]')).toHaveCount(0);
     await expect(untitledPreview.locator('[data-notification-code="preview-link-refused"]')).toHaveCount(0);
-    expect(exampleRequests).toEqual([]);
+    app.expectNoForeignRequests();
 });

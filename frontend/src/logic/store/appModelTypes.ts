@@ -395,6 +395,8 @@ export type OpenStatus = 'cancelled' | 'focused' | 'opened' | 'refused' | 'folde
 export interface OpenResult {
     status: OpenStatus;
     path?: string;
+    revealPath?: string;
+    treePath?: string;
     documentId?: string;
     projectionRevision?: number;
     activeBuffer?: ActiveBuffer;

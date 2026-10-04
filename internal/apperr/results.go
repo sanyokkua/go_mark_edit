@@ -630,6 +630,8 @@ type OpenResult struct {
 	Status             OpenStatus                   `json:"status"`
 	DocumentID         string                       `json:"documentId,omitempty"`
 	Path               string                       `json:"path,omitempty"`
+	RevealPath         string                       `json:"revealPath,omitempty"`
+	TreePath           string                       `json:"treePath,omitempty"`
 	ProjectionRevision uint64                       `json:"projectionRevision,omitempty"`
 	ActiveBuffer       *ActiveBufferAcknowledgement `json:"activeBuffer,omitempty"`
 	Error              *ClassifiedError             `json:"error,omitempty"`
