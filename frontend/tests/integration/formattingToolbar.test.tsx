@@ -10,6 +10,7 @@ import { DocumentCommandContext, EditorSessionContext } from '../../src/ui/widge
 import FormattingToolbar from '../../src/ui/widgets/FormattingToolbar/FormattingToolbar';
 import { acquire } from '../../src/logic/operations/operationSlot';
 import { TidyCommandsContext } from '../../src/ui/widgets/tidyCommandsContext';
+import { ModalStateContext } from '../../src/ui/widgets/modalStateContext';
 
 const renderToolbar = (
     ui: React.ReactNode = <FormattingToolbar arrangement="split" onArrangementChange={jest.fn()} />,
@@ -259,6 +260,61 @@ it('uses one focused editor-action path for toolbar, popup, and shortcut formatt
         metaKey: platform === 'darwin',
     });
     await waitFor(expectBoldEdit);
+});
+
+it('routes Find and Replace shortcuts from the editor and Find widget while keeping modal keys isolated', async () => {
+    const showFind = jest.fn(() => ({ status: 'available' as const, value: undefined }));
+    const showReplace = jest.fn(() => ({ status: 'available' as const, value: undefined }));
+    const commands = {
+        focus: jest.fn(() => ({ status: 'available' as const, value: undefined })),
+        getContent: () => ({ status: 'available' as const, value: 'one one' }),
+        getSelection: () => ({ status: 'available' as const, value: null }),
+        replaceAll: jest.fn(),
+        replaceRange: jest.fn(),
+        applyEdits: jest.fn(),
+        setPosition: jest.fn(),
+        setMarkers: jest.fn(),
+        showFind,
+        showReplace,
+    };
+    const ui = (modalOpen: boolean): React.ReactNode => (
+        <ModalStateContext.Provider value={modalOpen}>
+            <EditorSessionContext.Provider value={{ documentId: 'doc-1', content: 'one one' }}>
+                <DocumentCommandContext.Provider value={commands}>
+                    <FormattingToolbar arrangement="editor" onArrangementChange={jest.fn()} />
+                    <div data-editor-surface>
+                        <textarea aria-label="Markdown source" />
+                        <input aria-label="Find widget input" />
+                    </div>
+                    <input aria-label="Other input" />
+                </DocumentCommandContext.Provider>
+            </EditorSessionContext.Provider>
+        </ModalStateContext.Provider>
+    );
+    const { rerender } = renderToolbar(ui(false));
+    const platform = currentPlatform();
+    const key = (target: HTMLElement, letter: 'f' | 'r'): void => {
+        target.focus();
+        fireEvent.keyDown(target, {
+            code: `Key${letter.toUpperCase()}`,
+            ctrlKey: platform !== 'darwin',
+            key: letter,
+            metaKey: platform === 'darwin',
+        });
+    };
+
+    key(screen.getByLabelText('Markdown source'), 'f');
+    await waitFor(() => expect(showFind).toHaveBeenCalledTimes(1));
+    key(screen.getByLabelText('Find widget input'), 'r');
+    await waitFor(() => expect(showReplace).toHaveBeenCalledTimes(1));
+    key(screen.getByLabelText('Other input'), 'f');
+    expect(showFind).toHaveBeenCalledTimes(1);
+
+    rerender(<Provider store={store}>{ui(true)}</Provider>);
+    key(screen.getByLabelText('Find widget input'), 'f');
+    key(screen.getByLabelText('Find widget input'), 'r');
+    expect(showFind).toHaveBeenCalledTimes(1);
+    expect(showReplace).toHaveBeenCalledTimes(1);
 });
 
 it('keeps action identity stable across every theme and mode', () => {

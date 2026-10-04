@@ -26,7 +26,12 @@ export interface UseEditorActionExecutorOptions {
 const tidyActionIds: ReadonlySet<ActionId> = new Set(['format', 'compact', 'lint']);
 
 function isEditorFormattingShortcut(actionId: ActionId): boolean {
-    return formatActionIds[actionId] !== undefined || tidyActionIds.has(actionId);
+    return (
+        actionId === 'find' ||
+        actionId === 'replace' ||
+        formatActionIds[actionId] !== undefined ||
+        tidyActionIds.has(actionId)
+    );
 }
 
 /**

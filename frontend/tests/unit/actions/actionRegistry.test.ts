@@ -39,6 +39,22 @@ it('keeps required surface membership and omits deferred actions from native cli
     expect(getAction('bold').nativeRole).toBe('none');
 });
 
+it('exposes Find and Replace shortcuts with read-only and modal availability', () => {
+    const readOnly = { activeDocumentId: 'doc-1', documents: { 'doc-1': { capability: 'unsafe-read-only' } } };
+    expect(getAction('find').shortcut).toBe('Mod+F');
+    expect(getAction('replace').shortcut).toBe('Mod+R');
+    expect(actionsForSurface('shortcuts').map(({ id }) => id)).toEqual(expect.arrayContaining(['find', 'replace']));
+    expect(getActionAvailability('find', { projectedState: readOnly })).toEqual({ kind: 'available' });
+    expect(getActionAvailability('replace', { projectedState: readOnly })).toEqual({
+        kind: 'unavailable',
+        reason: 'no-document',
+    });
+    expect(getActionAvailability('find', { projectedState: readOnly, modalOpen: true })).toEqual({
+        kind: 'unavailable',
+        reason: 'modal',
+    });
+});
+
 it('makes Save and Save As available document actions in the File menu', () => {
     expect(getAction('save').availability.kind).toBe('available');
     expect(getAction('save-as').availability.kind).toBe('available');

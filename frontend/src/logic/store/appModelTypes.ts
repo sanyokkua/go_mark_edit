@@ -122,6 +122,7 @@ export interface DocumentView {
     arrangement: string;
     editorVisible: boolean;
     previewVisible: boolean;
+    splitRatio?: number;
     cursor: CursorPosition;
     selection: SelectionRange;
     scroll: ScrollOffsets;
@@ -406,6 +407,7 @@ export interface OpenResult {
 export interface DocViewInput {
     editorVisible: boolean;
     previewVisible: boolean;
+    splitRatio?: number;
     cursor: CursorPosition;
     selection: SelectionRange;
     scroll: ScrollOffsets;

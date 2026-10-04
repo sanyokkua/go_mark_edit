@@ -50,6 +50,8 @@ function documentCommands(
 ) {
     const focus = jest.fn(() => ({ status: 'available' as const, value: undefined }));
     const replaceRange = jest.fn(() => ({ status: 'available' as const, value: undefined }));
+    const showFind = jest.fn(() => ({ status: 'available' as const, value: undefined }));
+    const showReplace = jest.fn(() => ({ status: 'available' as const, value: undefined }));
     const commands: DocumentCommandAPI = {
         focus,
         getContent: () => ({ status: 'available', value: source }),
@@ -59,9 +61,44 @@ function documentCommands(
         setPosition: jest.fn(() => ({ status: 'available', value: undefined })),
         setMarkers: jest.fn(() => ({ status: 'available', value: undefined })),
         replaceRange,
+        showFind,
+        showReplace,
     };
-    return { commands, focus, replaceRange };
+    return { commands, focus, replaceRange, showFind, showReplace };
 }
+
+it('opens the native Find widget for read-only text and refuses Replace', async () => {
+    const command = documentCommands({ start: { lineNumber: 1, column: 1 }, end: { lineNumber: 1, column: 1 } });
+    const executor = createEditorActionExecutor({
+        ...executorContext(command.commands, {
+            readText: () => Promise.resolve(''),
+            writeText: () => Promise.resolve(true),
+        }),
+        writable: false,
+        projectedState: { activeDocumentId: 'doc-1', documents: { 'doc-1': { capability: 'unsafe-read-only' } } },
+    });
+
+    await expect(executor.execute('find')).resolves.toMatchObject({ status: 'committed' });
+    await expect(executor.execute('replace')).resolves.toMatchObject({ status: 'unavailable' });
+    expect(command.showFind).toHaveBeenCalledTimes(1);
+    expect(command.showReplace).not.toHaveBeenCalled();
+    expect(command.replaceRange).not.toHaveBeenCalled();
+});
+
+it('opens native Replace without changing the model or shifting editor focus', async () => {
+    const command = documentCommands({ start: { lineNumber: 1, column: 1 }, end: { lineNumber: 1, column: 1 } });
+    const executor = createEditorActionExecutor(
+        executorContext(command.commands, {
+            readText: () => Promise.resolve(''),
+            writeText: () => Promise.resolve(true),
+        }),
+    );
+
+    await expect(executor.execute('replace')).resolves.toMatchObject({ status: 'committed' });
+    expect(command.showReplace).toHaveBeenCalledTimes(1);
+    expect(command.replaceRange).not.toHaveBeenCalled();
+    expect(command.focus).not.toHaveBeenCalled();
+});
 
 function executorContext(
     commands: DocumentCommandAPI,

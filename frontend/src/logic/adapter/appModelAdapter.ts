@@ -157,6 +157,7 @@ interface ViewRecord {
 interface ViewSnapshot {
     intent: number;
     view: DocViewInput;
+    persistSplitRatio: boolean;
 }
 
 export interface DocViewArrangementIntent {
@@ -164,7 +165,11 @@ export interface DocViewArrangementIntent {
     previewVisible: boolean;
 }
 
-export type DocViewIntent = DocViewInput | DocViewArrangementIntent;
+export interface DocViewSplitRatioIntent {
+    splitRatio: number;
+}
+
+export type DocViewIntent = DocViewInput | DocViewArrangementIntent | DocViewSplitRatioIntent;
 
 function isAppStatePatch(payload: unknown): payload is AppStatePatch {
     return (
@@ -463,6 +468,7 @@ export function createAppModelAdapter(bindings: AppModelBindings, runtime: AppMo
         return {
             editorVisible: view.editorVisible,
             previewVisible: view.previewVisible,
+            ...(view.splitRatio === undefined ? {} : { splitRatio: view.splitRatio }),
             cursor: { ...view.cursor },
             selection: {
                 start: { ...view.selection.start },
@@ -480,14 +486,15 @@ export function createAppModelAdapter(bindings: AppModelBindings, runtime: AppMo
         record: ViewRecord,
         view: DocViewIntent,
         fallbackView?: DocViewInput,
-        timedUpdate = false,
+        preserveLatestVisibility = false,
+        preserveLatestRatio = false,
     ): void {
         const baseView = record.latestView ?? fallbackView;
         if (baseView === undefined && !isFullDocView(view)) {
-            throw new Error('A view arrangement requires a document view snapshot.');
+            throw new Error('A partial view command requires a document view snapshot.');
         }
         const latestView = isFullDocView(view)
-            ? timedUpdate && baseView !== undefined
+            ? preserveLatestVisibility && baseView !== undefined
                 ? {
                       ...snapshotDocView(view),
                       editorVisible: baseView.editorVisible,
@@ -496,15 +503,22 @@ export function createAppModelAdapter(bindings: AppModelBindings, runtime: AppMo
                 : snapshotDocView(view)
             : {
                   ...snapshotDocView(baseView as DocViewInput),
-                  editorVisible: view.editorVisible,
-                  previewVisible: view.previewVisible,
+                  ...view,
               };
+
+        if (preserveLatestRatio && baseView?.splitRatio !== undefined) {
+            latestView.splitRatio = baseView.splitRatio;
+        }
 
         record.latestView = latestView;
         record.nextIntent += 1;
+        // A pending resize must survive coalescing with routine cursor and scroll snapshots.
         record.pending = {
             intent: record.nextIntent,
             view: latestView,
+            persistSplitRatio:
+                record.pending?.persistSplitRatio === true ||
+                (!preserveLatestRatio && 'splitRatio' in view && view.splitRatio !== undefined),
         };
     }
 
@@ -574,7 +588,12 @@ export function createAppModelAdapter(bindings: AppModelBindings, runtime: AppMo
         }
         record.pending = undefined;
 
-        const inFlight = unwrapPromise<void>(setDocView(documentId, snapshot.view)).catch((error: unknown): never => {
+        const wireView = snapshotDocView(snapshot.view);
+        // The backend persists a ratio only when the input explicitly includes it.
+        if (!snapshot.persistSplitRatio) {
+            delete wireView.splitRatio;
+        }
+        const inFlight = unwrapPromise<void>(setDocView(documentId, wireView)).catch((error: unknown): never => {
             if (record.pending === undefined || record.pending.intent < snapshot.intent) {
                 record.pending = snapshot;
             }
@@ -803,13 +822,13 @@ export function createAppModelAdapter(bindings: AppModelBindings, runtime: AppMo
         async updateDocView(documentId: string, view: DocViewInput): Promise<void> {
             assertCommandsAvailable();
             const record = viewRecord(documentId);
-            queueDocView(record, view);
+            queueDocView(record, view, undefined, false, true);
             scheduleDocView(documentId);
         },
         async updateLocalDocView(documentId: string, view: DocViewInput): Promise<void> {
             assertCommandsAvailable();
             const record = viewRecord(documentId);
-            queueDocView(record, view, undefined, true);
+            queueDocView(record, view, undefined, true, true);
             scheduleDocView(documentId);
         },
         cancelPendingSession(documentId: string): void {

@@ -7,13 +7,15 @@ import {
     useLayoutEffect,
     useRef,
     useState,
+    type CSSProperties,
 } from 'react';
 
 import type { EditorPosition } from '../../components/CodeEditor';
 import type { CommittedMarkdownPreview } from '../../components/MarkdownView';
 import CodeEditor from '../../components/CodeEditor';
 import Pane from '../../components/Pane';
-import { appModelAdapter } from '../../../logic/adapter';
+import SplitDivider from '../../components/SplitDivider';
+import { appModelAdapter, type AppModelAdapter } from '../../../logic/adapter';
 import {
     type LivePreviewAdapter,
     type LivePreviewSnapshot,
@@ -41,8 +43,12 @@ import { EDITOR_TABPANEL_ID } from '../editorTabPanel';
 import styles from './EditorStage.module.css';
 import { t } from '../../../i18n';
 import { useEditorSettings } from '../../../logic/settings/editorSettings';
+import { useMinimumWindow } from '../minimumWindow';
+import { useSplitRatio } from './useSplitRatio';
 
-export interface EditorStageAdapter extends EditorSynchronizationAdapter, LivePreviewAdapter {}
+export interface EditorStageAdapter extends EditorSynchronizationAdapter, LivePreviewAdapter {
+    setDocView?: AppModelAdapter['setDocView'];
+}
 
 export interface EditorStageHandle {
     captureViewState: () => void;
@@ -437,6 +443,10 @@ const EditorStage = forwardRef<EditorStageHandle, EditorStageProps>(function Edi
     ref,
 ): React.JSX.Element {
     const activeEditorRef = useRef<ActiveEditorHandle | null>(null);
+    const stageRef = useRef<HTMLDivElement | null>(null);
+    const minimumWindow = useMinimumWindow();
+    const split = editorVisible && previewVisible && !minimumWindow;
+    const splitRatio = useSplitRatio(activeBuffer.documentId, view, adapter.setDocView, split);
     const handledEditorFragment = useRef(0);
     const handledPreviewFragment = useRef(0);
     const previewScrollHandlerRef = useRef<((scrollTop: number) => void) | null>(null);
@@ -478,11 +488,14 @@ const EditorStage = forwardRef<EditorStageHandle, EditorStageProps>(function Edi
 
     return (
         <div
+            ref={stageRef}
             aria-labelledby={labelledBy}
             className={styles.stage}
             id={panelId}
             inert={interactionBlocked}
             role="tabpanel"
+            data-split-resizable={split || undefined}
+            style={{ '--editor-split-ratio': splitRatio.ratio } as CSSProperties}
         >
             <Pane
                 ariaLabel={t('editor.editorPane')}
@@ -521,6 +534,23 @@ const EditorStage = forwardRef<EditorStageHandle, EditorStageProps>(function Edi
                 hidden={!editorVisible}
                 identity="editor"
             />
+            {split ? (
+                <SplitDivider
+                    ariaLabel={t('editor.resizeSplit')}
+                    identity={activeBuffer.documentId}
+                    value={splitRatio.ratio}
+                    valueText={(ratio) => t('editor.splitPercentage', { percent: Math.round(ratio * 100) })}
+                    getWidth={() => {
+                        const panes = stageRef.current?.querySelectorAll<HTMLElement>('[data-pane-identity]');
+                        return Array.from(panes ?? []).reduce(
+                            (width, pane) => width + pane.getBoundingClientRect().width,
+                            0,
+                        );
+                    }}
+                    onResize={splitRatio.resize}
+                    onCommit={splitRatio.commit}
+                />
+            ) : null}
             <LivePreview
                 key={activeBuffer.documentId}
                 activeBuffer={activeBuffer}

@@ -229,6 +229,7 @@ export namespace apperr {
 	}
 	export class DocView {
 	    arrangement: string;
+	    splitRatio: number;
 	    editorVisible: boolean;
 	    previewVisible: boolean;
 	    cursor: CursorPosition;
@@ -242,6 +243,7 @@ export namespace apperr {
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.arrangement = source["arrangement"];
+	        this.splitRatio = source["splitRatio"];
 	        this.editorVisible = source["editorVisible"];
 	        this.previewVisible = source["previewVisible"];
 	        this.cursor = this.convertValues(source["cursor"], CursorPosition);
@@ -832,6 +834,7 @@ export namespace apperr {
 	
 	
 	export class DocViewInput {
+	    splitRatio?: number;
 	    editorVisible: boolean;
 	    previewVisible: boolean;
 	    cursor: CursorPosition;
@@ -844,6 +847,7 @@ export namespace apperr {
 	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.splitRatio = source["splitRatio"];
 	        this.editorVisible = source["editorVisible"];
 	        this.previewVisible = source["previewVisible"];
 	        this.cursor = this.convertValues(source["cursor"], CursorPosition);

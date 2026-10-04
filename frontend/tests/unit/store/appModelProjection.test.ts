@@ -19,6 +19,7 @@ const documentMetadata: DocumentMetadata = {
         arrangement: 'split',
         editorVisible: true,
         previewVisible: true,
+        splitRatio: 0.5,
         cursor: { line: 1, column: 1 },
         selection: {
             start: { line: 1, column: 1 },
@@ -27,6 +28,26 @@ const documentMetadata: DocumentMetadata = {
         scroll: { editor: 0, preview: 0 },
     },
 };
+
+it('hydrates each canonical document split ratio and defaults missing or invalid values', async () => {
+    const state = appState(20);
+    state.snapshot.documents = {
+        valid: { ...documentMetadata, documentId: 'valid', view: { ...documentMetadata.view, splitRatio: 0.73 } },
+        missing: {
+            ...documentMetadata,
+            documentId: 'missing',
+            view: { ...documentMetadata.view, splitRatio: undefined },
+        },
+        invalid: { ...documentMetadata, documentId: 'invalid', view: { ...documentMetadata.view, splitRatio: 0.95 } },
+    };
+    state.snapshot.activeDocumentId = 'valid';
+
+    await bootstrapAppModelProjection(createAdapter(async () => state));
+
+    expect(store.getState().documents.byId.valid.view.splitRatio).toBe(0.73);
+    expect(store.getState().documents.byId.missing.view.splitRatio).toBe(0.5);
+    expect(store.getState().documents.byId.invalid.view.splitRatio).toBe(0.5);
+});
 
 function appState(revision: number): AppModelState {
     return {

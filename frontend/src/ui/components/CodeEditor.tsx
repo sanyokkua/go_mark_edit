@@ -38,6 +38,8 @@ export interface EditorMarker {
 
 export interface CodeEditorHandle {
     focus(): boolean;
+    showFind?(): boolean;
+    showReplace?(): boolean;
     getContent(): string | null;
     getSelection(): EditorSelection | null;
     replaceRange(range: EditorRange, text: string, selection?: EditorSelection): boolean;
@@ -320,6 +322,7 @@ const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(function CodeEd
     const monacoRef = useRef<typeof import('monaco-editor') | null>(null);
     const lintDecorationsRef = useRef<editor.IEditorDecorationsCollection | null>(null);
     const onChangeRef = useRef(onChange);
+    const readOnlyRef = useRef(readOnly);
     const onBlurRef = useRef(onBlur);
     const onCursorPositionChangeRef = useRef(onCursorPositionChange);
     const onSelectionChangeRef = useRef(onSelectionChange);
@@ -345,6 +348,7 @@ const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(function CodeEd
     }, []);
 
     onChangeRef.current = onChange;
+    readOnlyRef.current = readOnly;
     onBlurRef.current = onBlur;
     onCursorPositionChangeRef.current = onCursorPositionChange;
     onSelectionChangeRef.current = onSelectionChange;
@@ -444,6 +448,25 @@ const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(function CodeEd
             focus(): boolean {
                 if (editorRef.current === null) return false;
                 editorRef.current.focus();
+                return true;
+            },
+            showFind(): boolean {
+                const instance = editorRef.current;
+                if (instance === null || instance.getModel() === null || instance.getAction('actions.find') === null)
+                    return false;
+                instance.trigger('gomarkedit', 'actions.find', null);
+                return true;
+            },
+            showReplace(): boolean {
+                const instance = editorRef.current;
+                if (
+                    readOnlyRef.current ||
+                    instance === null ||
+                    instance.getModel() === null ||
+                    instance.getAction('editor.action.startFindReplaceAction') === null
+                )
+                    return false;
+                instance.trigger('gomarkedit', 'editor.action.startFindReplaceAction', null);
                 return true;
             },
             getContent(): string | null {

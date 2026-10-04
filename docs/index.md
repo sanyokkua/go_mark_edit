@@ -109,6 +109,13 @@ Detailed document lifecycle, conflict, close and shutdown flows are in [architec
 
 **State model:** document tabs and folder workspace are process state. There is no session/tab restore or crash-recovery file. Recent Items and window/application layout persist across launches.
 
+In Split mode, drag the editor/preview divider to change the editor's share from 20 to 80 percent.
+The focused divider supports Left/Right, Home and End. Each saved file remembers its ratio when
+reopened, including after restart; untitled files remember it while open and persist it when saved.
+Monaco's built-in Find/Replace searches the active editor document: Ctrl/Cmd+F opens Find and
+Ctrl/Cmd+R opens Replace, alongside Monaco's standard Replace shortcuts. Find works on read-only
+files; replacements use ordinary editing, undo, live preview and saving.
+
 ### 6.2 Error Handling and Edge Cases
 
 | Scenario                                        | Behavior                                                                                            |

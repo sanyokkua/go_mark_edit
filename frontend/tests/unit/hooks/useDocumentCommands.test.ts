@@ -20,6 +20,33 @@ function createHandle(overrides: Partial<CodeEditorHandle> = {}): CodeEditorHand
     };
 }
 
+it('opens native search only for the current mounted document session', () => {
+    const showFind = jest.fn(() => true);
+    const showReplace = jest.fn(() => true);
+    const original = createSession('document-1', createHandle({ showFind, showReplace }));
+    let liveSession: DocumentCommandSession | null = original;
+    const commands = createDocumentCommands(original.documentId, original.token, () => liveSession);
+
+    expect(commands.showFind()).toEqual({ status: 'available', value: undefined });
+    expect(commands.showReplace()).toEqual({ status: 'available', value: undefined });
+    expect(showFind).toHaveBeenCalledTimes(1);
+    expect(showReplace).toHaveBeenCalledTimes(1);
+
+    liveSession = createSession('document-2', original.handle);
+    expect(commands.showFind()).toEqual({ status: 'document-mismatch' });
+    expect(commands.showReplace()).toEqual({ status: 'document-mismatch' });
+    expect(showFind).toHaveBeenCalledTimes(1);
+    expect(showReplace).toHaveBeenCalledTimes(1);
+});
+
+it('refuses native search when its editor is unavailable', () => {
+    const session = createSession('document-1', createHandle({ showFind: () => false, showReplace: () => false }));
+    const commands = createDocumentCommands(session.documentId, session.token, () => session);
+
+    expect(commands.showFind()).toEqual({ status: 'unavailable' });
+    expect(commands.showReplace()).toEqual({ status: 'unavailable' });
+});
+
 it('forwards tidy edits, navigation and markers through the live document session', () => {
     const applyEdits = jest.fn<boolean, [TextEdit[]]>(() => true);
     const setPosition = jest.fn<boolean, [number, number]>(() => true);

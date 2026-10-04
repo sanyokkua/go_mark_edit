@@ -18,10 +18,10 @@ const view: DocumentView = {
 
 it('separates live cursor display from restorable view synchronization', async () => {
     jest.useFakeTimers();
-    const setDocView = jest.fn(async (documentId: string, view: unknown): Promise<object> => {
+    const setDocView = jest.fn((documentId: string, view: unknown): Promise<object> => {
         void documentId;
         void view;
-        return {};
+        return Promise.resolve({});
     });
     const adapter = createAppModelAdapter(
         {
@@ -36,15 +36,15 @@ it('separates live cursor display from restorable view synchronization', async (
                     activeBuffer: { documentId: '', content: '' },
                 },
             }),
-            updateBuffer: async (documentId: string, content: string): Promise<object> => {
+            updateBuffer: (documentId: string, content: string): Promise<object> => {
                 void documentId;
                 void content;
-                return {};
+                return Promise.resolve({});
             },
             setDocView,
-            setUILayout: async (layout: unknown): Promise<object> => {
+            setUILayout: (layout: unknown): Promise<object> => {
                 void layout;
-                return {};
+                return Promise.resolve({});
             },
         },
         { eventsOn: (): (() => void) => (): void => undefined },
@@ -76,6 +76,43 @@ it('separates live cursor display from restorable view synchronization', async (
 
     await Promise.resolve();
     expect(setDocView).toHaveBeenCalledTimes(1);
+    jest.useRealTimers();
+});
+
+it('omits the split ratio from editor cursor synchronization after reading the canonical view', async () => {
+    jest.useFakeTimers();
+    const setDocView = jest.fn(async (documentId: string, view: unknown): Promise<object> => {
+        void documentId;
+        void view;
+        return {};
+    });
+    const adapter = createAppModelAdapter(
+        {
+            getState: async () => ({
+                data: {
+                    snapshot: { revision: 1, documents: {}, activeDocumentId: '', ui: {} },
+                    activeBuffer: { documentId: '', content: '' },
+                },
+            }),
+            updateBuffer: async (documentId: string, content: string): Promise<object> => {
+                void documentId;
+                void content;
+                return {};
+            },
+            setDocView,
+            setUILayout: async (layout: unknown): Promise<object> => {
+                void layout;
+                return {};
+            },
+        },
+        { eventsOn: (): (() => void) => (): void => undefined },
+    );
+    const { result } = renderHook(() => useSyncedBuffer('document-1', { ...view, splitRatio: 0.72 }, adapter));
+
+    act(() => result.current.onCursorPositionChange({ lineNumber: 4, column: 2 }));
+    await act(async () => jest.advanceTimersByTimeAsync(VIEW_SYNC_MS));
+
+    expect(setDocView.mock.calls[0]?.[1]).not.toHaveProperty('splitRatio');
     jest.useRealTimers();
 });
 

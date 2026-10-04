@@ -183,6 +183,14 @@ workspace panel (`WorkspaceTree`); the reserved assistant panel remains a future
 refused width is supplied by `frontend/src/logic/store/uiLayoutCommands.ts` and is never inferred from
 notification text.
 
+Sidebar and the editor/preview SplitDivider share `useHorizontalResize` for pointer capture,
+tracking, release and cleanup; each consumer owns its units, limits and keyboard behavior.
+EditorStage owns the split layout and its temporary drag projection. The divider appears only
+with both panes side by side, exposes a localized separator with a 20–80 percent editor share,
+and supports 2-percentage-point arrow steps plus Home/End. Cancellation restores the starting
+share; changing documents, hiding a pane or entering the narrow layout clears uncommitted state.
+The committed `DocView.splitRatio` belongs to the backend and survives arrangement changes.
+
 ### ModalShell — `frontend/src/ui/components/ModalShell/`
 
 ModalShell owns modal portal, backdrop, focus trap, Tab/Shift+Tab, Escape, opener restoration and
@@ -302,7 +310,17 @@ overflow hover outside the clipped pane. CodeEditor measures Monaco once at moun
 readiness, because native WebKit can initially report a 5-pixel viewport inside a full-sized pane;
 Monaco's automatic layout handles later resizes. Generated themes give the hover the existing elevated
 surface color, and CodeEditor's hover style applies the shared blur token; other Monaco widgets keep their
-surface colors. The editor is paired with
+surface colors.
+
+Monaco's bundled Find contribution owns the in-editor Find/Replace widget, navigation, search
+options and replacements. CodeEditor's typed search methods are guarded by the same document
+and activation-token seam; registry-owned Find (Ctrl/Cmd+F) and Replace (Ctrl/Cmd+R) shortcuts
+invoke the native actions without returning focus away from the widget. Monaco's standard
+Replace shortcuts remain available. Find is nonmutating and works on read-only files; Replace
+requires a writable editor. Replacement edits use the normal buffer synchronization and undo
+history. No search service or second content owner is introduced.
+
+The editor is paired with
 `frontend/src/ui/components/MarkdownView.tsx`, which owns
 sanitized preview rendering; each rendered block carries a numeric `data-source-line` annotation that the
 sanitization allowlist admits only as a positive integer. `frontend/src/logic/markdown/headings.ts` extracts
@@ -635,6 +653,17 @@ Full, `-`, `_`, ATX, Format on save off and Lint on save on. No migration or new
 No document content, credentials or API keys are stored in the settings database; a future provider
 stores only an environment-variable name.
 
+`internal/appmodel/file_metadata_repository.go` owns arrangement and split ratio together in the
+existing version-one `document.view.<canonical-path-hash>` record. Missing, legacy or invalid
+ratios default to 0.5; committed ratios must be finite and within [0.2, 0.8]. Explicit view changes
+and Save/Save As write this metadata, including the destination path for newly saved documents.
+Untitled ratios remain in-memory until saved. Routine cursor, selection and scroll packets omit
+the ratio on the wire, preserving backend state without repeating persistence writes. Ratio-only
+intents merge against the adapter's latest document view, preserving live editor state.
+An accepted view change is retained when metadata storage fails; the existing asynchronous
+error seam reports a persistence warning. A later explicit resize or Save retries storage.
+This restores a reopened file's view preference, without restoring tabs or document contents.
+
 The Markdown popup and Settings dialog use `useEditorSettings` and one settings command owner.
 Queued Markdown writes read the latest acknowledged group before merging a patch; a rejected write
 keeps the projection unchanged and reports an error notice. All six dialog controls and the popup
@@ -724,6 +753,13 @@ part of the current product.
 | ADR-0037 | Preview links open supported Markdown documents anywhere on the local disk through the one shared link handler and the normal open flow. Network and device paths are refused on every platform. An existing local file with an unsupported suffix is refused with an offer to reveal it in the file manager and is never launched. The backend resolver decides containment, symbolic links and folder-tree rows. Replaces the document-folder link limit of the earlier link rule; D11's single classifier and normal open flow stay. |
 | ADR-0038 | Format and Compact compute minimal source edits over the preview's parser with the Full syntax set, whatever standard is selected, apply them as one undo step and are refused when the result would render differently at the Full standard; Prettier stays a repository tool, not a runtime formatter. Lint shares the same parser and predicates. Supersedes ADR-0031.                                                                                                                                                               |
 | ADR-0039 | Format, Compact and Lint share one per-window frontend operation slot: a single run at a time with progress and Cancel for long runs, held from its start until exactly one terminal outcome. The backend run registry of ADR-0032 stays unbuilt. Refines ADR-0032.                                                                                                                                                                                                                                                                     |
+
+Feature 007 extends the document-view contract with a backend-owned per-document split ratio.
+It uses the existing canonical-path file metadata record for durable preferences and the native
+Monaco Find contribution for in-editor search and replacement. Shared pointer handling has one
+owner, `useHorizontalResize`, consumed by Sidebar and SplitDivider. Temporary drag state never
+becomes canonical document state, and metadata-write failure does not reject a published view
+change; the existing asynchronous warning seam reports it. No content or session restoration is added.
 
 The preview link classifier and local image route are also durable current decisions: they are the
 single policy and route described in the lifecycle section, with no remote rendering policy until the

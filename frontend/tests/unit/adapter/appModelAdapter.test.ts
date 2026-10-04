@@ -766,6 +766,170 @@ it('merges a partial arrangement with the newest cursor, selection, and editor a
     });
 });
 
+it('commits a split ratio with the latest cursor, selection, scroll, and pane visibility', async () => {
+    const setDocView = jest.fn<Promise<VoidResult>, [string, DocViewInput]>((documentId, view) => {
+        void documentId;
+        void view;
+        return Promise.resolve({});
+    });
+    const adapter = createAppModelAdapter(
+        {
+            getState: async (): Promise<{ data: AppModelState }> => ({ data: state }),
+            updateBuffer: async (): Promise<VoidResult> => ({}),
+            setDocView,
+            setUILayout: async (): Promise<VoidResult> => ({}),
+        },
+        { eventsOn: (): (() => void) => (): void => undefined },
+    );
+    const fallback = viewAt(1);
+    const latest = {
+        ...viewAt(19, true),
+        splitRatio: 0.4,
+        selection: { start: { line: 18, column: 2 }, end: { line: 19, column: 7 } },
+        scroll: { editor: 480, preview: 960 },
+    } satisfies DocViewInput;
+
+    await adapter.updateLocalDocView('document-1', latest);
+    await adapter.setDocView('document-1', { splitRatio: 0.7 }, fallback);
+
+    expect(setDocView).toHaveBeenCalledTimes(1);
+    expect(setDocView).toHaveBeenCalledWith('document-1', { ...latest, splitRatio: 0.7 });
+});
+
+it('omits a committed split ratio from a later cursor-only view packet', async () => {
+    jest.useFakeTimers();
+    const setDocView = jest.fn<Promise<VoidResult>, [string, DocViewInput]>((documentId, view) => {
+        void documentId;
+        void view;
+        return Promise.resolve({});
+    });
+    const adapter = createAppModelAdapter(
+        {
+            getState: async (): Promise<{ data: AppModelState }> => ({ data: state }),
+            updateBuffer: async (): Promise<VoidResult> => ({}),
+            setDocView,
+            setUILayout: async (): Promise<VoidResult> => ({}),
+        },
+        { eventsOn: (): (() => void) => (): void => undefined },
+    );
+    const staleView = { ...viewAt(7), splitRatio: 0.5 };
+
+    await adapter.setDocView('document-1', { splitRatio: 0.76 }, staleView);
+    await adapter.updateLocalDocView('document-1', { ...staleView, cursor: { line: 8, column: 3 } });
+    await adapter.flushDocView('document-1');
+
+    expect(setDocView).toHaveBeenNthCalledWith(
+        2,
+        'document-1',
+        expect.objectContaining({ cursor: { line: 8, column: 3 } }),
+    );
+    expect(setDocView.mock.calls[1]?.[1]).not.toHaveProperty('splitRatio');
+});
+
+it('persists a queued ratio change when a cursor update coalesces behind an in-flight view', async () => {
+    const older = deferred<VoidResult>();
+    const calls: DocViewInput[] = [];
+    const setDocView = jest.fn<Promise<VoidResult>, [string, DocViewInput]>(
+        async (_documentId, view): Promise<VoidResult> => {
+            calls.push(view);
+            return calls.length === 1 ? older.promise : {};
+        },
+    );
+    const adapter = createAppModelAdapter(
+        {
+            getState: async (): Promise<{ data: AppModelState }> => ({ data: state }),
+            updateBuffer: async (): Promise<VoidResult> => ({}),
+            setDocView,
+            setUILayout: async (): Promise<VoidResult> => ({}),
+        },
+        { eventsOn: (): (() => void) => (): void => undefined },
+    );
+    const staleView = { ...viewAt(3), splitRatio: 0.5 };
+
+    const olderCommand = adapter.setDocView('document-1', staleView);
+    const ratioCommand = adapter.setDocView('document-1', { splitRatio: 0.72 }, staleView);
+    await adapter.updateLocalDocView('document-1', { ...staleView, cursor: { line: 8, column: 2 } });
+    expect(calls).toHaveLength(1);
+
+    older.resolve({});
+    await olderCommand;
+    await ratioCommand;
+
+    expect(calls).toHaveLength(2);
+    expect(calls[1]).toEqual({ ...staleView, cursor: { line: 8, column: 2 }, splitRatio: 0.72 });
+});
+
+it('omits a stale split ratio from a lifecycle view flush after a resize', async () => {
+    const setDocView = jest.fn<Promise<VoidResult>, [string, DocViewInput]>((documentId, view) => {
+        void documentId;
+        void view;
+        return Promise.resolve({});
+    });
+    const adapter = createAppModelAdapter(
+        {
+            getState: async (): Promise<{ data: AppModelState }> => ({ data: state }),
+            updateBuffer: async (): Promise<VoidResult> => ({}),
+            setDocView,
+            setUILayout: async (): Promise<VoidResult> => ({}),
+        },
+        { eventsOn: (): (() => void) => (): void => undefined },
+    );
+    const staleView = { ...viewAt(3), splitRatio: 0.5 };
+
+    await adapter.setDocView('document-1', { splitRatio: 0.7 }, staleView);
+    await adapter.updateDocView('document-1', { ...staleView, scroll: { editor: 170, preview: 420 } });
+    await adapter.flushDocView('document-1');
+
+    expect(setDocView).toHaveBeenNthCalledWith(
+        2,
+        'document-1',
+        expect.objectContaining({ scroll: { editor: 170, preview: 420 } }),
+    );
+    expect(setDocView.mock.calls[1]?.[1]).not.toHaveProperty('splitRatio');
+});
+
+it('keeps split ratios independent when views for two documents are queued', async () => {
+    jest.useFakeTimers();
+    const setDocView = jest.fn<Promise<VoidResult>, [string, DocViewInput]>((documentId, view) => {
+        void documentId;
+        void view;
+        return Promise.resolve({});
+    });
+    const adapter = createAppModelAdapter(
+        {
+            getState: async (): Promise<{ data: AppModelState }> => ({ data: state }),
+            updateBuffer: async (): Promise<VoidResult> => ({}),
+            setDocView,
+            setUILayout: async (): Promise<VoidResult> => ({}),
+        },
+        { eventsOn: (): (() => void) => (): void => undefined },
+    );
+
+    await adapter.setDocView('document-1', { splitRatio: 0.25 }, viewAt(1));
+    await adapter.setDocView('document-2', { splitRatio: 0.75 }, viewAt(2));
+    await adapter.setDocView('document-1', { editorVisible: false, previewVisible: true }, viewAt(1));
+    await adapter.setDocView('document-2', { editorVisible: false, previewVisible: true }, viewAt(2));
+
+    expect(setDocView).toHaveBeenNthCalledWith(1, 'document-1', {
+        ...viewAt(1),
+        splitRatio: 0.25,
+    });
+    expect(setDocView).toHaveBeenNthCalledWith(2, 'document-2', {
+        ...viewAt(2),
+        splitRatio: 0.75,
+    });
+    expect(setDocView).toHaveBeenNthCalledWith(3, 'document-1', {
+        ...viewAt(1),
+        editorVisible: false,
+        previewVisible: true,
+    });
+    expect(setDocView).toHaveBeenNthCalledWith(4, 'document-2', {
+        ...viewAt(2),
+        editorVisible: false,
+        previewVisible: true,
+    });
+});
+
 it('retries the newest failed arrangement intent with current fields while stale completion cannot replace it', async () => {
     jest.useFakeTimers();
     const failed = {

@@ -25,6 +25,7 @@ import 'monaco-editor/esm/vs/basic-languages/shell/shell.contribution';
 import 'monaco-editor/esm/vs/basic-languages/ini/ini.contribution';
 import 'monaco-editor/esm/vs/editor/contrib/hover/browser/hoverContribution';
 import 'monaco-editor/esm/vs/editor/contrib/links/browser/links';
+import 'monaco-editor/esm/vs/editor/contrib/find/browser/findController';
 import EditorWorker from 'monaco-editor/esm/vs/editor/editor.worker?worker';
 
 import type { EditorLink } from '../../logic/markdown/editorLinks';

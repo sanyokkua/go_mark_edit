@@ -18,6 +18,7 @@ type openReservation struct {
 	rawHash             string
 	existingDocumentID  string
 	arrangement         string
+	splitRatio          float64
 }
 
 func countNovelReservations(reservations map[string]*openReservation) int {

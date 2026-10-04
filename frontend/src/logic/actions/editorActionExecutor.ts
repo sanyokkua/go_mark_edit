@@ -45,6 +45,12 @@ type ClipboardFailure = { reason: 'unsupported'; status: 'unavailable' };
 const clipboardActionIds: ReadonlySet<ActionId> = new Set(['cut', 'copy', 'paste', 'paste-plain']);
 const tidyActionIds: ReadonlySet<ActionId> = new Set(['format', 'compact', 'lint']);
 
+function runSearchAction(actionId: 'find' | 'replace', commands: DocumentCommandAPI | null): EditorActionInvocation {
+    const result = actionId === 'find' ? commands?.showFind?.() : commands?.showReplace?.();
+    if (result === undefined || result.status === 'unavailable') return unavailableClipboard();
+    return result.status === 'available' ? { status: 'committed' } : result;
+}
+
 const unavailableClipboard = (): ClipboardFailure => ({ reason: 'unsupported', status: 'unavailable' });
 
 function lineStartOffset(source: string, lineNumber: number): number {
@@ -215,22 +221,24 @@ export function createEditorActionExecutor(context: EditorActionExecutorContext)
         const result = await dispatchAction(actionId, {
             documentId: snapshot.documentId ?? undefined,
             editorFocused: snapshot.commands !== null && context.documentId !== null,
-            invoke: (): Promise<EditorActionInvocation> | DocumentCommandResult<unknown> =>
+            invoke: (): Promise<EditorActionInvocation> | EditorActionInvocation | DocumentCommandResult<unknown> =>
                 tidyActionIds.has(actionId)
                     ? context.invokeTidy === undefined || snapshot.commands === null || snapshot.documentId === null
                         ? Promise.resolve(unavailableClipboard())
                         : context.invokeTidy(actionId as TidyOp, snapshot).then(tidyInvocation)
-                    : clipboardActionIds.has(actionId)
-                      ? runClipboardAction(actionId, snapshot.commands, snapshot.selection, context.clipboard)
-                      : runFormatAction({
-                            actionId,
-                            commands: capturedSelectionCommands(snapshot.commands, snapshot.selection),
-                            markers:
-                                context.markdownSettings === undefined
-                                    ? undefined
-                                    : formatMarkers(context.markdownSettings),
-                            selection: snapshot.selection,
-                        }),
+                    : actionId === 'find' || actionId === 'replace'
+                      ? runSearchAction(actionId, snapshot.commands)
+                      : clipboardActionIds.has(actionId)
+                        ? runClipboardAction(actionId, snapshot.commands, snapshot.selection, context.clipboard)
+                        : runFormatAction({
+                              actionId,
+                              commands: capturedSelectionCommands(snapshot.commands, snapshot.selection),
+                              markers:
+                                  context.markdownSettings === undefined
+                                      ? undefined
+                                      : formatMarkers(context.markdownSettings),
+                              selection: snapshot.selection,
+                          }),
             modalOpen: context.modalOpen,
             markdownSettingsLoaded: context.markdownSettings !== undefined,
             projectedState: context.projectedState,

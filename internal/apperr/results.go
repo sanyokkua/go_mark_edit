@@ -98,6 +98,7 @@ type ScrollOffsets struct {
 // DocView is metadata for a document's panes and restorable editor state.
 type DocView struct {
 	Arrangement    string         `json:"arrangement"`
+	SplitRatio     float64        `json:"splitRatio"`
 	EditorVisible  bool           `json:"editorVisible"`
 	PreviewVisible bool           `json:"previewVisible"`
 	Cursor         CursorPosition `json:"cursor"`
@@ -107,6 +108,7 @@ type DocView struct {
 
 // DocViewInput is the command payload used to update a document's view.
 type DocViewInput struct {
+	SplitRatio     *float64       `json:"splitRatio,omitempty"`
 	EditorVisible  bool           `json:"editorVisible"`
 	PreviewVisible bool           `json:"previewVisible"`
 	Cursor         CursorPosition `json:"cursor"`

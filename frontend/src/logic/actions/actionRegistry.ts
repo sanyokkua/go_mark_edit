@@ -79,6 +79,8 @@ export type ActionId =
     | 'open-logs'
     | 'view-github'
     | 'about'
+    | 'find'
+    | 'replace'
     | 'bold'
     | 'italic'
     | 'strike'
@@ -317,6 +319,9 @@ export const actionRegistry: readonly ActionEntry[] = Object.freeze([
     }),
     entry('about', 'application', ['about-menu']),
 
+    entry('find', 'editor', ['shortcuts'], { shortcut: 'Mod+F' }),
+    entry('replace', 'editor', ['shortcuts'], { shortcut: 'Mod+R' }),
+
     entry('bold', 'editor', ['toolbar', 'context', 'shortcuts'], {
         shortcut: 'Mod+B',
         surfaceOrder: { context: 4 },
@@ -410,17 +415,15 @@ const registryById = new Map(actionRegistry.map((action) => [action.id, action])
 /**
  * The `editor`-scope actions that do not change the buffer.
  *
- * Editing is unavailable for a read-only document, not the
- * clipboard: lifting text out of a file you cannot write is not editing, so
- * `copy` stays available where `cut`, `paste` and every formatting command do
- * not.
+ * Editing is unavailable for a read-only document. Copying text and finding
+ * matches leave the buffer unchanged, so both remain available there.
  *
  * Stated as the exceptions rather than as the list of mutations, so an
  * `editor`-scope action added later is gated by default. That is the safe
  * direction — a new mutation silently enabled on an unwritable document is a
  * safety bug, while a new reader that is dimmed is immediately observable.
  */
-const NON_MUTATING_EDITOR_ACTIONS: ReadonlySet<ActionId> = new Set(['copy']);
+const NON_MUTATING_EDITOR_ACTIONS: ReadonlySet<ActionId> = new Set(['copy', 'find']);
 
 const TAB_ACTIONS: ReadonlySet<ActionId> = new Set([
     'close-tab',
@@ -560,8 +563,8 @@ export function getActionAvailability(
 
     /*
      * Editing is unavailable when the document opened
-     * tolerantly as read-only. Every `editor`-scope action but `copy` changes the
-     * buffer, so the capability gates the scope.
+     * tolerantly as read-only. `copy` and `find` leave the buffer unchanged;
+     * the capability gates other editor actions.
      *
      * The predicate is `capability !== 'writable'`, mirroring Go's own
      * (`internal/appmodel/save.go`), rather than a comparison against

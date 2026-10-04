@@ -163,6 +163,8 @@ function installMockEditor(): void {
     mockRuntime.editor = {
         executeEdits: jest.fn(),
         focus: jest.fn(),
+        getAction: jest.fn(() => ({ run: jest.fn() })),
+        trigger: jest.fn(),
         getBottomForLineNumber: jest.fn((lineNumber: number): number => mockPadding + lineNumber * mockLineHeight),
         getLayoutInfo: jest.fn(
             () => ({ width: mockRuntime.layoutWidth, height: mockViewportHeight }) as editor.EditorLayoutInfo,
@@ -325,6 +327,28 @@ function editHandle(ref: { current: CodeEditorHandle | null }): NewHandle {
     if (ref.current === null) throw new Error('expected mounted editor');
     return ref.current as NewHandle;
 }
+
+it('opens Monaco Find and Replace actions without editing the working copy', async () => {
+    const ref = { current: null as CodeEditorHandle | null };
+    const { rerender } = render(<CodeEditor ref={ref} documentId="document-1" initialValue="one one" />);
+    await screen.findByRole('textbox', { name: 'Markdown source' });
+
+    expect(editHandle(ref).showFind?.()).toBe(true);
+    expect(editHandle(ref).showReplace?.()).toBe(true);
+    expect(mockRuntime.editor.trigger).toHaveBeenNthCalledWith(1, 'gomarkedit', 'actions.find', null);
+    expect(mockRuntime.editor.trigger).toHaveBeenNthCalledWith(
+        2,
+        'gomarkedit',
+        'editor.action.startFindReplaceAction',
+        null,
+    );
+    expect(mockRuntime.editor.executeEdits).not.toHaveBeenCalled();
+
+    rerender(<CodeEditor ref={ref} documentId="document-1" initialValue="one one" readOnly />);
+    expect(editHandle(ref).showFind?.()).toBe(true);
+    expect(editHandle(ref).showReplace?.()).toBe(false);
+    expect(mockRuntime.editor.trigger).toHaveBeenCalledTimes(3);
+});
 
 function simulateEdits(): void {
     (mockRuntime.editor.executeEdits as jest.Mock).mockImplementation(

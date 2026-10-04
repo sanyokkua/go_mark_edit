@@ -424,6 +424,13 @@ func (service *AppModelService) executeWrite(ctx context.Context, snapshot write
 	if err := service.publishCommittedLocked(ctx, before, patch); err != nil {
 		resyncRequired = true
 	}
+	var metadataWarning *apperr.ClassifiedError
+	if shouldPromoteRecent && service.metadata != nil && document.canonicalPath != "" {
+		view := document.metadata.View
+		if err := service.metadata.WriteView(ctx, document.canonicalPath, FileViewMetadata{Arrangement: view.Arrangement, SplitRatio: view.SplitRatio}); err != nil {
+			metadataWarning = bridge.ClassifiedWithID(apperr.ClassifiedPersistenceWarning, document.canonicalPath, "The document was saved, but its view settings could not be stored.", apperr.RemediationNone, snapshot.documentID)
+		}
+	}
 	service.mu.Unlock()
 
 	var promotionWarning *apperr.ClassifiedError
@@ -444,7 +451,10 @@ func (service *AppModelService) executeWrite(ctx context.Context, snapshot write
 		TargetPathAdopted: snapshot.targetPathAdopted, LineEndingOutcome: encoded.lineEndingOutcome,
 		BOMOutcome: encoded.bomOutcome, ResyncRequired: resyncRequired,
 	}, Error: promotionWarning}
-	result.Failure = bridge.FailureFromClassified(promotionWarning)
+	if metadataWarning != nil {
+		result.Error = metadataWarning
+	}
+	result.Failure = bridge.FailureFromClassified(result.Error)
 	return result
 }
 

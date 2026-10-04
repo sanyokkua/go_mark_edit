@@ -1531,6 +1531,7 @@ it('round trips view mode through the backend patch', async () => {
             {
                 editorVisible: false,
                 previewVisible: true,
+                splitRatio: 0.5,
                 cursor: { line: 1, column: 1 },
                 selection: {
                     start: { line: 1, column: 1 },
@@ -1564,7 +1565,7 @@ it('round trips view mode through the backend patch', async () => {
 
     expect(screen.getByLabelText('Editor pane')).toHaveAttribute('aria-hidden', 'true');
     expect(screen.getByLabelText('Preview pane')).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Backend-owned preview' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Backend-owned preview' })).toBeInTheDocument();
 });
 
 it('keeps keyboard selection and focus backend-controlled', async () => {

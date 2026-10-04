@@ -12,6 +12,18 @@
     color: var(--accent-ink);
 }
 
+.stage[data-split-resizable] {
+    gap: 0;
+}
+
+.stage[data-split-resizable] > [data-pane-identity='editor'] {
+    flex: var(--editor-split-ratio) 1 0;
+}
+
+.stage[data-split-resizable] > [data-pane-identity='preview'] {
+    flex: calc(1 - var(--editor-split-ratio)) 1 0;
+}
+
 .previewContent {
     background: var(--preview-content-background);
     flex: 1 1 0;

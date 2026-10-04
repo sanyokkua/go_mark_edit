@@ -12,7 +12,12 @@ export interface DocumentCommandSession {
     token: symbol;
 }
 
-export interface DocumentCommandAPI {
+export interface DocumentSearchCommands {
+    showFind?: () => DocumentCommandResult<void>;
+    showReplace?: () => DocumentCommandResult<void>;
+}
+
+export interface DocumentCommandAPI extends DocumentSearchCommands {
     focus: () => DocumentCommandResult<void>;
     getContent: () => DocumentCommandResult<string>;
     getSelection: () => DocumentCommandResult<EditorSelection | null>;
@@ -22,6 +27,8 @@ export interface DocumentCommandAPI {
     setPosition: (line: number, column: number) => DocumentCommandResult<void>;
     setMarkers: (markers: EditorMarker[]) => DocumentCommandResult<void>;
 }
+
+export type LiveDocumentCommandAPI = DocumentCommandAPI & Required<DocumentSearchCommands>;
 
 export type EditorSessionSource = () => DocumentCommandSession | null;
 
@@ -47,8 +54,22 @@ export function createDocumentCommands(
     expectedDocumentId: string | null,
     expectedToken: symbol | null,
     sessionSource: EditorSessionSource,
-): DocumentCommandAPI {
+): LiveDocumentCommandAPI {
     return {
+        showFind(): DocumentCommandResult<void> {
+            const session = resolveSession(expectedDocumentId, expectedToken, sessionSource);
+            if (session.status !== 'available') return session;
+            return session.value.showFind?.() === true
+                ? { status: 'available', value: undefined }
+                : { status: 'unavailable' };
+        },
+        showReplace(): DocumentCommandResult<void> {
+            const session = resolveSession(expectedDocumentId, expectedToken, sessionSource);
+            if (session.status !== 'available') return session;
+            return session.value.showReplace?.() === true
+                ? { status: 'available', value: undefined }
+                : { status: 'unavailable' };
+        },
         focus(): DocumentCommandResult<void> {
             const session = resolveSession(expectedDocumentId, expectedToken, sessionSource);
             if (session.status !== 'available') {
@@ -126,9 +147,9 @@ export function useDocumentCommands(
     expectedDocumentId: string | null,
     expectedToken: symbol | null,
     sessionSource: EditorSessionSource,
-): DocumentCommandAPI {
+): LiveDocumentCommandAPI {
     return useMemo(
-        (): DocumentCommandAPI => createDocumentCommands(expectedDocumentId, expectedToken, sessionSource),
+        (): LiveDocumentCommandAPI => createDocumentCommands(expectedDocumentId, expectedToken, sessionSource),
         [expectedDocumentId, expectedToken, sessionSource],
     );
 }

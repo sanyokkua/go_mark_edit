@@ -1,0 +1,26 @@
+.divider {
+    background: transparent;
+    cursor: col-resize;
+    flex: 0 0 max(var(--editor-stage-gap), var(--shell-divider-width));
+    position: relative;
+    touch-action: none;
+    user-select: none;
+    z-index: var(--z-resize);
+}
+
+.divider::after {
+    background: var(--stroke-soft);
+    content: '';
+    inset: 0 auto 0 50%;
+    position: absolute;
+    width: var(--shell-divider-line-width);
+}
+
+.divider:hover::after,
+.divider:focus-visible::after {
+    background: var(--accent);
+}
+
+.divider:focus-visible {
+    box-shadow: var(--focus-ring);
+}

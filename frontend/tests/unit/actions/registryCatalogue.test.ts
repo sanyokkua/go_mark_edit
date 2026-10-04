@@ -49,6 +49,8 @@ it('keeps the canonical action catalogue stable', () => {
         'open-logs',
         'view-github',
         'about',
+        'find',
+        'replace',
         'bold',
         'italic',
         'strike',

@@ -85,6 +85,152 @@ afterEach(() => {
     mockCreatePipeline.mockReset().mockImplementation(actualCreatePipeline);
 });
 
+it('resizes the split without replacing the editor and commits only the ratio intent', async () => {
+    const document = documentFor('split');
+    const setDocView = jest.fn(async () => undefined);
+    render(
+        <Provider store={store}>
+            <EditorSessionProvider activeBuffer={{ documentId: document.documentId, content: '# Heading' }}>
+                <EditorStage
+                    adapter={{ ...adapter, setDocView }}
+                    activeBuffer={{ documentId: document.documentId, content: '# Heading' }}
+                    activeDocument={document}
+                    editorVisible
+                    previewVisible
+                    readOnly={false}
+                    view={document.view}
+                    onLiveCursorChange={jest.fn()}
+                    onPreviewWarning={jest.fn()}
+                />
+            </EditorSessionProvider>
+        </Provider>,
+    );
+    const editor = screen.getByLabelText('Markdown source');
+    const divider = screen.getByRole('separator', { name: 'Resize editor and preview panes' });
+    fireEvent.keyDown(divider, { key: 'ArrowRight' });
+    expect(divider).toHaveAttribute('aria-valuenow', '52');
+    expect(screen.getByLabelText('Markdown source')).toBe(editor);
+    await waitFor(() =>
+        expect(setDocView).toHaveBeenCalledWith(
+            document.documentId,
+            { splitRatio: 0.52 },
+            expect.objectContaining({ cursor: document.view.cursor, scroll: document.view.scroll }),
+        ),
+    );
+});
+
+it('restores the acknowledged ratio and reports a refused resize command', async () => {
+    const document = documentFor('split');
+    const noticesBefore = store.getState().notifications.items.length;
+    const setDocView = jest.fn(async () => {
+        throw { code: 'validation', message: 'Invalid ratio', title: 'Invalid input', retryable: false };
+    });
+    render(
+        <Provider store={store}>
+            <EditorSessionProvider activeBuffer={{ documentId: document.documentId, content: '# Heading' }}>
+                <EditorStage
+                    adapter={{ ...adapter, setDocView }}
+                    activeBuffer={{ documentId: document.documentId, content: '# Heading' }}
+                    activeDocument={document}
+                    editorVisible
+                    previewVisible
+                    readOnly={false}
+                    view={document.view}
+                    onLiveCursorChange={jest.fn()}
+                    onPreviewWarning={jest.fn()}
+                />
+            </EditorSessionProvider>
+        </Provider>,
+    );
+    const divider = screen.getByRole('separator', { name: 'Resize editor and preview panes' });
+    fireEvent.keyDown(divider, { key: 'ArrowRight' });
+    await waitFor(() => expect(divider).toHaveAttribute('aria-valuenow', '50'));
+    expect(store.getState().notifications.items.length).toBeGreaterThan(noticesBefore);
+});
+
+it('discards an uncommitted drag when switching away from a document and back', () => {
+    const first = documentFor('split');
+    const setDocView = jest.fn(async () => undefined);
+    const renderStage = (documentId: string, previewVisible = true): React.JSX.Element => (
+        <Provider store={store}>
+            <EditorSessionProvider activeBuffer={{ documentId, content: '# Heading' }}>
+                <EditorStage
+                    adapter={{ ...adapter, setDocView }}
+                    activeBuffer={{ documentId, content: '# Heading' }}
+                    activeDocument={{ ...first, documentId }}
+                    editorVisible
+                    previewVisible={previewVisible}
+                    readOnly={false}
+                    view={{ ...first.view, splitRatio: 0.5 }}
+                    onLiveCursorChange={jest.fn()}
+                    onPreviewWarning={jest.fn()}
+                />
+            </EditorSessionProvider>
+        </Provider>
+    );
+    const { rerender } = render(renderStage('one'));
+    const panes = screen.getAllByRole('region');
+    for (const pane of panes) jest.spyOn(pane, 'getBoundingClientRect').mockReturnValue({ width: 500 } as DOMRect);
+    const event = (type: string, x: number): Event => {
+        const pointer = new Event(type, { bubbles: true });
+        Object.defineProperties(pointer, { clientX: { value: x }, pointerId: { value: 7 }, button: { value: 0 } });
+        return pointer;
+    };
+    fireEvent(screen.getByRole('separator'), event('pointerdown', 500));
+    fireEvent(window, event('pointermove', 700));
+    expect(screen.getByRole('separator')).toHaveAttribute('aria-valuenow', '70');
+    rerender(renderStage('two'));
+    rerender(renderStage('one'));
+    expect(screen.getByRole('separator')).toHaveAttribute('aria-valuenow', '50');
+    fireEvent(window, event('pointerup', 700));
+    expect(setDocView).not.toHaveBeenCalled();
+    fireEvent(screen.getByRole('separator'), event('pointerdown', 500));
+    fireEvent(window, event('pointermove', 700));
+    rerender(renderStage('one', false));
+    rerender(renderStage('one'));
+    expect(screen.getByRole('separator')).toHaveAttribute('aria-valuenow', '50');
+});
+
+it('restores each document ratio and hides the divider in single-pane and narrow layouts', () => {
+    const first = documentFor('split');
+    const renderStage = (documentId: string, splitRatio: number, previewVisible = true): React.JSX.Element => (
+        <Provider store={store}>
+            <EditorSessionProvider activeBuffer={{ documentId, content: '# Heading' }}>
+                <EditorStage
+                    adapter={adapter}
+                    activeBuffer={{ documentId, content: '# Heading' }}
+                    activeDocument={{ ...first, documentId }}
+                    editorVisible
+                    previewVisible={previewVisible}
+                    readOnly={false}
+                    view={{ ...first.view, splitRatio }}
+                    onLiveCursorChange={jest.fn()}
+                    onPreviewWarning={jest.fn()}
+                />
+            </EditorSessionProvider>
+        </Provider>
+    );
+    const { rerender } = render(renderStage('one', 0.65));
+    expect(screen.getByRole('separator')).toHaveAttribute('aria-valuenow', '65');
+    rerender(renderStage('two', 0.35));
+    expect(screen.getByRole('separator')).toHaveAttribute('aria-valuenow', '35');
+    rerender(renderStage('one', 0.65, false));
+    expect(screen.queryByRole('separator')).toBeNull();
+    rerender(renderStage('one', 0.65));
+    expect(screen.getByRole('separator')).toHaveAttribute('aria-valuenow', '65');
+    const originalWidth = window.innerWidth;
+    try {
+        Object.defineProperty(window, 'innerWidth', { configurable: true, value: 376 });
+        fireEvent(window, new Event('resize'));
+        expect(screen.queryByRole('separator')).toBeNull();
+        Object.defineProperty(window, 'innerWidth', { configurable: true, value: 1280 });
+        fireEvent(window, new Event('resize'));
+        expect(screen.getByRole('separator')).toHaveAttribute('aria-valuenow', '65');
+    } finally {
+        Object.defineProperty(window, 'innerWidth', { configurable: true, value: originalWidth });
+    }
+});
+
 it('keeps the committed preview through a failed same-document source refresh and isolates the next document', async () => {
     const failBrokenSource: Plugin = () => (_tree, file) => {
         if (String(file.value).includes('broken document')) throw new Error('parse failed');

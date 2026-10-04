@@ -100,6 +100,7 @@ func newUntitledEditorDocument(documentID string) *openDocument {
 			SizeClass:   "small",
 			View: apperr.DocView{
 				Arrangement:    ArrangementEditor,
+				SplitRatio:     defaultSplitRatio,
 				EditorVisible:  true,
 				PreviewVisible: false,
 				Cursor:         apperr.CursorPosition{Line: 1, Column: 1},
@@ -165,9 +166,17 @@ func (service *AppModelService) PrepareOpen(ctx context.Context, path string, ex
 		return OpenPreparation{}, read.Error
 	}
 	arrangement := openArrangement(defaultMode, fallbackArrangement)
-	if metadataRepository != nil && defaultMode == OpenModeEditor {
-		if persisted, found, err := metadataRepository.ReadArrangement(ctx, read.CanonicalPath.Path); err == nil && found {
-			arrangement = persisted
+	splitRatio := defaultSplitRatio
+	if metadataRepository != nil {
+		persisted, found, metadataErr := metadataRepository.ReadView(ctx, read.CanonicalPath.Path)
+		if metadataErr != nil {
+			warning := bridge.ClassifiedWithID(apperr.ClassifiedPersistenceWarning, read.CanonicalPath.Path, "The document opened with default view settings because its saved view could not be read.", apperr.RemediationNone, "")
+			service.emitAsyncError(ctx, apperr.ClassifiedToWire(warning), "document view read failure could not be surfaced")
+		} else if found {
+			if defaultMode == OpenModeEditor {
+				arrangement = persisted.Arrangement
+			}
+			splitRatio = persisted.SplitRatio
 		}
 	}
 
@@ -196,7 +205,7 @@ func (service *AppModelService) PrepareOpen(ctx context.Context, path string, ex
 	reservationID := mintDocumentID()
 	service.reservations[reservationID] = &openReservation{
 		id: reservationID, identity: identity, expectedTabRevision: expectedTabSetRevision,
-		canonical: read.CanonicalPath, read: read, version: stable.Version, rawHash: stable.RawHash, existingDocumentID: existingDocumentID, arrangement: arrangement,
+		canonical: read.CanonicalPath, read: read, version: stable.Version, rawHash: stable.RawHash, existingDocumentID: existingDocumentID, arrangement: arrangement, splitRatio: splitRatio,
 	}
 	return OpenPreparation{ReservationID: reservationID}, nil
 }
@@ -237,7 +246,7 @@ func (service *AppModelService) CommitPreparedOpen(ctx context.Context, reservat
 		}
 	} else {
 		documentID = mintDocumentID()
-		document := documentFromClassifiedRead(documentID, reservation.read, reservation.arrangement, reservation.version, reservation.rawHash)
+		document := documentFromClassifiedRead(documentID, reservation.read, reservation.arrangement, reservation.splitRatio, reservation.version, reservation.rawHash)
 		if len(service.state.documents) == 1 && service.state.activeDocumentID != "" {
 			placeholder, exists := service.state.documents[service.state.activeDocumentID]
 			if exists && placeholder.metadata.Path == "" && placeholder.content == "" && !placeholder.metadata.Dirty {
@@ -354,6 +363,7 @@ func (service *AppModelService) ReopenLastFile(ctx context.Context, expectedTabS
 		viewErr := service.SetDocView(ctx, result.DocumentID, apperr.DocViewInput{
 			EditorVisible:  entry.view.EditorVisible,
 			PreviewVisible: entry.view.PreviewVisible,
+			SplitRatio:     &entry.view.SplitRatio,
 			Cursor:         entry.view.Cursor,
 			Selection:      entry.view.Selection,
 			Scroll:         entry.view.Scroll,
@@ -374,7 +384,7 @@ func (service *AppModelService) ReopenLastFile(ctx context.Context, expectedTabS
 	return result
 }
 
-func documentFromClassifiedRead(documentID string, read file.ClassifiedRead, arrangement string, version file.DiskVersion, rawHash string) *openDocument {
+func documentFromClassifiedRead(documentID string, read file.ClassifiedRead, arrangement string, splitRatio float64, version file.DiskVersion, rawHash string) *openDocument {
 	sizeClass := "small"
 	if read.Capability == file.CapabilityLargeReadOnly {
 		sizeClass = "large"
@@ -386,7 +396,7 @@ func documentFromClassifiedRead(documentID string, read file.ClassifiedRead, arr
 			DisplayName: read.CanonicalPath.DisplayName, ParentName: read.CanonicalPath.ParentName,
 			Encoding: string(read.Characteristics.Encoding), BOM: string(read.Characteristics.BOM),
 			LineEnding: string(read.Characteristics.LineEnding), Capability: string(read.Capability), SizeClass: sizeClass,
-			WordCount: len(strings.Fields(read.Content)), View: openView(arrangement),
+			WordCount: len(strings.Fields(read.Content)), View: openView(arrangement, splitRatio),
 		},
 		id: documentID, identity: read.CanonicalPath.Identity, canonicalPath: read.CanonicalPath.Path,
 		content: read.Content, baseline: read.Content, baselineVersion: version, baselineCharacteristics: read.Characteristics, baselineRawHash: rawHash, baselineOrigin: SaveOriginOpen, committedRevision: 0, bufferRevision: 0, normalizationEnding: normalizationEnding,
@@ -409,8 +419,8 @@ func normalizationEndingForRead(read file.ClassifiedRead) string {
 	}
 }
 
-func openView(arrangement string) apperr.DocView {
-	view := apperr.DocView{Arrangement: arrangement, Cursor: apperr.CursorPosition{Line: 1, Column: 1}, Selection: apperr.SelectionRange{Start: apperr.CursorPosition{Line: 1, Column: 1}, End: apperr.CursorPosition{Line: 1, Column: 1}}}
+func openView(arrangement string, splitRatio float64) apperr.DocView {
+	view := apperr.DocView{Arrangement: arrangement, SplitRatio: splitRatio, Cursor: apperr.CursorPosition{Line: 1, Column: 1}, Selection: apperr.SelectionRange{Start: apperr.CursorPosition{Line: 1, Column: 1}, End: apperr.CursorPosition{Line: 1, Column: 1}}}
 	switch arrangement {
 	case ArrangementEditor:
 		view.EditorVisible = true
