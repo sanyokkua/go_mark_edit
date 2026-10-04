@@ -3,6 +3,11 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import type { ConflictPreview } from '../../../../src/logic/store/appModelTypes';
 import ExternalChangePrompt from '../../../../src/ui/widgets/dialogs/ExternalChangePrompt';
 
+jest.mock('../../../../src/ui/components/ConflictDiff', () => ({
+    __esModule: true,
+    default: () => <div data-conflict-diff />,
+}));
+
 function preview(overrides: Partial<ConflictPreview> = {}): ConflictPreview {
     return {
         contentRevision: 4,
@@ -16,16 +21,14 @@ function preview(overrides: Partial<ConflictPreview> = {}): ConflictPreview {
         documentId: 'doc-1',
         onDisk: {
             byteCount: 5,
-            lineCount: 1,
+            lineCount: 2,
             text: 'disk\n',
-            truncated: false,
         },
         readOnly: false,
         yours: {
             byteCount: 5,
-            lineCount: 1,
+            lineCount: 2,
             text: 'mine\n',
-            truncated: false,
         },
         ...overrides,
     };
@@ -46,13 +49,8 @@ it('ExternalChangePrompt decisions and invalidation', async () => {
     await waitFor(() => expect(onDecision).toHaveBeenCalledWith('skip'));
 });
 
-it('conflict preview enforces both 12-line and 4096-byte bounds without splitting a code point', () => {
-    const longSide = {
-        byteCount: 4096,
-        lineCount: 12,
-        text: 'bounded preview',
-        truncated: true,
-    };
+it('shows full-version counts and complete text beyond the old preview bounds', () => {
+    const longSide = { byteCount: 5000, lineCount: 31, text: `first\n${'middle\n'.repeat(29)}last` };
     render(
         <ExternalChangePrompt
             onDecision={jest.fn()}
@@ -64,14 +62,14 @@ it('conflict preview enforces both 12-line and 4096-byte bounds without splittin
                     'permissions: 0644 -> 0600',
                 ],
                 onDisk: longSide,
-                yours: { ...longSide, text: 'bounded yours' },
+                yours: { ...longSide, byteCount: 5001, text: `first\n${'middle\n'.repeat(29)}yours` },
             })}
         />,
     );
 
-    expect(screen.getByRole('region', { name: 'First changed hunk' })).toBeVisible();
-    expect(screen.getAllByText(/Truncated at 12 logical lines/iu)).toHaveLength(2);
-    expect(screen.getByText('bounded preview')).not.toContainHTML('\uFFFD');
+    expect(screen.getByRole('region', { name: 'Complete file comparison' })).toBeVisible();
+    expect(screen.getByText('On disk · 31 lines · 5000 bytes')).toBeVisible();
+    expect(screen.getByText('Yours · size when saved · 31 lines · 5001 bytes')).toBeVisible();
     expect(screen.getByText('BOM: absent -> utf-8-bom')).toBeVisible();
     expect(screen.getByText('line endings: lf -> crlf')).toBeVisible();
     expect(screen.getByText('permissions: 0644 -> 0600')).toBeVisible();
@@ -95,18 +93,24 @@ it('metadata-only conflict shows characteristic differences', () => {
                 metadataDifferences: ['BOM: absent -> utf-8-bom'],
                 onDisk: {
                     byteCount: 5,
-                    lineCount: 1,
+                    lineCount: 2,
                     text: 'same\n',
-                    truncated: false,
                 },
-                yours: { byteCount: 5, lineCount: 1, text: 'same\n', truncated: false },
+                yours: {
+                    byteCount: null,
+                    byteCountUnavailableReason: 'normalization-required',
+                    lineCount: 2,
+                    text: 'same\n',
+                },
             })}
         />,
     );
 
     expect(screen.getByText('File characteristics changed')).toBeVisible();
     expect(screen.getByText('BOM: absent -> utf-8-bom')).toBeVisible();
-    expect(screen.queryByRole('region', { name: 'First changed hunk' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: 'Complete file comparison' })).not.toBeInTheDocument();
+    expect(screen.getByText('On disk · 2 lines · 5 bytes')).toBeVisible();
+    expect(screen.getByText(/Yours.*size unavailable.*line ending normalization/iu)).toBeVisible();
 });
 
 // the classified error contract's rule that user-facing copy names only the
@@ -146,23 +150,4 @@ it('isolates and escapes the basename it derives from a path', () => {
     const message = screen.getByText(/changed outside GoMarkEdit/u);
     expect(message.textContent).not.toContain('‮');
     expect(message.textContent).toContain('⁨re\\u202Egnp.md⁩');
-});
-
-it('truncated side is visibly identified', () => {
-    render(
-        <ExternalChangePrompt
-            onDecision={jest.fn()}
-            open
-            preview={preview({
-                onDisk: {
-                    byteCount: 4096,
-                    lineCount: 12,
-                    text: 'truncated disk',
-                    truncated: true,
-                },
-            })}
-        />,
-    );
-
-    expect(document.querySelector('[data-conflict-truncated="onDisk"]')).toBeVisible();
 });

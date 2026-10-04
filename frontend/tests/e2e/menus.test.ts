@@ -32,8 +32,8 @@ async function expectPopupContract(page: Page, popup: Locator, checkFocusRing: b
     await expect(popup).toBeVisible();
     if ((await popup.getAttribute('role')) === 'menu') await expectCompactMenuRows(popup);
     const state = await popup.evaluate((element) => {
-        const frame = element.closest<HTMLElement>('.application-frame');
-        if (frame === null) throw new Error('popup is outside the application frame');
+        const frame = document.querySelector<HTMLElement>('.application-frame');
+        if (frame === null) throw new Error('application frame is missing');
         const shadowProbe = document.createElement('span');
         shadowProbe.style.boxShadow = 'var(--win-shadow)';
         frame.append(shadowProbe);
@@ -50,6 +50,7 @@ async function expectPopupContract(page: Page, popup: Locator, checkFocusRing: b
         return {
             actualShadow: getComputedStyle(element).boxShadow,
             expectedShadow,
+            bodyPortal: element.parentElement === document.body,
             activeItems: items.filter((item) => item === document.activeElement).length,
             ringItems: ringItems.length,
             insideFrame:
@@ -62,6 +63,7 @@ async function expectPopupContract(page: Page, popup: Locator, checkFocusRing: b
     expect(
         state.actualShadow === state.expectedShadow || state.actualShadow.startsWith(state.expectedShadow + ','),
     ).toBe(true);
+    expect(state.bodyPortal).toBe(true);
     expect(state.insideFrame).toBe(true);
     if (checkFocusRing) {
         expect(state.activeItems).toBe(1);

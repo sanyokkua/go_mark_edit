@@ -12,6 +12,7 @@ const required = [
     '--gutter',
     '--accent',
     '--accent-soft',
+    '--diff-removed-background',
     '--selection-bg',
     '--hover',
     '--scrollbar-thumb',
@@ -193,6 +194,10 @@ function generateEditorThemes(css) {
                     'scrollbarSlider.hoverBackground': monacoColor(values['--scrollbar-thumb-hover']),
                     'editorError.foreground': monacoColor(values['--err']),
                     'editorWarning.foreground': monacoColor(values['--warn']),
+                    'diffEditor.insertedTextBackground': monacoColor(values['--accent-soft']),
+                    'diffEditor.insertedLineBackground': monacoColor(values['--accent-soft']),
+                    'diffEditor.removedTextBackground': monacoColor(values['--diff-removed-background']),
+                    'diffEditor.removedLineBackground': monacoColor(values['--diff-removed-background']),
                 },
                 rules: rulesFor(values),
             };

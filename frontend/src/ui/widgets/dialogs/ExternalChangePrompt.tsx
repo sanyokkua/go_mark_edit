@@ -4,6 +4,7 @@ import { t } from '../../../i18n';
 import type { ConflictPreview } from '../../../logic/store/appModelTypes';
 import ModalShell from '../../components/ModalShell';
 import Button from '../../primitives/Button';
+import ConflictDiff from '../../components/ConflictDiff';
 import styles from '../../components/ModalShell/ModalShell.module.css';
 import { safeBasenameOf } from '../tabLabel';
 
@@ -17,9 +18,18 @@ export interface ExternalChangePromptProps {
 }
 
 function sideLabel(name: 'onDisk' | 'yours', side: ConflictPreview['onDisk']): string {
+    const label = name === 'onDisk' ? t('conflict.onDisk') : t('conflict.yoursSaved');
+    if (side.byteCount === null) {
+        const reason = side.byteCountUnavailableReason ?? 'unsafe-content';
+        return t('conflict.sideUnavailable', {
+            label,
+            lines: side.lineCount,
+            reason: t(`conflict.size.${reason}`),
+        });
+    }
     return t('conflict.sideLabel', {
         bytes: side.byteCount,
-        label: name === 'onDisk' ? t('conflict.onDisk') : t('conflict.yours'),
+        label,
         lines: side.lineCount,
     });
 }
@@ -40,10 +50,7 @@ const ExternalChangePrompt: React.FC<ExternalChangePromptProps> = ({
         setBusy(true);
         void Promise.resolve(onDecision(decision)).finally(() => setBusy(false));
     };
-    const contentDiffers =
-        preview.onDisk.text !== preview.yours.text ||
-        preview.onDisk.truncated === true ||
-        preview.yours.truncated === true;
+    const contentDiffers = preview.onDisk.text !== preview.yours.text;
     const title = t('conflict.title');
     const initialFocusRef = preview.readOnly ? cancelRef : skipRef;
 
@@ -54,6 +61,7 @@ const ExternalChangePrompt: React.FC<ExternalChangePromptProps> = ({
             onRequestClose={(): void => choose(preview.readOnly ? 'cancel' : 'skip')}
             open
             title={title}
+            width="min(92vw, 78rem)"
         >
             <div className={styles.promptBody}>
                 <p>
@@ -82,20 +90,13 @@ const ExternalChangePrompt: React.FC<ExternalChangePromptProps> = ({
                         </ul>
                     </section>
                 ) : null}
+                <div className={styles.comparison}>
+                    <h2>{sideLabel('onDisk', preview.onDisk)}</h2>
+                    <h2>{sideLabel('yours', preview.yours)}</h2>
+                </div>
                 {contentDiffers ? (
-                    <section aria-label={t('conflict.hunkRegion')} className={styles.comparison}>
-                        {(['onDisk', 'yours'] as const).map((name) => {
-                            const side = preview[name];
-                            return (
-                                <div className={styles.side} key={name}>
-                                    <h2>{sideLabel(name, side)}</h2>
-                                    <pre>{side.text}</pre>
-                                    {side.truncated ? (
-                                        <p data-conflict-truncated={name}>{t('conflict.truncated')}</p>
-                                    ) : null}
-                                </div>
-                            );
-                        })}
+                    <section aria-label={t('conflict.hunkRegion')}>
+                        <ConflictDiff onDisk={preview.onDisk.text} yours={preview.yours.text} />
                     </section>
                 ) : null}
                 <div className={styles.actions}>

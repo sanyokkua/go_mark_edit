@@ -103,8 +103,10 @@ registry.
 ### Popup — `frontend/src/ui/components/Popup/`
 
 Popup owns the portal, open/close lifecycle, Escape and outside-pointer dismissal, focus restoration,
-menu navigation, collision handling and frame-bounded placement. It portals into the application
-frame, uses an 8 px collision margin, and supports trigger, point and bounds anchors.
+menu navigation, collision handling and frame-bounded placement. It portals into the document body
+with fixed viewport coordinates, uses an 8 px application-frame collision margin, and supports
+trigger, point and bounds anchors. The body portal keeps floating surfaces outside the application
+frame's backdrop root so their blur samples the document content beneath them.
 
 Consumers: File menu, Settings menu, View menu, About menu, narrow menubar overflow, tab context menu,
 workspace tree context menu (point-anchored), editor context menu, formatting-toolbar overflow and the
@@ -370,6 +372,9 @@ port observes asynchronous SVG insertion and re-measures its source-line geometr
 All appearance values come from `frontend/src/ui/styles/tokens.css`. The three themes and light/dark
 values are selected on the document root. Widget stylesheets do not select themes and portalled
 surfaces inherit the root attributes.
+Popup and ModalShell share dedicated floating-surface background and backdrop-filter tokens.
+Liquid Glass floating surfaces use strong frost in both appearances; these tokens do not change
+the application-wide blur or the solid Material and Minimal surfaces.
 `frontend/src/ui/styles/base.css` paints the application tint and optional Glass highlight/backdrop
 on `.application-frame`, above the body canvas. Header and status rows show that continuous app
 surface; the status row adds only the theme backdrop. Surface opacity must not depend on tab count,
@@ -521,6 +526,19 @@ External changes are classified before saving. Editable conflicts offer Reload o
 Keep mine authorization. Read-only conflicts offer Reload only. Close plans gather all required choices
 and normalization authorizations before writing, save in authoritative tab order, stop at the first
 failure, and close tabs only after all requested saves succeed.
+
+Feature 009 replaces the historical first-hunk conflict excerpt with complete transient canonical
+On disk and Yours versions. Each side reports its complete logical line count (one plus LF count).
+On disk bytes come from the stable physical file read, including BOM and physical line endings.
+Yours bytes describe the expected saved encoding for the exact editor revision through the existing
+save encoder, without formatting, writes or new normalization authorization. A null byte count has
+a typed unavailable reason: normalization-required, unsupported-encoding or unsafe-content.
+These values are not persisted and remain bound to the detected disk version and editor revision.
+The bundled read-only Monaco comparison renders whitespace changes and supports navigation and
+virtualized scrolling. Long lines wrap without a rendering cutoff. Monaco layer hints are disabled
+for the comparison to keep text visible inside frosted dialogs in native WebKit. Computation is limited to five seconds; incomplete highlighting is surfaced
+while both complete versions remain available. Metadata-only differences retain version statistics
+without showing an identical content diff. The existing document read limit remains unchanged.
 
 The app workflows keep their own mutually exclusive states. A write retains its original Save or
 Save As intent and target through normalization and conflicts. A close retains its original tab kind

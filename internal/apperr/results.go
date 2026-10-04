@@ -562,14 +562,24 @@ func parseDiskVersionTimestamp(raw json.RawMessage) (int64, error) {
 	return value, nil
 }
 
-// ConflictPreviewSide is bounded transient comparison text. It is never part
+// ConflictPreviewSide is complete transient comparison text. It is never part
 // of the metadata projection or persisted state.
 type ConflictPreviewSide struct {
-	Text      string `json:"text"`
-	LineCount int    `json:"lineCount"`
-	ByteCount int    `json:"byteCount"`
-	Truncated bool   `json:"truncated"`
+	Text                       string                             `json:"text"`
+	LineCount                  int                                `json:"lineCount"`
+	ByteCount                  *int64                             `json:"byteCount"`
+	ByteCountUnavailableReason ConflictByteCountUnavailableReason `json:"byteCountUnavailableReason,omitempty"`
 }
+
+// ConflictByteCountUnavailableReason explains why the current revision has no
+// unambiguous encoded saved size. The frontend localizes these stable codes.
+type ConflictByteCountUnavailableReason string
+
+const (
+	ConflictByteCountNormalizationRequired ConflictByteCountUnavailableReason = "normalization-required"
+	ConflictByteCountUnsupportedEncoding   ConflictByteCountUnavailableReason = "unsupported-encoding"
+	ConflictByteCountUnsafeContent         ConflictByteCountUnavailableReason = "unsafe-content"
+)
 
 // ConflictPreview carries the exact revision/version pair shown by one
 // external-change decision. MetadataDifferences is used when canonical text is

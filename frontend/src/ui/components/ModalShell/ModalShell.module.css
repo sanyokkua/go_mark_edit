@@ -6,7 +6,9 @@
 }
 
 .content {
-    background: var(--surface-raised);
+    -webkit-backdrop-filter: var(--floating-backdrop-filter);
+    backdrop-filter: var(--floating-backdrop-filter);
+    background: var(--floating-surface);
     border: var(--control-border-width) solid var(--border);
     border-radius: var(--win-radius);
     box-shadow: var(--win-shadow);
@@ -16,12 +18,12 @@
     gap: var(--app-gap);
     inset: 50% auto auto 50%;
     max-block-size: calc(100vh - 2 * var(--app-gap));
-    max-inline-size: min(42rem, calc(100vw - 2 * var(--app-gap)));
+    max-inline-size: calc(100vw - 2 * var(--app-gap));
     overflow: auto;
     padding: var(--dialog-padding);
     position: fixed;
     transform: translate(-50%, -50%);
-    width: 100%;
+    width: min(42rem, calc(100vw - 2 * var(--app-gap)));
     z-index: var(--z-modal);
 }
 

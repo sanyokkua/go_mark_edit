@@ -5,11 +5,11 @@ import { resolve } from 'node:path';
 import * as actionDispatcher from '../../src/logic/actions/actionDispatcher';
 import ViewMenu from '../../src/ui/widgets/Menubar/ViewMenu';
 
-it('keeps the shared Popup surface in the frame positioning flow', (): void => {
+it('keeps the shared Popup surface positioned in the viewport', (): void => {
     const surfaceStyles = readFileSync(resolve(process.cwd(), 'src/ui/components/Popup/Popup.module.css'), 'utf8');
 
     // The surface is owned once, by Popup, for every menu popup.
-    expect(surfaceStyles).toMatch(/\.surface\s*\{[^}]*position:\s*absolute;/s);
+    expect(surfaceStyles).toMatch(/\.surface\s*\{[^}]*position:\s*fixed;/s);
     expect(surfaceStyles).toContain('box-shadow: var(--win-shadow), var(--focus-ring)');
 });
 

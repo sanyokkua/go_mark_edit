@@ -8,16 +8,10 @@ import (
 	"fmt"
 	"io/fs"
 	"strings"
-	"unicode/utf8"
 
 	"github.com/sanyokkua/go_mark_edit/internal/apperr"
 	"github.com/sanyokkua/go_mark_edit/internal/bridge"
 	"github.com/sanyokkua/go_mark_edit/internal/file"
-)
-
-const (
-	maxConflictPreviewLines = 12
-	maxConflictPreviewBytes = 4096
 )
 
 var errConflictRevisionChanged = errors.New("document changed during external check")
@@ -521,51 +515,31 @@ func (service *AppModelService) readStable(path string) (file.StableClassifiedRe
 
 func buildConflictPreview(documentID string, document *openDocument, read file.ClassifiedRead, version file.DiskVersion) apperr.ConflictPreview {
 	differences := characteristicsDifferences(document.baselineCharacteristics, read.Characteristics)
-	return apperr.ConflictPreview{DocumentID: documentID, Path: document.metadata.Path, DisplayName: document.metadata.DisplayName, ContentRevision: document.metadata.ContentRevision, DetectedDiskVersion: diskVersionFromWire(version), OnDisk: boundedConflictSide(read.Content), Yours: boundedConflictSide(document.content), MetadataDifferences: differences, ReadOnly: document.metadata.Capability != string(file.CapabilityWritable)}
+	onDiskBytes := version.Size
+	onDisk := conflictSide(read.Content, &onDiskBytes, "")
+	yours := expectedSavedConflictSide(document)
+	return apperr.ConflictPreview{DocumentID: documentID, Path: document.metadata.Path, DisplayName: document.metadata.DisplayName, ContentRevision: document.metadata.ContentRevision, DetectedDiskVersion: diskVersionFromWire(version), OnDisk: onDisk, Yours: yours, MetadataDifferences: differences, ReadOnly: document.metadata.Capability != string(file.CapabilityWritable)}
 }
 
-func boundedConflictSide(content string) apperr.ConflictPreviewSide {
-	if !utf8.ValidString(content) {
-		content = strings.ToValidUTF8(content, "\ufffd")
+func conflictSide(content string, byteCount *int64, reason apperr.ConflictByteCountUnavailableReason) apperr.ConflictPreviewSide {
+	return apperr.ConflictPreviewSide{Text: content, LineCount: 1 + strings.Count(content, "\n"), ByteCount: byteCount, ByteCountUnavailableReason: reason}
+}
+
+func expectedSavedConflictSide(document *openDocument) apperr.ConflictPreviewSide {
+	if document.metadata.LineEnding == string(file.LineEndingMixed) {
+		return conflictSide(document.content, nil, apperr.ConflictByteCountNormalizationRequired)
 	}
-	var builder strings.Builder
-	lineCount, byteCount := 0, 0
-	for _, line := range strings.SplitAfter(content, "\n") {
-		if line == "" {
-			continue
+	snapshot := writeSnapshot{content: document.content, metadata: document.metadata}
+	encoded, err := encodeWrite(snapshot, SaveOriginExplicitSave, "")
+	if err != nil {
+		reason := apperr.ConflictByteCountUnsafeContent
+		if errors.Is(err, file.ErrCodecUnsupportedEncoding) {
+			reason = apperr.ConflictByteCountUnsupportedEncoding
 		}
-		if lineCount == maxConflictPreviewLines {
-			return apperr.ConflictPreviewSide{Text: builder.String(), LineCount: lineCount, ByteCount: byteCount, Truncated: true}
-		}
-		remaining := maxConflictPreviewBytes - byteCount
-		if len([]byte(line)) <= remaining {
-			builder.WriteString(line)
-			byteCount += len([]byte(line))
-			lineCount++
-			continue
-		}
-		rendered := 0
-		for _, runeValue := range line {
-			runeBytes := utf8.RuneLen(runeValue)
-			if runeBytes < 0 || runeBytes > remaining {
-				break
-			}
-			builder.WriteRune(runeValue)
-			remaining -= runeBytes
-			byteCount += runeBytes
-			rendered += runeBytes
-		}
-		// Count this line only if some of it is actually in Text. When the budget
-		// lands exactly on a line boundary, remaining is 0 and the guard above
-		// breaks before the first rune, so lineCount+1 would name a line the
-		// reader cannot see — and the preview needs the count to describe what is
-		// displayed. A partly rendered line is visible and still counts.
-		if rendered > 0 {
-			lineCount++
-		}
-		return apperr.ConflictPreviewSide{Text: builder.String(), LineCount: lineCount, ByteCount: byteCount, Truncated: true}
+		return conflictSide(document.content, nil, reason)
 	}
-	return apperr.ConflictPreviewSide{Text: builder.String(), LineCount: lineCount, ByteCount: byteCount}
+	byteCount := int64(len(encoded.data))
+	return conflictSide(document.content, &byteCount, "")
 }
 
 func characteristicsEqual(left, right file.FileCharacteristics) bool {

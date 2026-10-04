@@ -25,6 +25,10 @@ export const generatedEditorThemes = {
             'scrollbarSlider.hoverBackground': '#0000004d',
             'editorError.foreground': '#c0324b',
             'editorWarning.foreground': '#b7791f',
+            'diffEditor.insertedTextBackground': '#5b7cff24',
+            'diffEditor.insertedLineBackground': '#5b7cff24',
+            'diffEditor.removedTextBackground': '#b3261e2e',
+            'diffEditor.removedLineBackground': '#b3261e2e',
         },
         rules: [
             {
@@ -298,6 +302,10 @@ export const generatedEditorThemes = {
             'scrollbarSlider.hoverBackground': '#ffffff57',
             'editorError.foreground': '#ff7a90',
             'editorWarning.foreground': '#ffcf6b',
+            'diffEditor.insertedTextBackground': '#7aa2ff29',
+            'diffEditor.insertedLineBackground': '#7aa2ff29',
+            'diffEditor.removedTextBackground': '#ffb4ab2e',
+            'diffEditor.removedLineBackground': '#ffb4ab2e',
         },
         rules: [
             {
@@ -571,6 +579,10 @@ export const generatedEditorThemes = {
             'scrollbarSlider.hoverBackground': '#0000004d',
             'editorError.foreground': '#b3261e',
             'editorWarning.foreground': '#8a5a00',
+            'diffEditor.insertedTextBackground': '#dfe4ff',
+            'diffEditor.insertedLineBackground': '#dfe4ff',
+            'diffEditor.removedTextBackground': '#b3261e2e',
+            'diffEditor.removedLineBackground': '#b3261e2e',
         },
         rules: [
             {
@@ -844,6 +856,10 @@ export const generatedEditorThemes = {
             'scrollbarSlider.hoverBackground': '#ffffff57',
             'editorError.foreground': '#ffb4ab',
             'editorWarning.foreground': '#ffcf6b',
+            'diffEditor.insertedTextBackground': '#34417a',
+            'diffEditor.insertedLineBackground': '#34417a',
+            'diffEditor.removedTextBackground': '#ffb4ab2e',
+            'diffEditor.removedLineBackground': '#ffb4ab2e',
         },
         rules: [
             {
@@ -1117,6 +1133,10 @@ export const generatedEditorThemes = {
             'scrollbarSlider.hoverBackground': '#0000004d',
             'editorError.foreground': '#b91c1c',
             'editorWarning.foreground': '#b45309',
+            'diffEditor.insertedTextBackground': '#ecfdf5',
+            'diffEditor.insertedLineBackground': '#ecfdf5',
+            'diffEditor.removedTextBackground': '#b3261e2e',
+            'diffEditor.removedLineBackground': '#b3261e2e',
         },
         rules: [
             {
@@ -1390,6 +1410,10 @@ export const generatedEditorThemes = {
             'scrollbarSlider.hoverBackground': '#ffffff57',
             'editorError.foreground': '#f87171',
             'editorWarning.foreground': '#fbbf24',
+            'diffEditor.insertedTextBackground': '#34d39924',
+            'diffEditor.insertedLineBackground': '#34d39924',
+            'diffEditor.removedTextBackground': '#ffb4ab2e',
+            'diffEditor.removedLineBackground': '#ffb4ab2e',
         },
         rules: [
             {

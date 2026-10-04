@@ -206,7 +206,7 @@ it('renders toolbar overflow as a body-owned Popup viewport surface', () => {
     expect(popup).toHaveAttribute('data-viewport-popup', 'editor-overflow');
     expect(popup).toHaveAttribute('data-popup-size', 'menu');
     expect(readFileSync(resolve(process.cwd(), 'src/ui/components/Popup/Popup.module.css'), 'utf8')).toMatch(
-        /\.surface\s*\{[^}]*position:\s*absolute;/s,
+        /\.surface\s*\{[^}]*position:\s*fixed;/s,
     );
 });
 

@@ -515,8 +515,8 @@ export namespace apperr {
 	export class ConflictPreviewSide {
 	    text: string;
 	    lineCount: number;
-	    byteCount: number;
-	    truncated: boolean;
+	    byteCount?: number;
+	    byteCountUnavailableReason?: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new ConflictPreviewSide(source);
@@ -527,7 +527,7 @@ export namespace apperr {
 	        this.text = source["text"];
 	        this.lineCount = source["lineCount"];
 	        this.byteCount = source["byteCount"];
-	        this.truncated = source["truncated"];
+	        this.byteCountUnavailableReason = source["byteCountUnavailableReason"];
 	    }
 	}
 	export class DiskVersion {

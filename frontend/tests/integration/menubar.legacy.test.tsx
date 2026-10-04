@@ -544,7 +544,7 @@ it('repositions a narrow File popup from the overflow anchor after a resize', as
     await waitFor(() => expect(fileMenu).toHaveStyle({ left: '24px', top: '44px' }));
 });
 
-it('delegates shell popup lifecycle and sizing to Popup', () => {
+it('delegates shell popup lifecycle and viewport positioning to Popup', () => {
     const shellSource = readFileSync(resolve(process.cwd(), 'src/ui/widgets/Menubar/Menubar.tsx'), 'utf8');
     const popupStyles = readFileSync(resolve(process.cwd(), 'src/ui/components/Popup/Popup.module.css'), 'utf8');
 
@@ -552,8 +552,12 @@ it('delegates shell popup lifecycle and sizing to Popup', () => {
     expect(shellSource).toContain('onOpenChange={setFileOpen}');
     expect(shellSource).toContain('onOpenChange={setAboutOpen}');
     expect(shellSource).not.toContain('DropdownMenu');
-    expect(popupStyles).toContain('position: absolute');
+    expect(popupStyles).toContain('position: fixed');
     expect(popupStyles).toContain('box-shadow: var(--win-shadow)');
+
+    render(<Menubar modalOpen={false} onAbout={jest.fn()} settingsMenuProps={settingsMenuProps} />);
+    fireEvent.click(screen.getByRole('button', { name: 'File' }));
+    expect(screen.getByRole('menu', { name: 'File' }).parentElement).toBe(document.body);
 });
 
 it('anchors the File popup through the shared trigger contract', () => {

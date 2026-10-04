@@ -32,7 +32,7 @@ export function conflictFixture(documentId = 'one', contentRevision = 0): Confli
         displayName: `${documentId}.md`,
         detectedDiskVersion: { exists: true, size: 5, mode: 420, modifiedUnixNano: '200' },
         readOnly: false,
-        onDisk: { text: 'disk\n', byteCount: 5, lineCount: 1, truncated: false },
-        yours: { text: 'mine\n', byteCount: 5, lineCount: 1, truncated: false },
+        onDisk: { text: 'disk\n', byteCount: 5, lineCount: 2 },
+        yours: { text: 'mine\n', byteCount: 5, lineCount: 2 },
     };
 }

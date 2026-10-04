@@ -179,8 +179,8 @@ export interface WriteResult {
 export interface ConflictPreviewSide {
     text: string;
     lineCount: number;
-    byteCount: number;
-    truncated: boolean;
+    byteCount: number | null;
+    byteCountUnavailableReason?: 'normalization-required' | 'unsupported-encoding' | 'unsafe-content';
 }
 
 export interface DiskVersion {

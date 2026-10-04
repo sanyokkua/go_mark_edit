@@ -356,6 +356,7 @@ it('keeps sibling consumers independent of Monaco', () => {
 
     expect(directMonacoImports).toEqual([
         'src/ui/components/CodeEditor.tsx',
+        'src/ui/components/ConflictDiff.tsx',
         'src/ui/components/monaco/basicLanguages.d.ts',
         'src/ui/components/monaco/diff.ts',
         'src/ui/components/monaco/json.ts',

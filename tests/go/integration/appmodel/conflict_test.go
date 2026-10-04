@@ -2,12 +2,148 @@ package appmodel_test
 
 import (
 	"context"
+	"encoding/json"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/sanyokkua/go_mark_edit/internal/apperr"
 	. "github.com/sanyokkua/go_mark_edit/internal/appmodel"
 )
+
+func TestExternalChangeComparisonKeepsDistantLinesAndFullCounts(t *testing.T) {
+	service := NewAppModelServiceForHost(WithEmitter(&recordingEmitter{}), AppModelOption{AutosaveTimer: &fakeAutosaveClock{}})
+	path, documentID := openAutosaveDocument(t, service, "base\n")
+	yours := strings.Repeat("line\n", 20) + strings.Repeat("é", 2500) + "\nlast"
+	if err := service.UpdateBuffer(context.Background(), documentID, yours); err != nil {
+		t.Fatalf("UpdateBuffer: %v", err)
+	}
+	onDisk := strings.Repeat("line\n", 20) + strings.Repeat("é", 2500) + "\nchanged"
+	if err := os.WriteFile(path, []byte(onDisk), 0o640); err != nil {
+		t.Fatalf("external replacement: %v", err)
+	}
+	checked := service.CheckExternalChanges(context.Background(), documentID)
+	if checked.Preview == nil {
+		t.Fatalf("CheckExternalChanges = %+v, want comparison", checked)
+	}
+	if got := checked.Preview.OnDisk; got.Text != onDisk || got.LineCount != 22 {
+		t.Fatalf("On disk = %+v, want complete 22-line text", got)
+	}
+	if got := checked.Preview.Yours; got.Text != yours || got.LineCount != 22 {
+		t.Fatalf("Yours = %+v, want complete 22-line text", got)
+	}
+}
+
+func TestExternalChangeComparisonReportsPhysicalAndExpectedEncodedBytes(t *testing.T) {
+	service := NewAppModelServiceForHost(WithEmitter(&recordingEmitter{}), AppModelOption{AutosaveTimer: &fakeAutosaveClock{}})
+	path, documentID := openAutosaveDocument(t, service, "\xef\xbb\xbfbase\r\n")
+	if err := service.UpdateBuffer(context.Background(), documentID, "é\nnext\n"); err != nil {
+		t.Fatalf("UpdateBuffer: %v", err)
+	}
+	if err := os.WriteFile(path, []byte("other\n"), 0o640); err != nil {
+		t.Fatalf("external replacement: %v", err)
+	}
+	checked := service.CheckExternalChanges(context.Background(), documentID)
+	if checked.Preview == nil {
+		t.Fatalf("CheckExternalChanges = %+v, want comparison", checked)
+	}
+	if checked.Preview.OnDisk.Text != "other\n" || checked.Preview.OnDisk.LineCount != 2 || checked.Preview.Yours.LineCount != 3 {
+		t.Fatalf("comparison sides = %+v, want canonical text and full line counts", checked.Preview)
+	}
+	encoded, err := json.Marshal(checked.Preview)
+	if err != nil {
+		t.Fatalf("marshal comparison: %v", err)
+	}
+	var wire struct {
+		OnDisk struct {
+			ByteCount *int64 `json:"byteCount"`
+		} `json:"onDisk"`
+		Yours struct {
+			ByteCount *int64 `json:"byteCount"`
+		} `json:"yours"`
+	}
+	if err := json.Unmarshal(encoded, &wire); err != nil {
+		t.Fatalf("decode comparison: %v", err)
+	}
+	if wire.OnDisk.ByteCount == nil || *wire.OnDisk.ByteCount != 6 || wire.Yours.ByteCount == nil || *wire.Yours.ByteCount != 13 {
+		t.Fatalf("comparison bytes = %s, want physical 6 and expected saved 13", encoded)
+	}
+}
+
+func TestExternalChangeComparisonKeepsEmptyAndTrailingLines(t *testing.T) {
+	service := NewAppModelServiceForHost(WithEmitter(&recordingEmitter{}), AppModelOption{AutosaveTimer: &fakeAutosaveClock{}})
+	path, documentID := openAutosaveDocument(t, service, "base")
+	if err := service.UpdateBuffer(context.Background(), documentID, "mine\n"); err != nil {
+		t.Fatalf("UpdateBuffer: %v", err)
+	}
+	if err := os.WriteFile(path, nil, 0o640); err != nil {
+		t.Fatalf("external replacement: %v", err)
+	}
+	checked := service.CheckExternalChanges(context.Background(), documentID)
+	if checked.Preview == nil {
+		t.Fatalf("CheckExternalChanges = %+v, want comparison", checked)
+	}
+	if got := checked.Preview.OnDisk; got.Text != "" || got.LineCount != 1 || got.ByteCount == nil || *got.ByteCount != 0 {
+		t.Fatalf("empty On disk = %+v, want one line and zero physical bytes", got)
+	}
+	if got := checked.Preview.Yours; got.Text != "mine\n" || got.LineCount != 2 || got.ByteCount == nil || *got.ByteCount != 5 {
+		t.Fatalf("trailing-line Yours = %+v, want two lines and five saved bytes", got)
+	}
+}
+
+func TestExternalChangeComparisonShowsMetadataOnlyChangesWithBothByteSizes(t *testing.T) {
+	service := NewAppModelServiceForHost(WithEmitter(&recordingEmitter{}))
+	path, documentID := openAutosaveDocument(t, service, "base\n")
+	if err := os.WriteFile(path, []byte("\xef\xbb\xbfbase\r\n"), 0o640); err != nil {
+		t.Fatalf("external replacement: %v", err)
+	}
+	info, err := os.Stat(path)
+	if err != nil {
+		t.Fatalf("stat external replacement: %v", err)
+	}
+	checked := service.CheckExternalChanges(context.Background(), documentID)
+	if checked.Preview == nil {
+		t.Fatalf("CheckExternalChanges = %+v, want comparison", checked)
+	}
+	preview := checked.Preview
+	if preview.OnDisk.Text != "base\n" || preview.Yours.Text != "base\n" || len(preview.MetadataDifferences) == 0 {
+		t.Fatalf("metadata-only comparison = %+v, want equal canonical text and characteristic change", preview)
+	}
+	if preview.OnDisk.ByteCount == nil || *preview.OnDisk.ByteCount != info.Size() || *preview.OnDisk.ByteCount != 9 || preview.Yours.ByteCount == nil || *preview.Yours.ByteCount != 5 {
+		t.Fatalf("metadata-only bytes = %+v, want physical BOM+CRLF 9 and expected LF 5", preview)
+	}
+}
+
+func TestExternalChangeComparisonReportsUnavailableSavedBytesForMixedAndUnsafeContent(t *testing.T) {
+	for _, testCase := range []struct {
+		name   string
+		base   string
+		reason apperr.ConflictByteCountUnavailableReason
+	}{
+		{name: "mixed line endings", base: "first\r\nsecond\n", reason: apperr.ConflictByteCountNormalizationRequired},
+		{name: "unsupported encoding", base: "invalid\xff", reason: apperr.ConflictByteCountUnsupportedEncoding},
+		{name: "unsafe content", base: "nul\x00byte", reason: apperr.ConflictByteCountUnsafeContent},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			service := NewAppModelServiceForHost(WithEmitter(&recordingEmitter{}))
+			path, documentID := openAutosaveDocument(t, service, testCase.base)
+			if err := os.WriteFile(path, []byte("external\n"), 0o640); err != nil {
+				t.Fatalf("external replacement: %v", err)
+			}
+			checked := service.CheckExternalChanges(context.Background(), documentID)
+			if checked.Preview == nil {
+				t.Fatalf("CheckExternalChanges = %+v, want comparison", checked)
+			}
+			if checked.Preview.Yours.ByteCount != nil || checked.Preview.Yours.ByteCountUnavailableReason != testCase.reason {
+				t.Fatalf("Yours = %+v, want unavailable reason %q", checked.Preview.Yours, testCase.reason)
+			}
+			encoded, err := json.Marshal(checked.Preview.Yours)
+			if err != nil || !strings.Contains(string(encoded), `"byteCount":null`) {
+				t.Fatalf("Yours JSON = %s, error=%v; want explicit null byte count", encoded, err)
+			}
+		})
+	}
+}
 
 func TestExternalChangeCheckProvidesARevisionBoundPreview(t *testing.T) {
 	service := NewAppModelServiceForHost(WithEmitter(&recordingEmitter{}))

@@ -21,6 +21,7 @@ const materialPalette = `
   --gutter: #c9ccd3; --accent: #4f6bed; --accent-soft: #dfe4ff;
   --selection-bg: #dfe4ff; --hover: rgba(0,0,0,.05); --scrollbar-thumb: #aeb6c9;
   --scrollbar-thumb-hover: #8994ad; --err: #b3261e; --warn: #b7791f;
+  --diff-removed-background: rgba(179,38,30,.18);
   --md-heading: #3056d3; --md-strong: #b45309; --md-emphasis: #7c3aed;
   --md-quote: #0369a1; --md-link: #be123c; --md-comment: #9aa1ab;
   --md-marker: #9aa1ab; --code-fg: #30343b; --hl-keyword: #7c3aed;
@@ -32,6 +33,7 @@ const materialPalette = `
   --gutter: rgba(255,255,255,.22); --accent: #4f6bed; --accent-soft: #dfe4ff;
   --selection-bg: #3a4b87; --hover: rgba(255,255,255,.16); --scrollbar-thumb: #555b70;
   --scrollbar-thumb-hover: #707892; --err: #ff7a90; --warn: #ffcf6b;
+  --diff-removed-background: rgba(255,180,171,.18);
   --md-heading: #8fb4ff; --md-strong: #ffd479; --md-emphasis: #c58bff;
   --md-quote: #7fe3b5; --md-link: #ff9d7a; --md-comment: #8a93b8;
   --md-marker: #8a93b8; --code-fg: #dfe6ff; --hl-keyword: #c58bff;
@@ -65,6 +67,16 @@ it('generates six complete named Monaco themes from palette values', () => {
 it('converts CSS rgba palette values to Monaco-compatible hex', () => {
     const translucentPalette = palette.replace('--surface: #ffffff;', '--surface: rgba(255,255,255,.42);');
     expect(generate(translucentPalette).themes['gme-glass-light'].colors['editorWidget.background']).toBe('#ffffff6b');
+});
+
+it('uses palette colors for diff insertions and deletions in both appearances', () => {
+    const generated = generate(palette);
+    const light = generated.themes['gme-material-light'].colors;
+    const dark = generated.themes['gme-material-dark'].colors;
+    expect(light['diffEditor.insertedTextBackground']).toBe('#dfe4ff');
+    expect(light['diffEditor.removedTextBackground']).toBe('#b3261e2e');
+    expect(dark['diffEditor.insertedTextBackground']).toBe('#dfe4ff');
+    expect(dark['diffEditor.removedTextBackground']).toBe('#ffb4ab2e');
 });
 
 it('gives Glass hover text an elevated background independent of its translucent widget surface', () => {
