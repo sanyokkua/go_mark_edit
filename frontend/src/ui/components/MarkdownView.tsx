@@ -267,7 +267,7 @@ const MarkdownView: React.FC<MarkdownViewProps> = memo(function MarkdownView({
     const candidate = useMemo(() => {
         if (suspended) return null;
         try {
-            const pipeline = createPipeline(standard);
+            const pipeline = createPipeline(standard, source);
             return {
                 failed: false as const,
                 documentId,

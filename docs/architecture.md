@@ -346,6 +346,15 @@ pipeline uses `frontend/src/logic/markdown/highlight.ts` for its explicit fenced
 200,000-character guard; `MarkdownView.tsx` loads the generated unscoped highlight rules, which follow
 the active tokens without re-parsing the document.
 
+`pipeline.ts` caches each standard's preview plugin lists. `MarkdownView.tsx` passes the current source
+to `createPipeline(standard, source)`, which omits only the GFM extension when a conservative scan finds
+no possible table, task, footnote, strikethrough or literal-autolink marker. Pipes, tildes, email/protocol
+markers, `www.`, footnotes, checkbox openers (including multiline markers), HTML, entities and escapes
+retain the full GFM parser.
+The prose variant keeps front matter, Full math and containers, and every rehype transform, including
+sanitization, source lines, link metadata and render limits. Calls without source retain the original
+pipeline; `syntaxPlugins` and its heading, tidy and editor-link consumers keep the complete syntax set.
+
 The Full syntax list also registers `syntax/mathStrict.ts` for bounded single-dollar math.
 `renderLimits.ts` counts sanitized formulas in document order and replaces sources over 10,000 characters
 or formulas after the first 1,000 before `math.ts` invokes KaTeX with trust disabled and bounded expansion.

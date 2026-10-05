@@ -1,5 +1,6 @@
 import rehypeRaw from 'rehype-raw';
 import rehypeSanitize from 'rehype-sanitize';
+import remarkGfm from 'remark-gfm';
 import type { PluggableList } from 'unified';
 
 import { rehypeHeadingIds, remarkHeadings } from './headings';
@@ -26,6 +27,18 @@ const pipelineByStandard: Record<MarkdownStandard, MarkdownPipeline> = {
     full: makePipeline('full'),
 };
 
+const prosePipelineByStandard = {
+    gfm: withoutGfm(pipelineByStandard.gfm),
+    full: withoutGfm(pipelineByStandard.full),
+};
+
+function withoutGfm(pipeline: MarkdownPipeline): MarkdownPipeline {
+    return {
+        ...pipeline,
+        remarkPlugins: pipeline.remarkPlugins.filter((plugin) => plugin !== remarkGfm),
+    };
+}
+
 function makePipeline(standard: MarkdownStandard): MarkdownPipeline {
     return {
         remarkPlugins: [...syntaxPlugins(standard), remarkHeadings],
@@ -45,6 +58,13 @@ function makePipeline(standard: MarkdownStandard): MarkdownPipeline {
 }
 
 /** Stable plugin lists for react-markdown; it supplies both core parsers. */
-export function createPipeline(standard: MarkdownStandard): MarkdownPipeline {
+export function createPipeline(standard: MarkdownStandard, source?: string): MarkdownPipeline {
+    // GFM tables require a pipe or colon; its other constructs need these markers.
+    // Entities, escapes and HTML can produce autolinks after decoding, so keep GFM
+    // for any such source rather than attempting to parse it in this preflight.
+    // Task markers can span normalized line endings, so check only their opener.
+    if (standard !== 'minimal' && source !== undefined && !/[|~@:<&\\]|www\.|\[\^|\[[\sxX]/i.test(source)) {
+        return prosePipelineByStandard[standard];
+    }
     return pipelineByStandard[standard];
 }
