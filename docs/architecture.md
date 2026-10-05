@@ -443,6 +443,10 @@ to avoid concurrent application/browser contention and allows 15 seconds for UI 
 than the local five seconds. Explicit assertion timeouts and product performance bounds remain
 unchanged. Automatic failure screenshots, error contexts and app output are retained, while traces
 require explicit `--trace` to avoid recording overhead in timing-sensitive tests.
+The paced-typing performance check measures keydown-to-input latency against its existing 100 ms
+guard, alongside the 300 ms input-to-preview bound. Inter-input gaps
+remain diagnostic: Playwright's requested pacing also includes controller scheduling and browser
+protocol round trips, so subtracting that pacing does not measure application responsiveness.
 The E2E summary reports preparation, wall, app launch/relaunch and teardown times; these totals can
 overlap and must not be added to derive wall time.
 
