@@ -47,6 +47,51 @@ func TestInvalidOrMissingSettingFallsBackToDefault(t *testing.T) {
 			if got != defaults {
 				t.Fatalf("normalized settings = %+v, want documented defaults %+v", got, defaults)
 			}
+			if got.Markdown.Standard != MarkdownFull {
+				t.Fatalf("normalized Markdown standard = %q, want full", got.Markdown.Standard)
+			}
+		})
+	}
+}
+
+func TestDefaultMarkdownSettings(t *testing.T) {
+	got := DefaultSettings().Markdown
+	want := apperr.MarkdownSettings{
+		Standard:       MarkdownFull,
+		BulletMarker:   BulletMarkerDash,
+		EmphasisMarker: EmphasisMarkerUnderscore,
+		HeadingStyle:   HeadingStyleATX,
+		FormatOnSave:   false,
+		LintOnSave:     true,
+	}
+	if got != want {
+		t.Fatalf("default Markdown settings = %+v, want %+v", got, want)
+	}
+}
+
+func TestUpdateMarkdownPreservesValidStandardsAndPreferences(t *testing.T) {
+	for _, standard := range []string{MarkdownMinimal, MarkdownGFM} {
+		t.Run(standard, func(t *testing.T) {
+			repository := &fakeSettingsRepository{}
+			service := NewSettingsService(repository)
+			want := apperr.MarkdownSettings{
+				Standard:       standard,
+				BulletMarker:   BulletMarkerPlus,
+				EmphasisMarker: EmphasisMarkerAsterisk,
+				HeadingStyle:   HeadingStyleSetext,
+				FormatOnSave:   true,
+				LintOnSave:     false,
+			}
+			if err := service.UpdateMarkdown(context.Background(), want); err != nil {
+				t.Fatalf("update Markdown settings: %v", err)
+			}
+			got, err := service.Get(context.Background())
+			if err != nil {
+				t.Fatalf("read Markdown settings: %v", err)
+			}
+			if got.Markdown != want {
+				t.Fatalf("Markdown settings = %+v, want %+v", got.Markdown, want)
+			}
 		})
 	}
 }

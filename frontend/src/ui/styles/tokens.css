@@ -25,6 +25,7 @@
     --accent2: #4f6bed;
     --accent-ink: #0a1a52;
     --accent-soft: #dfe4ff;
+    --diff-removed-background: rgba(179, 38, 30, 0.18);
     --accent-contrast: #ffffff;
     --win-radius: 16px;
     --win-shadow: 0 12px 32px rgba(27, 27, 34, 0.16);
@@ -33,6 +34,8 @@
     --pane-shadow: 0 12px 32px rgba(27, 27, 34, 0.16);
     --tab-context-menu-shadow: var(--context-menu-shadow);
     --blur: none;
+    --floating-backdrop-filter: none;
+    --floating-surface: var(--elevated);
     --glass-highlight: transparent;
     --font: GME Roboto, Roboto, system-ui, sans-serif;
     --font-size-sm: 12px;
@@ -278,6 +281,7 @@
     --border: #3c4050;
     --warn: #ffcf6b;
     --err: #ff7a90;
+    --diff-removed-background: rgba(255, 180, 171, 0.18);
     --selection-bg: #3a4b87;
     --selection-fg: #ffffff;
     --scrollbar-track: #20212b;
@@ -333,6 +337,8 @@
     --surface-2: rgba(255, 255, 255, 0.24);
     --surface-3: rgba(255, 255, 255, 0.58);
     --elevated: rgba(255, 255, 255, 0.8);
+    --floating-backdrop-filter: blur(48px) saturate(180%);
+    --floating-surface: rgba(255, 255, 255, 0.88);
     --stroke: rgba(70, 84, 140, 0.24);
     --stroke-soft: rgba(70, 84, 140, 0.15);
     --text: #1c2338;
@@ -364,6 +370,8 @@
     --surface-2: rgba(255, 255, 255, 0.07);
     --surface-3: rgba(255, 255, 255, 0.16);
     --elevated: rgba(28, 30, 54, 0.82);
+    --floating-backdrop-filter: blur(48px) saturate(180%);
+    --floating-surface: rgba(28, 30, 54, 0.9);
     --stroke: rgba(255, 255, 255, 0.18);
     --stroke-soft: rgba(255, 255, 255, 0.11);
     --text: #eaf0ff;

@@ -43,6 +43,24 @@
     white-space: nowrap;
 }
 
+.factButton {
+    align-items: center;
+    background: transparent;
+    border: 0;
+    color: inherit;
+    cursor: pointer;
+    display: inline-flex;
+    font: inherit;
+    gap: var(--status-bar-item-gap);
+    padding: 0;
+    white-space: nowrap;
+}
+
+.factButton:focus-visible {
+    outline: var(--control-border-width) solid var(--accent);
+    outline-offset: var(--control-border-width);
+}
+
 .dot {
     background: var(--accent);
     block-size: var(--status-bar-dot-size);

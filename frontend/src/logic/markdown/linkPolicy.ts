@@ -1,11 +1,8 @@
-const acceptedDocumentExtensions = new Set(['.md', '.markdown', '.mdown', '.txt']);
-
-export type LinkRefusalReason =
-    'empty' | 'scheme' | 'malformed' | 'untitled-document' | 'outside-document-folder' | 'unsupported-extension';
+export type LinkRefusalReason = 'empty' | 'scheme' | 'malformed' | 'untitled-document' | 'network-path';
 
 export type LinkTarget =
     | { kind: 'anchor'; href: string; fragment: string }
-    | { kind: 'localDocument'; href: string; path: string }
+    | { kind: 'localDocument'; href: string; fragment?: string }
     | { kind: 'external'; href: string }
     | { kind: 'refused'; href: string; reason: LinkRefusalReason };
 
@@ -14,7 +11,7 @@ function refused(href: string, reason: LinkRefusalReason): LinkTarget {
 }
 
 function hasExplicitScheme(href: string): boolean {
-    return /^[a-z][a-z\d+.-]*:/i.test(href);
+    return /^[a-z][a-z\d+.-]*:/i.test(href) && !/^[a-z]:/i.test(href);
 }
 
 function decodePath(href: string): string | undefined {
@@ -45,12 +42,6 @@ function normalizePath(path: string): string {
     return `${absolute ? '/' : ''}${parts.join('/')}` || (absolute ? '/' : '.');
 }
 
-function extension(path: string): string {
-    const basename = path.slice(path.lastIndexOf('/') + 1);
-    const dot = basename.lastIndexOf('.');
-    return dot < 0 ? '' : basename.slice(dot).toLowerCase();
-}
-
 export function resolveLocalPath(href: string, documentPath: string): string | undefined {
     const queryStart = href.search(/[?#]/);
     const pathPart = queryStart < 0 ? href : href.slice(0, queryStart);
@@ -73,7 +64,8 @@ export function classifyLink(href: string, documentPath?: string): LinkTarget {
     if (trimmed === '') return refused(href, 'empty');
 
     if (trimmed.startsWith('#')) {
-        return { kind: 'anchor', href, fragment: trimmed.slice(1) };
+        const fragment = decodePath(trimmed.slice(1));
+        return fragment === undefined ? refused(href, 'malformed') : { kind: 'anchor', href, fragment };
     }
 
     if (hasExplicitScheme(trimmed)) {
@@ -84,19 +76,20 @@ export function classifyLink(href: string, documentPath?: string): LinkTarget {
         return refused(href, 'scheme');
     }
 
-    if (trimmed.startsWith('//')) return refused(href, 'scheme');
+    const fragmentStart = trimmed.indexOf('#');
+    const pathAndQuery = fragmentStart < 0 ? trimmed : trimmed.slice(0, fragmentStart);
+    const queryStart = pathAndQuery.indexOf('?');
+    const path = decodePath(queryStart < 0 ? pathAndQuery : pathAndQuery.slice(0, queryStart));
+    const fragment = fragmentStart < 0 ? undefined : decodePath(trimmed.slice(fragmentStart + 1));
+    if (path === undefined || path === '' || (fragmentStart >= 0 && fragment === undefined)) {
+        return refused(href, 'malformed');
+    }
+    if (/^[\\/]{2}/u.test(path)) return refused(href, 'network-path');
     if (documentPath === undefined || documentPath === '') {
-        return refused(href, 'untitled-document');
+        if (!path.startsWith('/') && !path.startsWith('\\') && !/^[a-z]:[\\/]/iu.test(path)) {
+            return refused(href, 'untitled-document');
+        }
     }
 
-    const path = resolveLocalPath(trimmed, documentPath);
-    if (path === undefined) return refused(href, 'malformed');
-    if (!isInsideDocumentFolder(path, documentPath)) {
-        return refused(href, 'outside-document-folder');
-    }
-    if (!acceptedDocumentExtensions.has(extension(path))) {
-        return refused(href, 'unsupported-extension');
-    }
-
-    return { kind: 'localDocument', href, path };
+    return fragment === undefined ? { kind: 'localDocument', href } : { kind: 'localDocument', href, fragment };
 }

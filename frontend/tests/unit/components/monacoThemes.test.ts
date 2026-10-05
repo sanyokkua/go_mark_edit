@@ -48,3 +48,30 @@ it('observes only root palette attributes and disposes cleanly', async (): Promi
     await Promise.resolve();
     expect(target.setTheme).toHaveBeenCalledTimes(2);
 });
+
+it('notifies a mounted editor after applying each root palette', async (): Promise<void> => {
+    const root = document.documentElement;
+    root.setAttribute('data-theme', 'material');
+    root.setAttribute('data-mode', 'light');
+    const order: string[] = [];
+    const target = {
+        setTheme: (name: string): void => {
+            order.push(`theme:${name}`);
+        },
+    };
+    const repaint = (): void => {
+        order.push('repaint');
+    };
+
+    const dispose = observeRootTheme(root, target, repaint);
+    expect(order).toEqual(['theme:gme-material-light', 'repaint']);
+
+    root.setAttribute('data-mode', 'dark');
+    await Promise.resolve();
+    expect(order).toEqual(['theme:gme-material-light', 'repaint', 'theme:gme-material-dark', 'repaint']);
+
+    dispose();
+    root.setAttribute('data-theme', 'glass');
+    await Promise.resolve();
+    expect(order).toHaveLength(4);
+});

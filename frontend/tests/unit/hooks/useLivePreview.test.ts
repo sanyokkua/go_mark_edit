@@ -11,7 +11,11 @@ import { store } from '../../../src/logic/store';
 import { dismissNotification } from '../../../src/logic/store/notificationsSlice';
 import type { AppModelState } from '../../../src/logic/store/appModelTypes';
 import type { WireError } from '../../../src/logic/utils/parseError';
-import { type LivePreviewAdapter, useLivePreview } from '../../../src/logic/hooks/useLivePreview';
+import {
+    type LivePreviewAdapter,
+    useLivePreview,
+    useLivePreviewSnapshot,
+} from '../../../src/logic/hooks/useLivePreview';
 
 type VoidResult = { error?: WireError };
 
@@ -154,4 +158,54 @@ it('ignores stale accepted generations', () => {
     });
 
     expect(result.current).toBe('# Newest accepted preview');
+});
+
+it('takes a direct authoritative source refresh after accepted edits and then accepts new edits', () => {
+    let acceptedListener: ((buffer: AcceptedBuffer) => void) | undefined;
+    const adapter: LivePreviewAdapter = {
+        subscribeAcceptedBuffers(listener: (buffer: AcceptedBuffer) => void): () => void {
+            acceptedListener = listener;
+            return (): void => undefined;
+        },
+    };
+    const initial = { documentId: 'document-1', content: '# Bootstrap', documentRevision: 1 };
+    const { result, rerender } = renderHook(({ buffer }) => useLivePreviewSnapshot(buffer, adapter), {
+        initialProps: { buffer: initial },
+    });
+
+    act((): void => {
+        acceptedListener?.({ documentId: 'document-1', content: '# Accepted edit', generation: 1 });
+    });
+    expect(result.current.content).toBe('# Accepted edit');
+
+    rerender({ buffer: { documentId: 'document-1', content: '# Reloaded source', documentRevision: 2 } });
+    expect(result.current.content).toBe('# Reloaded source');
+
+    act((): void => {
+        acceptedListener?.({ documentId: 'document-1', content: '# Edit after reload', generation: 1 });
+    });
+    expect(result.current.content).toBe('# Edit after reload');
+});
+
+it('does not revive an accepted edit when authoritative source returns to earlier text', () => {
+    let acceptedListener: ((buffer: AcceptedBuffer) => void) | undefined;
+    const adapter: LivePreviewAdapter = {
+        subscribeAcceptedBuffers(listener: (buffer: AcceptedBuffer) => void): () => void {
+            acceptedListener = listener;
+            return (): void => undefined;
+        },
+    };
+    const { result, rerender } = renderHook(
+        ({ content }) => useLivePreviewSnapshot({ documentId: 'document-1', content }, adapter),
+        { initialProps: { content: '# Original' } },
+    );
+    act((): void => {
+        acceptedListener?.({ documentId: 'document-1', content: '# Accepted edit', generation: 1 });
+    });
+    expect(result.current.content).toBe('# Accepted edit');
+
+    rerender({ content: '# Replacement' });
+    expect(result.current.content).toBe('# Replacement');
+    rerender({ content: '# Original' });
+    expect(result.current.content).toBe('# Original');
 });

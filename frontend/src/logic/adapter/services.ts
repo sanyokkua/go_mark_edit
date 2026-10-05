@@ -1,5 +1,5 @@
 import { guardArity } from './bridgeGuard';
-import { unwrap } from './envelope';
+import { unwrap, unwrapPromise } from './envelope';
 import type {
     ConflictResult,
     ClosePlanDecision,
@@ -255,7 +255,7 @@ export function createSettingsAdapter(bindings: SettingsBindings): SettingsAdapt
             return unwrap(await updateContentPrivacy(settings));
         },
         async updateMarkdown(settings: MarkdownSettings): Promise<void> {
-            return unwrap(await updateMarkdown(settings));
+            return unwrapPromise(updateMarkdown(settings));
         },
         async updateEditor(settings: EditorSettings): Promise<void> {
             return unwrap(await updateEditor(settings));

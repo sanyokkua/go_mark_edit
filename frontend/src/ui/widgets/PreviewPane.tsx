@@ -1,21 +1,40 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { t } from '../../i18n';
 import type { LivePreviewAdapter } from '../../logic/hooks/useLivePreview';
 import type { LinkRefusalReason, LinkTarget } from '../../logic/markdown/linkPolicy';
+import { scrollToAnchor } from '../../logic/markdown/headings';
+import type { MarkdownStandard } from '../../logic/markdown/pipeline';
 import { classifyImageSource } from '../../logic/markdown/imagePolicy';
-import type { OpenResult } from '../../logic/store/appModelTypes';
-import MarkdownView from '../components/MarkdownView';
+import type { CommittedMarkdownPreview } from '../components/MarkdownView';
 import Button from '../primitives/Button';
 import Icon from '../primitives/Icon';
 import styles from './PreviewPane.module.css';
 
 export const PREVIEW_BYTE_LIMIT = 2_097_152;
+const MarkdownView = lazy(() => import('../components/MarkdownView'));
 
 export interface PreviewSnapshot {
     byteLength: number;
     content: string;
+    documentId?: string;
     revision: number;
+}
+
+interface PreviewSourceIdentity {
+    content: string;
+    documentId?: string;
+    revision: number;
+}
+
+function sourceIdentity(snapshot: PreviewSnapshot, documentId?: string): PreviewSourceIdentity {
+    return { content: snapshot.content, documentId: snapshot.documentId ?? documentId, revision: snapshot.revision };
+}
+
+function sameSource(first: PreviewSourceIdentity, second: PreviewSourceIdentity): boolean {
+    return (
+        first.content === second.content && first.documentId === second.documentId && first.revision === second.revision
+    );
 }
 
 export interface PreviewRefreshError {
@@ -24,12 +43,13 @@ export interface PreviewRefreshError {
 
 export interface PreviewPaneProps {
     accepted: PreviewSnapshot;
+    standard: MarkdownStandard;
     ariaLabel?: string | null;
     documentId?: string;
     documentPath?: string;
-    linkAdapter?: Pick<LivePreviewAdapter, 'openPreviewLink' | 'openExternalLink' | 'resolvePreviewImage'>;
+    linkAdapter?: Pick<LivePreviewAdapter, 'openExternalLink' | 'resolvePreviewImage'>;
     notificationOwner?: PreviewNotificationOwner;
-    onFocusedDocumentOpen?: (documentId: string) => void;
+    onOpenLink?: (target: Extract<LinkTarget, { kind: 'localDocument' }>, sourceDocumentId: string) => Promise<void>;
     onRefresh: () => Promise<PreviewSnapshot>;
 }
 
@@ -45,10 +65,6 @@ export interface PreviewPaneState {
     rendered: PreviewSnapshot | null;
 }
 
-function initialRenderedSnapshot(accepted: PreviewSnapshot): PreviewSnapshot | null {
-    return accepted.byteLength <= PREVIEW_BYTE_LIMIT ? accepted : null;
-}
-
 function refusalReason(reason: LinkRefusalReason): string {
     switch (reason) {
         case 'empty':
@@ -59,71 +75,108 @@ function refusalReason(reason: LinkRefusalReason): string {
             return t('preview.linkRefused.reason.malformed');
         case 'untitled-document':
             return t('preview.linkRefused.reason.untitled');
-        case 'outside-document-folder':
-            return t('preview.linkRefused.reason.outside');
-        case 'unsupported-extension':
-            return t('preview.linkRefused.reason.extension');
+        case 'network-path':
+            return t('preview.linkRefused.reason.networkPath');
     }
 }
 
-function openResultRefusal(result: OpenResult): string | undefined {
-    return result.status === 'refused' ? (result.error?.message ?? t('preview.linkRefused.reason.open')) : undefined;
+export interface LinkActivationHandlers {
+    anchor: (fragment: string) => void;
+    external?: (href: string) => void;
+    local?: (target: Extract<LinkTarget, { kind: 'localDocument' }>, sourceDocumentId: string) => Promise<void>;
+    warn?: (target: string, reason: string) => void;
 }
 
-function notifyRefusal(owner: PreviewNotificationOwner | undefined, target: string, reason: string): void {
-    owner?.warn(target, reason);
+/** Preview and editor share one classified-link dispatch; only anchor navigation differs. */
+export function activateLinkTarget(
+    sourceDocumentId: string,
+    target: LinkTarget,
+    handlers: LinkActivationHandlers,
+): void {
+    switch (target.kind) {
+        case 'anchor':
+            handlers.anchor(target.fragment);
+            return;
+        case 'external':
+            if (handlers.external === undefined) {
+                handlers.warn?.(target.href, t('preview.linkRefused.reason.browser'));
+            } else {
+                handlers.external(target.href);
+            }
+            return;
+        case 'refused':
+            handlers.warn?.(target.href, refusalReason(target.reason));
+            return;
+        case 'localDocument':
+            if (handlers.local === undefined) {
+                handlers.warn?.(target.href, t('preview.linkRefused.reason.open'));
+            } else {
+                void handlers.local(target, sourceDocumentId).catch((): void => {
+                    handlers.warn?.(target.href, t('preview.linkRefused.reason.open'));
+                });
+            }
+            return;
+    }
 }
 
 export function usePreviewPaneState(
     accepted: PreviewSnapshot,
     onRefresh: () => Promise<PreviewSnapshot>,
+    documentId?: string,
 ): PreviewPaneState {
-    const [manualSnapshot, setManualSnapshot] = useState<PreviewSnapshot | null>(() =>
-        initialRenderedSnapshot(accepted),
+    const identity = useMemo<PreviewSourceIdentity>(
+        () => ({
+            content: accepted.content,
+            documentId: accepted.documentId ?? documentId,
+            revision: accepted.revision,
+        }),
+        [accepted.content, accepted.documentId, accepted.revision, documentId],
     );
-    const [refreshError, setRefreshError] = useState<{
-        error: PreviewRefreshError;
-        revision: number;
-    } | null>(null);
+    const [sourceState, setSourceState] = useState<{
+        identity: PreviewSourceIdentity;
+        manualSnapshot: PreviewSnapshot | null;
+        refreshError: PreviewRefreshError | null;
+    }>(() => ({ identity, manualSnapshot: null, refreshError: null }));
     const [isRefreshing, setIsRefreshing] = useState(false);
     const activeRefreshRef = useRef<Promise<void> | null>(null);
-    const acceptedRef = useRef(accepted);
-
-    useEffect((): void => {
-        acceptedRef.current = accepted;
-    }, [accepted]);
+    const sourceChanged = !sameSource(sourceState.identity, identity);
+    if (sourceChanged) {
+        setSourceState({ identity, manualSnapshot: null, refreshError: null });
+    }
 
     const rendered =
         accepted.byteLength <= PREVIEW_BYTE_LIMIT
             ? accepted
-            : manualSnapshot?.revision === accepted.revision
-              ? manualSnapshot
+            : !sourceChanged && sourceState.manualSnapshot !== null
+              ? sourceState.manualSnapshot
               : null;
-    const currentRefreshError = refreshError?.revision === accepted.revision ? refreshError.error : null;
+    const currentRefreshError = sourceChanged ? null : sourceState.refreshError;
 
     const refresh = useCallback((): void => {
         if (activeRefreshRef.current !== null) {
             return;
         }
 
+        const request = identity;
         setIsRefreshing(true);
         const operation = (async (): Promise<void> => {
             try {
                 const refreshed = await onRefresh();
-                if (refreshed.revision !== acceptedRef.current.revision) {
-                    setManualSnapshot(null);
-                    setRefreshError(null);
+                if (!sameSource(sourceIdentity(refreshed, request.documentId), request)) {
                     return;
                 }
 
-                setManualSnapshot(refreshed);
-                setRefreshError(null);
+                setSourceState((current) =>
+                    sameSource(current.identity, request)
+                        ? { ...current, manualSnapshot: refreshed, refreshError: null }
+                        : current,
+                );
             } catch {
-                setManualSnapshot(null);
-                setRefreshError({
-                    error: { code: 'io-failure' },
-                    revision: acceptedRef.current.revision,
-                });
+                setSourceState((current) =>
+                    sameSource(current.identity, request)
+                        ? { ...current, manualSnapshot: null, refreshError: { code: 'io-failure' } }
+                        : current,
+                );
             } finally {
                 activeRefreshRef.current = null;
                 setIsRefreshing(false);
@@ -131,7 +184,7 @@ export function usePreviewPaneState(
         })();
 
         activeRefreshRef.current = operation;
-    }, [onRefresh]);
+    }, [identity, onRefresh]);
 
     return {
         currentRefreshError,
@@ -173,30 +226,40 @@ export const PreviewPausedStatus: React.FC<PreviewPausedStatusProps> = ({
     </div>
 );
 
-export interface PreviewPaneContentProps {
+interface PreviewPaneContentBaseProps {
     ariaLabel?: string | null;
     controller: PreviewPaneState;
+    committedPreview?: CommittedMarkdownPreview | null;
     documentId?: string;
     documentPath?: string;
-    linkAdapter?: Pick<LivePreviewAdapter, 'openPreviewLink' | 'openExternalLink' | 'resolvePreviewImage'>;
+    linkAdapter?: Pick<LivePreviewAdapter, 'openExternalLink' | 'resolvePreviewImage'>;
     notificationOwner?: PreviewNotificationOwner;
-    onFocusedDocumentOpen?: (documentId: string) => void;
+    onOpenLink?: (target: Extract<LinkTarget, { kind: 'localDocument' }>, sourceDocumentId: string) => Promise<void>;
+    onPreviewCommitted?: (preview: CommittedMarkdownPreview) => void;
     showPausedStatus?: boolean;
 }
+
+export type PreviewPaneContentProps = PreviewPaneContentBaseProps &
+    ({ settingsLoaded: false; standard?: never } | { settingsLoaded?: true; standard: MarkdownStandard });
 
 export const PreviewPaneContent: React.FC<PreviewPaneContentProps> = ({
     ariaLabel = t('editor.previewPane'),
     controller,
+    committedPreview,
     documentId,
     documentPath,
     linkAdapter,
     notificationOwner,
-    onFocusedDocumentOpen,
+    onOpenLink,
+    onPreviewCommitted,
     showPausedStatus = true,
+    settingsLoaded = true,
+    standard,
 }: PreviewPaneContentProps): React.JSX.Element => {
     const linkAdapterRef = useRef(linkAdapter);
     const notificationOwnerRef = useRef(notificationOwner);
-    const focusedDocumentOpenRef = useRef(onFocusedDocumentOpen);
+    const openLinkRef = useRef(onOpenLink);
+    const previewContainerRef = useRef<HTMLElement>(null);
 
     useEffect((): void => {
         linkAdapterRef.current = linkAdapter;
@@ -207,8 +270,8 @@ export const PreviewPaneContent: React.FC<PreviewPaneContentProps> = ({
     }, [notificationOwner]);
 
     useEffect((): void => {
-        focusedDocumentOpenRef.current = onFocusedDocumentOpen;
-    }, [onFocusedDocumentOpen]);
+        openLinkRef.current = onOpenLink;
+    }, [onOpenLink]);
 
     const resolveImageSource = useCallback(
         (source: string): string | undefined => {
@@ -232,69 +295,48 @@ export const PreviewPaneContent: React.FC<PreviewPaneContentProps> = ({
      * built.
      */
     const activateLink = useCallback((sourceDocumentId: string, target: LinkTarget): void => {
-        switch (target.kind) {
-            case 'anchor': {
-                const element = document.getElementById(target.fragment);
-                element?.scrollIntoView?.({ block: 'start' });
-                return;
-            }
-            case 'external': {
-                const adapter = linkAdapterRef.current;
-                if (adapter?.openExternalLink === undefined) {
-                    notifyRefusal(notificationOwnerRef.current, target.href, t('preview.linkRefused.reason.browser'));
-                    return;
-                }
-                adapter.openExternalLink(target.href);
-                return;
-            }
-            case 'refused':
-                notifyRefusal(notificationOwnerRef.current, target.href, refusalReason(target.reason));
-                return;
-            case 'localDocument': {
-                const adapter = linkAdapterRef.current;
-                if (adapter?.openPreviewLink === undefined) {
-                    notifyRefusal(notificationOwnerRef.current, target.href, t('preview.linkRefused.reason.open'));
-                    return;
-                }
-                void adapter
-                    .openPreviewLink(sourceDocumentId, target.href)
-                    .then((result): void => {
-                        if (result.status === 'focused' && result.documentId !== undefined) {
-                            focusedDocumentOpenRef.current?.(result.documentId);
-                        }
-                        const reason = openResultRefusal(result);
-                        if (reason !== undefined) notifyRefusal(notificationOwnerRef.current, target.href, reason);
-                    })
-                    .catch((): void => {
-                        notifyRefusal(notificationOwnerRef.current, target.href, t('preview.linkRefused.reason.open'));
-                    });
-                return;
-            }
-        }
+        activateLinkTarget(sourceDocumentId, target, {
+            anchor: (fragment): void => {
+                if (previewContainerRef.current !== null) scrollToAnchor(previewContainerRef.current, fragment);
+            },
+            external: linkAdapterRef.current?.openExternalLink,
+            local: openLinkRef.current,
+            warn: notificationOwnerRef.current?.warn,
+        });
     }, []);
 
     return (
         <section
             aria-label={ariaLabel ?? undefined}
             data-preview-revision={controller.rendered?.revision}
-            data-preview-state={controller.isPaused ? 'paused' : 'rendered'}
+            data-preview-state={!settingsLoaded ? 'loading' : controller.isPaused ? 'paused' : 'rendered'}
+            ref={previewContainerRef}
         >
-            {controller.isPaused ? (
-                showPausedStatus ? (
-                    <PreviewPausedStatus
-                        currentRefreshError={controller.currentRefreshError}
-                        isRefreshing={controller.isRefreshing}
-                        onRefresh={controller.refresh}
-                    />
-                ) : null
+            {!settingsLoaded || standard === undefined ? (
+                <span role="status">{t('preview.loading')}</span>
             ) : (
-                <MarkdownView
-                    documentId={documentId}
-                    documentPath={documentPath}
-                    imageSourceResolver={resolveImageSource}
-                    onActivateLink={activateLink}
-                    source={controller.rendered?.content ?? ''}
-                />
+                <>
+                    {controller.isPaused && showPausedStatus ? (
+                        <PreviewPausedStatus
+                            currentRefreshError={controller.currentRefreshError}
+                            isRefreshing={controller.isRefreshing}
+                            onRefresh={controller.refresh}
+                        />
+                    ) : null}
+                    <Suspense fallback={<span role="status">{t('preview.loading')}</span>}>
+                        <MarkdownView
+                            committedPreview={committedPreview}
+                            documentId={documentId}
+                            documentPath={documentPath}
+                            imageSourceResolver={resolveImageSource}
+                            onActivateLink={activateLink}
+                            onPreviewCommitted={onPreviewCommitted}
+                            source={controller.rendered?.content ?? ''}
+                            standard={standard}
+                            suspended={controller.isPaused}
+                        />
+                    </Suspense>
+                </>
             )}
         </section>
     );
@@ -307,10 +349,11 @@ const PreviewPane: React.FC<PreviewPaneProps> = ({
     documentPath,
     linkAdapter,
     notificationOwner,
-    onFocusedDocumentOpen,
+    onOpenLink,
     onRefresh,
+    standard,
 }: PreviewPaneProps): React.JSX.Element => {
-    const controller = usePreviewPaneState(accepted, onRefresh);
+    const controller = usePreviewPaneState(accepted, onRefresh, documentId);
 
     return (
         <PreviewPaneContent
@@ -320,7 +363,8 @@ const PreviewPane: React.FC<PreviewPaneProps> = ({
             documentPath={documentPath}
             linkAdapter={linkAdapter}
             notificationOwner={notificationOwner}
-            onFocusedDocumentOpen={onFocusedDocumentOpen}
+            onOpenLink={onOpenLink}
+            standard={standard}
         />
     );
 };

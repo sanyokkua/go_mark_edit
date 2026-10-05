@@ -29,8 +29,9 @@
 }
 
 .surface {
-    backdrop-filter: var(--blur);
-    background: var(--elevated);
+    -webkit-backdrop-filter: var(--floating-backdrop-filter);
+    backdrop-filter: var(--floating-backdrop-filter);
+    background: var(--floating-surface);
     border: var(--control-border-width) solid var(--stroke);
     border-radius: var(--popup-radius);
     box-shadow: var(--win-shadow);
@@ -39,7 +40,7 @@
     min-inline-size: var(--popup-min-width);
     overflow: visible;
     padding: var(--popup-padding);
-    position: absolute;
+    position: fixed;
     z-index: var(--z-dropdown);
 }
 

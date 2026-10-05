@@ -10,6 +10,7 @@ import {
 } from '../../logic/theme/theme';
 import { writeStartupThemeMirror } from '../../logic/theme/startupThemeMirror';
 import { createSettingsCommandOwner, defaultAppearanceSettings } from '../../logic/settings/settingsCommands';
+import { useEditorSettings } from '../../logic/settings/editorSettings';
 import SettingsDialog from './dialogs/SettingsDialog';
 import {
     AppearanceSettingsContext,
@@ -186,16 +187,21 @@ export const AppearanceControlsContent: React.FC<AppearanceControlsContentProps>
     visible = true,
 }: AppearanceControlsContentProps) => {
     const controller = useAppearanceSettings();
+    const markdown = useEditorSettings();
     if (!visible) return null;
     return (
         <>
             {children}
             <SettingsDialog
+                markdownSettings={markdown.markdownSettings}
                 mode={controller.appearance.mode}
                 open={controller.open}
                 returnFocusTo={controller.returnFocusTo}
                 theme={controller.appearance.theme}
                 onModeChange={controller.onModeChange}
+                onMarkdownSettingsChange={(patch): void => {
+                    void markdown.updateMarkdown(patch).catch((): void => undefined);
+                }}
                 onReset={controller.onReset}
                 onOpenChange={controller.onOpenChange}
                 onThemeChange={controller.onThemeChange}

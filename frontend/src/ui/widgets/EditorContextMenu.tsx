@@ -11,6 +11,7 @@ import { t } from '../../i18n';
 import {
     actionsForSurface,
     getActionAvailability,
+    actionUnavailableLabelKey,
     type ActionId,
     type ActionEntry,
 } from '../../logic/actions/actionRegistry';
@@ -22,6 +23,8 @@ import MenuItem from '../components/MenuItem';
 import Popup, { PopupSeparator } from '../components/Popup';
 import { EditorSessionContext } from './editorSession';
 import { useEditorActionExecutor } from './useEditorActionExecutor';
+import { useEditorSettings } from '../../logic/settings/editorSettings';
+import { useOperationSlot } from '../../logic/operations/useOperationSlot';
 import styles from './EditorContextMenu.module.css';
 
 export interface EditorContextMenuProps extends PropsWithChildren {
@@ -46,14 +49,15 @@ const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
 }: EditorContextMenuProps): React.JSX.Element => {
     const activeBuffer = useContext(EditorSessionContext);
     const editingProjection = useEditingProjection(activeBuffer?.documentId);
+    const { markdownSettings } = useEditorSettings();
+    const slot = useOperationSlot();
     const { capture, execute } = useEditorActionExecutor();
-    const itemUnavailable = (item: {
-        id: Parameters<typeof getActionAvailability>[0];
-        availability: { kind: string };
-    }): boolean =>
-        item.availability.kind === 'deferred' ||
-        (editingProjection !== undefined &&
-            getActionAvailability(item.id, { projectedState: editingProjection }).kind === 'unavailable');
+    const itemAvailability = (item: ActionEntry) =>
+        getActionAvailability(item.id, {
+            projectedState: editingProjection,
+            markdownSettingsLoaded: markdownSettings !== undefined,
+            slotBusy: slot.state === 'running',
+        });
     const openerRef = useRef<HTMLElement | null>(null);
     const actionSnapshotRef = useRef<EditorActionSnapshot | null>(null);
     const [point, setPoint] = useState<{ x: number; y: number } | null>(null);
@@ -110,6 +114,7 @@ const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
                 }}
             >
                 {contextActions.map((item: ActionEntry) => {
+                    const availability = itemAvailability(item);
                     const accelerator =
                         item.shortcut === undefined ? undefined : formatShortcut(item.shortcut, currentPlatform());
                     const menuItem = (
@@ -117,7 +122,12 @@ const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
                             accelerator={accelerator}
                             aria-keyshortcuts={accelerator}
                             data-action-id={item.id}
-                            disabled={itemUnavailable(item)}
+                            disabled={availability.kind === 'unavailable'}
+                            title={
+                                availability.kind === 'unavailable'
+                                    ? t(actionUnavailableLabelKey(availability.reason))
+                                    : undefined
+                            }
                             label={t(item.surfaceLabelKeys?.context ?? item.labelKey)}
                             onSelect={(): void => activate(item.id)}
                         />

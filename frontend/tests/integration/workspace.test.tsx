@@ -16,6 +16,7 @@ jest.mock('../../src/logic/adapter', () => ({
         copyWorkspacePath: jest.fn(),
         openDocument: jest.fn(),
         openRecentFile: jest.fn(),
+        setDocView: jest.fn(async () => undefined),
         classifyDroppedPaths: jest.fn(),
         refreshRecentItems: jest.fn(),
         clearRecentItems: jest.fn(),
@@ -52,6 +53,7 @@ import { DocumentCommandContext, EditorSessionContext } from '../../src/ui/widge
 import { createDocumentCommands } from '../../src/logic/hooks/useDocumentCommands';
 import type { CodeEditorHandle } from '../../src/ui/components/CodeEditor';
 import { ModalStateContext } from '../../src/ui/widgets/modalStateContext';
+import type { LintFinding } from '../../src/logic/tidy/protocol';
 
 const wrapper = ({ children }: PropsWithChildren): React.JSX.Element => <Provider store={store}>{children}</Provider>;
 const activation = { begin: () => 1, acknowledge: jest.fn() } as unknown as DocumentSession['activation'];
@@ -94,6 +96,93 @@ beforeEach(() => {
             orderedDocumentIds: store.getState().documents.orderedIds,
         },
     }));
+});
+
+it('opens the editor and moves the caret and focus when a problem is activated from preview mode', async () => {
+    const document = documentFixture('created');
+    store.dispatch(
+        hydrateProjection({
+            revision: 1,
+            activeDocumentId: 'created',
+            orderedDocumentIds: ['created'],
+            documents: {
+                created: {
+                    ...document,
+                    view: { ...document.view, arrangement: 'preview', editorVisible: false, previewVisible: true },
+                },
+            },
+            ui: {},
+        }),
+    );
+    const finding: LintFinding = {
+        rule: 'trailing-space',
+        severity: 'warning',
+        startLine: 8,
+        startColumn: 4,
+        endLine: 8,
+        endColumn: 5,
+        message: { key: 'lint.rule.trailing-space.message' },
+        hint: 'lint.rule.trailing-space.hint',
+    };
+    const token = Symbol('problem-editor');
+    const handle: CodeEditorHandle = {
+        focus: jest.fn(() => {
+            screen.getByRole('textbox', { name: 'Editor text' }).focus();
+            return true;
+        }),
+        setPosition: jest.fn(() => true),
+        getContent: () => '',
+        getSelection: () => null,
+        replaceRange: () => true,
+        replaceAll: () => true,
+        applyEdits: () => true,
+        setMarkers: () => true,
+    };
+    const commands = createDocumentCommands('created', token, () => ({ documentId: 'created', token, handle }));
+    render(
+        <EditorSessionContext.Provider value={{ documentId: 'created', content: '' }}>
+            <DocumentCommandContext.Provider value={commands}>
+                <EditorView
+                    problemsOpen
+                    problemsSummary={{ findings: [finding], total: 1, stale: false }}
+                    onCloseProblems={jest.fn()}
+                />
+            </DocumentCommandContext.Provider>
+        </EditorSessionContext.Provider>,
+        { wrapper },
+    );
+    fireEvent.click(screen.getByRole('button', { name: /Line 8, column 4/i }));
+    await waitFor(() =>
+        expect(appModelAdapter.setDocView).toHaveBeenCalledWith(
+            'created',
+            { editorVisible: true, previewVisible: false },
+            expect.objectContaining({ editorVisible: true, previewVisible: false }),
+        ),
+    );
+    act(() => {
+        store.dispatch(
+            hydrateProjection({
+                revision: 2,
+                activeDocumentId: 'created',
+                orderedDocumentIds: ['created'],
+                documents: {
+                    created: {
+                        ...document,
+                        view: { ...document.view, arrangement: 'editor', editorVisible: true, previewVisible: false },
+                    },
+                },
+                ui: {},
+            }),
+        );
+    });
+    expect(handle.setPosition).toHaveBeenCalledWith(8, 4);
+    expect(screen.getByRole('textbox', { name: 'Editor text' })).toHaveFocus();
+    const row = screen.getByRole('button', { name: /Line 8, column 4/i });
+    row.focus();
+    fireEvent.keyDown(row, { key: 'Enter' });
+    expect(handle.setPosition).toHaveBeenCalledTimes(2);
+    expect(handle.focus).toHaveBeenCalledTimes(2);
+    expect(screen.getByRole('textbox', { name: 'Editor text' })).toHaveFocus();
 });
 
 it('scopes header creation to the selected folder and expands it after a successful create', async () => {
@@ -211,6 +300,9 @@ it('moves keyboard focus into the created file editor after the modal closes', a
         getSelection: () => null,
         replaceRange: () => true,
         replaceAll: () => true,
+        applyEdits: () => true,
+        setPosition: () => true,
+        setMarkers: () => true,
     };
     const commands = createDocumentCommands('created', token, () => ({ documentId: 'created', token, handle }));
     const renderEditor = (modalOpen: boolean) => (
@@ -243,6 +335,9 @@ it('leaves editor input focused after creating a file from the real tree prompt'
         getSelection: () => null,
         replaceRange: () => true,
         replaceAll: () => true,
+        applyEdits: () => true,
+        setPosition: () => true,
+        setMarkers: () => true,
     };
     const documentCommands = createDocumentCommands('created', token, () => ({ documentId: 'created', token, handle }));
     const Harness = (): React.JSX.Element => {

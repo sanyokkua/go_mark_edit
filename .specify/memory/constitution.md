@@ -1,30 +1,38 @@
 <!--
 Sync Impact Report
-- Version change: 2.1.1 -> 2.1.2 (PATCH: stale wording clarified)
-- Modified principles: none (wording only)
-- Modified sections:
-  - Principle VII (Evidence Before Completion): removed the one-time bootstrapping parenthetical
-    tying `scripts/baseline`'s first run to "the feature that creates `scripts/baseline`" (that
-    already happened; feature 004 is merged) and restated the rule in general, timeless form —
-    `scripts/baseline` MUST be run once before the first implementation edit of a feature that does
-    not yet have a recorded baseline.
-  - Specification-Driven Delivery Workflow (step 3): same wording fix, same rationale.
+- Version change: 2.1.2 -> 2.2.0 (MINOR: Principle IV link scope materially expanded)
+- Modified principles:
+  - IV (Offline, Private, and Safe by Default): a preview link may now open supported local
+    Markdown documents anywhere on the local disk, not only inside the document's folder. Network
+    and device paths stay refused on every platform; an existing file with an unsupported suffix is
+    refused with an offer to reveal it in the file manager and is never launched.
+- Modified sections: none
 - Added principles: none
 - Added sections: none
 - Removed sections: none
+- Reason: feature 006 user stories 3 and 4 (product owner decision).
+- Migration impact: the backend link resolver loses its document-folder check, the frontend link
+  classifier loses folder and suffix refusals, the tests listed in specs/006-rich-markdown-authoring/
+  plan.md "Existing tests changed" are rewritten, and ADR-0037 records the change to decision D11.
+- Nothing dropped: one shared link handler, the `https`/`http` rule, visible refusal of every other
+  target, offline operation, network and device paths refused on every platform, no other program
+  launched for a file.
 - Templates: Spec Kit templates are owned by the Spec Kit CLI and untouched.
 - Follow-up TODOs: none
-- Previous reports: 2.1.0 -> 2.1.1 (2026-09-16): governance wording clarified;
+- Previous reports: 2.1.1 -> 2.1.2 (2026-09-19): stale wording clarified (baseline run stated in
+  general form); 2.1.0 -> 2.1.1 (2026-09-16): governance wording clarified;
   2.0.0 -> 2.1.0 (2026-09-09): Principle VII allows listed in-package white-box
   tests and runs `scripts/baseline` right after the entry-point scripts are created;
   1.0.0 -> 2.0.0 (2026-09-08): authority, anchor and baseline governance redefined, Principle VIII
   added; see git history.
 -->
+
 # GoMarkEdit Constitution
 
 ## Core Principles
 
 ### I. One Authority: the Feature Specs and the Architecture Map
+
 The active feature's artifacts under `specs/<feature>/` (`spec.md`, `plan.md`, `tasks.md`) and the
 architecture map `docs/architecture.md` together define required product behaviour, technical
 boundaries, ownership of shared behaviour and durable decisions. Nothing else is normative.
@@ -39,6 +47,7 @@ Rationale: specification-driven delivery is trustworthy only when one place says
 must do and implementation cannot quietly rewrite its own acceptance criteria.
 
 ### II. Specify in EARS, Deliver Vertical Slices
+
 Every feature increment MUST be a user-observable vertical slice through the backend, the Wails
 bridge, the frontend adapter, the state projection and the interface layers it needs. Every
 requirement MUST be one sentence in EARS form (ubiquitous "shall"; "When" for an event; "While" for
@@ -55,6 +64,7 @@ Rationale: complete slices expose integration defects early; EARS sentences and 
 test titles make requirements and their evidence readable without a traceability generator.
 
 ### III. Preserve Backend Authority and Explicit Boundaries
+
 The Go backend MUST own canonical application state. Redux MUST remain a projection hydrated once
 and updated by backend events; user interactions MUST cross the adapter as commands carrying a
 request identity. Monaco MAY hold the focused document's ephemeral working copy, but it MUST
@@ -75,6 +85,7 @@ Rationale: one state owner and mechanically enforced seams prevent stale project
 failures, dependency cycles and process-killing boundary errors.
 
 ### IV. Offline, Private, and Safe by Default
+
 The application MUST run without internet: it MUST make no background or unsolicited network
 request, ship no telemetry, auto-update check, remote asset or crash upload, and keep logs local
 without secrets, full remote URLs or user home paths. Content that a document references from the
@@ -85,14 +96,16 @@ local. Any other network behaviour requires a decision recorded in the architect
 Untrusted Markdown, HTML, paths, provider output and tool arguments MUST be validated at their
 boundary. Rendered document HTML MUST be sanitized according to the approved content policy. A
 preview link MUST pass through the one shared link handler, which opens only in-document anchors,
-local Markdown inside the document's folder and `https`/`http` targets, and visibly refuses every
-other target. Internal error causes and unsafe details MUST never cross the Wails bridge. Assets
+supported local Markdown documents anywhere on the local disk (never network or device paths;
+unsupported files are refused with an offer to reveal them in the file manager), and `https`/`http`
+targets, and visibly refuses every other target. Internal error causes and unsafe details MUST never cross the Wails bridge. Assets
 needed for editing, rendering, themes, fonts and localization MUST be bundled into the application.
 
 Rationale: offline operation and local privacy are product promises, while strict boundary
 validation protects files and users from hostile documents and remote content.
 
 ### V. Protect Data and Cross-Platform Operation
+
 The shipped application MUST remain one Wails v2 desktop binary whose Go backend and SQLite driver
 are CGO-free (the desktop artifact links the platform webview, and the CGO-free check is scoped to
 the backend and SQLite). Multiple application instances MUST be allowed; SQLite MUST use WAL mode
@@ -113,6 +126,7 @@ Rationale: a local editor earns trust by preserving bytes and user intent across
 concurrent windows, platforms and large inputs.
 
 ### VI. Accessible, Tokenized, and Coherent Interfaces
+
 Every visible surface and interaction MUST be usable with the keyboard, expose correct roles and
 localized accessible names, show visible focus that composes with elevation, provide specified
 empty, loading, error, cancellation and bounded-input states, and remain usable with long
@@ -131,6 +145,7 @@ Rationale: accessibility, localization, theming and lifecycle states are part of
 correctness, not optional polish.
 
 ### VII. Evidence Before Completion
+
 Verification is six stages (Lint, Format check, Build, Unit, Integration, End-to-end) run through
 the shared entry-point scripts; hooks, CI and local runs MUST call the same scripts. Before the
 first implementation edit of a feature that does not yet have a recorded baseline, `scripts/baseline`
@@ -158,6 +173,7 @@ Rationale: independent, reproducible evidence distinguishes working software fro
 only reports success.
 
 ### VIII. One Implementation per Behaviour (DRY, KISS, SOLID)
+
 A common behaviour or style MUST have exactly one implementation that every consumer uses, so that
 changing it is a one-place change. Before adding code, the implementer MUST find the existing owner
 of the behaviour and its consumers and improve that owner; a second copy of a popup, bar, button,
@@ -238,4 +254,4 @@ repository working instructions, and the active Spec Kit commands define artifac
 neither may override this constitution. The constitution itself is updated only through the
 constitution workflow.
 
-**Version**: 2.1.2 | **Ratified**: 2026-07-30 | **Last Amended**: 2026-09-19
+**Version**: 2.2.0 | **Ratified**: 2026-07-30 | **Last Amended**: 2026-09-29

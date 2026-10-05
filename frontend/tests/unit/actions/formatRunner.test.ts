@@ -29,6 +29,9 @@ function commands(replaceRange: jest.MockedFunction<DocumentCommandAPI['replaceR
             status: 'available',
             value: undefined,
         }),
+        applyEdits: () => ({ status: 'available', value: undefined }),
+        setPosition: () => ({ status: 'available', value: undefined }),
+        setMarkers: () => ({ status: 'available', value: undefined }),
     };
 }
 

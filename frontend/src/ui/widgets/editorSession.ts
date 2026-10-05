@@ -138,6 +138,7 @@ export type InstallationReason = 'activation' | 'reload';
 /** One generation is claimed before issuing a command and installed at most once. */
 export interface GuardedActivation {
     begin: () => number;
+    isCurrent: (generation: number) => boolean;
     acknowledge: (
         generation: number,
         acknowledgement: ActiveBuffer | undefined,
@@ -174,6 +175,8 @@ export function useGuardedActivation(
         latestGeneration.current += 1;
         return latestGeneration.current;
     }, []);
+
+    const isCurrent = useCallback((generation: number): boolean => generation === latestGeneration.current, []);
 
     const acknowledge = useCallback(
         (
@@ -222,5 +225,5 @@ export function useGuardedActivation(
         install(pending.acknowledgement, pending.reason);
     }, [install, pending, projection]);
 
-    return useMemo((): GuardedActivation => ({ acknowledge, begin }), [acknowledge, begin]);
+    return useMemo((): GuardedActivation => ({ acknowledge, begin, isCurrent }), [acknowledge, begin, isCurrent]);
 }

@@ -2,9 +2,15 @@ package appmodel
 
 import "context"
 
-// FileMetadataRepository owns durable per-canonical-path arrangement metadata. It never stores
+// FileViewMetadata is the durable per-path pane state.
+type FileViewMetadata struct {
+	Arrangement string
+	SplitRatio  float64
+}
+
+// FileMetadataRepository owns durable per-canonical-path view metadata. It never stores
 // source content, tab order, or an authorization.
 type FileMetadataRepository interface {
-	ReadArrangement(ctx context.Context, canonicalPath string) (string, bool, error)
-	WriteArrangement(ctx context.Context, canonicalPath, arrangement string) error
+	ReadView(ctx context.Context, canonicalPath string) (FileViewMetadata, bool, error)
+	WriteView(ctx context.Context, canonicalPath string, view FileViewMetadata) error
 }

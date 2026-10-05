@@ -38,7 +38,7 @@ func TestCompleteStageOneDefaultsFromEmptyKV(t *testing.T) {
 			DefaultOpenMode: OpenModeEditor,
 		},
 		Markdown: apperr.MarkdownSettings{
-			Standard:       MarkdownGFM,
+			Standard:       MarkdownFull,
 			FormatOnSave:   false,
 			LintOnSave:     true,
 			BulletMarker:   BulletMarkerDash,
@@ -57,7 +57,8 @@ func TestCompleteStageOneDefaultsFromEmptyKV(t *testing.T) {
 // Valid non-default Appearance and Markdown groups round-trip through their stable dotted keys with the declared scalar metadata.
 func TestAppearanceAndMarkdownGroupsRoundTripDottedTypedKV(t *testing.T) {
 	ctx := context.Background()
-	database, err := db.Open(ctx, filepath.Join(t.TempDir(), "settings.db"))
+	databasePath := filepath.Join(t.TempDir(), "settings.db")
+	database, err := db.Open(ctx, databasePath)
 	if err != nil {
 		t.Fatalf("open temporary settings database: %v", err)
 	}
@@ -74,7 +75,7 @@ func TestAppearanceAndMarkdownGroupsRoundTripDottedTypedKV(t *testing.T) {
 		DefaultOpenMode: OpenModeViewer,
 	}
 	wantMarkdown := apperr.MarkdownSettings{
-		Standard:       MarkdownFull,
+		Standard:       MarkdownMinimal,
 		FormatOnSave:   true,
 		LintOnSave:     false,
 		BulletMarker:   BulletMarkerPlus,
@@ -96,7 +97,7 @@ func TestAppearanceAndMarkdownGroupsRoundTripDottedTypedKV(t *testing.T) {
 		"appearance.theme":      {Key: "appearance.theme", Value: ThemeGlass, Type: "string"},
 		"appearance.mode":       {Key: "appearance.mode", Value: ModeDark, Type: "string"},
 		"view.defaultOpenMode":  {Key: "view.defaultOpenMode", Value: OpenModeViewer, Type: "string"},
-		"markdown.standard":     {Key: "markdown.standard", Value: MarkdownFull, Type: "string"},
+		"markdown.standard":     {Key: "markdown.standard", Value: MarkdownMinimal, Type: "string"},
 		"format.onSave":         {Key: "format.onSave", Value: "true", Type: "bool"},
 		"lint.onSave":           {Key: "lint.onSave", Value: "false", Type: "bool"},
 		"format.bulletMarker":   {Key: "format.bulletMarker", Value: BulletMarkerPlus, Type: "string"},
@@ -113,6 +114,14 @@ func TestAppearanceAndMarkdownGroupsRoundTripDottedTypedKV(t *testing.T) {
 		}
 	}
 
+	if err := database.Close(); err != nil {
+		t.Fatalf("close settings database before reopen: %v", err)
+	}
+	database, err = db.Open(ctx, databasePath)
+	if err != nil {
+		t.Fatalf("reopen settings database: %v", err)
+	}
+	service = NewSettingsService(NewSqliteSettingsRepository(database))
 	got, err := service.Get(ctx)
 	if err != nil {
 		t.Fatalf("read round-tripped registry: %v", err)
@@ -122,6 +131,25 @@ func TestAppearanceAndMarkdownGroupsRoundTripDottedTypedKV(t *testing.T) {
 	}
 	if got.ContentPrivacy.RemotePolicy != RemotePolicyAsk {
 		t.Fatalf("unchanged content privacy = %q, want %q", got.ContentPrivacy.RemotePolicy, RemotePolicyAsk)
+	}
+
+	wantMarkdown.Standard = MarkdownGFM
+	if err := service.UpdateMarkdown(ctx, wantMarkdown); err != nil {
+		t.Fatalf("update GFM Markdown settings: %v", err)
+	}
+	if err := database.Close(); err != nil {
+		t.Fatalf("close settings database before second reopen: %v", err)
+	}
+	database, err = db.Open(ctx, databasePath)
+	if err != nil {
+		t.Fatalf("reopen GFM settings database: %v", err)
+	}
+	got, err = NewSettingsService(NewSqliteSettingsRepository(database)).Get(ctx)
+	if err != nil {
+		t.Fatalf("read GFM settings after reopen: %v", err)
+	}
+	if got.Markdown != wantMarkdown {
+		t.Fatalf("GFM settings after reopen = %+v, want %+v", got.Markdown, wantMarkdown)
 	}
 }
 
@@ -224,6 +252,9 @@ func TestStoredSettingsFallbackMatrix(t *testing.T) {
 			}
 			if got != want {
 				t.Fatalf("fallback settings = %+v, want %+v", got, want)
+			}
+			if testCase.key == "markdown.standard" && got.Markdown.Standard != MarkdownFull {
+				t.Fatalf("fallback Markdown standard = %q, want full", got.Markdown.Standard)
 			}
 		})
 	}

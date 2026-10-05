@@ -34,6 +34,16 @@ function findNode(node: WorkspaceNode, path: string): WorkspaceNode | undefined 
     return undefined;
 }
 
+function ancestorPaths(node: WorkspaceNode, path: string): string[] | undefined {
+    if (node.path === path) return [];
+    if (node.unreadable) return undefined;
+    for (const child of node.children ?? []) {
+        const ancestors = ancestorPaths(child, path);
+        if (ancestors !== undefined) return [node.path, ...ancestors];
+    }
+    return undefined;
+}
+
 function containsDescendant(node: WorkspaceNode, parentPath: string, childPath: string): boolean {
     if (node.path === parentPath) {
         return (
@@ -45,21 +55,26 @@ function containsDescendant(node: WorkspaceNode, parentPath: string, childPath: 
     return node.children?.some((child) => containsDescendant(child, parentPath, childPath)) ?? false;
 }
 
-export default function WorkspaceTree(): React.JSX.Element {
+export interface WorkspaceTreeProps {
+    revealRequest?: { documentId: string; path: string; seq: number } | null;
+}
+
+export default function WorkspaceTree({ revealRequest }: WorkspaceTreeProps): React.JSX.Element {
     const { onOpenFolder } = useWorkspaceTreeCommands();
     const workspace = useAppSelector((state) => state.workspace.snapshot);
     const reading = useAppSelector((state) => state.workspace.reading);
     if (reading && workspace === null) return <p className={styles.message}>{t('workspace.tree.loading')}</p>;
     if (workspace === null) return <WorkspaceEmptyState onOpenFolder={onOpenFolder} />;
-    return <OpenWorkspaceTree workspace={workspace} reading={reading} />;
+    return <OpenWorkspaceTree workspace={workspace} reading={reading} revealRequest={revealRequest} />;
 }
 
 interface OpenWorkspaceTreeProps {
     workspace: WorkspaceSnapshot;
     reading: boolean;
+    revealRequest?: WorkspaceTreeProps['revealRequest'];
 }
 
-function OpenWorkspaceTree({ workspace, reading }: OpenWorkspaceTreeProps): React.JSX.Element {
+function OpenWorkspaceTree({ workspace, reading, revealRequest }: OpenWorkspaceTreeProps): React.JSX.Element {
     const {
         onCloseFolder,
         onRefreshWorkspace,
@@ -82,6 +97,8 @@ function OpenWorkspaceTree({ workspace, reading }: OpenWorkspaceTreeProps): Reac
     const [expandedPaths, setExpandedPaths] = useState<Set<string>>(() => new Set());
     const [focusedPath, setFocusedPath] = useState(workspace.rootPath);
     const rowElements = useRef(new Map<string, HTMLLIElement>());
+    const [consumedReveal, setConsumedReveal] = useState<{ path: string | null; seq: number } | null>(null);
+    const scrolledRevealSeq = useRef<number | null>(null);
     const focusOwnedByTree = useRef(false);
     useEffect(() => {
         const observeFocus = (event: FocusEvent): void => {
@@ -109,7 +126,40 @@ function OpenWorkspaceTree({ workspace, reading }: OpenWorkspaceTreeProps): Reac
         activePath,
         localPath: null,
     }));
-    if (selection.activePath !== activePath) setSelection({ activePath, localPath: null });
+    if (selection.activePath !== activePath) {
+        const previousPath = selection.localPath ?? selection.activePath;
+        setSelection({
+            activePath,
+            localPath:
+                activePath !== null && ancestorPaths(workspace.root, activePath) !== undefined
+                    ? null
+                    : previousPath !== null && ancestorPaths(workspace.root, previousPath) !== undefined
+                      ? previousPath
+                      : null,
+        });
+    } else if (
+        revealRequest != null &&
+        revealRequest.seq !== consumedReveal?.seq &&
+        revealRequest.documentId === activeDocumentId &&
+        activePath !== null
+    ) {
+        const ancestors = ancestorPaths(workspace.root, revealRequest.path);
+        setConsumedReveal({ path: ancestors === undefined ? null : revealRequest.path, seq: revealRequest.seq });
+        if (ancestors !== undefined) {
+            setCollapsedRootPaths((paths) => {
+                if (!paths.has(workspace.rootPath)) return paths;
+                const next = new Set(paths);
+                next.delete(workspace.rootPath);
+                return next;
+            });
+            setExpandedPaths((paths) => {
+                const next = new Set(paths);
+                for (const path of ancestors) next.add(path);
+                return next;
+            });
+            setSelection({ activePath, localPath: revealRequest.path });
+        }
+    }
     const selectedPath = selection.activePath === activePath ? (selection.localPath ?? activePath) : activePath;
     const selectedNode = selectedPath === null ? undefined : findNode(workspace.root, selectedPath);
     const headerTarget = selectedNode?.isDir && !selectedNode.unreadable ? selectedNode : workspace.root;
@@ -126,6 +176,13 @@ function OpenWorkspaceTree({ workspace, reading }: OpenWorkspaceTreeProps): Reac
         if ([...rowElements.current.values()].some((row) => row === document.activeElement)) return;
         rowElements.current.get(visibleFocusedPath)?.focus();
     }, [reading, visibleFocusedPath, workspace]);
+    useLayoutEffect(() => {
+        if (consumedReveal?.path == null || consumedReveal.seq === scrolledRevealSeq.current || reading) return;
+        const row = rowElements.current.get(consumedReveal.path);
+        if (row === undefined) return;
+        row.scrollIntoView?.({ block: 'nearest' });
+        scrolledRevealSeq.current = consumedReveal.seq;
+    }, [reading, consumedReveal, rows]);
 
     const onKeyDownRow = (event: KeyboardEvent<HTMLLIElement>, node: WorkspaceNode): void => {
         if (event.key === 'Enter') {

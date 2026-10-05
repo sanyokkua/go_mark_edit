@@ -1,8 +1,36 @@
 import { dispatchAction } from '../../../src/logic/actions/actionDispatcher';
 
-it('returns a localized unavailable result for deferred actions without invoking a handler', async () => {
+it('allows read-only Lint but refuses read-only Format and a busy tidy run before invocation', async () => {
+    const invoke = jest.fn(async () => ({ status: 'committed' }));
+    const projectedState = { activeDocumentId: 'doc', documents: { doc: { capability: 'unsafe-read-only' } } };
+    const context = {
+        documentId: 'doc',
+        sessionDocumentId: 'doc',
+        projectedState,
+        markdownSettingsLoaded: true,
+        invoke,
+    };
+    await expect(dispatchAction('format', context)).resolves.toMatchObject({
+        status: 'unavailable',
+        reason: 'read-only',
+    });
+    await expect(dispatchAction('compact', context)).resolves.toMatchObject({
+        status: 'unavailable',
+        reason: 'read-only',
+    });
+    expect(invoke).not.toHaveBeenCalled();
+    await expect(dispatchAction('lint', context)).resolves.toMatchObject({ status: 'committed' });
+    expect(invoke).toHaveBeenCalledTimes(1);
+    await expect(dispatchAction('lint', { ...context, slotBusy: true })).resolves.toMatchObject({
+        status: 'unavailable',
+        reason: 'slot-busy',
+    });
+    expect(invoke).toHaveBeenCalledTimes(1);
+});
+
+it('returns an unavailable result for a deferred action without invoking a handler', async () => {
     const invoke = jest.fn();
-    await expect(dispatchAction('format', { invoke })).resolves.toMatchObject({
+    await expect(dispatchAction('command-palette', { invoke })).resolves.toMatchObject({
         status: 'unavailable',
         reason: 'deferred',
     });
@@ -21,9 +49,9 @@ it('suppresses editor actions without a focused identity-bound session', async (
     expect(invoke).not.toHaveBeenCalled();
 });
 
-it('rejects every deferred document and Assistant action before any gate or command', async () => {
+it('rejects deferred Export, Assistant and command palette before any gate or command', async () => {
     const invoke = jest.fn();
-    for (const actionId of ['format', 'compact', 'lint', 'toggle-assistant', 'command-palette'] as const) {
+    for (const actionId of ['export-pdf', 'toggle-assistant', 'command-palette'] as const) {
         await expect(
             dispatchAction(actionId, {
                 documentId: 'doc-1',

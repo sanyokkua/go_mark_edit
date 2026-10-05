@@ -33,6 +33,7 @@ function documentFor(editorVisible: boolean, previewVisible: boolean): DocumentM
             arrangement: previewVisible ? (editorVisible ? 'split' : 'preview') : 'editor',
             editorVisible,
             previewVisible,
+            splitRatio: 0.64,
             cursor: { line: 1, column: 1 },
             selection: {
                 start: { line: 1, column: 1 },
@@ -120,4 +121,24 @@ it('does not issue a command that hides the final visible pane', async (): Promi
     await store.dispatch(setEditorPaneVisible(false));
 
     expect(mockSetDocView).not.toHaveBeenCalled();
+});
+
+it('keeps the split ratio in the fallback view when an arrangement changes', async (): Promise<void> => {
+    const document = documentFor(true, true);
+    store.dispatch(
+        hydrateProjection({
+            revision: 1,
+            documents: { [document.documentId]: document },
+            activeDocumentId: document.documentId,
+            ui: {},
+        }),
+    );
+
+    await store.dispatch(setViewArrangement('editor'));
+
+    expect(mockSetDocView).toHaveBeenCalledWith(
+        document.documentId,
+        { editorVisible: true, previewVisible: false },
+        expect.objectContaining({ splitRatio: 0.64 }),
+    );
 });

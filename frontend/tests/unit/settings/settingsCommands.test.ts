@@ -1,4 +1,4 @@
-import type { AppearanceSettings } from '../../../src/logic/adapter/settingsTypes';
+import type { AppearanceSettings, MarkdownSettings } from '../../../src/logic/adapter/settingsTypes';
 import {
     acknowledgeAppearanceSettingsUpdate,
     createSettingsCommandOwner,
@@ -107,4 +107,90 @@ it('serializes settings writes and acknowledges them in persistence order', asyn
         theme: 'glass',
     });
     expect(acknowledgements).toEqual(['first', 'second']);
+});
+
+it('merges queued Markdown changes against the latest acknowledged group after a delayed write', async () => {
+    let releaseFirst: (() => void) | undefined;
+    let acknowledged: MarkdownSettings = {
+        standard: 'full',
+        bulletMarker: '-',
+        emphasisMarker: '_',
+        headingStyle: 'atx',
+        formatOnSave: false,
+        lintOnSave: true,
+    };
+    const adapter = {
+        updateAppearance: jest.fn(async (): Promise<void> => undefined),
+        resetAppearance: jest.fn(async (): Promise<void> => undefined),
+        updateEditor: jest.fn(async (): Promise<void> => undefined),
+        updateFile: jest.fn(async (): Promise<void> => undefined),
+        updateMarkdown: jest.fn(
+            () =>
+                new Promise<void>((resolve) => {
+                    if (adapter.updateMarkdown.mock.calls.length === 1) releaseFirst = resolve;
+                    else resolve();
+                }),
+        ),
+    };
+    const owner = createSettingsCommandOwner(adapter);
+    const dispatch = jest.fn((action: { payload: unknown }) => {
+        acknowledged = action.payload as MarkdownSettings;
+    });
+    const first = owner.updateMarkdown(() => acknowledged, { bulletMarker: '*' }, dispatch);
+    const second = owner.updateMarkdown(() => acknowledged, { headingStyle: 'setext' }, dispatch);
+    expect(adapter.updateMarkdown).toHaveBeenCalledTimes(1);
+    releaseFirst?.();
+    await Promise.all([first, second]);
+    expect(acknowledged).toEqual({
+        standard: 'full',
+        bulletMarker: '*',
+        emphasisMarker: '_',
+        headingStyle: 'setext',
+        formatOnSave: false,
+        lintOnSave: true,
+    });
+    expect(adapter.updateMarkdown).toHaveBeenCalledTimes(2);
+});
+
+it('continues queued Markdown updates from the last acknowledged group when an earlier write rejects', async () => {
+    let rejectFirst: ((reason: Error) => void) | undefined;
+    let acknowledged: MarkdownSettings = {
+        standard: 'full',
+        bulletMarker: '-',
+        emphasisMarker: '_',
+        headingStyle: 'atx',
+        formatOnSave: false,
+        lintOnSave: true,
+    };
+    const adapter = {
+        updateAppearance: jest.fn(async (): Promise<void> => undefined),
+        resetAppearance: jest.fn(async (): Promise<void> => undefined),
+        updateEditor: jest.fn(async (): Promise<void> => undefined),
+        updateFile: jest.fn(async (): Promise<void> => undefined),
+        updateMarkdown: jest.fn(
+            () =>
+                new Promise<void>((resolve, reject) => {
+                    if (adapter.updateMarkdown.mock.calls.length === 1) rejectFirst = reject;
+                    else resolve();
+                }),
+        ),
+    };
+    const owner = createSettingsCommandOwner(adapter);
+    const dispatch = jest.fn((action: { payload: unknown }) => {
+        acknowledged = action.payload as MarkdownSettings;
+    });
+    const first = owner.updateMarkdown(() => acknowledged, { bulletMarker: '*' }, dispatch);
+    const second = owner.updateMarkdown(() => acknowledged, { headingStyle: 'setext' }, dispatch);
+    rejectFirst?.(new Error('write failed'));
+    await expect(first).rejects.toThrow('write failed');
+    await second;
+    expect(acknowledged).toEqual({
+        standard: 'full',
+        bulletMarker: '-',
+        emphasisMarker: '_',
+        headingStyle: 'setext',
+        formatOnSave: false,
+        lintOnSave: true,
+    });
+    expect(adapter.updateMarkdown).toHaveBeenCalledTimes(2);
 });

@@ -2,6 +2,8 @@ import type { ClipboardPort } from '../adapter/clipboard';
 import { formatMarkers, runFormatAction } from '../format/formatting';
 import type { DocumentCommandAPI, DocumentCommandResult } from '../hooks/useDocumentCommands';
 import type { EditorPosition, EditorSelection } from '../../ui/components/CodeEditor';
+import type { TidyOp } from '../tidy/protocol';
+import type { TidyCommandOutcome } from '../../ui/widgets/tidyCommandsContext';
 
 import { dispatchAction, type ActionResult } from './actionDispatcher';
 import type { ActionId, ProjectedActionState } from './actionRegistry';
@@ -10,7 +12,7 @@ export interface EditorActionExecutorContext {
     clipboard: ClipboardPort;
     commands: DocumentCommandAPI | null;
     documentId: string | null;
-    markdownSettings: {
+    markdownSettings?: {
         bulletMarker: string;
         emphasisMarker: string;
         headingStyle: string;
@@ -18,6 +20,8 @@ export interface EditorActionExecutorContext {
     modalOpen: boolean;
     projectedState?: ProjectedActionState;
     writable: boolean;
+    slotBusy?: boolean;
+    invokeTidy?: (op: TidyOp, snapshot: EditorActionSnapshot) => Promise<TidyCommandOutcome>;
 }
 
 /** A popup snapshot remains tied to the Monaco session that opened it. */
@@ -32,10 +36,20 @@ export interface EditorActionExecutor {
     execute: (actionId: ActionId, snapshot?: EditorActionSnapshot) => Promise<ActionResult>;
 }
 
-type EditorActionInvocation = { status: 'available' } | { status: 'document-mismatch' } | ClipboardFailure;
+type EditorActionInvocation =
+    | { status: 'available' | 'mutated' | 'committed' | 'cancelled' | 'refused' }
+    | { status: 'document-mismatch' }
+    | ClipboardFailure;
 type ClipboardFailure = { reason: 'unsupported'; status: 'unavailable' };
 
 const clipboardActionIds: ReadonlySet<ActionId> = new Set(['cut', 'copy', 'paste', 'paste-plain']);
+const tidyActionIds: ReadonlySet<ActionId> = new Set(['format', 'compact', 'lint']);
+
+function runSearchAction(actionId: 'find' | 'replace', commands: DocumentCommandAPI | null): EditorActionInvocation {
+    const result = actionId === 'find' ? commands?.showFind?.() : commands?.showReplace?.();
+    if (result === undefined || result.status === 'unavailable') return unavailableClipboard();
+    return result.status === 'available' ? { status: 'committed' } : result;
+}
 
 const unavailableClipboard = (): ClipboardFailure => ({ reason: 'unsupported', status: 'unavailable' });
 
@@ -170,6 +184,23 @@ function focusAfterSuccess(commands: DocumentCommandAPI | null): void {
     commands?.focus();
 }
 
+function tidyInvocation(outcome: TidyCommandOutcome): EditorActionInvocation {
+    switch (outcome.kind) {
+        case 'edits':
+            return { status: outcome.edits.length > 0 ? 'mutated' : 'committed' };
+        case 'findings':
+            return { status: 'committed' };
+        case 'cancelled':
+            return { status: 'cancelled' };
+        case 'refused':
+            return { status: 'refused' };
+        case 'failed':
+        case 'stale':
+        case 'busy':
+            return unavailableClipboard();
+    }
+}
+
 /**
  * The sole editor action owner. Every editor UI surface uses this executor so
  * availability, Monaco edits, clipboard access, selection snapshots and focus
@@ -190,17 +221,28 @@ export function createEditorActionExecutor(context: EditorActionExecutorContext)
         const result = await dispatchAction(actionId, {
             documentId: snapshot.documentId ?? undefined,
             editorFocused: snapshot.commands !== null && context.documentId !== null,
-            invoke: (): Promise<EditorActionInvocation> | DocumentCommandResult<unknown> =>
-                clipboardActionIds.has(actionId)
-                    ? runClipboardAction(actionId, snapshot.commands, snapshot.selection, context.clipboard)
-                    : runFormatAction({
-                          actionId,
-                          commands: capturedSelectionCommands(snapshot.commands, snapshot.selection),
-                          markers: formatMarkers(context.markdownSettings),
-                          selection: snapshot.selection,
-                      }),
+            invoke: (): Promise<EditorActionInvocation> | EditorActionInvocation | DocumentCommandResult<unknown> =>
+                tidyActionIds.has(actionId)
+                    ? context.invokeTidy === undefined || snapshot.commands === null || snapshot.documentId === null
+                        ? Promise.resolve(unavailableClipboard())
+                        : context.invokeTidy(actionId as TidyOp, snapshot).then(tidyInvocation)
+                    : actionId === 'find' || actionId === 'replace'
+                      ? runSearchAction(actionId, snapshot.commands)
+                      : clipboardActionIds.has(actionId)
+                        ? runClipboardAction(actionId, snapshot.commands, snapshot.selection, context.clipboard)
+                        : runFormatAction({
+                              actionId,
+                              commands: capturedSelectionCommands(snapshot.commands, snapshot.selection),
+                              markers:
+                                  context.markdownSettings === undefined
+                                      ? undefined
+                                      : formatMarkers(context.markdownSettings),
+                              selection: snapshot.selection,
+                          }),
             modalOpen: context.modalOpen,
+            markdownSettingsLoaded: context.markdownSettings !== undefined,
             projectedState: context.projectedState,
+            slotBusy: context.slotBusy,
             sessionDocumentId: context.documentId ?? undefined,
             writable: context.writable,
         });

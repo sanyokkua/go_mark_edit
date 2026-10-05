@@ -1,5 +1,7 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { Provider } from 'react-redux';
+import { loadedMarkdownSettings } from '../support/loadedMarkdownSettings';
+import { hydrateSettings } from '../../src/logic/store/settingsSlice';
 import type { EditorProps } from '@monaco-editor/react';
 import type { editor, IDisposable, IScrollEvent } from 'monaco-editor';
 
@@ -106,7 +108,9 @@ jest.mock('@monaco-editor/react', () => {
 
         React.useEffect((): void => {
             mockMonaco.instances.push(mounted);
-            onMount?.(mounted.instance, {} as Parameters<NonNullable<EditorProps['onMount']>>[1]);
+            onMount?.(mounted.instance, { editor: { ScrollType: { Immediate: 1 } } } as unknown as Parameters<
+                NonNullable<EditorProps['onMount']>
+            >[1]);
         }, [mounted]);
 
         return React.createElement('textarea', { 'aria-label': 'Markdown source', defaultValue });
@@ -119,6 +123,7 @@ jest.mock('../../src/ui/components/monacoSetup', () => ({
     __esModule: true,
     applyMonacoThemeFromRoot: jest.fn(() => jest.fn()),
     monaco: {},
+    registerEditorLinkModel: jest.fn(() => ({ dispose: jest.fn() })),
 }));
 
 function rectAt(top: number): DOMRect {
@@ -279,6 +284,7 @@ function currentEditor(): MockEditor {
 }
 
 beforeEach((): void => {
+    store.dispatch(hydrateSettings(loadedMarkdownSettings));
     jest.useFakeTimers();
     mockMonaco.instances.length = 0;
     stubPreviewGeometry();

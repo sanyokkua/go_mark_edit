@@ -23,14 +23,14 @@ function PopupHarness(): React.JSX.Element {
     );
 }
 
-it('renders one framed popup, focuses its first item, navigates, and restores the trigger', async () => {
+it('renders one body-portalled popup, focuses its first item, navigates, and restores the trigger', async () => {
     render(<PopupHarness />);
 
     const trigger = screen.getByRole('button', { name: 'Open' });
     fireEvent.click(trigger);
 
     const popup = await screen.findByRole('menu');
-    expect(popup.parentElement).toHaveClass('application-frame');
+    expect(popup.parentElement).toBe(document.body);
     expect(screen.getByRole('menuitem', { name: 'Alpha' })).toHaveFocus();
 
     fireEvent.keyDown(popup, { key: 'ArrowDown' });

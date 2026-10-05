@@ -88,6 +88,8 @@
     border: var(--preview-table-border-width) solid currentColor;
     padding: var(--preview-table-cell-padding);
     text-align: start;
+    overflow-wrap: normal;
+    word-break: normal;
 }
 
 /* Strong text takes `--md-strong` and emphasis takes `--md-emphasis`. Without
@@ -101,12 +103,39 @@
     color: var(--md-emphasis);
 }
 
+.preview mark {
+    background: var(--accent-soft);
+    color: var(--text);
+}
+
 .preview :is(code, pre) {
     font-family: var(--preview-code-font-family);
 }
 
 .preview code {
     padding-inline: var(--preview-code-inline-padding);
+}
+
+.preview .mathLimit {
+    border: var(--control-border-width) solid var(--stroke-soft);
+    border-radius: 4px;
+    color: var(--err);
+    padding: 2px 4px;
+}
+
+.preview div.mathLimit {
+    margin-block: var(--preview-block-spacing);
+    padding: 8px 12px;
+}
+
+.preview :global(.katex-error) {
+    color: var(--err);
+    overflow-wrap: anywhere;
+}
+
+.preview :global(.math-display-error) {
+    display: block;
+    margin-block: var(--preview-block-spacing);
 }
 
 /* The design sets no line-height on a code block, nor on the preview around

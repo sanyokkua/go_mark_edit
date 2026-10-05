@@ -17,6 +17,7 @@ import {
 import { documentFixture } from '../../../support/appFixtures';
 
 const rootPath = '/notes';
+const scrollIntoViewDescriptor = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'scrollIntoView');
 
 function node(name: string, isDir: boolean, children?: WorkspaceNode[]): WorkspaceNode {
     return {
@@ -73,15 +74,20 @@ const commands: WorkspaceTreeCommands = {
     onOpenTreeFile: jest.fn(),
 };
 
-function renderTree(): ReturnType<typeof rtlRender> {
-    return renderTreeWithCommands(commands);
+function renderTree(
+    revealRequest?: React.ComponentProps<typeof WorkspaceTree>['revealRequest'],
+): ReturnType<typeof rtlRender> {
+    return renderTreeWithCommands(commands, revealRequest);
 }
 
-function renderTreeWithCommands(value: WorkspaceTreeCommands): ReturnType<typeof rtlRender> {
+function renderTreeWithCommands(
+    value: WorkspaceTreeCommands,
+    revealRequest?: React.ComponentProps<typeof WorkspaceTree>['revealRequest'],
+): ReturnType<typeof rtlRender> {
     return rtlRender(
         <Provider store={store}>
             <WorkspaceTreeCommandsContext.Provider value={value}>
-                <WorkspaceTree />
+                <WorkspaceTree revealRequest={revealRequest} />
             </WorkspaceTreeCommandsContext.Provider>
         </Provider>,
     );
@@ -90,6 +96,11 @@ function renderTreeWithCommands(value: WorkspaceTreeCommands): ReturnType<typeof
 beforeEach(() => {
     jest.clearAllMocks();
     store.dispatch(resetProjection());
+});
+
+afterEach(() => {
+    if (scrollIntoViewDescriptor === undefined) Reflect.deleteProperty(HTMLElement.prototype, 'scrollIntoView');
+    else Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', scrollIntoViewDescriptor);
 });
 
 describe('WorkspaceTree', () => {
@@ -504,5 +515,178 @@ describe('WorkspaceTree', () => {
 
         expect(screen.getByRole('treeitem', { name: 'other.md' })).toHaveAttribute('aria-selected', 'true');
         expect(screen.getByRole('treeitem', { name: 'inside.md' })).toHaveAttribute('aria-selected', 'false');
+    });
+
+    it('reveals a linked row through collapsed ancestors, leaves unrelated folders alone, and scrolls after rendering', () => {
+        const nested = node('docs', true, [
+            {
+                ...node('sub', true),
+                path: '/notes/docs/sub',
+                children: [{ ...node('b.md', false), path: '/notes/docs/sub/b.md' }],
+            },
+        ]);
+        hydrate(
+            snapshot({ root: { path: rootPath, name: 'notes', isDir: true, children: [nested, node('other', true)] } }),
+            '/notes/a.md',
+        );
+        const { rerender } = renderTree({ documentId: 'other', path: '/notes/docs/sub/b.md', seq: 1 });
+        expect(screen.queryByRole('treeitem', { name: 'b.md' })).not.toBeInTheDocument();
+        fireEvent.click(screen.getByRole('treeitem', { name: 'notes' }));
+        const scroll = jest.fn();
+        Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', { configurable: true, value: scroll });
+        const target = { ...documentFixture('other'), path: '/notes/alias/b.md' };
+        act(() => {
+            store.dispatch(
+                applyStatePatch({
+                    revision: 2,
+                    activeDocumentId: 'other',
+                    orderedDocumentIds: ['active', 'other'],
+                    documents: { upsert: { other: target } },
+                }),
+            );
+        });
+        rerender(
+            <Provider store={store}>
+                <WorkspaceTreeCommandsContext.Provider value={commands}>
+                    <WorkspaceTree revealRequest={{ documentId: 'other', path: '/notes/docs/sub/b.md', seq: 1 }} />
+                </WorkspaceTreeCommandsContext.Provider>
+            </Provider>,
+        );
+        expect(screen.getByRole('treeitem', { name: 'notes' })).toHaveAttribute('aria-expanded', 'true');
+        expect(screen.getByRole('treeitem', { name: 'docs' })).toHaveAttribute('aria-expanded', 'true');
+        expect(screen.getByRole('treeitem', { name: 'sub' })).toHaveAttribute('aria-expanded', 'true');
+        expect(screen.getByRole('treeitem', { name: 'other' })).toHaveAttribute('aria-expanded', 'false');
+        expect(screen.getByRole('treeitem', { name: 'b.md' })).toHaveAttribute('aria-selected', 'true');
+        expect(scroll).toHaveBeenCalledTimes(1);
+        rerender(
+            <Provider store={store}>
+                <WorkspaceTreeCommandsContext.Provider value={commands}>
+                    <WorkspaceTree revealRequest={{ documentId: 'other', path: '/notes/docs/sub/b.md', seq: 1 }} />
+                </WorkspaceTreeCommandsContext.Provider>
+            </Provider>,
+        );
+        expect(scroll).toHaveBeenCalledTimes(1);
+    });
+
+    it('replaces a pending reveal and ignores an unknown path', () => {
+        hydrate(snapshot(), '/notes/readme.md');
+        const tree = (request: React.ComponentProps<typeof WorkspaceTree>['revealRequest']): React.JSX.Element => (
+            <Provider store={store}>
+                <WorkspaceTreeCommandsContext.Provider value={commands}>
+                    <WorkspaceTree revealRequest={request} />
+                </WorkspaceTreeCommandsContext.Provider>
+            </Provider>
+        );
+        const { rerender } = rtlRender(tree({ documentId: 'later', path: '/notes/Folder/inside.md', seq: 1 }));
+        rerender(tree({ documentId: 'later', path: '/notes/other.md', seq: 2 }));
+        const target = { ...documentFixture('later'), path: '/notes/other.md' };
+        act(() => {
+            store.dispatch(
+                applyStatePatch({
+                    revision: 2,
+                    activeDocumentId: 'later',
+                    orderedDocumentIds: ['active', 'later'],
+                    documents: { upsert: { later: target } },
+                }),
+            );
+        });
+        expect(screen.getByRole('treeitem', { name: 'Folder' })).toHaveAttribute('aria-expanded', 'false');
+        expect(screen.getByRole('treeitem', { name: 'other.md' })).toHaveAttribute('aria-selected', 'true');
+        rerender(tree({ documentId: 'later', path: '/notes/missing.md', seq: 3 }));
+        expect(screen.getByRole('treeitem', { name: 'other.md' })).toHaveAttribute('aria-selected', 'true');
+    });
+
+    it('retains the last in-tree selection when an outside document becomes active', () => {
+        hydrate(snapshot(), '/notes/readme.md');
+        renderTree();
+        fireEvent.click(screen.getByRole('treeitem', { name: 'other.md' }));
+        const outside = { ...documentFixture('outside'), path: '/elsewhere/outside.md' };
+        act(() => {
+            store.dispatch(
+                applyStatePatch({
+                    revision: 2,
+                    activeDocumentId: 'outside',
+                    orderedDocumentIds: ['active', 'outside'],
+                    documents: { upsert: { outside } },
+                }),
+            );
+        });
+        expect(screen.getByRole('treeitem', { name: 'other.md' })).toHaveAttribute('aria-selected', 'true');
+    });
+
+    it('retains an implicit active row selection when an outside document becomes active', () => {
+        hydrate(snapshot(), '/notes/readme.md');
+        renderTree();
+        const outside = { ...documentFixture('outside'), path: '/elsewhere/outside.md' };
+        act(() => {
+            store.dispatch(
+                applyStatePatch({
+                    revision: 2,
+                    activeDocumentId: 'outside',
+                    orderedDocumentIds: ['active', 'outside'],
+                    documents: { upsert: { outside } },
+                }),
+            );
+        });
+        expect(screen.getByRole('treeitem', { name: 'readme.md' })).toHaveAttribute('aria-selected', 'true');
+    });
+
+    it('retains selection when the new active document has no rendered row', () => {
+        hydrate(
+            snapshot({
+                root: {
+                    path: rootPath,
+                    name: 'notes',
+                    isDir: true,
+                    children: [
+                        node('readme.md', false),
+                        {
+                            ...node('blocked', true),
+                            unreadable: true,
+                            children: [{ ...node('hidden.md', false), path: '/notes/blocked/hidden.md' }],
+                        },
+                    ],
+                },
+            }),
+            '/notes/readme.md',
+        );
+        renderTree();
+        const hidden = { ...documentFixture('hidden'), path: '/notes/blocked/hidden.md' };
+        act(() => {
+            store.dispatch(
+                applyStatePatch({
+                    revision: 2,
+                    activeDocumentId: 'hidden',
+                    orderedDocumentIds: ['active', 'hidden'],
+                    documents: { upsert: { hidden } },
+                }),
+            );
+        });
+        expect(screen.getByRole('treeitem', { name: 'readme.md' })).toHaveAttribute('aria-selected', 'true');
+        expect(screen.queryByRole('treeitem', { name: 'hidden.md' })).not.toBeInTheDocument();
+    });
+
+    it('keeps the existing selection when a request names a row hidden by an unreadable folder', () => {
+        hydrate(
+            snapshot({
+                root: {
+                    path: rootPath,
+                    name: 'notes',
+                    isDir: true,
+                    children: [
+                        node('readme.md', false),
+                        {
+                            ...node('blocked', true),
+                            unreadable: true,
+                            children: [{ ...node('hidden.md', false), path: '/notes/blocked/hidden.md' }],
+                        },
+                    ],
+                },
+            }),
+            '/notes/readme.md',
+        );
+        renderTree({ documentId: 'active', path: '/notes/blocked/hidden.md', seq: 1 });
+        expect(screen.getByRole('treeitem', { name: 'readme.md' })).toHaveAttribute('aria-selected', 'true');
+        expect(screen.queryByRole('treeitem', { name: 'hidden.md' })).not.toBeInTheDocument();
     });
 });

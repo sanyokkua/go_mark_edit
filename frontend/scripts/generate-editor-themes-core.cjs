@@ -6,11 +6,13 @@ const modes = ['light', 'dark'];
 const required = [
     '--editor-content-background',
     '--surface',
+    '--elevated',
     '--stroke',
     '--text',
     '--gutter',
     '--accent',
     '--accent-soft',
+    '--diff-removed-background',
     '--selection-bg',
     '--hover',
     '--scrollbar-thumb',
@@ -66,6 +68,46 @@ const goRules = [
     ['keyword.type.go', '--hl-type'],
     ['keyword.const.go', '--hl-type'],
 ];
+const genericRules = [
+    ['keyword', '--hl-keyword'],
+    ['string', '--hl-string'],
+    ['comment', '--hl-comment'],
+    ['number', '--hl-number'],
+    ['type', '--hl-type'],
+    ['delimiter', '--hl-punct'],
+    ['operator', '--hl-punct'],
+    ['annotation', '--hl-attr'],
+    ['attribute.name', '--hl-attr'],
+    ['tag', '--hl-attr'],
+    ['predefined', '--hl-function'],
+];
+// Monaco's inherited base themes have more-specific rules for these contracted languages.
+// Resolve them from the same palette so they cannot outrank our generic families.
+const inheritedQualifiedRules = [
+    ['number.hex', '--hl-number'],
+    ['delimiter.html', '--hl-punct'],
+    ['delimiter.xml', '--hl-punct'],
+    ['string.key.json', '--hl-attr'],
+    ['string.value.json', '--hl-string'],
+    ['attribute.value', '--hl-string'],
+    ['attribute.value.number', '--hl-number'],
+    ['attribute.value.unit', '--hl-number'],
+    ['attribute.value.number.css', '--hl-number'],
+    ['attribute.value.unit.css', '--hl-number'],
+    ['attribute.value.hex.css', '--hl-number'],
+    ['attribute.value.html', '--hl-string'],
+    ['attribute.value.xml', '--hl-string'],
+    ['string.html', '--hl-string'],
+    ['string.sql', '--hl-string'],
+    ['string.yaml', '--hl-string'],
+    ['keyword.json', '--hl-keyword'],
+    ['keyword.flow', '--hl-keyword'],
+    ['keyword.flow.scss', '--hl-keyword'],
+    ['operator.scss', '--hl-punct'],
+    ['operator.sql', '--hl-punct'],
+    ['operator.swift', '--hl-punct'],
+    ['predefined.sql', '--hl-function'],
+];
 
 function blocks(css) {
     return [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)].map(([, sourceSelector, sourceDeclarations]) => {
@@ -116,7 +158,7 @@ function monacoColor(value) {
 }
 
 function rulesFor(values) {
-    return [...markdownRules, ...goRules].map(([token, cssToken]) => ({
+    return [...genericRules, ...inheritedQualifiedRules, ...markdownRules, ...goRules].map(([token, cssToken]) => ({
         token,
         foreground: monacoColor(values[cssToken]),
     }));
@@ -142,6 +184,7 @@ function generateEditorThemes(css) {
                     'editor.lineHighlightBackground': monacoColor(values['--hover']),
                     'editorGutter.background': monacoColor(values['--editor-content-background']),
                     'editorWidget.background': monacoColor(values['--surface']),
+                    'editorHoverWidget.background': monacoColor(values['--elevated']),
                     'editorWidget.border': monacoColor(values['--stroke']),
                     'editorSuggestWidget.background': monacoColor(values['--surface']),
                     'editorSuggestWidget.foreground': monacoColor(values['--text']),
@@ -151,29 +194,31 @@ function generateEditorThemes(css) {
                     'scrollbarSlider.hoverBackground': monacoColor(values['--scrollbar-thumb-hover']),
                     'editorError.foreground': monacoColor(values['--err']),
                     'editorWarning.foreground': monacoColor(values['--warn']),
+                    'diffEditor.insertedTextBackground': monacoColor(values['--accent-soft']),
+                    'diffEditor.insertedLineBackground': monacoColor(values['--accent-soft']),
+                    'diffEditor.removedTextBackground': monacoColor(values['--diff-removed-background']),
+                    'diffEditor.removedLineBackground': monacoColor(values['--diff-removed-background']),
                 },
                 rules: rulesFor(values),
             };
         }
     const highlightRules = [
-        ['hljs-keyword', 'keyword.go'],
-        ['hljs-string', 'string.go'],
-        ['hljs-comment', 'comment.go'],
-        ['hljs-number', 'number.go'],
-        ['hljs-title', 'identifier.go'],
-        ['hljs-type', 'keyword.type.go'],
-        ['hljs-attr', 'annotation.go'],
-        ['hljs-punctuation', 'delimiter.go'],
-    ];
-    const highlightCss = Object.entries(definitions)
-        .flatMap(([name, definition]) =>
-            highlightRules.map(([className, token]) => {
-                const foreground = definition.rules.find((rule) => rule.token === token).foreground;
-                return `[data-gme-highlight='${name}'] .${className} { color: ${foreground}; }`;
-            }),
-        )
-        .join('\n');
-    return { themes: definitions, highlightCss };
+        ['hljs-keyword', '--hl-keyword'],
+        ['hljs-string', '--hl-string'],
+        ['hljs-regexp', '--hl-string'],
+        ['hljs-comment', '--hl-comment'],
+        ['hljs-number', '--hl-number'],
+        ['hljs-literal', '--hl-number'],
+        ['hljs-built_in', '--hl-function'],
+        ['hljs-title', '--hl-function'],
+        ['hljs-type', '--hl-type'],
+        ['hljs-name', '--hl-attr'],
+        ['hljs-attr', '--hl-attr'],
+        ['hljs-attribute', '--hl-attr'],
+        ['hljs-operator', '--hl-punct'],
+        ['hljs-punctuation', '--hl-punct'],
+    ].map(([className, token]) => ({ className, token }));
+    return { themes: definitions, highlightRules };
 }
 
 async function generateFiles({ input, themesOutput, highlightOutput }) {
@@ -187,11 +232,14 @@ async function generateFiles({ input, themesOutput, highlightOutput }) {
         `// Generated by scripts/generate-editor-themes.mjs. Do not edit.\nexport const generatedEditorThemes = ${JSON.stringify(generated.themes, null, 2)} as const;\nexport type GeneratedEditorThemeName = keyof typeof generatedEditorThemes;\n`,
         { ...themesConfig, parser: 'typescript', plugins: [] },
     );
-    const highlightSource = await format(`${generated.highlightCss}\n`, {
-        ...highlightConfig,
-        parser: 'css',
-        plugins: [],
-    });
+    const highlightSource = await format(
+        `${generated.highlightRules.map(({ className, token }) => `.${className} { color: var(${token}); }`).join('\n')}\n`,
+        {
+            ...highlightConfig,
+            parser: 'css',
+            plugins: [],
+        },
+    );
     await Promise.all([writeFile(themesOutput, editorSource), writeFile(highlightOutput, highlightSource)]);
     return generated;
 }

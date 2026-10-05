@@ -216,10 +216,12 @@ const Popup = ({
                 ? anchorPosition.top
                 : Math.max(margin, anchorPosition.anchorTop - height - margin);
         const boundedTop = Math.min(Math.max(margin, top), Math.max(margin, metrics.height - height - margin));
+        const viewportLeft = metrics.left + left;
+        const viewportTop = metrics.top + boundedTop;
         setPlacement((current) =>
-            current?.left === left && current.top === boundedTop && current.maxBlockSize === maxBlockSize
+            current?.left === viewportLeft && current.top === viewportTop && current.maxBlockSize === maxBlockSize
                 ? current
-                : { left, maxBlockSize, top: boundedTop },
+                : { left: viewportLeft, maxBlockSize, top: viewportTop },
         );
     }, [anchor, frame]);
 
@@ -362,7 +364,7 @@ const Popup = ({
                       >
                           {children}
                       </div>,
-                      frame ?? document.body,
+                      document.body,
                   )
                 : null}
         </DropdownMenu.Root>

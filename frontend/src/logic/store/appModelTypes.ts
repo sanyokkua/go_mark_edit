@@ -122,6 +122,7 @@ export interface DocumentView {
     arrangement: string;
     editorVisible: boolean;
     previewVisible: boolean;
+    splitRatio?: number;
     cursor: CursorPosition;
     selection: SelectionRange;
     scroll: ScrollOffsets;
@@ -178,8 +179,8 @@ export interface WriteResult {
 export interface ConflictPreviewSide {
     text: string;
     lineCount: number;
-    byteCount: number;
-    truncated: boolean;
+    byteCount: number | null;
+    byteCountUnavailableReason?: 'normalization-required' | 'unsupported-encoding' | 'unsafe-content';
 }
 
 export interface DiskVersion {
@@ -395,6 +396,8 @@ export type OpenStatus = 'cancelled' | 'focused' | 'opened' | 'refused' | 'folde
 export interface OpenResult {
     status: OpenStatus;
     path?: string;
+    revealPath?: string;
+    treePath?: string;
     documentId?: string;
     projectionRevision?: number;
     activeBuffer?: ActiveBuffer;
@@ -404,6 +407,7 @@ export interface OpenResult {
 export interface DocViewInput {
     editorVisible: boolean;
     previewVisible: boolean;
+    splitRatio?: number;
     cursor: CursorPosition;
     selection: SelectionRange;
     scroll: ScrollOffsets;

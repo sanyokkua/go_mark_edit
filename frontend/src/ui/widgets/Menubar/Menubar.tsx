@@ -28,6 +28,7 @@ import DocumentIdentity from '../DocumentIdentity';
 import { safeRecentLabel } from '../Launcher';
 import { isMinimumWindow } from '../minimumWindow';
 import SettingsMenu, { type SettingsMenuProps } from './SettingsMenu';
+import FormatMenu, { type FormatMenuProps } from './FormatMenu';
 import type { ApplicationMenuTarget } from '../applicationMenuRequest';
 import Bar from '../../components/Bar';
 import ModalShell from '../../components/ModalShell';
@@ -101,6 +102,10 @@ export interface MenubarProps {
     writable?: boolean;
     onShortcuts?: () => void;
     settingsMenuProps: SettingsMenuProps;
+    formatMenuProps?: Pick<
+        FormatMenuProps,
+        'markdownSettingsLoaded' | 'projectedState' | 'slot' | 'onExecute' | 'capture' | 'onCancel'
+    >;
     toggleFullscreen?: () => Promise<boolean>;
     viewMenuProps?: ViewMenuProps;
     requestedMenu?: ApplicationMenuTarget | null;
@@ -121,7 +126,7 @@ export interface MenubarProps {
  */
 const isNarrowViewport = isMinimumWindow;
 
-type ActiveMenu = 'settings' | 'view' | 'file' | 'about' | null;
+type ActiveMenu = 'settings' | 'view' | 'file' | 'format' | 'about' | null;
 
 const Menubar: React.FC<MenubarProps> = ({
     modalOpen,
@@ -148,6 +153,7 @@ const Menubar: React.FC<MenubarProps> = ({
     sessionDocumentId,
     writable,
     settingsMenuProps,
+    formatMenuProps,
     toggleFullscreen = windowAdapter.toggleFullscreen,
     viewMenuProps,
     requestedMenu = null,
@@ -178,11 +184,15 @@ const Menubar: React.FC<MenubarProps> = ({
         setAboutTrigger(element);
     }, []);
     const settingsOpen = activeMenu === 'settings';
+    const formatOpen = activeMenu === 'format';
     const viewOpen = activeMenu === 'view';
     const fileOpen = activeMenu === 'file';
     const aboutOpen = activeMenu === 'about';
     const setSettingsOpen = (open: boolean): void => {
         setActiveMenu((current): ActiveMenu => (open ? 'settings' : current === 'settings' ? null : current));
+    };
+    const setFormatOpen = (open: boolean): void => {
+        setActiveMenu((current): ActiveMenu => (open ? 'format' : current === 'format' ? null : current));
     };
     const setViewOpen = (open: boolean): void => {
         setActiveMenu((current): ActiveMenu => (open ? 'view' : current === 'view' ? null : current));
@@ -405,6 +415,7 @@ const Menubar: React.FC<MenubarProps> = ({
             (action.id !== 'view' || viewMenuProps !== undefined),
     );
     const fileActions = actionsForSurface('file-menu');
+    const formatActions = actionsForSurface('format-menu');
     const fileActionLabel = (item: (typeof fileActions)[number]): string =>
         t(item.surfaceLabelKeys?.['file-menu'] ?? item.labelKey);
     /*
@@ -516,6 +527,13 @@ const Menubar: React.FC<MenubarProps> = ({
                                         onSelect={(): void => {
                                             setOverflowOpen(false);
                                             setFileOpen(true);
+                                        }}
+                                    />
+                                    <MenuItem
+                                        label={t('shell.format')}
+                                        onSelect={(): void => {
+                                            setOverflowOpen(false);
+                                            setFormatOpen(true);
                                         }}
                                     />
                                     {menuActions.map((item) => (
@@ -650,9 +668,21 @@ const Menubar: React.FC<MenubarProps> = ({
                                         setSettingsOpen(false);
                                         settingsMenuProps.onOpenAppearance(overflowTrigger);
                                     }}
-                                    anchorRef={overflowTriggerRef}
                                     anchorElement={overflowTrigger}
                                     showTrigger={false}
+                                />
+                                <FormatMenu
+                                    actions={formatActions}
+                                    markdownSettingsLoaded={formatMenuProps?.markdownSettingsLoaded ?? false}
+                                    projectedState={formatMenuProps?.projectedState ?? projectedState}
+                                    slot={formatMenuProps?.slot ?? { state: 'idle' }}
+                                    capture={formatMenuProps?.capture}
+                                    onExecute={formatMenuProps?.onExecute}
+                                    onCancel={formatMenuProps?.onCancel}
+                                    open={!modalOpen && formatOpen}
+                                    onOpenChange={setFormatOpen}
+                                    showTrigger={false}
+                                    anchorElement={overflowTrigger}
                                 />
                                 {viewMenuProps === undefined ? null : (
                                     <ViewMenu
@@ -775,6 +805,23 @@ const Menubar: React.FC<MenubarProps> = ({
                                         ))}
                                 </Popup>
 
+                                <FormatMenu
+                                    actions={formatActions}
+                                    markdownSettingsLoaded={formatMenuProps?.markdownSettingsLoaded ?? false}
+                                    projectedState={formatMenuProps?.projectedState ?? projectedState}
+                                    slot={formatMenuProps?.slot ?? { state: 'idle' }}
+                                    capture={formatMenuProps?.capture}
+                                    onExecute={formatMenuProps?.onExecute}
+                                    onCancel={formatMenuProps?.onCancel}
+                                    open={!modalOpen && formatOpen}
+                                    onOpenChange={setFormatOpen}
+                                    onTrigger={(): void => {
+                                        setFileOpen(false);
+                                        setSettingsOpen(false);
+                                        setViewOpen(false);
+                                        setAboutOpen(false);
+                                    }}
+                                />
                                 <SettingsMenu
                                     {...settingsMenuProps}
                                     open={!modalOpen && settingsOpen}

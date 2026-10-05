@@ -43,6 +43,13 @@ function normalizeDocumentMetadata(document: DocumentMetadata): DocumentMetadata
             arrangement: document.view.arrangement,
             editorVisible: document.view.editorVisible,
             previewVisible: document.view.previewVisible,
+            splitRatio:
+                typeof document.view.splitRatio === 'number' &&
+                Number.isFinite(document.view.splitRatio) &&
+                document.view.splitRatio >= 0.2 &&
+                document.view.splitRatio <= 0.8
+                    ? document.view.splitRatio
+                    : 0.5,
             cursor: {
                 line: document.view.cursor.line,
                 column: document.view.cursor.column,

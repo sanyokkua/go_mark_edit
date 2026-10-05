@@ -17,7 +17,9 @@ export interface SegmentedOptionButtonProps extends ComponentPropsWithRef<'butto
 
 export interface SegmentedProps<Value extends string> {
     readonly ariaLabel: string;
+    readonly ariaDescribedBy?: string;
     readonly className?: string;
+    readonly disabled?: boolean;
     readonly onChange: (value: Value) => void;
     readonly options: readonly SegmentedOption<Value>[];
     readonly optionClassName?: string;
@@ -28,7 +30,7 @@ export interface SegmentedProps<Value extends string> {
         option: SegmentedOption<Value>,
         buttonProps: SegmentedOptionButtonProps,
     ) => React.JSX.Element;
-    readonly value: Value;
+    readonly value: Value | undefined;
 }
 
 function OptionView<Value extends string>({
@@ -61,7 +63,9 @@ function nextIndex(currentIndex: number, length: number, key: string): number | 
 
 const Segmented = <Value extends string>({
     ariaLabel,
+    ariaDescribedBy,
     className,
+    disabled = false,
     onChange,
     options,
     optionClassName,
@@ -69,6 +73,7 @@ const Segmented = <Value extends string>({
     renderOption,
     value,
 }: SegmentedProps<Value>): React.JSX.Element => {
+    const groupRef = useRef<HTMLDivElement | null>(null);
     const optionRefs = useRef<Array<HTMLButtonElement | null>>([]);
     const pendingValueRef = useRef<Value | undefined>(undefined);
 
@@ -76,18 +81,22 @@ const Segmented = <Value extends string>({
         if (pendingValueRef.current !== value) return;
 
         pendingValueRef.current = undefined;
+        if (!groupRef.current?.contains(document.activeElement)) return;
         const selectedIndex = options.findIndex((option) => option.value === value);
         optionRefs.current[selectedIndex]?.focus();
     }, [options, value]);
 
     function requestValue(nextValue: Value): void {
+        if (disabled) return;
         if (nextValue !== value) pendingValueRef.current = nextValue;
         onChange(nextValue);
     }
 
     return (
         <div
+            ref={groupRef}
             aria-label={ariaLabel}
+            aria-describedby={ariaDescribedBy}
             className={`${renderOption === undefined ? styles.segmented : ''} ${className ?? ''}`.trim()}
             role="radiogroup"
         >
@@ -98,13 +107,14 @@ const Segmented = <Value extends string>({
                         optionRefs.current[index] = element;
                     },
                     'aria-checked': selected,
+                    disabled,
                     className:
                         `${renderOption === undefined ? (selected ? styles.optionSelected : styles.option) : ''} ${optionClassName ?? ''}`.trim(),
                     'data-action-id': option.value,
                     'data-icon': option.value,
                     'data-segmented-value': option.value,
                     role: 'radio',
-                    tabIndex: selected ? 0 : -1,
+                    tabIndex: disabled ? -1 : selected || (value === undefined && index === 0) ? 0 : -1,
                     type: 'button',
                     onClick: (): void => requestValue(option.value),
                     onMouseDown: (event): void => {

@@ -5,11 +5,12 @@ import { useAppDispatch, useAppSelector } from '../../logic/store';
 import { WORKSPACE_BINDING_WIDTH, setWorkspaceWidth } from '../../logic/store/uiLayoutCommands';
 import Sidebar from '../components/Sidebar';
 import { useMinimumWindow } from './minimumWindow';
-import WorkspaceTree from './WorkspaceTree/WorkspaceTree';
+import WorkspaceTree, { type WorkspaceTreeProps } from './WorkspaceTree/WorkspaceTree';
 import styles from './AppShell.module.css';
 
 export interface WorkspaceLayoutProps extends PropsWithChildren {
     documentState: 'active' | 'empty';
+    treeRevealRequest?: WorkspaceTreeProps['revealRequest'];
 }
 
 interface PendingWidth {
@@ -20,6 +21,7 @@ interface PendingWidth {
 const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
     children,
     documentState,
+    treeRevealRequest,
 }: WorkspaceLayoutProps): React.JSX.Element => {
     const dispatch = useAppDispatch();
     const minimumWindow = useMinimumWindow();
@@ -73,7 +75,7 @@ const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
                     side="left"
                     width={workspaceWidth}
                 >
-                    <WorkspaceTree />
+                    <WorkspaceTree revealRequest={treeRevealRequest} />
                 </Sidebar>
             )}
             <main aria-label={t('shell.document')} className={styles.document}>

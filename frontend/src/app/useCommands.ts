@@ -2,8 +2,10 @@ import { useCallback, useRef, useState } from 'react';
 
 import { t } from '../i18n';
 import { appModelAdapter, windowAdapter } from '../logic/adapter';
+import type { LinkTarget } from '../logic/markdown/linkPolicy';
 import { store, useAppDispatch } from '../logic/store';
 import { reportClassifiedError } from '../logic/store/classifiedNotification';
+import { buildUnsupportedFileNotice } from '../logic/store/linkNotification';
 import { notifyError, notifyToast } from '../logic/store/notificationsSlice';
 import type {
     ClassifiedError,
@@ -39,6 +41,14 @@ export function useCommands(
     const [closeFolderPromptOpen, setCloseFolderPromptOpen] = useState(false);
     const [tabRevealRequest, setTabRevealRequest] = useState<{ documentId: string; sequence: number } | null>(null);
     const [editorFocusRequest, setEditorFocusRequest] = useState<{ documentId: string; sequence: number } | null>(null);
+    const [treeRevealRequest, setTreeRevealRequest] = useState<{
+        documentId: string;
+        path: string;
+        seq: number;
+    } | null>(null);
+    const [fragmentRequest, setFragmentRequest] = useState<{ documentId: string; slug: string; seq: number } | null>(
+        null,
+    );
     const workspaceOpenPending = useRef(false);
     const pendingWorkspaceReads = useRef(0);
     const queuedWorkspacePath = useRef<string | null>(null);
@@ -59,7 +69,7 @@ export function useCommands(
     const reportEntryError = useCallback(
         (
             error: ClassifiedError | undefined,
-            intent: NotificationRemediationIntent,
+            intent?: NotificationRemediationIntent,
             path?: string,
             kind?: RecentItem['kind'],
         ): void => {
@@ -87,6 +97,53 @@ export function useCommands(
             }
         },
         [onFocusedDocumentOpen],
+    );
+
+    const openLink = useCallback(
+        async (target: Extract<LinkTarget, { kind: 'localDocument' }>, sourceDocumentId: string): Promise<void> => {
+            try {
+                await flushActiveDocument();
+                const generation = activation.begin();
+                const result = await appModelAdapter.openPreviewLink?.(sourceDocumentId, target.href);
+                if (result === undefined || !activation.isCurrent(generation)) return;
+                if (result.status === 'opened' || result.status === 'focused') {
+                    const documentId = result.documentId;
+                    if (documentId === undefined) return;
+                    if (documentId !== sourceDocumentId) {
+                        activation.acknowledge(generation, result.activeBuffer);
+                        onFocusedDocumentOpen(documentId);
+                        const treePath = result.treePath;
+                        if (treePath) {
+                            setTreeRevealRequest((previous) => ({
+                                documentId,
+                                path: treePath,
+                                seq: (previous?.seq ?? 0) + 1,
+                            }));
+                        }
+                    }
+                    const fragment = target.fragment;
+                    if (fragment !== undefined) {
+                        setFragmentRequest((previous) => ({
+                            documentId,
+                            slug: fragment,
+                            seq: (previous?.seq ?? 0) + 1,
+                        }));
+                    }
+                    return;
+                }
+                if (result.status === 'refused') {
+                    if (result.revealPath) {
+                        const notice = buildUnsupportedFileNotice(result.revealPath, result.error?.safeSubject);
+                        if (notice !== undefined) dispatch(notifyToast(notice));
+                    } else {
+                        reportEntryError(result.error);
+                    }
+                }
+            } catch (error) {
+                dispatch(notifyError(parseError(error)));
+            }
+        },
+        [activation, dispatch, flushActiveDocument, onFocusedDocumentOpen, reportEntryError],
     );
 
     const onNewDocument = useCallback(
@@ -465,6 +522,9 @@ export function useCommands(
     );
 
     return {
+        openLink,
+        treeRevealRequest,
+        fragmentRequest,
         tabRevealRequest,
         editorFocusRequest,
         onFocusCreatedFile,

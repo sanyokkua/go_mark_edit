@@ -86,6 +86,7 @@ import { createClipboardPort } from './clipboard';
 import type {
     ClassifiedError,
     ConflictPreview,
+    ConflictPreviewSide,
     ConflictResult,
     ClosePlanResult,
     DocumentTransitionResult,
@@ -208,6 +209,17 @@ function normalizeTransitionResult(result: apperr.DocumentTransitionResult): Doc
 
 function normalizeConflictPreview(preview: apperr.ConflictPreview | undefined): ConflictPreview | undefined {
     if (preview === undefined) return undefined;
+    const normalizeSide = (side: apperr.ConflictPreviewSide): ConflictPreviewSide => ({
+        text: side.text,
+        lineCount: side.lineCount,
+        byteCount: typeof side.byteCount === 'number' ? side.byteCount : null,
+        byteCountUnavailableReason:
+            side.byteCountUnavailableReason === 'normalization-required' ||
+            side.byteCountUnavailableReason === 'unsupported-encoding' ||
+            side.byteCountUnavailableReason === 'unsafe-content'
+                ? side.byteCountUnavailableReason
+                : undefined,
+    });
     return {
         contentRevision: preview.contentRevision,
         detectedDiskVersion: {
@@ -220,20 +232,10 @@ function normalizeConflictPreview(preview: apperr.ConflictPreview | undefined): 
         displayName: preview.displayName,
         documentId: preview.documentId,
         metadataDifferences: preview.metadataDifferences ? [...preview.metadataDifferences] : undefined,
-        onDisk: {
-            byteCount: preview.onDisk.byteCount,
-            lineCount: preview.onDisk.lineCount,
-            text: preview.onDisk.text,
-            truncated: preview.onDisk.truncated,
-        },
+        onDisk: normalizeSide(preview.onDisk),
         path: preview.path,
         readOnly: preview.readOnly,
-        yours: {
-            byteCount: preview.yours.byteCount,
-            lineCount: preview.yours.lineCount,
-            text: preview.yours.text,
-            truncated: preview.yours.truncated,
-        },
+        yours: normalizeSide(preview.yours),
     };
 }
 
@@ -262,6 +264,8 @@ function normalizeOpenResult(result: apperr.OpenResult): OpenResult {
     return {
         status: result.status as OpenResult['status'],
         path: result.path,
+        ...(result.revealPath === undefined ? {} : { revealPath: result.revealPath }),
+        ...(result.treePath === undefined ? {} : { treePath: result.treePath }),
         documentId: result.documentId,
         projectionRevision: result.projectionRevision,
         activeBuffer:
@@ -632,6 +636,7 @@ export {
 export { EVENTS, type AdapterEventName } from './events';
 export {
     BUFFER_SYNC_MS,
+    VIEW_SYNC_MS,
     createAppModelAdapter,
     type AppModelAdapter,
     type AppModelBindings,

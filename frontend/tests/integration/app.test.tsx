@@ -1,6 +1,24 @@
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import type { AppShellProps } from '../../src/ui/widgets/AppShell';
+
+const mockShellProps: AppShellProps[] = [];
+
+jest.mock('../../src/ui/widgets/AppShell', () => {
+    const React = jest.requireActual<typeof import('react')>('react');
+    const actual = jest.requireActual<typeof import('../../src/ui/widgets/AppShell')>('../../src/ui/widgets/AppShell');
+    return {
+        __esModule: true,
+        default: (props: AppShellProps) => {
+            mockShellProps.push(props);
+            return React.createElement(actual.default, props);
+        },
+    };
+});
 
 jest.mock('../../src/logic/adapter/events', () => ({ subscribeFileDrops: jest.fn(() => jest.fn()) }));
+
+// JSDOM cannot load Vite's ?worker module; App only needs the browser factory when a tidy action runs.
+jest.mock('../../src/logic/tidy/workerFactory', () => ({ createTidyWorker: jest.fn() }));
 
 jest.mock('../../src/app/useBootstrap', () => ({
     useBootstrap: jest.fn(),
@@ -21,6 +39,7 @@ jest.mock('../../src/logic/adapter', () => ({
         newDocument: jest.fn(),
         chooseWorkspaceFolder: jest.fn(),
         openWorkspace: jest.fn(),
+        openPreviewLink: jest.fn(),
         setUILayout: jest.fn(),
     },
     settingsAdapter: {
@@ -42,6 +61,7 @@ import App from '../../src/app/App';
 import { appModelAdapter } from '../../src/logic/adapter';
 import { store } from '../../src/logic/store';
 import { applyStatePatch, hydrateProjection } from '../../src/logic/store/appModelProjectionActions';
+import { createTidyWorker } from '../../src/logic/tidy/workerFactory';
 import { createCommandRecorder } from '../support/commandRecorder';
 
 const mockedUseBootstrap = useBootstrap as jest.MockedFunction<typeof useBootstrap>;
@@ -82,8 +102,28 @@ beforeEach(() => {
 
 afterEach(() => {
     jest.clearAllMocks();
+    mockShellProps.length = 0;
     document.documentElement.removeAttribute('data-mode');
     document.documentElement.removeAttribute('data-theme');
+});
+
+it('connects the link command to the real application shell', async () => {
+    mockedUseBootstrap.mockReturnValue(readyBootstrap());
+    hydrateEmptyProjection();
+
+    render(<App />);
+    await waitFor(() => expect(mockShellProps.length).toBeGreaterThan(0));
+
+    expect(mockShellProps.at(-1)?.onOpenLink).toEqual(expect.any(Function));
+    await act(async () => {
+        await (
+            mockShellProps.at(-1)?.onOpenLink as (
+                target: { kind: 'localDocument'; href: string },
+                sourceId: string,
+            ) => Promise<void>
+        )({ kind: 'localDocument', href: './target.md' }, 'source');
+    });
+    expect(appModelAdapter.openPreviewLink).toHaveBeenCalledWith('source', './target.md');
 });
 
 async function waitForAppearanceHydration(): Promise<void> {
@@ -94,6 +134,7 @@ it('routes a failed startup through the recovery surface with Quit available', a
     render(<App />);
     await waitForAppearanceHydration();
 
+    expect(createTidyWorker).not.toHaveBeenCalled();
     expect(screen.getByRole('status', { name: /could not initialize/i })).toHaveTextContent('Settings: database');
     expect(screen.getByRole('button', { name: 'Quit' })).toBeEnabled();
 });
@@ -105,6 +146,7 @@ it('composes the four application menus at the app boundary', async () => {
     render(<App />);
     await waitForAppearanceHydration();
 
+    expect(createTidyWorker).not.toHaveBeenCalled();
     const menu = screen.getByRole('navigation', { name: 'Application actions' });
     expect(within(menu).getByRole('button', { name: 'File' })).toBeEnabled();
     expect(within(menu).getByRole('button', { name: 'Settings' })).toBeEnabled();

@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"math"
 	"strconv"
 	"sync"
 	"sync/atomic"
@@ -98,6 +99,7 @@ func newAppModelService(options ...AppModelOption) *AppModelService {
 			LineEnding: "lf",
 			View: apperr.DocView{
 				Arrangement:    ArrangementSplit,
+				SplitRatio:     defaultSplitRatio,
 				EditorVisible:  true,
 				PreviewVisible: true,
 				Cursor:         apperr.CursorPosition{Line: 1, Column: 1},
@@ -431,8 +433,14 @@ func (service *AppModelService) SetDocView(ctx context.Context, documentID strin
 		service.mu.Unlock()
 		return apperr.NotFound(documentID)
 	}
+	previous := document.metadata.View
+	ratio := previous.SplitRatio
+	if input.SplitRatio != nil {
+		ratio = *input.SplitRatio
+	}
 	document.metadata.View = apperr.DocView{
 		Arrangement:    arrangementFor(input.EditorVisible, input.PreviewVisible),
+		SplitRatio:     ratio,
 		EditorVisible:  input.EditorVisible,
 		PreviewVisible: input.PreviewVisible,
 		Cursor:         input.Cursor,
@@ -445,7 +453,16 @@ func (service *AppModelService) SetDocView(ctx context.Context, documentID strin
 		service.mu.Unlock()
 		return err
 	}
+	var persistenceWarning *apperr.ClassifiedError
+	if service.metadata != nil && document.canonicalPath != "" && (previous.Arrangement != document.metadata.View.Arrangement || previous.SplitRatio != ratio || input.SplitRatio != nil) {
+		if err := service.metadata.WriteView(ctx, document.canonicalPath, FileViewMetadata{Arrangement: document.metadata.View.Arrangement, SplitRatio: ratio}); err != nil {
+			persistenceWarning = bridge.ClassifiedWithID(apperr.ClassifiedPersistenceWarning, document.canonicalPath, "The document view changed, but its settings could not be stored.", apperr.RemediationNone, documentID)
+		}
+	}
 	service.mu.Unlock()
+	if persistenceWarning != nil {
+		service.emitAsyncError(ctx, apperr.ClassifiedToWire(persistenceWarning), "document view persistence failure could not be surfaced")
+	}
 
 	return nil
 }
@@ -909,6 +926,9 @@ func arrangementFor(editorVisible, previewVisible bool) string {
 }
 
 func validateDocView(input apperr.DocViewInput) error {
+	if input.SplitRatio != nil && !validSplitRatio(*input.SplitRatio) {
+		return apperr.Validation("docView.splitRatio", "finite ratio from 0.2 to 0.8", "out of range")
+	}
 	if !input.EditorVisible && !input.PreviewVisible {
 		return apperr.Validation("docView.panes", "at least one pane visible", "both hidden")
 	}
@@ -931,6 +951,12 @@ func validateDocView(input apperr.DocViewInput) error {
 		return apperr.Validation("docView.scroll", "nonnegative offsets", "negative")
 	}
 	return nil
+}
+
+const defaultSplitRatio = 0.5
+
+func validSplitRatio(ratio float64) bool {
+	return !math.IsNaN(ratio) && !math.IsInf(ratio, 0) && ratio >= 0.2 && ratio <= 0.8
 }
 
 func comparePositions(left, right apperr.CursorPosition) int {

@@ -1,24 +1,16 @@
 import { execFileSync } from 'node:child_process';
 import { mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { join } from 'node:path';
 
 import { render, screen } from '@testing-library/react';
 import { createElement } from 'react';
-import rehypeSanitize from 'rehype-sanitize';
-import remarkGfm from 'remark-gfm';
 import remarkParse from 'remark-parse';
 import remarkRehype from 'remark-rehype';
 import { unified } from 'unified';
 
-import {
-    baseGfmRehypePlugins,
-    baseGfmRemarkPlugins,
-    baseGfmSanitizeSchema,
-} from '../../../src/logic/markdown/renderer';
+import { createPipeline } from '../../../src/logic/markdown/pipeline';
 import MarkdownView from '../../../src/ui/components/MarkdownView';
-
-const readSource = (relativePath: string): string => readFileSync(resolve(process.cwd(), relativePath), 'utf8');
 
 const emittedRuntimeAssets = (directory: string): string[] => {
     return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
@@ -40,42 +32,40 @@ const remoteHTMLAssetSource = /<(?:script|link)\b[^>]*\b(?:src|href)\s*=\s*['"]\
 const remoteCSSAssetSource =
     /@import\s+(?:url\(\s*)?['"]?\s*(?:https?:)?\/\/|url\(\s*['"]?\s*(?:https?:)?\/\/|@font-face[\s\S]{0,800}?src\s*:[^;}]*?(?:https?:)?\/\//i;
 
-const knownViteModulePreloadFetch =
-    /document\.querySelectorAll\(['"]link\[rel=["']modulepreload["']\]['"]\)[\s\S]{0,800}\bfetch\(\w+\.href,\w+\)/;
+const katexParserFetchDefinition = /consume\(\)\{this\.nextToken=null\}fetch\(\)\{return this\.nextToken==null/u;
+const katexParserFetchCall = /\b(?:[A-Za-z_$][\w$]*|this)\.fetch\(\)/gu;
 
-it('centralizes the base GFM pipeline', () => {
-    const rendererSource = readSource('src/logic/markdown/renderer.ts');
-    const previewSource = readSource('src/ui/components/MarkdownView.tsx');
+function unrecognizedFetchCalls(source: string): string[] {
+    let inspected = source;
+    if (source.includes('KaTeX parse error:')) {
+        expect(source).toMatch(katexParserFetchDefinition);
+        // This pinned KaTeX bundle has one parser method and 27 zero-argument
+        // calls to it. A new call site requires an explicit review.
+        expect(source.match(katexParserFetchCall)).toHaveLength(27);
+        inspected = inspected.replace(katexParserFetchDefinition, 'katexParserMethod');
+        inspected = inspected.replace(katexParserFetchCall, 'katexParserCall');
+    }
+    return inspected.match(/\bfetch\s*\(/gu) ?? [];
+}
 
-    expect(baseGfmRemarkPlugins).toContain(remarkGfm);
-    expect(baseGfmRehypePlugins.at(-1)).toEqual([rehypeSanitize, baseGfmSanitizeSchema]);
-    expect(rendererSource).not.toMatch(/rehypeRaw|remarkMath/);
-    expect(previewSource).toContain('skipHtml');
+it('rejects global and argument-bearing fetch calls while allowing only the reviewed KaTeX parser shape', () => {
+    expect(unrecognizedFetchCalls('fetch("https://example.test")')).toHaveLength(1);
+    expect(unrecognizedFetchCalls('parser.fetch("https://example.test")')).toHaveLength(1);
 });
 
-it('keeps renderer dependencies and assets offline', () => {
-    const packageManifest = JSON.parse(readSource('package.json')) as {
-        dependencies: Record<string, string>;
-    };
-    const rendererSource = readSource('src/logic/markdown/renderer.ts');
-    const previewSource = readSource('src/ui/components/MarkdownView.tsx');
-    const previewStylesSource = readSource('src/ui/components/MarkdownView.module.css');
-    const viteSource = readSource('vite.config.ts');
-    const productionSources = [rendererSource, previewSource, previewStylesSource, viteSource].join('\n');
+it('renders safe raw HTML and removes unsafe children in the preview', () => {
+    const { container } = render(
+        createElement(MarkdownView, {
+            standard: 'gfm',
+            source: '<p>Visible <kbd>key</kbd><script>hidden</script></p>',
+        }),
+    );
+    expect(container.querySelector('p kbd')).toHaveTextContent('key');
+    expect(container.querySelector('script')).toBeNull();
+    expect(container).not.toHaveTextContent('hidden');
+});
 
-    expect(packageManifest.dependencies).toMatchObject({
-        'react-markdown': expect.any(String),
-        'rehype-sanitize': expect.any(String),
-        'remark-gfm': expect.any(String),
-    });
-    expect(rendererSource).toContain("from 'rehype-sanitize'");
-    expect(rendererSource).toContain("from 'remark-gfm'");
-    expect(previewSource).toContain("from 'react-markdown'");
-    expect(productionSources).not.toMatch(remoteImportSource);
-    expect(productionSources).not.toMatch(/\b(?:fetch|XMLHttpRequest)\s*\(/);
-    expect(productionSources).not.toMatch(remoteHTMLAssetSource);
-    expect(productionSources).not.toMatch(remoteCSSAssetSource);
-
+it('keeps emitted preview assets offline', () => {
     const outputDirectory = mkdtempSync(join(tmpdir(), 'gomarkedit-assets-'));
     try {
         execFileSync(
@@ -93,6 +83,12 @@ it('keeps renderer dependencies and assets offline', () => {
         expect(runtimeAssets.some((asset) => asset.endsWith('.html'))).toBe(true);
         expect(runtimeAssets.some((asset) => asset.endsWith('.css'))).toBe(true);
         expect(runtimeAssets.some((asset) => asset.endsWith('.js'))).toBe(true);
+        const emittedCss = runtimeAssets
+            .filter((asset) => asset.endsWith('.css'))
+            .map((asset) => readFileSync(asset, 'utf8'))
+            .join('');
+        expect(emittedCss).toMatch(/\.katex-error\{color:var\(--err\);overflow-wrap:anywhere\}/u);
+        expect(emittedCss).toMatch(/\.math-display-error\{display:block/u);
 
         for (const asset of runtimeAssets) {
             const contents = readFileSync(asset, 'utf8');
@@ -107,11 +103,7 @@ it('keeps renderer dependencies and assets offline', () => {
                 expect(contents).not.toMatch(remoteImportSource);
                 expect(contents).not.toMatch(/\bXMLHttpRequest\s*\(/);
 
-                const fetchCalls = contents.match(/\bfetch\s*\(/g) ?? [];
-                if (fetchCalls.length > 0) {
-                    expect(fetchCalls).toHaveLength(1);
-                    expect(contents).toMatch(knownViteModulePreloadFetch);
-                }
+                expect(unrecognizedFetchCalls(contents)).toEqual([]);
             }
         }
     } finally {
@@ -122,6 +114,7 @@ it('keeps renderer dependencies and assets offline', () => {
 it('renders accessible repeated GFM footnotes and backlinks', () => {
     const { container, unmount } = render(
         createElement(MarkdownView, {
+            standard: 'gfm',
             source: 'First reference[^note] and repeated reference[^note].\n\n[^note]: A footnote.',
         }),
     );
@@ -152,6 +145,7 @@ it('renders accessible repeated GFM footnotes and backlinks', () => {
     unmount();
     render(
         createElement(MarkdownView, {
+            standard: 'gfm',
             source: 'First reference[^note] and repeated reference[^note].\n\n[^note]: A footnote.',
         }),
     );
@@ -162,6 +156,7 @@ it('renders accessible repeated GFM footnotes and backlinks', () => {
 it('sanitizes malicious footnotes and stable ids (EC-RENDER-5)', () => {
     const { container } = render(
         createElement(MarkdownView, {
+            standard: 'gfm',
             source: 'Safe surrounding content. A reference[^safe] and a maliciously labelled reference[^unsafe" onclick="alert(1)].\n\n[^safe]: Safe footnote text <script>alert(1)</script> <img src="https://example.test/raw.png" onerror="alert(1)"> [unsafe](javascript:alert(1))\n\n[^unsafe" onclick="alert(1)]: A second safe footnote.',
         }),
     );
@@ -231,6 +226,7 @@ it('attempts zero runtime requests and keeps higher tiers literal (EC-RENDER-6)'
     try {
         const { container } = render(
             createElement(MarkdownView, {
+                standard: 'gfm',
                 source: 'Footnote[^note] with $x^2$ and :note[directive syntax].\n\n[^note]: ![resource](https://example.test/image.png)\n\n<script src="https://example.test/script.js"></script>',
             }),
         );
@@ -295,7 +291,12 @@ it('processes a document of exactly the 2 MiB preview limit', () => {
     source = source.slice(0, PREVIEW_BYTE_LIMIT);
     expect(Buffer.byteLength(source, 'utf8')).toBe(PREVIEW_BYTE_LIMIT);
 
-    const processor = unified().use(remarkParse).use(baseGfmRemarkPlugins).use(remarkRehype).use(baseGfmRehypePlugins);
+    const pipeline = createPipeline('gfm');
+    const processor = unified()
+        .use(remarkParse)
+        .use(pipeline.remarkPlugins)
+        .use(remarkRehype, { allowDangerousHtml: true })
+        .use(pipeline.rehypePlugins);
 
     const startedAt = performance.now();
     const tree = processor.runSync(processor.parse(source));

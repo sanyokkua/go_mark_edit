@@ -37,9 +37,10 @@ it('derives the exact context-menu order and surface-specific inventory', () => 
         'Link',
         'Format document',
         'Compact',
+        'Lint',
         'Command palette',
     ]);
-    expect(screen.queryByRole('menuitem', { name: 'Lint' })).not.toBeInTheDocument();
+    expect(screen.getByRole('menuitem', { name: 'Lint' })).toBeInTheDocument();
     expect(screen.queryByRole('menuitem', { name: 'Heading 1' })).not.toBeInTheDocument();
     expect(screen.getByRole('menuitem', { name: 'Format document' })).toBeDisabled();
     expect(screen.getByRole('menuitem', { name: 'Command palette' })).toBeDisabled();
@@ -102,6 +103,9 @@ it('clamps context-menu placement and uses the selection captured at opening', a
             value: undefined,
         })),
         replaceAll: jest.fn(),
+        applyEdits: jest.fn(() => ({ status: 'available' as const, value: undefined })),
+        setPosition: jest.fn(() => ({ status: 'available' as const, value: undefined })),
+        setMarkers: jest.fn(() => ({ status: 'available' as const, value: undefined })),
     };
     render(
         <EditorSessionContext.Provider value={{ documentId: 'doc-1', content: 'word' }}>
@@ -247,6 +251,9 @@ it('passes acknowledged marker preferences into context formatting', () => {
         })),
         replaceRange,
         replaceAll: jest.fn(),
+        applyEdits: jest.fn(() => ({ status: 'available' as const, value: undefined })),
+        setPosition: jest.fn(() => ({ status: 'available' as const, value: undefined })),
+        setMarkers: jest.fn(() => ({ status: 'available' as const, value: undefined })),
     };
 
     store.dispatch(
@@ -308,6 +315,9 @@ function clipboardCommands() {
             value: undefined,
         })),
         replaceAll: jest.fn(),
+        applyEdits: jest.fn(() => ({ status: 'available' as const, value: undefined })),
+        setPosition: jest.fn(() => ({ status: 'available' as const, value: undefined })),
+        setMarkers: jest.fn(() => ({ status: 'available' as const, value: undefined })),
     };
 }
 
@@ -510,6 +520,10 @@ it('disables context-menu editing commands for a non-writable document', () => {
     for (const name of ['Bold', 'Italic', 'Cut', 'Paste']) {
         expect(screen.getByRole('menuitem', { name })).toBeDisabled();
     }
+    for (const name of ['Format document', 'Compact']) {
+        expect(screen.getByRole('menuitem', { name })).toHaveAttribute('title', 'This document is read-only.');
+    }
+    expect(screen.getByRole('menuitem', { name: 'Lint' })).toBeEnabled();
     // Copying out of a file you cannot write is not editing.
     expect(screen.getByRole('menuitem', { name: 'Copy' })).toBeEnabled();
 });

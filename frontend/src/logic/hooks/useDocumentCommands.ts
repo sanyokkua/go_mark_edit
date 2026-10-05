@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 
-import type { CodeEditorHandle, EditorRange, EditorSelection } from '../../ui/components/CodeEditor';
+import type { CodeEditorHandle, EditorMarker, EditorRange, EditorSelection } from '../../ui/components/CodeEditor';
+import type { TextEdit } from '../tidy/protocol';
 
 export type DocumentCommandResult<T> =
     { status: 'available'; value: T } | { status: 'unavailable' } | { status: 'document-mismatch' };
@@ -11,13 +12,23 @@ export interface DocumentCommandSession {
     token: symbol;
 }
 
-export interface DocumentCommandAPI {
+export interface DocumentSearchCommands {
+    showFind?: () => DocumentCommandResult<void>;
+    showReplace?: () => DocumentCommandResult<void>;
+}
+
+export interface DocumentCommandAPI extends DocumentSearchCommands {
     focus: () => DocumentCommandResult<void>;
     getContent: () => DocumentCommandResult<string>;
     getSelection: () => DocumentCommandResult<EditorSelection | null>;
     replaceRange: (range: EditorRange, text: string, selection?: EditorSelection) => DocumentCommandResult<void>;
     replaceAll: (text: string) => DocumentCommandResult<void>;
+    applyEdits: (edits: TextEdit[]) => DocumentCommandResult<void>;
+    setPosition: (line: number, column: number) => DocumentCommandResult<void>;
+    setMarkers: (markers: EditorMarker[]) => DocumentCommandResult<void>;
 }
+
+export type LiveDocumentCommandAPI = DocumentCommandAPI & Required<DocumentSearchCommands>;
 
 export type EditorSessionSource = () => DocumentCommandSession | null;
 
@@ -43,8 +54,22 @@ export function createDocumentCommands(
     expectedDocumentId: string | null,
     expectedToken: symbol | null,
     sessionSource: EditorSessionSource,
-): DocumentCommandAPI {
+): LiveDocumentCommandAPI {
     return {
+        showFind(): DocumentCommandResult<void> {
+            const session = resolveSession(expectedDocumentId, expectedToken, sessionSource);
+            if (session.status !== 'available') return session;
+            return session.value.showFind?.() === true
+                ? { status: 'available', value: undefined }
+                : { status: 'unavailable' };
+        },
+        showReplace(): DocumentCommandResult<void> {
+            const session = resolveSession(expectedDocumentId, expectedToken, sessionSource);
+            if (session.status !== 'available') return session;
+            return session.value.showReplace?.() === true
+                ? { status: 'available', value: undefined }
+                : { status: 'unavailable' };
+        },
         focus(): DocumentCommandResult<void> {
             const session = resolveSession(expectedDocumentId, expectedToken, sessionSource);
             if (session.status !== 'available') {
@@ -94,6 +119,27 @@ export function createDocumentCommands(
                 ? { status: 'available', value: undefined }
                 : { status: 'unavailable' };
         },
+        applyEdits(edits: TextEdit[]): DocumentCommandResult<void> {
+            const session = resolveSession(expectedDocumentId, expectedToken, sessionSource);
+            if (session.status !== 'available') return session;
+            return session.value.applyEdits(edits)
+                ? { status: 'available', value: undefined }
+                : { status: 'unavailable' };
+        },
+        setPosition(line: number, column: number): DocumentCommandResult<void> {
+            const session = resolveSession(expectedDocumentId, expectedToken, sessionSource);
+            if (session.status !== 'available') return session;
+            return session.value.setPosition(line, column)
+                ? { status: 'available', value: undefined }
+                : { status: 'unavailable' };
+        },
+        setMarkers(markers: EditorMarker[]): DocumentCommandResult<void> {
+            const session = resolveSession(expectedDocumentId, expectedToken, sessionSource);
+            if (session.status !== 'available') return session;
+            return session.value.setMarkers(markers)
+                ? { status: 'available', value: undefined }
+                : { status: 'unavailable' };
+        },
     };
 }
 
@@ -101,9 +147,9 @@ export function useDocumentCommands(
     expectedDocumentId: string | null,
     expectedToken: symbol | null,
     sessionSource: EditorSessionSource,
-): DocumentCommandAPI {
+): LiveDocumentCommandAPI {
     return useMemo(
-        (): DocumentCommandAPI => createDocumentCommands(expectedDocumentId, expectedToken, sessionSource),
+        (): LiveDocumentCommandAPI => createDocumentCommands(expectedDocumentId, expectedToken, sessionSource),
         [expectedDocumentId, expectedToken, sessionSource],
     );
 }

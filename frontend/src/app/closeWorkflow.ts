@@ -30,6 +30,12 @@ export type CloseState =
     | (CloseContext & { readonly phase: 'preparing' | 'cancelling' | 'failed' | 'recovery-confirmation' })
     | (CloseContext & { readonly phase: 'collecting' | 'executing'; readonly plan: ClosePlanSummary })
     | (CloseContext & {
+          readonly phase: 'saving-active';
+          readonly plan: ClosePlanSummary;
+          readonly choice: CloseChoice;
+          readonly activeDocumentId: string;
+      })
+    | (CloseContext & {
           readonly phase: 'normalization';
           readonly plan: ClosePlanSummary;
           readonly request: CloseNormalization;

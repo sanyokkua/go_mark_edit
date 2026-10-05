@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { useState } from 'react';
 
 import Segmented from '../../../../src/ui/primitives/Segmented/Segmented';
@@ -32,4 +32,49 @@ it('owns roving radio focus for Arrow, Home and End keys', () => {
 
     fireEvent.keyDown(editor, { key: 'ArrowRight' });
     expect(screen.getByRole('radio', { name: 'Split' })).toBeChecked();
+});
+
+it('leaves focus on another group when an earlier selection is acknowledged', () => {
+    let acknowledgeTheme: (() => void) | undefined;
+    const Harness = (): React.JSX.Element => {
+        const [theme, setTheme] = useState<'material' | 'glass'>('material');
+        const [mode, setMode] = useState<'dark' | 'light'>('dark');
+        return (
+            <>
+                <Segmented
+                    ariaLabel="Theme"
+                    options={[
+                        { label: 'Material', value: 'material' },
+                        { label: 'Glass', value: 'glass' },
+                    ]}
+                    value={theme}
+                    onChange={(next): void => {
+                        acknowledgeTheme = (): void => setTheme(next);
+                    }}
+                />
+                <Segmented
+                    ariaLabel="Mode"
+                    options={[
+                        { label: 'Dark', value: 'dark' },
+                        { label: 'Light', value: 'light' },
+                    ]}
+                    value={mode}
+                    onChange={setMode}
+                />
+            </>
+        );
+    };
+    render(<Harness />);
+
+    const glass = screen.getByRole('radio', { name: 'Glass' });
+    const light = screen.getByRole('radio', { name: 'Light' });
+    glass.focus();
+    fireEvent.keyDown(glass, { key: ' ' });
+    expect(acknowledgeTheme).toBeDefined();
+    light.focus();
+    act((): void => acknowledgeTheme?.());
+
+    expect(light).toHaveFocus();
+    fireEvent.keyDown(document.activeElement as Element, { key: ' ' });
+    expect(light).toBeChecked();
 });

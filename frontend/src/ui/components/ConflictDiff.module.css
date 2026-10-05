@@ -1,0 +1,45 @@
+.root {
+    display: grid;
+    gap: var(--control-gap);
+    min-block-size: 0;
+    min-inline-size: 0;
+}
+
+.toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--control-gap);
+}
+
+.editor {
+    block-size: min(55vh, 38rem);
+    border: var(--control-border-width) solid var(--border);
+    min-block-size: 12rem;
+    min-inline-size: 0;
+    overflow: hidden;
+}
+
+.notice {
+    color: var(--warn);
+}
+
+.fallback {
+    display: grid;
+    gap: var(--control-gap);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.fallback textarea {
+    background: var(--surface);
+    color: var(--text);
+    font: inherit;
+    min-block-size: 12rem;
+    min-inline-size: 0;
+    resize: vertical;
+}
+
+@media (max-width: 40rem) {
+    .fallback {
+        grid-template-columns: 1fr;
+    }
+}

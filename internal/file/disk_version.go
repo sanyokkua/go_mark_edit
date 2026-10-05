@@ -4,13 +4,11 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
-	"os"
-	"reflect"
 	"strings"
 )
 
 // DiskVersion is the portable filesystem baseline used to detect external changes.
-// FileIdentity is empty when the host does not expose a stable identity through FileInfo.Sys.
+// FileIdentity is empty when the host does not expose a stable identity through its filesystem metadata.
 type DiskVersion struct {
 	Exists           bool
 	Size             int64
@@ -35,50 +33,22 @@ func CurrentDiskVersion(path string) (DiskVersion, error) {
 		return DiskVersion{}, errors.New("disk version path is empty")
 	}
 
-	info, err := os.Stat(path)
+	info, identity, err := statWithIdentity(path)
 	if err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
 			return DiskVersion{}, nil
 		}
 		return DiskVersion{}, fmt.Errorf("stat disk version %q: %w", path, err)
 	}
-	return newDiskVersion(info), nil
+	return newDiskVersion(info, identity), nil
 }
 
-func newDiskVersion(info fs.FileInfo) DiskVersion {
+func newDiskVersion(info fs.FileInfo, identity Identity) DiskVersion {
 	return DiskVersion{
 		Exists:           true,
 		Size:             info.Size(),
 		ModifiedUnixNano: info.ModTime().UnixNano(),
 		Mode:             info.Mode().Perm(),
-		FileIdentity:     portableFileIdentity(info),
+		FileIdentity:     diskFileIdentity(identity),
 	}
-}
-
-func portableFileIdentity(info fs.FileInfo) string {
-	value := reflect.ValueOf(info.Sys())
-	for value.IsValid() && (value.Kind() == reflect.Pointer || value.Kind() == reflect.Interface) {
-		if value.IsNil() {
-			return ""
-		}
-		value = value.Elem()
-	}
-	if !value.IsValid() || value.Kind() != reflect.Struct {
-		return ""
-	}
-
-	if device, hasDevice := integerField(value, "Dev"); hasDevice {
-		if inode, hasInode := uintField(value, "Ino"); hasInode {
-			return fmt.Sprintf("device:%d:inode:%d", device, inode)
-		}
-	}
-
-	// Windows exposes the same stable identity as a volume serial plus a 64-bit file index.
-	volume, hasVolume := uintField(value, "VolumeSerialNumber")
-	high, hasHigh := uintField(value, "FileIndexHigh")
-	low, hasLow := uintField(value, "FileIndexLow")
-	if hasVolume && hasHigh && hasLow {
-		return fmt.Sprintf("volume:%d:index:%d", volume, high<<32|low)
-	}
-	return ""
 }

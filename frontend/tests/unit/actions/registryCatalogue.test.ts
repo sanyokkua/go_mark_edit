@@ -38,6 +38,7 @@ it('keeps the canonical action catalogue stable', () => {
         'preview',
         'refresh-preview',
         'toggle-sidebar',
+        'toggle-problems',
         'toggle-assistant',
         'line-numbers',
         'word-wrap',
@@ -48,6 +49,8 @@ it('keeps the canonical action catalogue stable', () => {
         'open-logs',
         'view-github',
         'about',
+        'find',
+        'replace',
         'bold',
         'italic',
         'strike',
@@ -100,8 +103,13 @@ it('answers every surface from the same projected availability policy', () => {
         kind: 'unavailable',
         reason: 'deferred',
     });
-    expect(getActionAvailability('format-on-save', { projectedState: projection })).toEqual({
+    expect(
+        getActionAvailability('format-on-save', { markdownSettingsLoaded: false, projectedState: projection }),
+    ).toEqual({
         kind: 'unavailable',
-        reason: 'deferred',
+        reason: 'settings-loading',
     });
+    expect(
+        getActionAvailability('format-on-save', { markdownSettingsLoaded: true, projectedState: projection }),
+    ).toEqual({ kind: 'available' });
 });

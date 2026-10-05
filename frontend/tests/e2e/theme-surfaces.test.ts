@@ -61,7 +61,7 @@ const palettes = [
 ] as const;
 
 async function chooseAppearance(page: Page, label: string, mode: string): Promise<void> {
-    await expect(page.locator('.monaco-editor')).toBeVisible();
+    await expect(page.locator('[data-editor-surface] .monaco-editor')).toBeVisible();
     await page.getByRole('button', { name: 'Settings', exact: true }).click();
     const menu = page.getByRole('menu', { name: 'Settings menu' });
     const family = menu.getByRole('radio', { name: label, exact: true });
@@ -244,7 +244,7 @@ for (const palette of palettes) {
                         await expect(editor).toBeVisible();
                         await expect(editor).toHaveCSS('background-color', palette.pane);
                         const backgrounds = page.locator(
-                            '.monaco-editor, .monaco-editor-background, .monaco-editor .margin',
+                            '[data-editor-surface] .monaco-editor, [data-editor-surface] .monaco-editor-background, [data-editor-surface] .monaco-editor .margin',
                         );
                         await expect
                             .poll(() =>
@@ -290,7 +290,10 @@ test('keeps surface ownership through Auto transitions and tab drag reorder', as
             await expect(page.locator('html')).toHaveAttribute('data-mode', mode);
             await expectContinuousTabs(page);
             await expectSingleViewFrame(page, label === 'Liquid Glass');
-            await expect(page.locator('.monaco-editor')).toHaveCSS('background-color', transparent);
+            await expect(page.locator('[data-editor-surface] .monaco-editor')).toHaveCSS(
+                'background-color',
+                transparent,
+            );
         }
     }
     await page.getByRole('button', { name: 'New tab' }).click();

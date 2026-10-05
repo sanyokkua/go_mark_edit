@@ -64,6 +64,7 @@ function toDocViewInput(
     return {
         editorVisible: view.editorVisible,
         previewVisible: view.previewVisible,
+        ...(view.splitRatio === undefined ? {} : { splitRatio: view.splitRatio }),
         cursor: { line: cursor.lineNumber, column: cursor.column },
         selection,
         scroll: { ...scroll },

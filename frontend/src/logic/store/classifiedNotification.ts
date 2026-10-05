@@ -135,6 +135,7 @@ function retryIsExecutable(
         case 'activate-document':
             return documentId !== undefined && documentId !== '';
         case 'open-recent':
+        case 'reveal-workspace-path':
             return path !== undefined && path !== '';
         // A close needs the request itself, not a document: `others` and `right`
         // name a set no single document identifies. An empty target list is refused
@@ -148,7 +149,6 @@ function retryIsExecutable(
         case 'command':
             return false;
         case 'create-workspace-entry':
-        case 'reveal-workspace-path':
         case 'copy-workspace-path':
             return false;
         // `quit` belongs to this group for the same reason as the rest: it takes no

@@ -10,6 +10,7 @@ function docViewInputForArrangement(view: DocumentView, arrangement: ViewArrange
     return {
         editorVisible: arrangement !== 'preview',
         previewVisible: arrangement !== 'editor',
+        ...(view.splitRatio === undefined ? {} : { splitRatio: view.splitRatio }),
         cursor: { ...view.cursor },
         selection: {
             start: { ...view.selection.start },
@@ -37,6 +38,7 @@ function docViewInputForPaneVisibility(
     return {
         editorVisible,
         previewVisible,
+        ...(view.splitRatio === undefined ? {} : { splitRatio: view.splitRatio }),
         cursor: { ...view.cursor },
         selection: {
             start: { ...view.selection.start },

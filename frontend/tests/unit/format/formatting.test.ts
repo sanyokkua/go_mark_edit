@@ -28,6 +28,57 @@ const request = (
     ...overrides,
 });
 
+it.each(['italic', 'bullet-list', 'task-list'] as const)(
+    'refuses direct %s edits before reading a document when marker settings are absent',
+    (actionId) => {
+        const getContent = jest.fn(() => ({ status: 'available' as const, value: 'word' }));
+        const getSelection = jest.fn(() => ({ status: 'available' as const, value: selection(1, 1, 1, 5) }));
+        const replaceRange = jest.fn(() => ({ status: 'available' as const, value: undefined }));
+        const commands: DocumentCommandAPI = {
+            focus: jest.fn(() => ({ status: 'available', value: undefined })),
+            getContent,
+            getSelection,
+            replaceRange,
+            replaceAll: jest.fn(() => ({ status: 'available', value: undefined })),
+            applyEdits: jest.fn(() => ({ status: 'available', value: undefined })),
+            setPosition: jest.fn(() => ({ status: 'available', value: undefined })),
+            setMarkers: jest.fn(() => ({ status: 'available', value: undefined })),
+        };
+
+        expect(
+            applyFormatEdit(commands, request(actionId, 'word', selection(1, 1, 1, 5), { markers: undefined })),
+        ).toEqual({ status: 'unavailable' });
+        expect(getContent).not.toHaveBeenCalled();
+        expect(getSelection).not.toHaveBeenCalled();
+        expect(replaceRange).not.toHaveBeenCalled();
+    },
+);
+
+it.each([
+    ['bold', '**word**'],
+    ['numbered-list', '1. word'],
+] as const)('keeps direct %s edits available without marker settings', (actionId, expectedText) => {
+    const replaceRange = jest.fn<
+        ReturnType<DocumentCommandAPI['replaceRange']>,
+        Parameters<DocumentCommandAPI['replaceRange']>
+    >(() => ({ status: 'available', value: undefined }));
+    const commands: DocumentCommandAPI = {
+        focus: jest.fn(() => ({ status: 'available', value: undefined })),
+        getContent: jest.fn(() => ({ status: 'available', value: 'word' })),
+        getSelection: jest.fn(() => ({ status: 'available', value: selection(1, 1, 1, 5) })),
+        replaceRange,
+        replaceAll: jest.fn(() => ({ status: 'available', value: undefined })),
+        applyEdits: jest.fn(() => ({ status: 'available', value: undefined })),
+        setPosition: jest.fn(() => ({ status: 'available', value: undefined })),
+        setMarkers: jest.fn(() => ({ status: 'available', value: undefined })),
+    };
+
+    expect(
+        applyFormatEdit(commands, request(actionId, 'word', selection(1, 1, 1, 5), { markers: undefined })),
+    ).toMatchObject({ status: 'available' });
+    expect(replaceRange.mock.calls[0]?.[1]).toBe(expectedText);
+});
+
 function sourceWithBoundedStringOperations(value: string): string {
     const source = new String(value) as unknown as {
         split: (...args: unknown[]) => string[];
@@ -314,6 +365,9 @@ it('routes a bounded result through the existing document-command seam', () => {
         }),
         replaceRange,
         replaceAll: jest.fn(),
+        applyEdits: jest.fn(() => ({ status: 'available', value: undefined })),
+        setPosition: jest.fn(() => ({ status: 'available', value: undefined })),
+        setMarkers: jest.fn(() => ({ status: 'available', value: undefined })),
     };
 
     expect(applyFormatEdit(commands, request('bold', 'ignored', selection(1, 1, 1, 6)))).toMatchObject({
@@ -349,6 +403,9 @@ it('forwards the formatter selection intent through document commands', () => {
         }),
         replaceRange,
         replaceAll: jest.fn(),
+        applyEdits: jest.fn(() => ({ status: 'available', value: undefined })),
+        setPosition: jest.fn(() => ({ status: 'available', value: undefined })),
+        setMarkers: jest.fn(() => ({ status: 'available', value: undefined })),
     };
 
     expect(applyFormatEdit(commands, request('bold', 'ignored', selection(1, 1, 1, 6)))).toMatchObject({
@@ -378,6 +435,9 @@ it('forwards empty-pair caret intent as well as selected-range intent', () => {
         }),
         replaceRange,
         replaceAll: jest.fn(),
+        applyEdits: jest.fn(() => ({ status: 'available', value: undefined })),
+        setPosition: jest.fn(() => ({ status: 'available', value: undefined })),
+        setMarkers: jest.fn(() => ({ status: 'available', value: undefined })),
     };
 
     expect(applyFormatEdit(commands, request('bold', 'ignored', selection(1, 1)))).toMatchObject({

@@ -5,7 +5,8 @@ import { t } from '../i18n';
 import { appModelAdapter, commandAdapter } from '../logic/adapter';
 import { useAppDispatch, useAppSelector } from '../logic/store';
 import { reportClassifiedError } from '../logic/store/classifiedNotification';
-import { dismissNotification, type NotificationRemediation } from '../logic/store/notificationsSlice';
+import { dismissNotification, notifyError, type NotificationRemediation } from '../logic/store/notificationsSlice';
+import { parseError } from '../logic/utils/parseError';
 import type { NotificationNotice } from '../ui/components/Notifications';
 import type AppShell from '../ui/widgets/AppShell';
 import type { TabRemediationExecutor } from '../ui/widgets/tabRemediation';
@@ -153,8 +154,25 @@ export function useNotifications({
                     if (result?.error === undefined) dispatch(dismissNotification(notificationId));
                     return;
                 }
+                case 'reveal-workspace-path': {
+                    const path = remediation.path;
+                    if (path === undefined || path === '') return;
+                    try {
+                        const result = await appModelAdapter.revealWorkspacePath?.(path);
+                        if (result?.error !== undefined) {
+                            reportClassifiedError(dispatch, result.error, t('notification.error.io.title'), {
+                                intent: 'reveal-workspace-path',
+                                retry: { path },
+                            });
+                            return;
+                        }
+                        if (result?.status === 'revealed') dispatch(dismissNotification(notificationId));
+                    } catch (error) {
+                        dispatch(notifyError(parseError(error), 'reveal-workspace-path'));
+                    }
+                    return;
+                }
                 case 'create-workspace-entry':
-                case 'reveal-workspace-path':
                 case 'copy-workspace-path':
                     return;
                 case 'new-document':

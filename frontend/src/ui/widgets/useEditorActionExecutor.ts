@@ -11,9 +11,11 @@ import { currentPlatform, shortcutForKeyEvent } from '../../logic/actions/shortc
 import { formatActionIds } from '../../logic/format/formatting';
 import { useEditingProjection } from '../../logic/hooks/useEditingProjection';
 import { useEditorSettings } from '../../logic/settings/editorSettings';
+import { useOperationSlot } from '../../logic/operations/useOperationSlot';
 
 import { useModalState } from './modalStateContext';
 import { DocumentCommandContext, EditorSessionContext } from './editorSession';
+import { TidyCommandsContext } from './tidyCommandsContext';
 
 export const EditorClipboardPortContext = createContext<ClipboardPort>(clipboardPort);
 
@@ -21,10 +23,15 @@ export interface UseEditorActionExecutorOptions {
     registerShortcuts?: boolean;
 }
 
-const deferredEditorShortcutIds: ReadonlySet<ActionId> = new Set(['format', 'compact', 'lint']);
+const tidyActionIds: ReadonlySet<ActionId> = new Set(['format', 'compact', 'lint']);
 
 function isEditorFormattingShortcut(actionId: ActionId): boolean {
-    return formatActionIds[actionId] !== undefined || deferredEditorShortcutIds.has(actionId);
+    return (
+        actionId === 'find' ||
+        actionId === 'replace' ||
+        formatActionIds[actionId] !== undefined ||
+        tidyActionIds.has(actionId)
+    );
 }
 
 /**
@@ -40,6 +47,8 @@ export function useEditorActionExecutor(
     const projectedState = useEditingProjection(activeBuffer?.documentId);
     const modalOpen = useModalState();
     const { markdownSettings } = useEditorSettings();
+    const tidyCommands = useContext(TidyCommandsContext);
+    const slot = useOperationSlot();
     const executor = useMemo(
         (): EditorActionExecutor =>
             createEditorActionExecutor({
@@ -49,9 +58,18 @@ export function useEditorActionExecutor(
                 markdownSettings,
                 modalOpen,
                 projectedState,
+                slotBusy: slot.state === 'running',
+                invokeTidy:
+                    tidyCommands === null
+                        ? undefined
+                        : (op, snapshot) =>
+                              tidyCommands.run(op, {
+                                  commands: snapshot.commands ?? undefined,
+                                  documentId: snapshot.documentId ?? undefined,
+                              }),
                 writable: activeBuffer !== null,
             }),
-        [activeBuffer, clipboard, commands, markdownSettings, modalOpen, projectedState],
+        [activeBuffer, clipboard, commands, markdownSettings, modalOpen, projectedState, slot.state, tidyCommands],
     );
     const execute = useCallback(
         (actionId: ActionId, snapshot?: EditorActionSnapshot) => executor.execute(actionId, snapshot),

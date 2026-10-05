@@ -229,6 +229,7 @@ export namespace apperr {
 	}
 	export class DocView {
 	    arrangement: string;
+	    splitRatio: number;
 	    editorVisible: boolean;
 	    previewVisible: boolean;
 	    cursor: CursorPosition;
@@ -242,6 +243,7 @@ export namespace apperr {
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.arrangement = source["arrangement"];
+	        this.splitRatio = source["splitRatio"];
 	        this.editorVisible = source["editorVisible"];
 	        this.previewVisible = source["previewVisible"];
 	        this.cursor = this.convertValues(source["cursor"], CursorPosition);
@@ -513,8 +515,8 @@ export namespace apperr {
 	export class ConflictPreviewSide {
 	    text: string;
 	    lineCount: number;
-	    byteCount: number;
-	    truncated: boolean;
+	    byteCount?: number;
+	    byteCountUnavailableReason?: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new ConflictPreviewSide(source);
@@ -525,7 +527,7 @@ export namespace apperr {
 	        this.text = source["text"];
 	        this.lineCount = source["lineCount"];
 	        this.byteCount = source["byteCount"];
-	        this.truncated = source["truncated"];
+	        this.byteCountUnavailableReason = source["byteCountUnavailableReason"];
 	    }
 	}
 	export class DiskVersion {
@@ -832,6 +834,7 @@ export namespace apperr {
 	
 	
 	export class DocViewInput {
+	    splitRatio?: number;
 	    editorVisible: boolean;
 	    previewVisible: boolean;
 	    cursor: CursorPosition;
@@ -844,6 +847,7 @@ export namespace apperr {
 	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.splitRatio = source["splitRatio"];
 	        this.editorVisible = source["editorVisible"];
 	        this.previewVisible = source["previewVisible"];
 	        this.cursor = this.convertValues(source["cursor"], CursorPosition);
@@ -1045,6 +1049,8 @@ export namespace apperr {
 	    status: string;
 	    documentId?: string;
 	    path?: string;
+	    revealPath?: string;
+	    treePath?: string;
 	    projectionRevision?: number;
 	    activeBuffer?: ActiveBuffer;
 	    error?: ClassifiedError;
@@ -1063,6 +1069,8 @@ export namespace apperr {
 	        this.status = source["status"];
 	        this.documentId = source["documentId"];
 	        this.path = source["path"];
+	        this.revealPath = source["revealPath"];
+	        this.treePath = source["treePath"];
 	        this.projectionRevision = source["projectionRevision"];
 	        this.activeBuffer = this.convertValues(source["activeBuffer"], ActiveBuffer);
 	        this.error = this.convertValues(source["error"], ClassifiedError);

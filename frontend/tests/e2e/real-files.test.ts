@@ -217,7 +217,7 @@ test('offers Retry for a transient Save inspection refusal and commits after rec
     }
 });
 
-test('shows a bounded external-change prompt and keeps the active buffer on Skip', async ({ app }) => {
+test('shows a complete external-change comparison and keeps the active buffer on Skip', async ({ app }) => {
     const original = '# Original buffer\n\nYours stays loaded.\n';
     const external = '# External version\n\nWritten by another process.\n';
     const source = await app.writeDocument('external.md', original);
@@ -244,6 +244,66 @@ test('shows a bounded external-change prompt and keeps the active buffer on Skip
     await expect(prompt).toHaveCount(0);
     await expect(app.page.locator('[data-editor-surface] .view-lines').first()).toContainText('Yours stays loaded.');
     expect(await readFile(source, 'utf8')).toBe(external);
+});
+
+test('compares distant Unicode and whitespace changes with complete line and byte counts', async ({ app }) => {
+    const lines = Array.from({ length: 42 }, (_, index) => `line ${index + 1}`);
+    const yours = `${lines.join('\n')}\n`;
+    const diskLines = [...lines];
+    diskLines[1] = 'line 2 — café';
+    diskLines[40] = 'line 41  ';
+    const onDisk = `${diskLines.join('\n')}\n`;
+    const source = await app.writeDocument('distant-changes.md', yours);
+    await app.seedRecents([source]);
+    await app.launch();
+    await openRecentFromLauncher(app.page, 'distant-changes.md');
+
+    await writeFile(source, onDisk, 'utf8');
+    await app.page.evaluate(() => window.dispatchEvent(new Event('focus')));
+    const prompt = app.page.getByRole('dialog', { name: 'File changed on disk' });
+    await expect(prompt).toBeVisible();
+    await expect(
+        prompt.getByRole('heading', { name: `On disk · 43 lines · ${Buffer.byteLength(onDisk)} bytes` }),
+    ).toBeVisible();
+    await expect(
+        prompt.getByRole('heading', { name: `Yours · size when saved · 43 lines · ${Buffer.byteLength(yours)} bytes` }),
+    ).toBeVisible();
+    await expect(prompt.getByRole('region', { name: 'Complete file comparison' })).toBeVisible();
+    await expect(prompt.locator('[data-conflict-diff] .monaco-diff-editor')).toBeVisible();
+    await expect(prompt.getByRole('button', { name: 'Next change' })).toBeEnabled();
+    await prompt.getByRole('button', { name: 'Next change' }).click();
+    await prompt.getByRole('button', { name: 'Next change' }).click();
+    await expect(prompt.locator('[data-conflict-diff] .view-lines').last()).toContainText('line 41');
+    await prompt.getByRole('button', { name: 'Skip' }).click();
+    expect(await activeBufferContent(app.page)).toBe(yours);
+    expect(await readFile(source, 'utf8')).toBe(onDisk);
+});
+
+test('shows and names changed text beyond the editor ten-thousand-character rendering limit', async ({ app }) => {
+    const prefix = 'a'.repeat(10050);
+    const yours = `${prefix}mine\n`;
+    const onDisk = `${prefix}disk\n`;
+    const source = await app.writeDocument('long-line-conflict.md', yours);
+    await app.seedRecents([source]);
+    await app.launch();
+    await openRecentFromLauncher(app.page, 'long-line-conflict.md');
+
+    await writeFile(source, onDisk, 'utf8');
+    await app.page.evaluate(() => window.dispatchEvent(new Event('focus')));
+    const prompt = app.page.getByRole('dialog', { name: 'File changed on disk' });
+    await expect(prompt).toBeVisible();
+    await expect(prompt.getByRole('textbox', { name: 'On disk' })).toBeVisible();
+    await expect(prompt.getByRole('textbox', { name: 'Yours' })).toBeVisible();
+    await expect(prompt.getByRole('button', { name: 'Next change' })).toBeEnabled();
+    await prompt.getByRole('button', { name: 'Next change' }).click();
+    const diskPane = prompt.getByRole('textbox', { name: 'On disk' });
+    await diskPane.focus();
+    for (let page = 0; page < 12; page += 1) await diskPane.press('PageDown');
+    await expect(prompt.locator('[data-conflict-diff] .view-lines').first()).toContainText('disk');
+    const yoursPane = prompt.getByRole('textbox', { name: 'Yours' });
+    await yoursPane.focus();
+    for (let page = 0; page < 12; page += 1) await yoursPane.press('PageDown');
+    await expect(prompt.locator('[data-conflict-diff] .view-lines').last()).toContainText('mine');
 });
 
 test('retains a dirty tab on Cancel, saves before closing, and discards only the requested tab', async ({ app }) => {

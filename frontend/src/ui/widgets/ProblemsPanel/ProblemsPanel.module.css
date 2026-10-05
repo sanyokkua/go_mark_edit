@@ -1,0 +1,46 @@
+.body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: auto;
+    padding: var(--pane-body-padding-block) var(--pane-body-padding-inline);
+}
+
+.list {
+    display: flex;
+    flex-direction: column;
+}
+
+.row {
+    align-items: start;
+    background: transparent;
+    border: 0;
+    color: var(--text);
+    cursor: pointer;
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--status-bar-item-gap);
+    min-width: 0;
+    padding: var(--pane-body-padding-block) var(--pane-body-padding-inline);
+    text-align: start;
+    width: 100%;
+}
+
+.row:hover {
+    background: var(--surface-2);
+}
+
+.row:focus-visible {
+    outline: var(--control-border-width) solid var(--accent);
+    outline-offset: calc(-1 * var(--control-border-width));
+}
+
+.message {
+    flex: 1 1 18rem;
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.severity,
+.rule {
+    color: var(--faint);
+}

@@ -98,6 +98,7 @@ type ScrollOffsets struct {
 // DocView is metadata for a document's panes and restorable editor state.
 type DocView struct {
 	Arrangement    string         `json:"arrangement"`
+	SplitRatio     float64        `json:"splitRatio"`
 	EditorVisible  bool           `json:"editorVisible"`
 	PreviewVisible bool           `json:"previewVisible"`
 	Cursor         CursorPosition `json:"cursor"`
@@ -107,6 +108,7 @@ type DocView struct {
 
 // DocViewInput is the command payload used to update a document's view.
 type DocViewInput struct {
+	SplitRatio     *float64       `json:"splitRatio,omitempty"`
 	EditorVisible  bool           `json:"editorVisible"`
 	PreviewVisible bool           `json:"previewVisible"`
 	Cursor         CursorPosition `json:"cursor"`
@@ -560,14 +562,24 @@ func parseDiskVersionTimestamp(raw json.RawMessage) (int64, error) {
 	return value, nil
 }
 
-// ConflictPreviewSide is bounded transient comparison text. It is never part
+// ConflictPreviewSide is complete transient comparison text. It is never part
 // of the metadata projection or persisted state.
 type ConflictPreviewSide struct {
-	Text      string `json:"text"`
-	LineCount int    `json:"lineCount"`
-	ByteCount int    `json:"byteCount"`
-	Truncated bool   `json:"truncated"`
+	Text                       string                             `json:"text"`
+	LineCount                  int                                `json:"lineCount"`
+	ByteCount                  *int64                             `json:"byteCount"`
+	ByteCountUnavailableReason ConflictByteCountUnavailableReason `json:"byteCountUnavailableReason,omitempty"`
 }
+
+// ConflictByteCountUnavailableReason explains why the current revision has no
+// unambiguous encoded saved size. The frontend localizes these stable codes.
+type ConflictByteCountUnavailableReason string
+
+const (
+	ConflictByteCountNormalizationRequired ConflictByteCountUnavailableReason = "normalization-required"
+	ConflictByteCountUnsupportedEncoding   ConflictByteCountUnavailableReason = "unsupported-encoding"
+	ConflictByteCountUnsafeContent         ConflictByteCountUnavailableReason = "unsafe-content"
+)
 
 // ConflictPreview carries the exact revision/version pair shown by one
 // external-change decision. MetadataDifferences is used when canonical text is
@@ -630,6 +642,8 @@ type OpenResult struct {
 	Status             OpenStatus                   `json:"status"`
 	DocumentID         string                       `json:"documentId,omitempty"`
 	Path               string                       `json:"path,omitempty"`
+	RevealPath         string                       `json:"revealPath,omitempty"`
+	TreePath           string                       `json:"treePath,omitempty"`
 	ProjectionRevision uint64                       `json:"projectionRevision,omitempty"`
 	ActiveBuffer       *ActiveBufferAcknowledgement `json:"activeBuffer,omitempty"`
 	Error              *ClassifiedError             `json:"error,omitempty"`

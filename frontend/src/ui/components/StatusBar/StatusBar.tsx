@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
 
 import Popup, { PopupTrigger } from '../Popup';
+import Button from '../../primitives/Button';
 import popupStyles from '../Popup/Popup.module.css';
 import { formatNumber, t } from '../../../i18n';
 import { readOnlyReason } from '../readOnlyReason';
@@ -13,12 +14,15 @@ export type StatusFactPlacement = 'leading' | 'trailing' | 'details';
 export interface StatusFact {
     readonly id: string;
     readonly rowLabel: ReactNode;
+    readonly rowAriaLabel?: string;
     readonly detailLabel: ReactNode;
     readonly value: ReactNode;
     readonly dropPriority: number;
     readonly placement?: StatusFactPlacement;
     readonly marker?: 'accent-dot';
     readonly transient?: boolean;
+    readonly onActivate?: () => void;
+    readonly pressed?: boolean;
 }
 
 export interface StatusBarProps {
@@ -58,10 +62,12 @@ function legacyFacts(props: StatusBarProps): StatusFact[] {
     const cursor = props.cursor ?? { lineNumber: 1, column: 1 };
     const wordCount = props.wordCount ?? 0;
     const autosave = props.autosave ?? false;
-    const markdownStandard = props.markdownStandard ?? 'gfm';
-    const markdownLabel = t('status.markdown', {
-        standard: t(translationKey('markdownStandard', markdownStandard)),
-    });
+    const markdownLabel =
+        props.markdownStandard === undefined
+            ? undefined
+            : t('status.markdown', {
+                  standard: t(translationKey('markdownStandard', props.markdownStandard)),
+              });
     const cursorLabel = t('status.cursor', {
         column: cursor.column,
         line: cursor.lineNumber,
@@ -72,14 +78,18 @@ function legacyFacts(props: StatusBarProps): StatusFact[] {
     const autosaveLabel = t(autosave ? 'status.autosave.on' : 'status.autosave.off');
 
     return [
-        {
-            id: 'standard-kind',
-            rowLabel: markdownLabel,
-            detailLabel: markdownLabel,
-            value: '',
-            dropPriority: 0,
-            marker: 'accent-dot',
-        },
+        ...(markdownLabel === undefined
+            ? []
+            : [
+                  {
+                      id: 'standard-kind',
+                      rowLabel: markdownLabel,
+                      detailLabel: markdownLabel,
+                      value: '',
+                      dropPriority: 0,
+                      marker: 'accent-dot',
+                  } as StatusFact,
+              ]),
         {
             id: 'cursor',
             rowLabel: cursorLabel,
@@ -123,10 +133,26 @@ function legacyFacts(props: StatusBarProps): StatusFact[] {
 
 function factDetail(fact: StatusFact, dropped: boolean): React.JSX.Element {
     const hasValue = fact.value !== '' && fact.value !== null && fact.value !== undefined;
-    return (
-        <span data-status-detail={fact.id} data-status-detail-dropped={dropped ? 'true' : undefined} key={fact.id}>
+    const content = (
+        <>
             {fact.detailLabel}
             {hasValue ? <>: {fact.value}</> : null}
+        </>
+    );
+    return (
+        <span data-status-detail={fact.id} data-status-detail-dropped={dropped ? 'true' : undefined} key={fact.id}>
+            {fact.onActivate === undefined ? (
+                content
+            ) : (
+                <Button
+                    aria-pressed={fact.pressed}
+                    className={styles.factButton}
+                    variant="quiet"
+                    onClick={fact.onActivate}
+                >
+                    {content}
+                </Button>
+            )}
         </span>
     );
 }
@@ -141,7 +167,19 @@ function rowFact(fact: StatusFact): React.JSX.Element {
             key={fact.id}
         >
             {fact.marker === 'accent-dot' ? <span aria-hidden="true" className={styles.dot} /> : null}
-            {fact.rowLabel}
+            {fact.onActivate === undefined ? (
+                fact.rowLabel
+            ) : (
+                <Button
+                    aria-label={fact.rowAriaLabel}
+                    aria-pressed={fact.pressed}
+                    className={styles.factButton}
+                    variant="quiet"
+                    onClick={fact.onActivate}
+                >
+                    {fact.rowLabel}
+                </Button>
+            )}
         </span>
     );
 }
