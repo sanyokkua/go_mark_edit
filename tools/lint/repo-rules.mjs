@@ -18,8 +18,7 @@ const referenceRoots = [
     'tools/',
     'tests/',
     'docs/',
-    'specs/',
-    '.specify/',
+    'openspec/',
     '.agents/',
     '.claude/',
     '.github/',
@@ -61,7 +60,7 @@ function relativePath(root, path) {
 }
 
 function isExcluded(path) {
-    return path === '' || path.startsWith('specs/') || path.startsWith('.specify/');
+    return path === '' || path.startsWith('openspec/changes/archive/');
 }
 
 function isTestFile(path) {

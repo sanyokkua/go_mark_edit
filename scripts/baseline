@@ -24,7 +24,7 @@ while [[ $# -gt 0 ]]; do
     shift
 done
 
-feature="$(feature_name)"
+feature="$(baseline_name)"
 baseline_path="$REPO_ROOT/.local_tmp_files/baseline/$feature.json"
 new_run_dir baseline >/dev/null
 printf '[gomarkedit] artifacts: %s\n' "$RUN_DIR"

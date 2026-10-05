@@ -900,37 +900,6 @@ void test('runs structured commands through a raw report file without losing the
     }
 });
 
-void test('ignores Feature 003 evidence paths for repository scans', () => {
-    const evidencePath = 'specs/003-real-files-and-tabs/evidence/generated.json';
-    const result = spawnSync('git', ['check-ignore', '-q', evidencePath], {
-        cwd: repoRoot,
-        encoding: 'utf8',
-    });
-    assert.equal(result.status, 0, result.stderr);
-
-    const formatSource = readFileSync(join(repoRoot, 'scripts/format'), 'utf8');
-    assert.match(formatSource, /specs\/\*\/evidence\/\*/);
-    const evidenceFile = join(repoRoot, evidencePath);
-    mkdirSync(join(repoRoot, 'specs/003-real-files-and-tabs/evidence'), {
-        recursive: true,
-    });
-    writeFileSync(evidenceFile, '{"generated":true}\n');
-    try {
-        const selected = spawnSync(
-            'git',
-            ['ls-files', '--cached', '--others', '--exclude-standard', '--', evidencePath],
-            { cwd: repoRoot, encoding: 'utf8' },
-        );
-        assert.equal(selected.status, 0, selected.stderr);
-        assert.equal(selected.stdout, '');
-    } finally {
-        rmSync(join(repoRoot, 'specs/003-real-files-and-tabs/evidence'), {
-            recursive: true,
-            force: true,
-        });
-    }
-});
-
 void test('keeps baseline creation and comparison owned by scripts/baseline', () => {
     for (const entrypoint of ['scripts/verify', 'scripts/test']) {
         const source = readFileSync(join(repoRoot, entrypoint), 'utf8');
@@ -945,10 +914,6 @@ void test('does not require a migration baseline and allowlists CI diagnostics',
     const archlintSource = readFileSync(join(repoRoot, 'tools/archlint/main.go'), 'utf8');
     assert.doesNotMatch(archlintSource, /checkMigrations|app_version_1_codebase/);
 
-    const lintRules = readFileSync(join(repoRoot, 'specs/004-codebase-refactoring/contracts/lint-rules.md'), 'utf8');
-    assert.doesNotMatch(lintRules, /^\|?\s*L5\s+\|/m);
-    assert.doesNotMatch(lintRules, /app_version_1_codebase/);
-
     for (const workflowPath of ['.github/workflows/push.yml', '.github/workflows/release.yml']) {
         const workflow = readFileSync(join(repoRoot, workflowPath), 'utf8');
         const artifactPath = workflow.match(
@@ -962,10 +927,4 @@ void test('does not require a migration baseline and allowlists CI diagnostics',
         }
         assert.doesNotMatch(artifactPath, /(?:cache|tsconfig\.node\.tsbuildinfo)/);
     }
-
-    const ciContract = readFileSync(join(repoRoot, 'specs/004-codebase-refactoring/contracts/ci-workflows.md'), 'utf8');
-    assert.doesNotMatch(ciContract, /app_version_1_codebase/);
-    assert.doesNotMatch(ciContract, /path [`']\.local_tmp_files\/runs\/[`']/);
-    assert.match(ciContract, /\.local_tmp_files\/runs\/\*\*\/reports\/\*\*/);
-    assert.match(ciContract, /compiler, linter, Jest, Playwright and TypeScript build-info/);
 });

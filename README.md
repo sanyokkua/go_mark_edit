@@ -33,15 +33,14 @@ On Linux, desktop builds need GTK 3 and WebKit2GTK 4.1 development headers.
   operations, current scope and future work.
 - [Architecture map](docs/architecture.md) — code ownership, shared UI consumers, document lifecycle,
   persistence, shutdown and durable decisions.
-- [Feature specifications](specs/) — versioned product and architecture contracts. Feature 005 is
-  complete and retained as a reference.
+- [Current specifications](openspec/specs/) — observable behaviour of the application;
+  [OpenSpec configuration](openspec/config.yaml) holds the project's engineering rules.
 - [E2E performance notes](docs/e2e-performance.md) — real-backend test harness and verification findings.
 - [Working instructions](AGENTS.md) — repository conventions for contributors and agents.
 
 `app_version_1_codebase` is the integration branch for completed feature work. The repository owner
-controls the later integration into `master`. New implementation work should use a new numbered
-feature branch and its own specification; the completed feature 005 is not an active feature on the
-integration branch.
+controls the later integration into `master`. New work starts as an OpenSpec change under
+`openspec/changes/` and uses its own `feature/<short-description>` branch.
 
 ## Build and release
 
