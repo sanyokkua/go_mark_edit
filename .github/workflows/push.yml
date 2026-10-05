@@ -4,6 +4,29 @@ on:
     push:
         branches:
             - '**'
+        # Skipped only when every changed file matches; any other change runs CI.
+        paths-ignore:
+            - '.agent-docs/**'
+            - '.agents/**'
+            - '.claude/**'
+            - '.local_tmp_files/**'
+            - '.superpowers/**'
+            - '.gitignore'
+            - '.golangci.yml'
+            - '.nvmrc'
+            - '.prettierignore'
+            - '.prettierrc.json'
+            - 'AGENTS.md'
+            - 'CLAUDE.md'
+            - 'LICENSE'
+            - 'README.md'
+            - 'docs/**'
+            - 'lefthook.yml'
+            - 'openspec/**'
+            - 'justfile'
+            - 'build/icon/README.md'
+            - 'frontend/.prettierignore'
+            - '.github/copilot-instructions.md'
 
 jobs:
     cross-platform-go:

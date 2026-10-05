@@ -96,7 +96,7 @@ func TestUpdateMarkdownPreservesValidStandardsAndPreferences(t *testing.T) {
 	}
 }
 
-func TestAppearanceUsesTheSpecKitGlassValueAndReadsTheRetiredValue(t *testing.T) {
+func TestAppearanceUsesTheGlassValueAndReadsTheRetiredValue(t *testing.T) {
 
 	t.Run("accepts glass for an appearance update", func(t *testing.T) {
 		repository := fakeSettingsRepository{}
@@ -108,7 +108,7 @@ func TestAppearanceUsesTheSpecKitGlassValueAndReadsTheRetiredValue(t *testing.T)
 		}
 
 		if err := service.UpdateAppearance(context.Background(), appearance); err != nil {
-			t.Fatalf("update SpecKit glass appearance: %v", err)
+			t.Fatalf("update glass appearance: %v", err)
 		}
 		if repository.appearance != appearance {
 			t.Fatalf("stored appearance = %+v, want %+v", repository.appearance, appearance)

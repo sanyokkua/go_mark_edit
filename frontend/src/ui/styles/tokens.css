@@ -326,7 +326,7 @@
     }
 }
 
-/* Binding SpecKit appearance contract: each row mirrors surface/mockup.html. */
+/* Binding appearance contract: each row defines one theme and appearance token set. */
 :root[data-theme='glass'][data-mode='light'] {
     --canvas:
         radial-gradient(1100px 700px at 12% -12%, #b7c2ff 0, transparent 55%),

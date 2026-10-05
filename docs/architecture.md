@@ -1,9 +1,9 @@
 # GoMarkEdit architecture map
 
 This is the architecture map for GoMarkEdit. [The project guide](index.md) summarizes current
-interfaces, data flows, operations and scope; active numbered feature specifications define approved
-feature behaviour. Feature 005 is complete and remains as a historical contract in
-`specs/005-folder-workspace/`. This map records stable ownership, lifecycle and persistence decisions.
+interfaces, data flows, operations and scope; `openspec/specs/` describes current behaviour and
+`openspec/changes/` holds proposed work. Completed earlier features are archived under
+`openspec/changes/archive/`. This map records stable ownership, lifecycle and persistence decisions.
 
 ## Product intent
 
@@ -21,11 +21,9 @@ instances.
 
 ## Authority and ownership
 
-The active feature specification, plan, contracts and task list live under the numbered `specs/`
-folder matching the checked-out feature branch. Feature 005 is complete; on the integration branch
-`app_version_1_codebase` and later on `master`, there is no active numbered feature until new work is
-approved and given its own feature branch and specification. This map records stable architecture
-shared across completed and future features. A change to existing behaviour starts by finding its owner
+Current behaviour lives in `openspec/specs/`; a proposed change lives under `openspec/changes/<name>/`
+with its proposal, design, delta specs and tasks, and moves to `openspec/changes/archive/` when
+complete. This map records stable architecture shared across current and future changes. A change to existing behaviour starts by finding its owner
 and every consumer below; it does not create a parallel implementation in the caller.
 
 ### Backend and bridge owners
@@ -415,12 +413,9 @@ dev and setup. Hooks and CI call the scripts directly. A developer may use the f
   stage record, and `scripts/baseline --compare` fails closed when findings remain or a new finding
   appears. Verification run artifacts live under `.local_tmp_files/runs/`; the explicit baseline
   record lives under `.local_tmp_files/baseline/` and is created or compared only by
-  `scripts/baseline`. The record is named after the `specs/<NNN>-<name>/` directory whose number the
-  checked-out `feature/<NNN>-<name>` branch carries (the `feature/` prefix is optional); on a branch
-  without exactly one matching feature, or with no branch checked out, `scripts/baseline` stops
-  before running a stage. Required reports that are missing or malformed are UNAVAILABLE or UNRELIABLE,
-  never zero; warning counts do not fail a stage. `specs/*/evidence/` is disposable generated
-  output, ignored by Git and formatting checks, and is not recreated by verification.
+  `scripts/baseline`. The record is named after the checked-out branch (slashes become dashes), or after the short
+  commit on a detached HEAD. Required reports that are missing or malformed are UNAVAILABLE or UNRELIABLE,
+  never zero; warning counts do not fail a stage.
 - CI failure uploads allowlist stage JSON records, logs, stderr captures, normalized and raw reports,
   Jest/Playwright/Go test reports and E2E failure screenshots, error contexts and traces from
   `.local_tmp_files/runs/`; compiler, linter, Jest,
@@ -717,11 +712,9 @@ text from the guarded editor command API, so it also operates on the current edi
 Worker progress, cancellation and lint findings remain ephemeral frontend state; explicit-save Format
 and Lint use the same tidy command owner, while autosave runs neither.
 
-## Feature 005 packaged verification walkthrough
+## Packaged verification walkthrough
 
-The following feature-specific walkthrough was completed for feature 005; its dated evidence is in
-`specs/005-folder-workspace/plan.md`. It is retained as a reference for future folder/workspace changes,
-not as a required close-out record for every feature. For a future release, run the packaged build on
+A packaged-build walkthrough is not a required close-out record for every change. For a release, run the packaged build on
 the developer's host and record the release-specific result in the release notes. The build and release
 workflow accept `X.Y.Z`, `X.Y.Z-alpha.N` and `X.Y.Z-beta.N`; tagged alpha and beta versions publish as
 GitHub prereleases, while stable tags remain regular releases. Manual release dispatch builds an
@@ -829,7 +822,7 @@ The owner decisions that shaped this refactor are recorded here so they are not 
 - **D3 — Black-box Go tests:** tests live in external unit and integration roots; only the three
   documented unreachable behaviours remain as in-package white-box tests.
 - **D4 — Parity removal:** the pixel-parity harness goes after the real-backend E2E stage is green.
-- **D5 — One authority:** the active `specs/` tree and this map are normative.
+- **D5 — One authority (superseded by D16):** the former `specs/` tree and this map were normative.
 - **D6 — Mock removal:** the mock bridge and native evidence driver go after the real-backend E2E stage.
 - **D7 — Remote content wording:** the current app remains offline without background requests; a
   future rendering feature owns the user-controlled remote-content policy.
@@ -844,11 +837,11 @@ The owner decisions that shaped this refactor are recorded here so they are not 
   protocol and never introduces session restore.
 - **D13 — Scroll synchronization restored:** synchronized scrolling between the editor and the preview
   is restored at block granularity; the View menu's Synchronized scrolling preference defaults to on.
-- **D14 — Versioned material:** the repository versions product code with its build and release
+- **D14 — Versioned material (workflow parts superseded by D16):** the repository versions product code with its build and release
   configuration, tests, verification tooling, the README and agent instructions, the developer
-  reference under `docs/reference/`, the Spec Kit constitution, this map, every feature's product
-  definitions under `specs/` and this refactor's plan, tasks, research and quickstart. Spec Kit
-  installs and their state, agent working documents, audits, archives, generated run records, Wails
+  reference under `docs/reference/`, the former workflow constitution, this map, every feature's product
+  definitions under `specs/` and this refactor's plan, tasks, research and quickstart. Workflow
+  tool installs and their state, agent working documents, audits, archives, generated run records, Wails
   scaffolding that the Wails CLI regenerates, reference-only mockups, every feature's checklists and
   the planning records of earlier features are not versioned; Git history keeps their earlier
   copies. This decision supersedes D5's statement that delivery material is archived, planning
@@ -860,10 +853,17 @@ The owner decisions that shaped this refactor are recorded here so they are not 
   and owned development and production-asset frontend listeners once per run, then starts an isolated
   application for each case. Functional cases use development assets by default; cases that select
   the shipping bundle use the production-asset listener. This
-  supersedes the per-case `wails dev` invocation in feature 004's real-backend E2E contract;
+  supersedes the earlier per-case `wails dev` invocation in the real-backend E2E contract;
   application and browser state remain isolated, and the same canonical E2E stage runs full or
   targeted selection. Test transport keeps the browser as the sole active React frontend while
   retaining the real native host; production serving is unchanged.
+- **D16 — OpenSpec is the only specification workflow:** it supersedes D5's `specs/` tree and the
+  numbered-feature parts of D14, which are retired together with the former constitution and
+  `specs/`. Current behaviour is reconstructed from the implemented application in `openspec/specs/`,
+  and the nine earlier features are kept as archived changes under `openspec/changes/archive/`
+  without replaying their deltas. Engineering rules live in `openspec/config.yaml`. Generated
+  OpenSpec skills and commands under `.agents/` and `.claude/` are tool output refreshed by
+  `openspec update`.
 
 ## Planning decisions retained
 
@@ -880,8 +880,7 @@ The seven planning decisions are part of the implementation record:
    they do not add stages or aliases.
 6. The two archive-only race cases use throwaway tests in the archived worktree and public-interface
    tests in the refactored tree.
-7. `docs/reference/` remains because it is retained reference material, not the legacy workflow or
-   Spec Kit core.
+7. `docs/reference/` remains because it is retained reference material, not workflow tooling.
 
 ## Open decisions
 

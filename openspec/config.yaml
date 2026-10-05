@@ -1,0 +1,70 @@
+schema: spec-driven
+
+context: |
+    GoMarkEdit is a native, offline-first Markdown editor and viewer for macOS, Windows and Linux.
+    One Wails v2 binary holds a CGO-free Go 1.25 backend and a React 19 / TypeScript / Vite frontend
+    (Monaco editor, Redux Toolkit) running in the OS webview. Markdown files are the user's source of
+    truth; settings, recents and per-document view state live in a local SQLite key-value store.
+
+    Architecture:
+    - The Go backend (`internal/`, composition root `main.go`) owns state, file I/O, persistence and
+      native integration. The Redux store (`frontend/src/logic/store/`) is a disposable projection.
+    - Only `frontend/src/logic/adapter/` may import the generated `frontend/wailsjs/` bindings.
+      Shared UI (`frontend/src/ui/primitives`, `ui/components`) takes props and never reaches into
+      the store, adapter or action registry.
+    - Menus, shortcuts, context menus and the shortcuts dialog all derive from one action registry.
+    - No background network request, telemetry or automatic update check, ever. A provider request
+      must be user-initiated and have its own feature contract.
+
+    Verification: `scripts/verify` runs six stages (Lint, Format, Build, Unit, Integration, E2E).
+    Also `scripts/test`, `scripts/format`, `scripts/build`, `scripts/baseline`; `just --list` shows
+    aliases. Tests live in `tests/go/` and `frontend/tests/`.
+    Documentation: `docs/index.md` (overview, flows, configuration) and `docs/architecture.md`
+    (owners, lifecycle, persistence, durable decisions D1...). Current behavior: `openspec/specs/`.
+
+rules:
+    proposal:
+        - Say what problem exists, why it matters, what behavior changes and what is out of scope. Do not write an implementation plan.
+        - List affected capabilities by their `openspec/specs/` names.
+        - Add a rollback or migration note only when data or deployment risk is real.
+        - If current behavior is undefined by specs and code, ask the user with a recommended default instead of inventing it.
+    specs:
+        - Write observable behavior in plain language. Prefer EARS ("WHEN ... the system SHALL ...") when it reads naturally.
+        - Give each requirement at least one concrete WHEN/THEN scenario with real numbers, limits and defaults.
+        - Never name classes, functions or algorithms. Avoid vague words ("properly", "appropriately") without a measurable meaning.
+        - One authoritative requirement per behavior. Modify the existing requirement instead of adding an overlapping one.
+        - Unbounded inputs state a numeric bound and a visible refusal or degradation. Errors are shown or logged with a reason.
+        - Cover, where relevant, keyboard use with visible focus, accessible names, localized strings, theme and appearance behavior, long-operation progress and cancellation, and unsaved-work protection.
+    design:
+        - Write a design only for architecture, boundary, data model, persistence, concurrency, migration, cross-platform or hard UI-state decisions. Skip it for trivial changes.
+        - Inspect existing owners and patterns first (`docs/architecture.md`, `internal/`, `frontend/src/ui/`) and extend them. A second implementation of a behavior needs a recorded reason.
+        - Apply KISS, YAGNI, DRY and SOLID. No layer, factory, plugin point or generic framework without a concrete current requirement.
+        - Record only research that changes the decision, from official docs or standards. State alternatives that were rejected and why.
+        - Describe the verification approach, including how any non-testable part is checked.
+        - A new outbound request, state owner, persistence model or cross-layer bypass requires an explicit decision entry for `docs/architecture.md`.
+    tasks:
+        - Each task is one coherent vertical slice (backend, bridge, adapter, state, UI, tests and docs for one behavior), doable in one focused agent session.
+        - Give each task enough context for a fresh session - behavior, spec sections, files and patterns to reuse, testing expectations, completion criteria.
+        - Never create tasks that only run tests or lint, update docs or status, sync IDs, review earlier work, or run a baseline. Those belong inside the task that needs them.
+        - Order tasks by real dependency. A task may depend only on existing code or earlier tasks, and leaves the repository working.
+        - Refer to requirements by their text or heading, never by bare IDs.
+
+operations:
+    apply:
+        guidance:
+            - Before the first production edit of a change, run `scripts/baseline` once (it names its record after the branch) and confirm every stage ran; a stage that collected nothing is unreliable, not clean. Do not add a task for it.
+            - Read the change's artifacts and the relevant existing code first. Search `frontend/src/ui/`, `frontend/src/logic/` and `internal/` before adding any function, hook, component, type or utility; reuse, then extend, then extract, and create only when nothing fits.
+            - Implement one task at a time. Use TDD where practical (failing test, smallest change, refactor). Test observable behavior through public interfaces; prefer real code, real temporary files and real SQLite over mocks, and allow test doubles only at external boundaries.
+            - Never delete, skip or weaken a test or a quality configuration to make work pass. Do not add test-only branches, hooks or parameters to production code. Fix each defect with a regression test.
+            - Never suppress or allowlist a lint rule. Test titles are behavior sentences without task or requirement IDs, and tests never assert source, CSS or document text. Comments state the current contract, not task history. Every UI string comes from the catalogue and every color from tokens; interfaces are keyboard-usable with roles, localized names and visible focus. Wails handlers return one typed envelope through the shared panic guard and take no `context.Context`.
+            - Integrate new code into the running application immediately. No speculative, dead or placeholder code.
+            - A production file near 200 lines deserves a responsibility check; split by responsibility, not by line count. Markup-heavy components, styles, generated code and data tables may be longer.
+            - Run focused checks while working and the relevant `scripts/verify` stages before declaring a task done. For UI or runtime-visible changes, start the real app and exercise the behavior.
+            - Use sub-agents for implementation, research and test analysis on substantial work, and get an independent review from an agent that did not write the code.
+            - A task is complete only when the behavior works and is verified, not when the code is written.
+    archive:
+        guidance:
+            - Archive only when every task is done and its behavior is verified, the six `scripts/verify` stages are green or only show failures that predate the change, and no task is checked off falsely.
+            - Check that proposal, design, delta specs and tasks still describe what was built; fix material drift and ignore wording differences.
+            - Record durable architectural decisions in `docs/architecture.md` and public-surface changes in `docs/index.md`.
+            - Confirm the merged `openspec/specs/` describe the resulting system without conflicting or duplicated requirements.
