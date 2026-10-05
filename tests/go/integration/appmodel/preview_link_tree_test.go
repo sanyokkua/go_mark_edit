@@ -13,7 +13,6 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/sanyokkua/go_mark_edit/internal/apperr"
 	"github.com/sanyokkua/go_mark_edit/internal/appmodel"
-	"github.com/sanyokkua/go_mark_edit/internal/file"
 )
 
 func TestPreviewLinkReturnsTreeRowOnlyForVisibleWorkspaceTargets(t *testing.T) {
@@ -141,16 +140,7 @@ func TestPreviewLinkMatchesCaseOnlyFolderAndFileAliasesByFilesystemIdentity(t *t
 	if result := service.OpenWorkspace(ctx, root); result.Status != apperr.WorkspaceStatusOpened {
 		t.Fatalf("open workspace = %+v", result)
 	}
-	rowIdentity, rowErr := file.IdentityForExistingPath(target)
-	aliasIdentity, aliasIdentityErr := file.IdentityForExistingPath(alias)
-	if rowErr != nil || aliasIdentityErr != nil {
-		t.Fatalf("case-only file identities: row=%v alias=%v", rowErr, aliasIdentityErr)
-	}
-	want := ""
-	if rowIdentity.Path == "" && aliasIdentity.Path == "" && !rowIdentity.IsZero() && rowIdentity.Equal(aliasIdentity) {
-		want = target
-	}
-	assertPreviewTreePath(t, service.OpenPreviewLink(ctx, opened.DocumentID, "./mIXED/tARGET.md"), want)
+	assertPreviewTreePath(t, service.OpenPreviewLink(ctx, opened.DocumentID, "./mIXED/tARGET.md"), target)
 }
 
 func TestPreviewLinkMatchesCaseOnlyWorkspaceRootByFilesystemIdentity(t *testing.T) {
@@ -165,14 +155,6 @@ func TestPreviewLinkMatchesCaseOnlyWorkspaceRootByFilesystemIdentity(t *testing.
 	aliasInfo, aliasErr := os.Stat(aliasRoot)
 	if rootErr != nil || aliasErr != nil || !os.SameFile(rootInfo, aliasInfo) {
 		t.Skip("case-only workspace root alias is unavailable on this volume")
-	}
-	rootIdentity, identityErr := file.IdentityForExistingPath(root)
-	aliasIdentity, aliasIdentityErr := file.IdentityForExistingPath(aliasRoot)
-	if identityErr != nil || aliasIdentityErr != nil {
-		t.Fatalf("workspace root identities: row=%v alias=%v", identityErr, aliasIdentityErr)
-	}
-	if rootIdentity.Path != "" || aliasIdentity.Path != "" || rootIdentity.IsZero() || !rootIdentity.Equal(aliasIdentity) {
-		t.Skip("filesystem-backed identity is unavailable for the workspace root")
 	}
 	source := filepath.Join(root, "source.md")
 	target := filepath.Join(root, "target.md")

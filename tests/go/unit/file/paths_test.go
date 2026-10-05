@@ -146,11 +146,63 @@ func TestCanonicalizeDocumentPath(t *testing.T) {
 		}
 		assertEscapedHostileDisplayName(t, unsafeCanonical.DisplayName)
 	}
+	// Windows cannot use the hostile control-character filename as a candidate.
+	if runtime.GOOS == "windows" {
+		return
+	}
 	unsafeCandidate, err := CanonicalizeCandidateDocumentPath(unsafePath)
 	if err != nil {
 		t.Fatalf("canonicalize hostile candidate name: %v", err)
 	}
 	assertEscapedHostileDisplayName(t, unsafeCandidate.DisplayName)
+}
+
+func TestExistingPathIdentityUsesFilesystemObject(t *testing.T) {
+	root := t.TempDir()
+	original := filepath.Join(root, "original.md")
+	link := filepath.Join(root, "hard-link.md")
+	other := filepath.Join(root, "other.md")
+	for _, path := range []string{original, other} {
+		if err := os.WriteFile(path, []byte("same"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := os.Link(original, link); err != nil {
+		t.Fatalf("create hard link: %v", err)
+	}
+	first, err := CanonicalizeDocumentPath(original)
+	if err != nil {
+		t.Fatal(err)
+	}
+	linked, err := CanonicalizeCandidateDocumentPath(link)
+	if err != nil {
+		t.Fatal(err)
+	}
+	distinct, err := IdentityForExistingPath(other)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if first.Identity.Path != "" || first.Identity.IsZero() || !first.Identity.Equal(linked.Identity) {
+		t.Fatalf("hard-link identities: original=%+v linked=%+v", first.Identity, linked.Identity)
+	}
+	if first.Identity.Equal(distinct) {
+		t.Fatalf("distinct files share identity: %+v", first.Identity)
+	}
+	alias := filepath.Join(root, "alias.md")
+	if err := os.Symlink(original, alias); err == nil {
+		viaAlias, err := IdentityForExistingPath(alias)
+		if err != nil || !first.Identity.Equal(viaAlias) {
+			t.Fatalf("symlink identity=%+v err=%v, want %+v", viaAlias, err, first.Identity)
+		}
+	}
+	directory, err := IdentityForExistingPath(root)
+	if err != nil || directory.IsZero() || directory.Path != "" {
+		t.Fatalf("directory identity=%+v err=%v", directory, err)
+	}
+	again, err := IdentityForExistingPath(root)
+	if err != nil || !directory.Equal(again) {
+		t.Fatalf("directory identity changed: before=%+v after=%+v err=%v", directory, again, err)
+	}
 }
 
 func assertEscapedHostileDisplayName(t *testing.T, displayName string) {
@@ -160,5 +212,11 @@ func assertEscapedHostileDisplayName(t *testing.T, displayName string) {
 	}
 	if !strings.Contains(displayName, `\u0001`) || !strings.Contains(displayName, `\u202E`) {
 		t.Fatalf("unsafe display name did not retain visible escapes: %q", displayName)
+	}
+}
+
+func TestCandidatePathRejectsInspectionFailure(t *testing.T) {
+	if _, err := CanonicalizeCandidateDocumentPath(filepath.Join(t.TempDir(), "invalid\x00.md")); err == nil {
+		t.Fatal("invalid path inspection must fail rather than become a missing candidate")
 	}
 }

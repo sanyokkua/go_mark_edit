@@ -4,6 +4,8 @@ import (
 	. "github.com/sanyokkua/go_mark_edit/internal/file"
 	"os"
 	"path/filepath"
+	"runtime"
+	"strings"
 	"testing"
 	"time"
 )
@@ -118,17 +120,24 @@ func TestDiskVersionReplacementIdentity(t *testing.T) {
 	if err := os.WriteFile(path, []byte("same"), 0o640); err != nil {
 		t.Fatalf("write original: %v", err)
 	}
+	mtime := time.Unix(1_700_000_000, 0)
+	if err := os.Chtimes(path, mtime, mtime); err != nil {
+		t.Fatalf("set original mtime: %v", err)
+	}
 	first, err := CurrentDiskVersion(path)
 	if err != nil {
 		t.Fatalf("stat original: %v", err)
 	}
-	if first.FileIdentity == "" {
+	if first.FileIdentity == "" && runtime.GOOS != "windows" {
 		t.Skip("host does not expose a portable file identity")
+	}
+	if first.FileIdentity == "" {
+		t.Fatal("Windows existing file has empty disk identity")
 	}
 	if err := os.WriteFile(replacement, []byte("same"), 0o640); err != nil {
 		t.Fatalf("write replacement: %v", err)
 	}
-	if err := os.Chtimes(replacement, time.Unix(1_700_000_000, 123_456_789), time.Unix(1_700_000_000, 123_456_789)); err != nil {
+	if err := os.Chtimes(replacement, mtime, mtime); err != nil {
 		t.Fatalf("set replacement mtime: %v", err)
 	}
 	if err := os.Remove(path); err != nil {
@@ -141,11 +150,40 @@ func TestDiskVersionReplacementIdentity(t *testing.T) {
 	if err != nil {
 		t.Fatalf("stat replacement: %v", err)
 	}
+	if second.Size != first.Size || second.ModifiedUnixNano != first.ModifiedUnixNano || second.Mode != first.Mode {
+		t.Fatalf("replacement metadata differs: before=%+v after=%+v", first, second)
+	}
+	if runtime.GOOS == "windows" && !strings.HasPrefix(second.FileIdentity, "volume:") {
+		t.Fatalf("Windows identity = %q, want volume/index", second.FileIdentity)
+	}
 	if first.FileIdentity == second.FileIdentity {
 		t.Fatalf("replacement identity = %q, want a different identity from %q", second.FileIdentity, first.FileIdentity)
 	}
 	if first.Equal(second) {
 		t.Fatalf("replacement was considered equal: before=%+v after=%+v", first, second)
+	}
+}
+
+func TestDiskVersionHardLinksShareIdentity(t *testing.T) {
+	root := t.TempDir()
+	firstPath := filepath.Join(root, "first.md")
+	secondPath := filepath.Join(root, "second.md")
+	if err := os.WriteFile(firstPath, []byte("content"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Link(firstPath, secondPath); err != nil {
+		t.Fatalf("create hard link: %v", err)
+	}
+	first, err := CurrentDiskVersion(firstPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	second, err := CurrentDiskVersion(secondPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if first.FileIdentity == "" || first.FileIdentity != second.FileIdentity || !first.Equal(second) {
+		t.Fatalf("hard-link disk versions differ: first=%+v second=%+v", first, second)
 	}
 }
 

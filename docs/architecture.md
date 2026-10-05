@@ -472,7 +472,13 @@ application arrangement, then Split; a new document always starts in Editor mode
 
 `frontend/src/logic/adapter/` carries the request identity and `internal/file/` resolves canonical
 paths and filesystem identity. A hard link focuses the existing document identity instead of creating
-a second tab. Invalid UTF-8 or NUL-bearing input becomes clearly read-only and is never converted.
+a second tab. The file owner acquires metadata and identity through one platform-specific
+stat operation: device/inode on POSIX and volume serial/file index on Windows. Windows reads
+metadata and identity from the same handle, opened without content access and sharing read, write
+and delete access. It follows symlinks and normalizes relative and long drive/UNC paths before
+opening the handle. Identity acquisition failures remain errors; only a missing candidate may use
+a path identity. Disk versions serialize the same filesystem identity so a replacement with matching
+size, timestamp and permissions remains detectable. Invalid UTF-8 or NUL-bearing input becomes clearly read-only and is never converted.
 UTF-8 BOM, uniform LF/CRLF and the original bytes remain stable. Mixed endings are editable but require
 the one-time, revision-bound normalization authorization before any write.
 
