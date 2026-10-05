@@ -466,10 +466,16 @@ test('keeps the Problems panel legible and reachable in every theme and mode', a
 
 test('keeps progress and Cancel usable in every theme and mode', async ({ app }) => {
     test.setTimeout(180_000);
-    const source = makeLargeMarkdown(1024 * 1024 + 32 * 1024);
+    // Exercise worker controls and cancellation; preview rendering is covered separately.
+    const source = makeLargeMarkdown(3 * 1024 * 1024);
+    const sourceBytes = Buffer.byteLength(source, 'utf8');
+    expect(sourceBytes).toBeGreaterThanOrEqual(3 * 1024 * 1024);
+    expect(sourceBytes).toBeLessThan(10 * 1024 * 1024);
     await openDocument(app, 'palette-cancel.md', source);
     const { page } = app;
     await page.setViewportSize({ width: 1280, height: 720 });
+    const preview = page.getByRole('region', { name: 'Preview pane' });
+    await expect(preview.locator('[data-preview-paused-bar="true"]')).toBeVisible();
     for (const [themeLabel, modeLabel, theme, mode] of palettes) {
         await choosePalette(page, themeLabel, modeLabel);
         await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
