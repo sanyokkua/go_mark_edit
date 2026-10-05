@@ -2,6 +2,8 @@ import { availableParallelism } from 'node:os';
 
 import { defineConfig, devices } from '@playwright/test';
 
+const isCI = Boolean(process.env.CI);
+
 export default defineConfig({
     testDir: 'tests/e2e',
     globalSetup: './tests/support/prepare.ts',
@@ -9,7 +11,8 @@ export default defineConfig({
     fullyParallel: true,
     retries: 0,
     timeout: 180_000,
-    workers: Math.min(4, availableParallelism()),
+    workers: isCI ? 1 : Math.min(4, availableParallelism()),
+    expect: { timeout: isCI ? 15_000 : 5_000 },
     outputDir: process.env.PLAYWRIGHT_OUTPUT_DIR ?? 'test-results',
     use: {
         deviceScaleFactor: 1,

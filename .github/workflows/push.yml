@@ -85,5 +85,6 @@ jobs:
                       .local_tmp_files/runs/**/*.log
                       .local_tmp_files/runs/**/*.stderr
                       .local_tmp_files/runs/**/frontend-*.json
+                      .local_tmp_files/runs/**/frontend-e2e-results/**
                   include-hidden-files: true
                   if-no-files-found: ignore

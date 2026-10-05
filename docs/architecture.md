@@ -413,7 +413,8 @@ dev and setup. Hooks and CI call the scripts directly. A developer may use the f
   never zero; warning counts do not fail a stage. `specs/*/evidence/` is disposable generated
   output, ignored by Git and formatting checks, and is not recreated by verification.
 - CI failure uploads allowlist stage JSON records, logs, stderr captures, normalized and raw reports,
-  and Jest/Playwright/Go test reports from `.local_tmp_files/runs/`; compiler, linter, Jest,
+  Jest/Playwright/Go test reports and E2E failure screenshots, error contexts and traces from
+  `.local_tmp_files/runs/`; compiler, linter, Jest,
   Playwright and TypeScript build-info caches are not uploaded.
 
 The E2E stage builds the standard Wails development executable and seed helper once, then starts two
@@ -437,8 +438,11 @@ case and preparation files for diagnosis.
 
 The OS clipboard writer cases run through the serial
 `chromium-native` Playwright project; the other cases run through `chromium`. Playwright retries are
-zero. Global workers are capped at four and the CPU capacity available to Node. Automatic failure
-screenshots and app output are retained, while traces require explicit `--trace`.
+zero. Local workers are capped at four and the CPU capacity available to Node. CI uses one worker
+to avoid concurrent application/browser contention and allows 15 seconds for UI assertions rather
+than the local five seconds. Explicit assertion timeouts and product performance bounds remain
+unchanged. Automatic failure screenshots, error contexts and app output are retained, while traces
+require explicit `--trace` to avoid recording overhead in timing-sensitive tests.
 The E2E summary reports preparation, wall, app launch/relaunch and teardown times; these totals can
 overlap and must not be added to derive wall time.
 
