@@ -298,3 +298,18 @@ the change; an older build ignores the extra row.
 - **Real application, manual:** control visibility on hover and focus, the Page column and the Full width layout and
   typography in the three themes in light and dark. The layout reference is the local, git-ignored mockup
   `.local_tmp_files/specification/mockups/gomarkedit-mockup.html`. The specs override its Done button.
+
+## Implementation notes
+
+Details settled while building that refine the decisions above without changing the specs:
+
+- Decision 5: the tab-bar control is revealed along the whole top edge and the sidebar control along the whole left
+  edge of the window, as well as on its own hover or focus; the Exit control is not edge-revealed.
+- Decision 8: the frontend waits until the opened document is the active document before entering Reading mode, and
+  `AppShell` leaves Reading mode while no document is active.
+- Decisions 3 and 4: the sidebar overlay closes by itself once the sidebar becomes unavailable (workspace closed or
+  narrow window); the single Reading Escape listener, not each overlay, closes an open overlay.
+- Decision 11: a `reading-width` action backs the Settings menu rows for Reading width.
+- Shared components: `Popup` placement pins below the anchor and scrolls within the frame so the preview context menu
+  stays on screen; `TabBar` and `Bar` accept a `hidden` prop; `ProblemsPanel`, `WorkspaceTree` and `Segmented` ignore
+  Ctrl/Cmd+Enter like other command-modifier keys.
