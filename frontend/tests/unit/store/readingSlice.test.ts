@@ -1,8 +1,11 @@
 import reducer, {
+    closeReadingOverlays,
     enterReading,
     leaveReading,
     resetReading,
     toggleReading,
+    toggleReadingSidebar,
+    toggleReadingTabs,
 } from '../../../src/logic/store/readingSlice';
 
 const initial = { active: false, sidebarShown: false, tabsShown: false };
@@ -32,4 +35,24 @@ it('toggles into Reading mode with hidden overlays and back out again', () => {
 
 it('resets to the initial state', () => {
     expect(reducer({ active: true, sidebarShown: true, tabsShown: true }, resetReading())).toEqual(initial);
+});
+
+it('toggles the sidebar and tab overlays independently', () => {
+    const active = { active: true, sidebarShown: false, tabsShown: false };
+
+    const sidebar = reducer(active, toggleReadingSidebar());
+    expect(sidebar).toEqual({ active: true, sidebarShown: true, tabsShown: false });
+    expect(reducer(sidebar, toggleReadingSidebar())).toEqual(active);
+
+    const tabs = reducer(sidebar, toggleReadingTabs());
+    expect(tabs).toEqual({ active: true, sidebarShown: true, tabsShown: true });
+    expect(reducer(tabs, toggleReadingTabs())).toEqual(sidebar);
+});
+
+it('closes both overlays and keeps Reading mode active', () => {
+    expect(reducer({ active: true, sidebarShown: true, tabsShown: true }, closeReadingOverlays())).toEqual({
+        active: true,
+        sidebarShown: false,
+        tabsShown: false,
+    });
 });

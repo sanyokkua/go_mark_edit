@@ -52,6 +52,8 @@ export interface EditorStageAdapter extends EditorSynchronizationAdapter, LivePr
 
 export interface EditorStageHandle {
     captureViewState: () => void;
+    /** Moves keyboard focus to the rendered document; false when it is not shown. */
+    focusDocument: () => boolean;
 }
 
 export type EditorStageVariant = 'normal' | 'reading';
@@ -397,6 +399,8 @@ const LivePreview: React.FC<LivePreviewProps> = ({
                 <div
                     ref={contentRef}
                     className={styles.previewContent}
+                    data-reading-document={variant === 'reading' ? '' : undefined}
+                    tabIndex={variant === 'reading' ? -1 : undefined}
                     data-scroll-sync={scrollSyncActive ? 'on' : undefined}
                     onScroll={(event): void => {
                         onScrollChange(event.currentTarget.scrollTop);
@@ -489,6 +493,11 @@ const EditorStage = forwardRef<EditorStageHandle, EditorStageProps>(function Edi
         (): EditorStageHandle => ({
             captureViewState(): void {
                 activeEditorRef.current?.captureViewState();
+            },
+            focusDocument(): boolean {
+                const document = stageRef.current?.querySelector<HTMLElement>('[data-reading-document]');
+                document?.focus();
+                return document !== null && document !== undefined;
             },
         }),
         [],

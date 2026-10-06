@@ -4,6 +4,7 @@ import { t } from '../i18n';
 import { appModelAdapter, windowAdapter } from '../logic/adapter';
 import type { LinkTarget } from '../logic/markdown/linkPolicy';
 import { store, useAppDispatch } from '../logic/store';
+import { leaveReading } from '../logic/store/readingSlice';
 import { reportClassifiedError } from '../logic/store/classifiedNotification';
 import { buildUnsupportedFileNotice } from '../logic/store/linkNotification';
 import { notifyError, notifyToast } from '../logic/store/notificationsSlice';
@@ -153,9 +154,10 @@ export function useCommands(
             const result = await appModelAdapter.newDocument?.(expectedTabSetRevision);
             activation.acknowledge(generation, result?.data);
             reportEntryError(result?.error, 'new-document');
+            if (result !== undefined && result.error === undefined) dispatch(leaveReading());
             return result;
         },
-        [activation, flushActiveDocument, reportEntryError],
+        [activation, dispatch, flushActiveDocument, reportEntryError],
     );
 
     const onOpenDocument = useCallback(

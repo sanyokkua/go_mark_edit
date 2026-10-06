@@ -28,6 +28,18 @@
     --shell-workspace-column: 0px;
 }
 
+.readingSidebar {
+    background: var(--floating-surface);
+    backdrop-filter: var(--floating-backdrop-filter);
+    box-shadow: var(--pane-shadow);
+    box-sizing: border-box;
+    inset-block: 0;
+    inset-inline-start: 0;
+    overflow: auto;
+    position: absolute;
+    z-index: var(--z-dropdown);
+}
+
 .document {
     display: flex;
     flex-direction: column;

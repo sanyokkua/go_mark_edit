@@ -21,6 +21,7 @@ import { DocumentCommandContext, EditorSessionContext } from './editorSession';
 import type { DocumentTabsProps } from './DocumentTabs/DocumentTabs';
 import DocumentTabs from './DocumentTabs/DocumentTabs';
 import FormattingToolbar from './FormattingToolbar/FormattingToolbar';
+import { useReadingPresentation } from './useReadingPresentation';
 import EditorStage, {
     type EditorStageAdapter,
     type EditorStageHandle,
@@ -101,6 +102,7 @@ const EditorView: React.FC<EditorViewProps> = ({
     const activeBuffer = useContext(EditorSessionContext);
     const minimumWindow = useMinimumWindow();
     const reading = useAppSelector((state) => state.reading.active);
+    const tabsShown = useAppSelector((state) => state.reading.tabsShown);
     const modalOpen = useModalState();
     const documentCommands = useContext(DocumentCommandContext);
     const handledEditorFocus = useRef(0);
@@ -140,6 +142,14 @@ const EditorView: React.FC<EditorViewProps> = ({
             stageRef.current?.captureViewState();
         }
     }, [reading, activeDocument?.view.editorVisible]);
+    useReadingPresentation({
+        reading,
+        modalOpen,
+        focusDocument: (): boolean => stageRef.current?.focusDocument() ?? false,
+        focusEditor: (): void => {
+            documentCommands?.focus();
+        },
+    });
     const onArrangementChange = useCallback(
         (nextArrangement: ViewArrangement): void => {
             if (nextArrangement === 'preview') {
@@ -226,7 +236,8 @@ const EditorView: React.FC<EditorViewProps> = ({
         <section aria-label={t('editor.view')} className={styles.editorView}>
             <DocumentTabs
                 adapter={tabAdapter}
-                hidden={reading}
+                className={reading ? styles.tabsOverlay : undefined}
+                hidden={reading && !tabsShown}
                 revealRequest={tabRevealRequest}
                 modalOpen={modalOpen}
                 onActivateDocument={onActivateDocument}

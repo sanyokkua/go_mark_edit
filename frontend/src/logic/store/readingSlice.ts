@@ -24,9 +24,27 @@ const readingSlice = createSlice({
         },
         toggleReading: (state) =>
             state.active ? { ...state, active: false } : { active: true, sidebarShown: false, tabsShown: false },
+        toggleReadingSidebar: (state) => {
+            state.sidebarShown = !state.sidebarShown;
+        },
+        toggleReadingTabs: (state) => {
+            state.tabsShown = !state.tabsShown;
+        },
+        closeReadingOverlays: (state) => {
+            state.sidebarShown = false;
+            state.tabsShown = false;
+        },
         resetReading: () => initialState,
     },
 });
 
-export const { enterReading, leaveReading, resetReading, toggleReading } = readingSlice.actions;
+export const {
+    closeReadingOverlays,
+    enterReading,
+    leaveReading,
+    resetReading,
+    toggleReading,
+    toggleReadingSidebar,
+    toggleReadingTabs,
+} = readingSlice.actions;
 export default readingSlice.reducer;

@@ -60,7 +60,7 @@ Test edits listed under "Changes existing tests" are required by the named requi
 
 ## 2. Escape, focus and document changes in Reading mode
 
-- [ ] 2.1 Leave Reading mode with Escape unless a menu, dialog or overlay takes it; move focus in and back out; follow
+- [x] 2.1 Leave Reading mode with Escape unless a menu, dialog or overlay takes it; move focus in and back out; follow
       document closes and new files. Verify that the named tests pass and `scripts/verify` is green.
     - Requirements: reading-mode "Entering and leaving Reading mode" (Escape scenarios), "Reading mode across document
       changes", "Reading mode focus".
@@ -79,7 +79,7 @@ Test edits listed under "Changes existing tests" are required by the named requi
 
 ## 3. Reading controls and overlays
 
-- [ ] 3.1 Add the hover-revealed Exit, Show/Hide sidebar and Show/Hide tab bar controls and the sidebar and tab bar
+- [x] 3.1 Add the hover-revealed Exit, Show/Hide sidebar and Show/Hide tab bar controls and the sidebar and tab bar
       overlays, without touching the stored layout. Verify that the named tests pass, `scripts/verify` is green, and in
       the real app the controls are invisible at rest, the Exit control stays faint on hover, and all three are fully
       visible with keyboard focus.

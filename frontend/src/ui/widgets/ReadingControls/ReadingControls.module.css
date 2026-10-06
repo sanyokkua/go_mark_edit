@@ -1,0 +1,56 @@
+/* The layer ignores the pointer so only the controls themselves take hits; it sits over the window padding. */
+.controls {
+    inset: 0;
+    pointer-events: none;
+    position: absolute;
+    z-index: var(--z-overlay);
+}
+
+.control {
+    block-size: var(--reading-control-size);
+    inline-size: var(--reading-control-size);
+    opacity: var(--reading-control-opacity-rest);
+    pointer-events: auto;
+    position: absolute;
+}
+
+.control[data-reading-control]:hover,
+.control[data-reading-control]:focus-visible,
+.control[data-reading-control][data-edge-hover='true'] {
+    background: var(--floating-surface);
+    opacity: var(--reading-control-opacity-visible);
+}
+
+/* The Exit control stays faint under the pointer so a stray hover never hides text; keyboard focus shows it fully. */
+.exit[data-reading-control]:hover {
+    opacity: var(--reading-control-opacity-exit-hover);
+}
+
+.exit[data-reading-control]:focus-visible {
+    opacity: var(--reading-control-opacity-visible);
+}
+
+.exit {
+    inset-block-start: 0;
+    inset-inline-end: 0;
+}
+
+.sidebar {
+    inset-block-start: 50%;
+    inset-inline-start: 0;
+    transform: translateY(-50%);
+}
+
+.sidebar[data-shown='true'] {
+    inset-inline-start: var(--reading-sidebar-offset);
+}
+
+.tabs {
+    inset-block-start: 0;
+    inset-inline-start: 50%;
+    transform: translateX(-50%);
+}
+
+.tabs[data-shown='true'] {
+    inset-block-start: var(--tabs-row-height);
+}

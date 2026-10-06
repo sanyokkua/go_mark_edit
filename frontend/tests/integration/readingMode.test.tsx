@@ -17,6 +17,7 @@ const THREE_MIB = 3 * 1024 * 1024;
 interface MockEditor {
     readonly scrollTop: number;
     readonly saveViewState: jest.Mock;
+    readonly focus: jest.Mock;
     userScroll(scrollTop: number): void;
 }
 
@@ -69,6 +70,7 @@ function mockCreateEditor(content: string): MockEditor & { instance: editor.ISta
     return {
         instance: instance as unknown as editor.IStandaloneCodeEditor,
         saveViewState: instance.saveViewState,
+        focus: instance.focus,
         get scrollTop(): number {
             return scrollTop;
         },
@@ -533,4 +535,108 @@ it('enters Reading mode with Ctrl+Enter while an arrangement radio has focus and
     expect(store.getState().reading.active).toBe(true);
     expect(store.getState().documents.byId['doc-1']?.view.arrangement).toBe('split');
     expect(appModelAdapter.setDocView).not.toHaveBeenCalled();
+});
+
+function pressEscape(): void {
+    fireEvent.keyDown(document.body, { key: 'Escape' });
+}
+
+it('leaves Reading mode when Escape is pressed with nothing else open', async () => {
+    await renderApp('split');
+    toggleReading();
+
+    pressEscape();
+
+    expect(store.getState().reading.active).toBe(false);
+    expect(screen.getByRole('banner', { name: 'Document identity' })).toBeVisible();
+});
+
+it('closes the Settings menu with Escape and stays in Reading mode', async () => {
+    await renderApp('split');
+    toggleReading();
+    pressCtrl(',');
+    expect(await screen.findByRole('menu', { name: 'Settings menu' })).toBeVisible();
+
+    pressEscape();
+
+    await waitFor(() => expect(screen.queryByRole('menu', { name: 'Settings menu' })).not.toBeInTheDocument());
+    expect(store.getState().reading.active).toBe(true);
+
+    pressEscape();
+
+    expect(store.getState().reading.active).toBe(false);
+});
+
+it('ignores Escape while a dialog is open', async () => {
+    await renderApp('split');
+    toggleReading();
+    fireEvent.click(screen.getByRole('button', { name: 'Open settings' }));
+
+    pressEscape();
+
+    expect(store.getState().reading.active).toBe(true);
+});
+
+it('stays in Reading mode when the active document closes and another remains', async () => {
+    await renderApp('split');
+    toggleReading();
+
+    act((): void => {
+        store.dispatch(
+            hydrateProjection({
+                revision: 2,
+                tabSetRevision: 2,
+                documents: { 'doc-2': documentFor('doc-2', 'editor', 0) },
+                orderedDocumentIds: ['doc-2'],
+                activeDocumentId: 'doc-2',
+                ui: { sidebarVisible: true, sidebarWidth: 280 },
+            }),
+        );
+    });
+
+    expect(store.getState().reading.active).toBe(true);
+});
+
+it('leaves Reading mode when the last document closes', async () => {
+    await renderApp('split');
+    toggleReading();
+
+    act((): void => {
+        store.dispatch(
+            hydrateProjection({
+                revision: 2,
+                tabSetRevision: 2,
+                documents: {},
+                orderedDocumentIds: [],
+                activeDocumentId: null,
+                ui: { sidebarVisible: true, sidebarWidth: 280 },
+            }),
+        );
+    });
+
+    expect(store.getState().reading.active).toBe(false);
+});
+
+it('moves focus to the rendered document on entry and back to the previous control on exit', async () => {
+    await renderApp('split');
+    const opener = screen.getByRole('button', { name: 'Open settings' });
+    opener.focus();
+
+    toggleReading();
+
+    expect(previewScrollContainer()).toHaveFocus();
+
+    pressEscape();
+
+    expect(opener).toHaveFocus();
+});
+
+it('returns focus to the editor on exit when the previously focused control no longer exists', async () => {
+    await renderApp('split');
+    screen.getByRole('radio', { name: 'Split' }).focus();
+    toggleReading();
+
+    pressEscape();
+
+    expect(mockMonaco.instances[0]?.focus).toHaveBeenCalled();
 });
