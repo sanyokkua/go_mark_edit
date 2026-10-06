@@ -29,9 +29,7 @@ func TestCloseBeforeFrontendReadyDrainsAndRequiresNativeConfirmation(t *testing.
 	if got := confirmation.documents(); len(got) != 1 || got[0] != "Draft.md" {
 		t.Fatalf("confirmation documents = %v, want [Draft.md]", got)
 	}
-	if owner.Snapshot().State != application.ShutdownIdle {
-		t.Fatalf("cancelled confirmation state = %q, want idle", owner.Snapshot().State)
-	}
+	waitForShutdownState(t, owner, application.ShutdownIdle, "cancelled confirmation")
 	if owner.Snapshot().FrontendReady {
 		t.Fatal("cancelled pre-ready close marked the frontend ready")
 	}
@@ -41,9 +39,7 @@ func TestCloseBeforeFrontendReadyDrainsAndRequiresNativeConfirmation(t *testing.
 		t.Fatal("second dirty close before frontend readiness was not vetoed")
 	}
 	confirmation.wait(t)
-	if owner.Snapshot().State != application.ShutdownExiting {
-		t.Fatalf("confirmed pre-ready state = %q, want exiting", owner.Snapshot().State)
-	}
+	waitForShutdownState(t, owner, application.ShutdownExiting, "confirmed pre-ready")
 }
 
 func TestCloseAfterReadyReemitsTheSameRequestAndDiscoversPendingState(t *testing.T) {
@@ -164,9 +160,7 @@ func TestCloseDeadlineDrainsPendingWriteBeforeConfirmationAndNeverDiscardsAlone(
 	if quitCalls != 0 {
 		t.Fatalf("timeout invoked quit %d times without confirmation", quitCalls)
 	}
-	if owner.Snapshot().State != application.ShutdownIdle {
-		t.Fatalf("cancelled timeout confirmation state = %q, want idle", owner.Snapshot().State)
-	}
+	waitForShutdownState(t, owner, application.ShutdownIdle, "cancelled timeout confirmation")
 
 	if !owner.BeforeClose(context.Background()) {
 		t.Fatal("retry after cancelled confirmation was not vetoed")
@@ -260,6 +254,20 @@ func (port *confirmationPort) documents() []string {
 	port.mu.Lock()
 	defer port.mu.Unlock()
 	return append([]string(nil), port.confirmedDocuments...)
+}
+
+// waitForShutdownState waits for the owner to settle in want. The confirmation
+// port answers before the owner records the outcome, so the state is read
+// only after the owner's own goroutine has had the chance to finish.
+func waitForShutdownState(t *testing.T, owner *application.ShutdownOwner, want application.ShutdownState, label string) {
+	t.Helper()
+	deadline := time.Now().Add(time.Second)
+	for owner.Snapshot().State != want {
+		if time.Now().After(deadline) {
+			t.Fatalf("%s state = %q, want %q", label, owner.Snapshot().State, want)
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
 }
 
 func (port *confirmationPort) wait(t *testing.T) {
