@@ -37,6 +37,8 @@ it('keeps the canonical action catalogue stable', () => {
         'split',
         'preview',
         'refresh-preview',
+        'preview-copy',
+        'preview-select-all',
         'toggle-sidebar',
         'toggle-problems',
         'toggle-assistant',

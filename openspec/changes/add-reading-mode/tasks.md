@@ -112,7 +112,7 @@ Test edits listed under "Changes existing tests" are required by the named requi
 
 ## 4. Preview selection and context menu
 
-- [ ] 4.1 Add the preview context menu (Copy, Select all) for the preview pane and Reading mode, and keep native
+- [x] 4.1 Add the preview context menu (Copy, Select all) for the preview pane and Reading mode, and keep native
       selection and Ctrl/Cmd+C working. Verify that the named tests pass and `scripts/verify` is green, including the
       `chromium-native` Playwright project.
     - Requirements: actions-shortcuts "Preview context menu"; markdown-preview "Selecting and copying rendered text".

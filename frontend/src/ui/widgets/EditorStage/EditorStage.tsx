@@ -21,6 +21,7 @@ import {
     type LivePreviewSnapshot,
     useLivePreviewSnapshot,
 } from '../../../logic/hooks/useLivePreview';
+import PreviewContextMenu from '../PreviewContextMenu';
 import { dispatchAction } from '../../../logic/actions/actionDispatcher';
 import { useScrollSync } from '../../../logic/hooks/useScrollSync';
 import { type EditorSynchronizationAdapter, useSyncedBuffer } from '../../../logic/hooks/useSyncedBuffer';
@@ -396,30 +397,35 @@ const LivePreview: React.FC<LivePreviewProps> = ({
             }
             ariaLabel={t('editor.previewPane')}
             body={
-                <div
-                    ref={contentRef}
-                    className={styles.previewContent}
-                    data-reading-document={variant === 'reading' ? '' : undefined}
-                    tabIndex={variant === 'reading' ? -1 : undefined}
-                    data-scroll-sync={scrollSyncActive ? 'on' : undefined}
-                    onScroll={(event): void => {
-                        onScrollChange(event.currentTarget.scrollTop);
-                    }}
-                >
-                    <PreviewPaneContent
-                        ariaLabel={null}
-                        committedPreview={committedPreview}
-                        controller={controller}
-                        documentId={activeBuffer.documentId}
-                        documentPath={documentPath}
-                        linkAdapter={adapter}
-                        notificationOwner={{ warn: onPreviewWarning }}
-                        onOpenLink={onOpenLink}
-                        onPreviewCommitted={onPreviewCommitted}
-                        showPausedStatus={false}
-                        {...(standard === undefined ? { settingsLoaded: false as const } : { standard })}
-                    />
-                </div>
+                <PreviewContextMenu>
+                    {(menuHost) => (
+                        <div
+                            {...menuHost}
+                            ref={contentRef}
+                            className={styles.previewContent}
+                            data-reading-document={variant === 'reading' ? '' : undefined}
+                            tabIndex={-1}
+                            data-scroll-sync={scrollSyncActive ? 'on' : undefined}
+                            onScroll={(event): void => {
+                                onScrollChange(event.currentTarget.scrollTop);
+                            }}
+                        >
+                            <PreviewPaneContent
+                                ariaLabel={null}
+                                committedPreview={committedPreview}
+                                controller={controller}
+                                documentId={activeBuffer.documentId}
+                                documentPath={documentPath}
+                                linkAdapter={adapter}
+                                notificationOwner={{ warn: onPreviewWarning }}
+                                onOpenLink={onOpenLink}
+                                onPreviewCommitted={onPreviewCommitted}
+                                showPausedStatus={false}
+                                {...(standard === undefined ? { settingsLoaded: false as const } : { standard })}
+                            />
+                        </div>
+                    )}
+                </PreviewContextMenu>
             }
             header={
                 variant === 'reading'

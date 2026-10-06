@@ -1,7 +1,9 @@
+import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { Page } from '@playwright/test';
 
-import { expect, test } from '../support/harness';
+import { expect, test, type E2EAppHarness } from '../support/harness';
+import { invokePreviewContextAction, nativeClipboardText, setNativeClipboard } from '../support/nativeClipboard';
 
 const SHELL = '[data-testid="application-shell"]';
 const PREVIEW = 'section[aria-label="Preview pane"]';
@@ -480,4 +482,74 @@ test('restores the first document scroll offset after switching to another tab a
 
     await expect(page.locator(PREVIEW)).toContainText('Paragraph 1');
     await expect.poll(() => page.locator('[data-reading-document]').evaluate((element) => element.scrollTop)).toBe(800);
+});
+
+async function openReferenceDocument(app: E2EAppHarness): Promise<void> {
+    const source = await readFile(
+        join(app.repositoryDirectory, 'frontend/tests/fixtures/reference-document.md'),
+        'utf8',
+    );
+    const path = await app.writeDocument('reference-document.md', source);
+    await app.seedRecents([path]);
+    await app.launch();
+    await openRecentFromLauncher(app.page, 'reference-document.md');
+}
+
+test('copies selected preview text with the keyboard shortcut', { tag: '@native-clipboard' }, async ({ app }) => {
+    await openReferenceDocument(app);
+    const { page } = app;
+    await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
+    await page.getByRole('radiogroup', { name: 'View arrangement' }).getByRole('radio', { name: 'Preview' }).click();
+    await page.evaluate(() => navigator.clipboard.writeText('sentinel'));
+    await page.locator(PREVIEW).getByRole('heading', { name: 'Getting Started' }).click({ clickCount: 3 });
+    await page.keyboard.press('ControlOrMeta+C');
+    await expect
+        .poll(async () => (await page.evaluate(() => navigator.clipboard.readText())).trim())
+        .toBe('Getting Started');
+});
+
+test(
+    'copies selected text through the preview context menu in Reading mode',
+    { tag: '@native-clipboard' },
+    async ({ app }) => {
+        await openReferenceDocument(app);
+        const { page } = app;
+        await page.keyboard.press('ControlOrMeta+Enter');
+        await expectReading(page);
+        const original = await nativeClipboardText(page);
+        try {
+            await setNativeClipboard(page, 'sentinel');
+            await page.locator(PREVIEW).getByRole('heading', { name: 'Getting Started' }).click({ clickCount: 3 });
+            await invokePreviewContextAction(page, 'Copy');
+            await expect.poll(async () => (await nativeClipboardText(page)).trim()).toBe('Getting Started');
+            await expectReading(page);
+        } finally {
+            await setNativeClipboard(page, original);
+        }
+    },
+);
+
+test('closes a mouse-opened preview menu with Escape and keeps Reading mode on the document', async ({ app }) => {
+    const source = await app.writeDocument('reading-menu-escape.md', '# Title\n\nBody paragraph.\n');
+    await app.seedRecents([source]);
+    await app.launch();
+    const { page } = app;
+    await openRecentFromLauncher(page, 'reading-menu-escape.md');
+    await page.keyboard.press('ControlOrMeta+Enter');
+    await expectReading(page);
+
+    const box = await page.locator(PREVIEW).getByText('Body paragraph.').boundingBox();
+    if (box === null) throw new Error('expected the paragraph to be laid out');
+    await page.mouse.move(box.x + 10, box.y + 5);
+    await page.mouse.down({ button: 'right' });
+    const menu = page.getByRole('menu', { name: 'Preview context menu' });
+    await expect(menu).toBeVisible();
+    await page.mouse.move(box.x + 20, box.y + 12, { steps: 4 });
+    await page.mouse.up({ button: 'right' });
+    await page.waitForTimeout(300);
+    await page.keyboard.press('Escape');
+
+    await expect(menu).toHaveCount(0);
+    await expectReading(page);
+    await expect(page.locator('[data-reading-document]')).toBeFocused();
 });

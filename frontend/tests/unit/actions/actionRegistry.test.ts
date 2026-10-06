@@ -29,6 +29,11 @@ it('exposes one localized registry entry for every Editor-stage identity', () =>
     expect(getAction('autosave').availability.kind).toBe('available');
     expect(getAction('refresh-preview').shortcut).toBeUndefined();
     expect(getAction('refresh-preview').surfaces).toContain('preview');
+    for (const id of ['preview-copy', 'preview-select-all'] as const) {
+        expect(getAction(id).shortcut).toBeUndefined();
+        expect(getAction(id).surfaces).toEqual(['preview']);
+        expect(getAction(id).scope).toBe('window');
+    }
 });
 
 it('keeps required surface membership and omits deferred actions from native clipboard ownership', () => {

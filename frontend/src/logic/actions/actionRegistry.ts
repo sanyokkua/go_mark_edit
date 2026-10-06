@@ -67,6 +67,8 @@ export type ActionId =
     | 'split'
     | 'preview'
     | 'refresh-preview'
+    | 'preview-copy'
+    | 'preview-select-all'
     | 'toggle-sidebar'
     | 'toggle-problems'
     | 'toggle-assistant'
@@ -291,6 +293,8 @@ export const actionRegistry: readonly ActionEntry[] = Object.freeze([
     entry('split', 'window', ['view-menu', 'toolbar']),
     entry('preview', 'window', ['view-menu', 'toolbar']),
     entry('refresh-preview', 'window', ['preview']),
+    entry('preview-copy', 'window', ['preview']),
+    entry('preview-select-all', 'window', ['preview']),
     entry('toggle-sidebar', 'window', ['view-menu', 'toolbar'], {
         shortcut: 'Mod+\\',
     }),

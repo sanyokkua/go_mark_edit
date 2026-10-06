@@ -42,3 +42,11 @@ export async function invokeEditorContextAction(page: Page, actionName: string):
     await expect(menu).toHaveCount(0);
     await expect(editor).toBeFocused();
 }
+
+export async function invokePreviewContextAction(page: Page, actionName: string): Promise<void> {
+    await page.keyboard.press('Shift+F10');
+    const menu = page.getByRole('menu', { name: 'Preview context menu' });
+    await expect(menu).toBeVisible();
+    await menu.getByRole('menuitem', { name: actionName, exact: true }).click();
+    await expect(menu).toHaveCount(0);
+}

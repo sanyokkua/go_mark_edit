@@ -130,6 +130,7 @@ import { store } from '../../src/logic/store';
 import { resetReading } from '../../src/logic/store/readingSlice';
 import { hydrateSettings, resetSettingsProjection } from '../../src/logic/store/settingsSlice';
 import { EditorSessionProvider } from '../../src/ui/widgets/editorSession';
+import { EditorClipboardPortContext } from '../../src/ui/widgets/useEditorActionExecutor';
 
 const DOCUMENT_CONTENT = Array.from({ length: 5 }, (_, index) => `Paragraph ${index + 1}`).join('\n\n');
 
@@ -172,6 +173,7 @@ function documentFor(documentId: string): DocumentMetadata {
 }
 
 const onActivateDocument = jest.fn(() => Promise.resolve({}));
+const clipboard = { readText: jest.fn(() => Promise.resolve('')), writeText: jest.fn(() => Promise.resolve(true)) };
 const onOpenTreeFile = jest.fn((): Promise<undefined> => Promise.resolve(undefined));
 
 function Harness(): React.JSX.Element {
@@ -209,31 +211,33 @@ function Harness(): React.JSX.Element {
 
     return (
         <Provider store={store}>
-            <WorkspaceTreeCommandsContext.Provider value={commands}>
-                <EditorSessionProvider activeBuffer={{ documentId: 'doc-1', content: DOCUMENT_CONTENT }}>
-                    <AppFrame
-                        banners={[]}
-                        bootstrap={{
-                            failure: null,
-                            isRetrying: false,
-                            result: null,
-                            retry: jest.fn(),
-                            status: 'ready',
-                        }}
-                        menuState={menuState}
-                        notices={[]}
-                        onDismiss={jest.fn()}
-                        onQuit={jest.fn()}
-                        onRetry={jest.fn()}
-                        onSettingsOpenChange={jest.fn()}
-                        onToggleProblems={jest.fn()}
-                        problemsOpen={false}
-                        recovery={null}
-                        settingsOpen={false}
-                        shell={{ onActivateDocument }}
-                    />
-                </EditorSessionProvider>
-            </WorkspaceTreeCommandsContext.Provider>
+            <EditorClipboardPortContext.Provider value={clipboard}>
+                <WorkspaceTreeCommandsContext.Provider value={commands}>
+                    <EditorSessionProvider activeBuffer={{ documentId: 'doc-1', content: DOCUMENT_CONTENT }}>
+                        <AppFrame
+                            banners={[]}
+                            bootstrap={{
+                                failure: null,
+                                isRetrying: false,
+                                result: null,
+                                retry: jest.fn(),
+                                status: 'ready',
+                            }}
+                            menuState={menuState}
+                            notices={[]}
+                            onDismiss={jest.fn()}
+                            onQuit={jest.fn()}
+                            onRetry={jest.fn()}
+                            onSettingsOpenChange={jest.fn()}
+                            onToggleProblems={jest.fn()}
+                            problemsOpen={false}
+                            recovery={null}
+                            settingsOpen={false}
+                            shell={{ onActivateDocument }}
+                        />
+                    </EditorSessionProvider>
+                </WorkspaceTreeCommandsContext.Provider>
+            </EditorClipboardPortContext.Provider>
         </Provider>
     );
 }
@@ -522,4 +526,140 @@ it('keeps the document column width while overlays are shown', async () => {
 
     expect(shell.getAttribute('style')).toBe(before);
     expect(shell).toHaveAttribute('data-reading');
+});
+
+const previewMenu = (): HTMLElement => screen.getByRole('menu', { name: 'Preview context menu' });
+const previewDocument = (): HTMLElement => {
+    const article = document.querySelector<HTMLElement>('article.gme-preview');
+    if (article === null) throw new Error('expected the rendered document');
+    return article;
+};
+
+function selectText(node: Node): void {
+    const range = document.createRange();
+    range.selectNodeContents(node);
+    const selection = window.getSelection();
+    selection?.removeAllRanges();
+    selection?.addRange(range);
+}
+
+function openPreviewMenuWithPointer(): void {
+    fireEvent.contextMenu(screen.getByText('Paragraph 2'));
+}
+
+function itemNamed(name: string): HTMLElement {
+    return within(previewMenu()).getByRole('menuitem', { name });
+}
+
+afterEach((): void => {
+    window.getSelection()?.removeAllRanges();
+});
+
+it('disables Copy in the preview menu when nothing is selected', async () => {
+    await renderApp();
+    openPreviewMenuWithPointer();
+
+    expect(itemNamed('Copy')).toBeDisabled();
+    expect(itemNamed('Select all')).toBeEnabled();
+});
+
+it('disables Copy in the preview menu when the selection lies outside the rendered document', async () => {
+    await renderApp();
+    selectText(screen.getByLabelText('Markdown source'));
+    openPreviewMenuWithPointer();
+
+    expect(itemNamed('Copy')).toBeDisabled();
+});
+
+it('copies the selected rendered text through the native clipboard port', async () => {
+    await renderApp();
+    selectText(screen.getByText('Paragraph 2'));
+    openPreviewMenuWithPointer();
+
+    fireEvent.click(itemNamed('Copy'));
+
+    await waitFor(() => expect(clipboard.writeText).toHaveBeenCalledWith('Paragraph 2'));
+    expect(screen.queryByRole('menu', { name: 'Preview context menu' })).not.toBeInTheDocument();
+});
+
+it('opens the preview menu from Shift+F10 and the Menu key with the first enabled item focused', async () => {
+    await renderApp();
+    enterReading();
+    const reading = screen.getByRole('main').querySelector<HTMLElement>('[data-reading-document]');
+    reading?.focus();
+
+    fireEvent.keyDown(reading as HTMLElement, { key: 'F10', shiftKey: true });
+    await waitFor(() => expect(itemNamed('Select all')).toHaveFocus());
+    expect(itemNamed('Copy')).toBeDisabled();
+
+    fireEvent.keyDown(reading as HTMLElement, { key: 'Escape' });
+    expect(screen.queryByRole('menu', { name: 'Preview context menu' })).not.toBeInTheDocument();
+
+    fireEvent.keyDown(reading as HTMLElement, { key: 'ContextMenu' });
+    await waitFor(() => expect(itemNamed('Select all')).toHaveFocus());
+});
+
+it('closes the preview menu with Escape, returns focus and stays in Reading mode', async () => {
+    await renderApp();
+    enterReading();
+    const reading = screen.getByRole('main').querySelector<HTMLElement>('[data-reading-document]') as HTMLElement;
+    reading.focus();
+    fireEvent.keyDown(reading, { key: 'F10', shiftKey: true });
+    await waitFor(() => expect(itemNamed('Select all')).toHaveFocus());
+
+    pressEscape();
+
+    expect(screen.queryByRole('menu', { name: 'Preview context menu' })).not.toBeInTheDocument();
+    expect(reading).toHaveFocus();
+    expect(store.getState().reading.active).toBe(true);
+});
+
+it('selects only the rendered document with Select all while the tab overlay is open', async () => {
+    await renderApp();
+    enterReading();
+    fireEvent.click(tabsControl());
+    openPreviewMenuWithPointer();
+
+    fireEvent.click(itemNamed('Select all'));
+
+    await waitFor(() => expect(window.getSelection()?.toString()).toContain('Paragraph 1'));
+    const selected = window.getSelection()?.toString() ?? '';
+    expect(selected).toContain('Paragraph 5');
+    expect(selected).not.toContain('doc-1.md');
+    expect(selected).not.toContain('Exit Reading mode');
+});
+
+it('offers the preview menu in the Split arrangement without the editor menu items', async () => {
+    await renderApp();
+    openPreviewMenuWithPointer();
+
+    expect(
+        within(previewMenu())
+            .getAllByRole('menuitem')
+            .map((item) => item.textContent),
+    ).toEqual(['Copy', 'Select all']);
+    expect(previewDocument()).toBeInTheDocument();
+});
+
+it('returns focus to the rendered document after Escape closes a mouse-opened preview menu in Reading mode', async () => {
+    await renderApp();
+    enterReading();
+    openPreviewMenuWithPointer();
+
+    pressEscape();
+
+    expect(screen.queryByRole('menu', { name: 'Preview context menu' })).not.toBeInTheDocument();
+    expect(screen.getByRole('main').querySelector('[data-reading-document]')).toHaveFocus();
+    expect(store.getState().reading.active).toBe(true);
+});
+
+it('opens the preview menu from Shift+F10 on the focused preview in the Split arrangement', async () => {
+    await renderApp();
+    const content = screen.getByRole('region', { name: 'Preview pane' }).querySelector<HTMLElement>('.previewContent');
+    content?.focus();
+    expect(content).toHaveFocus();
+
+    fireEvent.keyDown(content as HTMLElement, { key: 'F10', shiftKey: true });
+
+    await waitFor(() => expect(itemNamed('Select all')).toHaveFocus());
 });
