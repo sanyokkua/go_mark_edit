@@ -115,7 +115,9 @@ jest.mock('../../src/logic/adapter', () => ({
     },
     settingsAdapter: {
         getSettings: jest.fn(() =>
-            Promise.resolve({ appearance: { defaultOpenMode: 'editor', mode: 'light', theme: 'material' } }),
+            Promise.resolve({
+                appearance: { defaultOpenMode: 'editor', readingWidth: 'page', mode: 'light', theme: 'material' },
+            }),
         ),
         updateAppearance: jest.fn(() => Promise.resolve()),
     },

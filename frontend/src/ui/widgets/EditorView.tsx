@@ -103,6 +103,7 @@ const EditorView: React.FC<EditorViewProps> = ({
     const minimumWindow = useMinimumWindow();
     const reading = useAppSelector((state) => state.reading.active);
     const tabsShown = useAppSelector((state) => state.reading.tabsShown);
+    const readingWidth = useAppSelector((state) => state.settings.readingWidth);
     const modalOpen = useModalState();
     const documentCommands = useContext(DocumentCommandContext);
     const handledEditorFocus = useRef(0);
@@ -263,6 +264,7 @@ const EditorView: React.FC<EditorViewProps> = ({
                 panelId={EDITOR_TABPANEL_ID}
                 previewVisible={previewVisible}
                 readOnly={activeDocumentReadOnly}
+                readingWidth={readingWidth}
                 variant={reading ? 'reading' : 'normal'}
                 view={view}
             />

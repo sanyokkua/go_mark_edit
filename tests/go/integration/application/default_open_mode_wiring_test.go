@@ -34,7 +34,7 @@ func TestUpdateAppearancePropagatesDefaultOpenModeToDocumentModel(t *testing.T) 
 
 	assertNextOpenArrangement(t, holder, appmodel.ArrangementSplit)
 
-	appearance := apperr.AppearanceSettings{Theme: "material", Mode: "auto", DefaultOpenMode: settings.OpenModeViewer}
+	appearance := apperr.AppearanceSettings{Theme: "material", Mode: "auto", DefaultOpenMode: settings.OpenModeViewer, ReadingWidth: settings.ReadingWidthPage}
 	if err := holder.SettingsService.UpdateAppearance(context.Background(), appearance); err != nil {
 		t.Fatalf("UpdateAppearance(viewer): %v", err)
 	}
@@ -190,7 +190,7 @@ type stubOpenModeSettingsRepository struct {
 }
 
 func (repository *stubOpenModeSettingsRepository) GetAppearance(context.Context) (apperr.AppearanceSettings, error) {
-	return apperr.AppearanceSettings{Theme: "material", Mode: "auto", DefaultOpenMode: repository.defaultOpenMode}, nil
+	return apperr.AppearanceSettings{Theme: "material", Mode: "auto", DefaultOpenMode: repository.defaultOpenMode, ReadingWidth: settings.ReadingWidthPage}, nil
 }
 
 func (repository *stubOpenModeSettingsRepository) UpdateAppearance(_ context.Context, appearance apperr.AppearanceSettings) error {

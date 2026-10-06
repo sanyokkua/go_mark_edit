@@ -13,7 +13,7 @@ import (
 // Unsupported Appearance and Markdown enum/style members return validation envelopes without writing any part of their group.
 func TestSettingsHandlerRejectsUnsupportedGroupUpdatesWithoutWriting(t *testing.T) {
 	original := apperr.Settings{
-		Appearance: apperr.AppearanceSettings{Theme: ThemeMinimal, Mode: ModeLight, DefaultOpenMode: OpenModeViewer},
+		Appearance: apperr.AppearanceSettings{Theme: ThemeMinimal, Mode: ModeLight, DefaultOpenMode: OpenModeViewer, ReadingWidth: ReadingWidthFull},
 		Markdown: apperr.MarkdownSettings{
 			Standard:       MarkdownMinimal,
 			FormatOnSave:   true,
@@ -30,9 +30,10 @@ func TestSettingsHandlerRejectsUnsupportedGroupUpdatesWithoutWriting(t *testing.
 			name  string
 			input apperr.AppearanceSettings
 		}{
-			{name: "theme", input: apperr.AppearanceSettings{Theme: "vaporwave", Mode: original.Appearance.Mode, DefaultOpenMode: original.Appearance.DefaultOpenMode}},
-			{name: "mode", input: apperr.AppearanceSettings{Theme: original.Appearance.Theme, Mode: "midnight", DefaultOpenMode: original.Appearance.DefaultOpenMode}},
-			{name: "default open mode", input: apperr.AppearanceSettings{Theme: original.Appearance.Theme, Mode: original.Appearance.Mode, DefaultOpenMode: "split"}},
+			{name: "theme", input: apperr.AppearanceSettings{Theme: "vaporwave", Mode: original.Appearance.Mode, DefaultOpenMode: original.Appearance.DefaultOpenMode, ReadingWidth: original.Appearance.ReadingWidth}},
+			{name: "mode", input: apperr.AppearanceSettings{Theme: original.Appearance.Theme, Mode: "midnight", DefaultOpenMode: original.Appearance.DefaultOpenMode, ReadingWidth: original.Appearance.ReadingWidth}},
+			{name: "default open mode", input: apperr.AppearanceSettings{Theme: original.Appearance.Theme, Mode: original.Appearance.Mode, DefaultOpenMode: "split", ReadingWidth: original.Appearance.ReadingWidth}},
+			{name: "reading width", input: apperr.AppearanceSettings{Theme: original.Appearance.Theme, Mode: original.Appearance.Mode, DefaultOpenMode: original.Appearance.DefaultOpenMode, ReadingWidth: "wide"}},
 		}
 		for _, testCase := range testCases {
 			t.Run(testCase.name, func(t *testing.T) {

@@ -26,6 +26,7 @@ import { dispatchAction } from '../../../logic/actions/actionDispatcher';
 import { useScrollSync } from '../../../logic/hooks/useScrollSync';
 import { type EditorSynchronizationAdapter, useSyncedBuffer } from '../../../logic/hooks/useSyncedBuffer';
 import type { EditorScrollPort } from '../../../logic/scrollSync/scrollSyncTypes';
+import type { ReadingWidth } from '../../../logic/adapter/settingsTypes';
 import type { MarkdownStandard } from '../../../logic/markdown/pipeline';
 import { extractHeadings, headingAnchor, scrollToAnchor } from '../../../logic/markdown/headings';
 import { classifyLink } from '../../../logic/markdown/linkPolicy';
@@ -75,6 +76,7 @@ export interface EditorStageProps {
     panelId?: string;
     previewVisible: boolean;
     readOnly: boolean;
+    readingWidth?: ReadingWidth;
     variant?: EditorStageVariant;
     view: DocumentView;
 }
@@ -460,6 +462,7 @@ const EditorStage = forwardRef<EditorStageHandle, EditorStageProps>(function Edi
         panelId = EDITOR_TABPANEL_ID,
         previewVisible,
         readOnly,
+        readingWidth = 'page',
         variant = 'normal',
         view,
     }: EditorStageProps,
@@ -525,6 +528,7 @@ const EditorStage = forwardRef<EditorStageHandle, EditorStageProps>(function Edi
             role="tabpanel"
             data-split-resizable={split || undefined}
             data-variant={variant}
+            data-reading-width={variant === 'reading' ? readingWidth : undefined}
             style={{ '--editor-split-ratio': splitRatio.ratio } as CSSProperties}
         >
             <Pane

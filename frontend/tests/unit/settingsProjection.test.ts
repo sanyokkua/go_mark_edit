@@ -3,7 +3,7 @@ import type { Settings } from '../../src/logic/adapter/settingsTypes';
 import { bootstrapSettingsProjection, disposeSettingsProjection } from '../../src/logic/store/settingsProjection';
 
 const settings: Settings = {
-    appearance: { defaultOpenMode: 'editor', mode: 'auto', theme: 'material' },
+    appearance: { defaultOpenMode: 'editor', readingWidth: 'page', mode: 'auto', theme: 'material' },
     contentPrivacy: { remotePolicy: 'ask' },
     editor: { fontSize: 14, lineNumbers: true, scrollSync: true, wordWrap: false },
     file: { autosave: true },

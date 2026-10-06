@@ -11,6 +11,7 @@ type AppearanceSettings struct {
 	Theme           string `json:"theme"`
 	Mode            string `json:"mode"`
 	DefaultOpenMode string `json:"defaultOpenMode"`
+	ReadingWidth    string `json:"readingWidth"`
 }
 
 // MarkdownSettings contains the persisted Markdown and canonical-style settings.

@@ -27,6 +27,7 @@ it('keeps the canonical action catalogue stable', () => {
         'appearance',
         'editor-settings',
         'default-open-mode',
+        'reading-width',
         'markdown-standard',
         'autosave',
         'format-on-save',

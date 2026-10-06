@@ -18,6 +18,10 @@
     width: 100%;
 }
 
+.stage[data-variant='reading'][data-reading-width='full'] > [data-pane-identity='preview'] {
+    max-width: none;
+}
+
 .stage[data-split-resizable] {
     gap: 0;
 }

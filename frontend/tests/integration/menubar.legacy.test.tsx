@@ -15,6 +15,7 @@ jest.mock('../../src/logic/adapter', () => ({
 
 const settingsMenuProps: SettingsMenuProps = {
     defaultOpenMode: 'editor',
+    readingWidth: 'page',
     mode: 'auto',
     onDefaultOpenModeChange: jest.fn(),
     onModeChange: jest.fn(),

@@ -553,3 +553,42 @@ test('closes a mouse-opened preview menu with Escape and keeps Reading mode on t
     await expectReading(page);
     await expect(page.locator('[data-reading-document]')).toBeFocused();
 });
+
+test('Full width through the Ctrl+, Settings menu widens the document in Reading mode and persists after restart', async ({
+    app,
+}) => {
+    const source = await app.writeDocument('reading-width.md', '# Width\n\nWidth text.\n');
+    await app.seedRecents([source]);
+    await app.launch();
+    const { page } = app;
+    await page.setViewportSize({ width: 1400, height: 720 });
+    await openRecentFromLauncher(page, 'reading-width.md');
+    await page.keyboard.press('ControlOrMeta+Enter');
+    await expectReading(page);
+    const pageBox = (await page.locator(PREVIEW).boundingBox())!;
+    expect(pageBox.width).toBeLessThanOrEqual(700);
+
+    await page.keyboard.press('ControlOrMeta+,');
+    const menu = page.getByRole('menu', { name: 'Settings menu' });
+    await menu.getByRole('menuitemradio', { name: 'Full width', exact: true }).click();
+    await expect(menu.getByRole('menuitemradio', { name: 'Full width', exact: true })).toHaveAttribute(
+        'aria-checked',
+        'true',
+    );
+    await page.keyboard.press('Escape');
+
+    await expect(page.locator(SHELL)).toHaveAttribute('data-reading', 'true');
+    await expect(async () => {
+        const full = (await page.locator(PREVIEW).boundingBox())!;
+        expect(full.width).toBeGreaterThan(1000);
+    }).toPass();
+
+    await app.relaunch();
+    await page.getByRole('button', { name: 'Settings', exact: true }).click();
+    await expect(
+        page
+            .getByRole('menu', { name: 'Settings menu' })
+            .getByRole('menuitemradio', { name: 'Full width', exact: true }),
+    ).toHaveAttribute('aria-checked', 'true');
+    app.expectNoForeignRequests();
+});

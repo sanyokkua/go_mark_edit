@@ -10,6 +10,7 @@ import MenuItem, { MenuItemIndicator } from '../../components/MenuItem';
 import menuItemStyles from '../../components/MenuItem/MenuItem.module.css';
 import Popup, { PopupGroupLabel, PopupSeparator, PopupTrigger } from '../../components/Popup';
 import Segmented, { type SegmentedOption } from '../../primitives/Segmented';
+import type { ReadingWidth } from '../../../logic/adapter/settingsTypes';
 import type { DefaultOpenMode } from '../appearanceSettingsContext';
 import styles from './SettingsMenu.module.css';
 
@@ -19,7 +20,9 @@ export interface SettingsMenuProps {
     onDefaultOpenModeChange?: (defaultOpenMode: DefaultOpenMode) => void;
     onModeChange: (mode: AppearanceChoice) => void;
     onOpenAppearance: (opener?: HTMLElement | null) => void;
+    onReadingWidthChange?: (readingWidth: ReadingWidth) => void;
     onThemeChange: (theme: Theme) => void;
+    readingWidth?: ReadingWidth;
     theme: Theme;
     open?: boolean;
     onOpenChange?: (open: boolean) => void;
@@ -67,6 +70,11 @@ const openModeOptions: readonly { label: string; value: DefaultOpenMode }[] = [
     { label: t('settings.openMode.editor'), value: 'editor' },
 ];
 
+const readingWidthOptions: readonly { label: string; value: ReadingWidth }[] = [
+    { label: t('settings.readingWidth.page'), value: 'page' },
+    { label: t('settings.readingWidth.full'), value: 'full' },
+];
+
 const markdownStandardOptions = [
     { label: t('settings.menu.markdown.minimal'), value: 'minimal' },
     { label: t('settings.menu.markdown.gfm'), value: 'gfm' },
@@ -89,7 +97,9 @@ interface CompactSettingsContentProps {
     onMarkdownSettingsChange?: (patch: Partial<MarkdownSettings>) => void;
     onModeChange: (mode: AppearanceChoice) => void;
     onOpenAppearance: () => void;
+    onReadingWidthChange?: (readingWidth: ReadingWidth) => void;
     onThemeChange: (theme: Theme) => void;
+    readingWidth?: ReadingWidth;
     theme: Theme;
 }
 
@@ -103,7 +113,9 @@ const CompactSettingsContent: React.FC<CompactSettingsContentProps> = ({
     onMarkdownSettingsChange,
     onModeChange,
     onOpenAppearance,
+    onReadingWidthChange,
     onThemeChange,
+    readingWidth = 'page',
     theme,
 }: CompactSettingsContentProps): React.JSX.Element => {
     /* Availability comes from the canonical registry and hydration state. */
@@ -235,6 +247,21 @@ const CompactSettingsContent: React.FC<CompactSettingsContentProps> = ({
                 />
             ))}
             <PopupSeparator />
+            <PopupGroupLabel>{t('settings.readingWidth')}</PopupGroupLabel>
+            {readingWidthOptions.map((option) => (
+                <MenuItem
+                    data-availability={availabilityOf('reading-width')}
+                    data-settings-row={option.label}
+                    checked={readingWidth === option.value}
+                    disabled={rowUnavailable('reading-width', onReadingWidthChange)}
+                    key={option.value}
+                    label={option.label}
+                    onSelect={(): void => onReadingWidthChange?.(option.value)}
+                    radio
+                    trailing={<MenuItemIndicator checked={readingWidth === option.value} />}
+                />
+            ))}
+            <PopupSeparator />
             <PopupGroupLabel>{t('settings.menu.markdown')}</PopupGroupLabel>
             {markdownStandardOptions.map((option) => (
                 <MenuItem
@@ -287,7 +314,9 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({
     onDefaultOpenModeChange,
     onModeChange,
     onOpenAppearance,
+    onReadingWidthChange,
     onThemeChange,
+    readingWidth,
     theme,
     open: controlledOpen,
     onOpenChange,
@@ -374,6 +403,12 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({
                             : (next): void =>
                                   dispatchSettingsAction('default-open-mode', () => onDefaultOpenModeChange(next))
                     }
+                    onReadingWidthChange={
+                        onReadingWidthChange === undefined
+                            ? undefined
+                            : (next): void => dispatchSettingsAction('reading-width', () => onReadingWidthChange(next))
+                    }
+                    readingWidth={readingWidth}
                     onFileSettingsChange={(patch): void =>
                         dispatchSettingsAction('autosave', () => onFileSettingsChange?.(patch))
                     }

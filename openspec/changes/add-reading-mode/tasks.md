@@ -160,7 +160,7 @@ Test edits listed under "Changes existing tests" are required by the named requi
           Editor;
         - e2e: the choice persists after restart.
     - Docs: the `docs/index.md` preferences section lists Default open mode as selectable.
-- [ ] 5.2 Add the persisted Reading width setting (Page or Full width) to the Settings menu and the Settings dialog, and
+- [x] 5.2 Add the persisted Reading width setting (Page or Full width) to the Settings menu and the Settings dialog, and
       lay out Reading mode by it. Verify that the named tests pass, `scripts/verify` is green, and in the real app Page
       and Full width look right in Material, Glass and Minimal in light and dark, and switching through Ctrl+, while in
       Reading mode restyles at once.

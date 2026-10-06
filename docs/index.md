@@ -110,6 +110,8 @@ Detailed document lifecycle, conflict, close and shutdown flows are in [architec
 
 Default open mode (Editor by default, or Reading (Viewer), stored as `viewer`) is selectable in both the Settings menu and the Settings dialog; both show the stored choice, Reset appearance restores Editor, and it survives restart. Until Reading mode opens files directly, choosing Reading (Viewer) keeps the existing Preview-arrangement open behavior.
 
+Reading width (Page by default, or Full width, stored as `page` or `full`) is also selectable in both the Settings menu and the Settings dialog. Page shows the Reading mode document as a centered column at most 700 px wide; Full width uses the whole window width minus its padding. A new choice applies at once, including while Reading mode is active, Reset appearance restores Page, and it survives restart.
+
 **State model:** document tabs and folder workspace are process state. There is no session/tab restore or crash-recovery file. Recent Items and window/application layout persist across launches.
 
 In Split mode, drag the editor/preview divider to change the editor's share from 20 to 80 percent.

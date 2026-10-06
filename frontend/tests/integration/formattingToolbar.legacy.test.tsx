@@ -332,6 +332,7 @@ it('passes acknowledged marker preferences into toolbar formatting', async () =>
                 theme: 'material',
                 mode: 'auto',
                 defaultOpenMode: 'editor',
+                readingWidth: 'page',
             },
             markdown: {
                 standard: 'gfm',

@@ -14,6 +14,7 @@ it('keeps EditorSettings DTO and binding arity parity', async () => {
                     theme: 'material',
                     mode: 'auto',
                     defaultOpenMode: 'editor',
+                    readingWidth: 'page',
                 },
                 markdown: {
                     standard: 'gfm',

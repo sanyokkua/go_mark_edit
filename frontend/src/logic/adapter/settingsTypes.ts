@@ -1,9 +1,12 @@
 import type { ResultEnvelope } from './envelope';
 
+export type ReadingWidth = 'page' | 'full';
+
 export interface AppearanceSettings {
     theme: string;
     mode: string;
     defaultOpenMode: string;
+    readingWidth: string;
 }
 
 export interface ContentPrivacySettings {

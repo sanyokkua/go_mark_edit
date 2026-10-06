@@ -422,6 +422,7 @@ export namespace apperr {
 	    theme: string;
 	    mode: string;
 	    defaultOpenMode: string;
+	    readingWidth: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new AppearanceSettings(source);
@@ -432,6 +433,7 @@ export namespace apperr {
 	        this.theme = source["theme"];
 	        this.mode = source["mode"];
 	        this.defaultOpenMode = source["defaultOpenMode"];
+	        this.readingWidth = source["readingWidth"];
 	    }
 	}
 	export class ClassifiedError {

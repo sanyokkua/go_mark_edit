@@ -120,7 +120,9 @@ jest.mock('../../src/logic/adapter', () => ({
     },
     settingsAdapter: {
         getSettings: jest.fn(() =>
-            Promise.resolve({ appearance: { defaultOpenMode: 'editor', mode: 'light', theme: 'material' } }),
+            Promise.resolve({
+                appearance: { defaultOpenMode: 'editor', readingWidth: 'page', mode: 'light', theme: 'material' },
+            }),
         ),
         updateAppearance: jest.fn(() => Promise.resolve()),
     },
@@ -490,6 +492,31 @@ it('restyles at once when the appearance changes from Light to Dark and stays in
     expect(settingsAdapter.updateAppearance).toHaveBeenCalled();
     expect(store.getState().reading.active).toBe(true);
     expect(screen.queryByRole('navigation', { name: 'Application actions' })).not.toBeInTheDocument();
+});
+
+it('lays the stage out by the Reading width and restyles at once from the Settings dialog while reading', async () => {
+    await renderApp('split');
+    toggleReading();
+    const stage = (): HTMLElement => screen.getByRole('tabpanel');
+    expect(stage()).toHaveAttribute('data-variant', 'reading');
+    expect(stage()).toHaveAttribute('data-reading-width', 'page');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Open settings' }));
+    const dialog = await screen.findByRole('dialog');
+    fireEvent.click(within(dialog).getByRole('radio', { name: 'Full width' }));
+
+    await waitFor(() => expect(stage()).toHaveAttribute('data-reading-width', 'full'));
+    expect(store.getState().reading.active).toBe(true);
+    expect(stage()).toHaveAttribute('data-variant', 'reading');
+
+    fireEvent.click(within(dialog).getByRole('radio', { name: 'Page' }));
+    await waitFor(() => expect(stage()).toHaveAttribute('data-reading-width', 'page'));
+    expect(store.getState().reading.active).toBe(true);
+});
+
+it('does not mark the stage with a reading width outside Reading mode', async () => {
+    await renderApp('split');
+    expect(screen.getByRole('tabpanel')).not.toHaveAttribute('data-reading-width');
 });
 
 it('keeps the rendered document in the window at 375 px and shows no editor pane', async () => {

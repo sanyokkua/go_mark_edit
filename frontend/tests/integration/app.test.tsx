@@ -46,6 +46,7 @@ jest.mock('../../src/logic/adapter', () => ({
         getSettings: jest.fn(async () => ({
             appearance: {
                 defaultOpenMode: 'editor',
+                readingWidth: 'page',
                 mode: 'auto',
                 theme: 'material',
             },

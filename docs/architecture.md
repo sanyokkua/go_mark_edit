@@ -873,6 +873,10 @@ The owner decisions that shaped this refactor are recorded here so they are not 
   sidebar visibility and width. The `add-reading-mode` change specifies that the backend signals
   Reading-on-open to the frontend through `OpenResult.readingMode`; the open-document flow text in
   this file is updated when that signal is delivered.
+  The Reading width (Page or Full width, stored as `view.readingWidth`, `page` by default) is the
+  exception to this transience: it is a persisted appearance setting owned by the Go settings
+  service, projected into `settingsSlice` and applied as `data-reading-width` on the Reading stage,
+  while Reading mode itself stays unpersisted.
 
 ## Planning decisions retained
 
