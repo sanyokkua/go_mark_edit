@@ -1,6 +1,8 @@
 import { expect, test } from '../support/harness';
 
-test('runs tidy from the active document while Assistant and Export stay deferred', async ({ app }) => {
+test('runs tidy from the active document and enables Distraction-free reading while Assistant and Export stay deferred', async ({
+    app,
+}) => {
     const source = await app.writeDocument('tidy-surface.md', '* item\n');
     await app.seedRecents([source]);
     await app.launch();
@@ -62,7 +64,7 @@ test('runs tidy from the active document while Assistant and Export stay deferre
     await page.getByRole('button', { name: 'View', exact: true }).click();
     const viewMenu = page.getByRole('menu', { name: 'View options' });
     await expect(viewMenu.getByRole('menuitem', { name: 'Toggle Assistant' })).toBeDisabled();
-    await expect(viewMenu.getByRole('menuitem', { name: 'Distraction-free reading' })).toBeDisabled();
+    await expect(viewMenu.getByRole('menuitem', { name: 'Distraction-free reading' })).toBeEnabled();
     await page.keyboard.press('Escape');
 
     const shell = page.getByTestId('application-shell');

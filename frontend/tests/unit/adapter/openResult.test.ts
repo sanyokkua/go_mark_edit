@@ -38,3 +38,12 @@ it('leaves reveal and tree paths absent when the bridge omits them', async () =>
     expect(Object.hasOwn(result ?? {}, 'revealPath')).toBe(false);
     expect(Object.hasOwn(result ?? {}, 'treePath')).toBe(false);
 });
+
+it('carries readingMode only when the bridge reports it', async () => {
+    respondWith({ status: 'opened', documentId: 'target', readingMode: true });
+    expect((await appModelAdapter.openPreviewLink?.('source', './target.md'))?.readingMode).toBe(true);
+
+    respondWith({ status: 'opened', documentId: 'target' });
+    const result = await appModelAdapter.openPreviewLink?.('source', './target.md');
+    expect(Object.hasOwn(result ?? {}, 'readingMode')).toBe(false);
+});

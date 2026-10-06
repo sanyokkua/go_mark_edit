@@ -15,6 +15,9 @@ const (
 	OpenModeEditor = "editor"
 	OpenModeViewer = "viewer"
 
+	ReadingWidthPage = "page"
+	ReadingWidthFull = "full"
+
 	MarkdownMinimal = "minimal"
 	MarkdownGFM     = "gfm"
 	MarkdownFull    = "full"
@@ -48,6 +51,7 @@ func DefaultSettings() apperr.Settings {
 			Theme:           ThemeMaterial,
 			Mode:            ModeAuto,
 			DefaultOpenMode: OpenModeEditor,
+			ReadingWidth:    ReadingWidthPage,
 		},
 		Markdown: apperr.MarkdownSettings{
 			Standard:       MarkdownFull,

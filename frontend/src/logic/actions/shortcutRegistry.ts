@@ -31,6 +31,7 @@ export function formatShortcut(binding: string, platform: Platform): string {
             if (part === 'Mod') return platform === 'darwin' ? '⌘' : 'Ctrl';
             if (part === 'Alt') return platform === 'darwin' ? '⌥' : 'Alt';
             if (part === 'Shift') return platform === 'darwin' ? '⇧' : 'Shift';
+            if (part === 'Enter') return platform === 'darwin' ? '↩' : 'Enter';
             return specialKeys[part] ?? part.toUpperCase();
         })
         .join(platform === 'darwin' ? '' : '+');

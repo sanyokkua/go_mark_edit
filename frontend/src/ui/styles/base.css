@@ -38,8 +38,10 @@ body {
     min-width: 0;
 }
 
+/* Pinned to the flexible row so a hidden menu row (Reading mode) cannot pull the content into the auto row. */
 .application-content {
     display: flex;
+    grid-row: 2;
     flex-direction: column;
     min-height: 0;
     overflow: hidden;

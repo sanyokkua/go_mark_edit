@@ -14,6 +14,7 @@ import {
     forwardRef,
 } from 'react';
 
+import { hasCommandModifier } from '../../primitives/commandModifier';
 import styles from './Popup.module.css';
 
 export type PopupSize = 'menu' | 'wide' | 'details';
@@ -203,19 +204,32 @@ const Popup = ({
         const anchorPosition = anchorMetrics(anchor, metrics);
         const popupBounds = popup.getBoundingClientRect();
         const width = popupBounds.width || popup.offsetWidth;
-        const height = popupBounds.height || popup.offsetHeight;
+        // The natural height ignores any max-block-size applied by an earlier placement, so
+        // placing the same popup again reaches the same decision.
+        const height = Math.max(
+            popupBounds.height || popup.offsetHeight,
+            popup.scrollHeight + popup.offsetHeight - popup.clientHeight,
+        );
         const margin = 8;
         const maximumLeft = Math.max(margin, metrics.width - width - margin);
         const left = Math.min(Math.max(margin, anchorPosition.left), maximumLeft);
         const availableHeight = Math.max(margin, metrics.height - margin * 2);
-        const shouldConstrain = popup.scrollHeight > availableHeight;
-        const maxBlockSize = shouldConstrain ? availableHeight : undefined;
-        const bottom = anchorPosition.top + height;
+        const fitsBelow = anchorPosition.top + height <= metrics.height - margin;
+        const fitsAbove = anchorPosition.anchorTop - height - margin >= margin;
+        const spaceBelow = Math.max(margin, metrics.height - margin - anchorPosition.top);
+        // A popup that fits in the frame but on neither side of the anchor stays below it and
+        // scrolls, rather than covering the trigger that opened it, when more room is below.
+        const pinBelow =
+            !fitsBelow &&
+            !fitsAbove &&
+            height <= availableHeight &&
+            spaceBelow >= anchorPosition.anchorTop - margin * 2;
+        const constrainedHeight = pinBelow ? spaceBelow : availableHeight;
+        const maxBlockSize = height > constrainedHeight ? constrainedHeight : undefined;
+        const placedHeight = maxBlockSize ?? height;
         const top =
-            bottom <= metrics.height - margin
-                ? anchorPosition.top
-                : Math.max(margin, anchorPosition.anchorTop - height - margin);
-        const boundedTop = Math.min(Math.max(margin, top), Math.max(margin, metrics.height - height - margin));
+            fitsBelow || pinBelow ? anchorPosition.top : Math.max(margin, anchorPosition.anchorTop - height - margin);
+        const boundedTop = Math.min(Math.max(margin, top), Math.max(margin, metrics.height - placedHeight - margin));
         const viewportLeft = metrics.left + left;
         const viewportTop = metrics.top + boundedTop;
         setPlacement((current) =>
@@ -305,7 +319,7 @@ const Popup = ({
             menuItems(popupRef.current).at(-1)?.focus();
             return;
         }
-        if (event.key.length !== 1 || event.ctrlKey || event.metaKey || event.altKey) {
+        if (event.key.length !== 1 || event.altKey || hasCommandModifier(event)) {
             return;
         }
         typeahead.current += event.key.toLocaleLowerCase();
@@ -386,7 +400,10 @@ export const PopupTrigger = forwardRef<HTMLButtonElement, PopupTriggerProps>(fun
             onKeyDown={(event): void => {
                 onKeyDown?.(event);
                 if (event.defaultPrevented) return;
-                if (event.key !== 'ArrowDown' && event.key !== 'Enter' && event.key !== ' ') {
+                if (
+                    (event.key !== 'ArrowDown' && event.key !== 'Enter' && event.key !== ' ') ||
+                    hasCommandModifier(event)
+                ) {
                     return;
                 }
                 event.preventDefault();

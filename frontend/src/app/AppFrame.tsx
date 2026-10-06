@@ -1,6 +1,7 @@
 import type { ComponentProps, PropsWithChildren } from 'react';
 
 import { t } from '../i18n';
+import { useAppSelector } from '../logic/store';
 import type { RecoverySurface } from '../logic/store/appModelTypes';
 import Notifications, { type NotificationNotice } from '../ui/components/Notifications';
 import Button from '../ui/primitives/Button';
@@ -44,10 +45,11 @@ export function AppFrame({
     children,
 }: AppFrameProps): React.JSX.Element {
     const ready = bootstrap.status === 'ready';
+    const reading = useAppSelector((state) => state.reading.active);
     return (
         <div className="application-frame">
             <AppearanceSettingsProvider settingsOpen={settingsOpen} onSettingsOpenChange={onSettingsOpenChange}>
-                <div className="application-menu">
+                <div className="application-menu" hidden={reading}>
                     {ready ? (
                         <ApplicationMenubar
                             menuState={menuState}

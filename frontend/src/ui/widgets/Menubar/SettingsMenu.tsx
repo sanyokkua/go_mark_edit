@@ -10,14 +10,19 @@ import MenuItem, { MenuItemIndicator } from '../../components/MenuItem';
 import menuItemStyles from '../../components/MenuItem/MenuItem.module.css';
 import Popup, { PopupGroupLabel, PopupSeparator, PopupTrigger } from '../../components/Popup';
 import Segmented, { type SegmentedOption } from '../../primitives/Segmented';
+import type { ReadingWidth } from '../../../logic/adapter/settingsTypes';
+import type { DefaultOpenMode } from '../appearanceSettingsContext';
 import styles from './SettingsMenu.module.css';
 
 export interface SettingsMenuProps {
-    defaultOpenMode?: 'reading' | 'editor';
+    defaultOpenMode?: DefaultOpenMode;
     mode: AppearanceChoice;
+    onDefaultOpenModeChange?: (defaultOpenMode: DefaultOpenMode) => void;
     onModeChange: (mode: AppearanceChoice) => void;
     onOpenAppearance: (opener?: HTMLElement | null) => void;
+    onReadingWidthChange?: (readingWidth: ReadingWidth) => void;
     onThemeChange: (theme: Theme) => void;
+    readingWidth?: ReadingWidth;
     theme: Theme;
     open?: boolean;
     onOpenChange?: (open: boolean) => void;
@@ -60,12 +65,14 @@ const modeOptions: readonly SegmentedOption<AppearanceChoice>[] = [
     { label: t('settings.menu.appearance.dark'), value: 'dark' },
 ];
 
-const openModeOptions: readonly {
-    label: string;
-    value: 'reading' | 'editor';
-}[] = [
-    { label: t('settings.openMode.reading'), value: 'reading' },
+const openModeOptions: readonly { label: string; value: DefaultOpenMode }[] = [
+    { label: t('settings.openMode.reading'), value: 'viewer' },
     { label: t('settings.openMode.editor'), value: 'editor' },
+];
+
+const readingWidthOptions: readonly { label: string; value: ReadingWidth }[] = [
+    { label: t('settings.readingWidth.page'), value: 'page' },
+    { label: t('settings.readingWidth.full'), value: 'full' },
 ];
 
 const markdownStandardOptions = [
@@ -81,15 +88,18 @@ const saveToggleLabels = {
 } as const;
 
 interface CompactSettingsContentProps {
-    defaultOpenMode?: 'reading' | 'editor';
+    defaultOpenMode?: DefaultOpenMode;
     fileSettings?: FileSettings;
     markdownSettings?: MarkdownSettings;
     mode: AppearanceChoice;
+    onDefaultOpenModeChange?: (defaultOpenMode: DefaultOpenMode) => void;
     onFileSettingsChange?: (patch: Partial<FileSettings>) => void;
     onMarkdownSettingsChange?: (patch: Partial<MarkdownSettings>) => void;
     onModeChange: (mode: AppearanceChoice) => void;
     onOpenAppearance: () => void;
+    onReadingWidthChange?: (readingWidth: ReadingWidth) => void;
     onThemeChange: (theme: Theme) => void;
+    readingWidth?: ReadingWidth;
     theme: Theme;
 }
 
@@ -98,11 +108,14 @@ const CompactSettingsContent: React.FC<CompactSettingsContentProps> = ({
     fileSettings,
     markdownSettings,
     mode,
+    onDefaultOpenModeChange,
     onFileSettingsChange,
     onMarkdownSettingsChange,
     onModeChange,
     onOpenAppearance,
+    onReadingWidthChange,
     onThemeChange,
+    readingWidth = 'page',
     theme,
 }: CompactSettingsContentProps): React.JSX.Element => {
     /* Availability comes from the canonical registry and hydration state. */
@@ -121,9 +134,9 @@ const CompactSettingsContent: React.FC<CompactSettingsContentProps> = ({
      * calls nothing is inoperable. A row is operable only
      * when the registry allows it *and* something is there to receive the change.
      *
-     * `writer` is omitted by the open-mode list, which has no command here.
-     * Markdown standard uses the same acknowledged settings writer as the
-     * other Markdown controls.
+     * Default open mode writes through the appearance controller; Markdown
+     * standard uses the same acknowledged settings writer as the other
+     * Markdown controls.
      */
     const rowUnavailable = (id: ActionId, writer?: unknown): boolean => settingUnavailable(id) || writer === undefined;
 
@@ -224,10 +237,28 @@ const CompactSettingsContent: React.FC<CompactSettingsContentProps> = ({
                 <MenuItem
                     data-availability={availabilityOf('default-open-mode')}
                     data-settings-row={option.label}
-                    disabled={rowUnavailable('default-open-mode')}
+                    checked={defaultOpenMode === option.value}
+                    disabled={rowUnavailable('default-open-mode', onDefaultOpenModeChange)}
                     key={option.value}
                     label={option.label}
+                    onSelect={(): void => onDefaultOpenModeChange?.(option.value)}
+                    radio
                     trailing={<MenuItemIndicator checked={defaultOpenMode === option.value} />}
+                />
+            ))}
+            <PopupSeparator />
+            <PopupGroupLabel>{t('settings.readingWidth')}</PopupGroupLabel>
+            {readingWidthOptions.map((option) => (
+                <MenuItem
+                    data-availability={availabilityOf('reading-width')}
+                    data-settings-row={option.label}
+                    checked={readingWidth === option.value}
+                    disabled={rowUnavailable('reading-width', onReadingWidthChange)}
+                    key={option.value}
+                    label={option.label}
+                    onSelect={(): void => onReadingWidthChange?.(option.value)}
+                    radio
+                    trailing={<MenuItemIndicator checked={readingWidth === option.value} />}
                 />
             ))}
             <PopupSeparator />
@@ -280,9 +311,12 @@ const CompactSettingsContent: React.FC<CompactSettingsContentProps> = ({
 const SettingsMenu: React.FC<SettingsMenuProps> = ({
     defaultOpenMode,
     mode,
+    onDefaultOpenModeChange,
     onModeChange,
     onOpenAppearance,
+    onReadingWidthChange,
     onThemeChange,
+    readingWidth,
     theme,
     open: controlledOpen,
     onOpenChange,
@@ -363,6 +397,18 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({
                     fileSettings={fileSettings}
                     markdownSettings={markdownSettings}
                     mode={mode}
+                    onDefaultOpenModeChange={
+                        onDefaultOpenModeChange === undefined
+                            ? undefined
+                            : (next): void =>
+                                  dispatchSettingsAction('default-open-mode', () => onDefaultOpenModeChange(next))
+                    }
+                    onReadingWidthChange={
+                        onReadingWidthChange === undefined
+                            ? undefined
+                            : (next): void => dispatchSettingsAction('reading-width', () => onReadingWidthChange(next))
+                    }
+                    readingWidth={readingWidth}
                     onFileSettingsChange={(patch): void =>
                         dispatchSettingsAction('autosave', () => onFileSettingsChange?.(patch))
                     }

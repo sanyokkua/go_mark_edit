@@ -251,6 +251,9 @@ func normalizeAppearance(appearance apperr.AppearanceSettings) apperr.Appearance
 	if !isOpenMode(appearance.DefaultOpenMode) {
 		appearance.DefaultOpenMode = defaults.DefaultOpenMode
 	}
+	if !isReadingWidth(appearance.ReadingWidth) {
+		appearance.ReadingWidth = defaults.ReadingWidth
+	}
 	return appearance
 }
 
@@ -300,6 +303,9 @@ func validateAppearance(appearance apperr.AppearanceSettings) error {
 	if !isOpenMode(appearance.DefaultOpenMode) {
 		return apperr.Validation("view.defaultOpenMode", "editor or viewer", appearance.DefaultOpenMode)
 	}
+	if !isReadingWidth(appearance.ReadingWidth) {
+		return apperr.Validation("view.readingWidth", "page or full", appearance.ReadingWidth)
+	}
 	return nil
 }
 
@@ -339,6 +345,10 @@ func isTheme(value string) bool {
 
 func isMode(value string) bool {
 	return value == ModeAuto || value == ModeLight || value == ModeDark
+}
+
+func isReadingWidth(value string) bool {
+	return value == ReadingWidthPage || value == ReadingWidthFull
 }
 
 func isOpenMode(value string) bool {

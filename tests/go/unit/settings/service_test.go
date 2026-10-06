@@ -29,7 +29,7 @@ func TestInvalidOrMissingSettingFallsBackToDefault(t *testing.T) {
 		{
 			name: "malformed scalar values",
 			repository: fakeSettingsRepository{
-				appearance:     apperr.AppearanceSettings{Theme: "neon", Mode: "midnight"},
+				appearance:     apperr.AppearanceSettings{Theme: "neon", Mode: "midnight", DefaultOpenMode: "split", ReadingWidth: "wide"},
 				markdown:       apperr.MarkdownSettings{Standard: "commonmark-plus", FormatOnSave: defaults.Markdown.FormatOnSave, LintOnSave: defaults.Markdown.LintOnSave},
 				contentPrivacy: apperr.ContentPrivacySettings{RemotePolicy: "sometimes"},
 			},
@@ -105,6 +105,7 @@ func TestAppearanceUsesTheGlassValueAndReadsTheRetiredValue(t *testing.T) {
 			Theme:           "glass",
 			Mode:            ModeDark,
 			DefaultOpenMode: OpenModeEditor,
+			ReadingWidth:    ReadingWidthFull,
 		}
 
 		if err := service.UpdateAppearance(context.Background(), appearance); err != nil {
@@ -121,6 +122,7 @@ func TestAppearanceUsesTheGlassValueAndReadsTheRetiredValue(t *testing.T) {
 				Theme:           "liquid-glass",
 				Mode:            ModeLight,
 				DefaultOpenMode: OpenModeEditor,
+				ReadingWidth:    ReadingWidthFull,
 			},
 		})
 
@@ -293,3 +295,37 @@ func (repository *fakeSettingsRepository) UpdateFile(_ context.Context, file app
 }
 
 var _ SettingsRepositoryAPI = (*fakeSettingsRepository)(nil)
+
+func TestDefaultReadingWidthIsPage(t *testing.T) {
+	if got := DefaultSettings().Appearance.ReadingWidth; got != ReadingWidthPage {
+		t.Fatalf("default reading width = %q, want %q", got, ReadingWidthPage)
+	}
+	if ReadingWidthPage != "page" || ReadingWidthFull != "full" {
+		t.Fatalf("reading width values = %q and %q, want page and full", ReadingWidthPage, ReadingWidthFull)
+	}
+}
+
+func TestAppearanceReadingWidthSavedAndRefused(t *testing.T) {
+	repository := &fakeSettingsRepository{}
+	service := NewSettingsService(repository)
+	valid := apperr.AppearanceSettings{Theme: ThemeMaterial, Mode: ModeAuto, DefaultOpenMode: OpenModeEditor, ReadingWidth: ReadingWidthFull}
+	if err := service.UpdateAppearance(context.Background(), valid); err != nil {
+		t.Fatalf("update full reading width: %v", err)
+	}
+	got, err := service.Get(context.Background())
+	if err != nil {
+		t.Fatalf("read reading width: %v", err)
+	}
+	if got.Appearance.ReadingWidth != ReadingWidthFull {
+		t.Fatalf("reading width = %q, want full", got.Appearance.ReadingWidth)
+	}
+
+	invalid := valid
+	invalid.ReadingWidth = "wide"
+	if err := service.UpdateAppearance(context.Background(), invalid); err == nil {
+		t.Fatal("update with reading width wide succeeded, want a validation error")
+	}
+	if repository.appearance.ReadingWidth != ReadingWidthFull {
+		t.Fatalf("stored reading width after refused write = %q, want full", repository.appearance.ReadingWidth)
+	}
+}

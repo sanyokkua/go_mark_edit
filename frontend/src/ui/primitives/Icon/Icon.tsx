@@ -29,6 +29,7 @@ export type IconName =
     | 'split'
     | 'strike'
     | 'table'
+    | 'tabs'
     | 'task-list'
     | 'warning'
     | 'note'
@@ -128,6 +129,7 @@ const iconShapes: Record<IconName, React.JSX.Element> = {
             <path d="M2 6h11M2 9.3h11M5.7 2.5v10M9.3 2.5v10" />
         </>
     ),
+    tabs: <path d="M2.5 12.5v-7h10v7zm0-7v-2h4v2" />,
     'task-list': (
         <>
             <rect x="2" y="2.7" width="3" height="3" rx=".4" />

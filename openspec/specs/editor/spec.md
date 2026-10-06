@@ -31,12 +31,16 @@ The system SHALL offer Editor, Split and Preview arrangements per document, stac
 
 ### Requirement: Open mode
 
-The system SHALL open a file in the Preview arrangement when the default open mode is viewer, and otherwise in the arrangement last saved for that file, falling back to the window's current arrangement and then to Split.
+The system SHALL open a file in the arrangement last saved for that file, falling back to the window's current
+arrangement and then to Split, whatever the default open mode is. WHEN the default open mode is Reading (Viewer), the
+system SHALL additionally show the file in Reading mode as the reading-mode capability defines, and leaving Reading
+mode SHALL show that arrangement.
 
 #### Scenario: Viewer mode
 
-- **WHEN** the default open mode is viewer and the user opens a Markdown file
-- **THEN** the file opens in the Preview arrangement
+- **WHEN** the default open mode is Reading (Viewer) and the user opens a Markdown file last closed in the Editor
+  arrangement
+- **THEN** the file is shown in Reading mode, and leaving Reading mode shows the Editor arrangement
 
 #### Scenario: Editor mode with saved arrangement
 
@@ -123,11 +127,11 @@ The system SHALL draw the editor caret in the active theme's caret color with no
 - **WHEN** the editor has focus in any theme and appearance mode
 - **THEN** the caret uses the theme caret color and no decorative glow surrounds it
 
-### Requirement: Unavailable controls
+### Requirement: Image formatting action unavailable
 
-The system SHALL show Distraction-free reading and the Image formatting action as disabled controls until those features exist.
+The system SHALL show the Image formatting action as a disabled control until that feature exists.
 
-#### Scenario: Distraction-free reading
+#### Scenario: Image formatting
 
-- **WHEN** the user opens the View menu
-- **THEN** Distraction-free reading is listed and disabled
+- **WHEN** the user looks at the Image button of the formatting toolbar
+- **THEN** it is shown disabled and activating it or pressing Ctrl+Shift+I (Cmd+Shift+I on macOS) does nothing

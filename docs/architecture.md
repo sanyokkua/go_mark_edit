@@ -69,6 +69,7 @@ receive commands through props and contexts.
 | `frontend/src/logic/adapter/`                        | The bridge boundary, request pacing, event subscriptions, service wrappers and the native `ClipboardPort`.                                        |
 | `frontend/src/logic/store/`                          | A disposable Redux projection of backend state; it is not the source of truth.                                                                    |
 | `frontend/src/logic/store/appModelProjection.ts`     | Initial hydration, ordered state-patch delivery and authoritative metadata recovery after revision gaps.                                          |
+| `frontend/src/logic/store/readingSlice.ts`           | Transient, never-persisted Reading mode window state: the active flag and the sidebar and tab-bar overlay flags.                                  |
 | `frontend/src/logic/store/workspaceSlice.ts`         | Disposable projection of the workspace snapshot and local tree-reading state.                                                                     |
 | `frontend/src/logic/actions/actionRegistry.ts`       | The action catalogue and availability decisions used by every command surface, including Markdown hydration, document and tidy-operation state.   |
 | `frontend/src/logic/actions/editorActionExecutor.ts` | The sole editor-action owner for dispatch, clipboard, formatting, selection snapshots and focus restoration.                                      |
@@ -86,7 +87,10 @@ receive commands through props and contexts.
 | `frontend/src/ui/widgets/DocumentTabs/`              | The DocumentTabs consumer of TabBar and tab-specific commands.                                                                                    |
 | `frontend/src/ui/widgets/WorkspaceTree/`             | Sidebar tree, header controls, empty and unavailable states, context menu and create-entry prompt.                                                |
 | `frontend/src/ui/widgets/FormattingToolbar/`         | Formatting groups, arrangement control and Bar overflow.                                                                                          |
-| `frontend/src/ui/widgets/EditorStage/`               | Editor/preview panes, arrangement, preview accessory state and synchronized scrolling.                                                            |
+| `frontend/src/ui/widgets/EditorStage/`               | Editor/preview panes, arrangement, the `reading` presentation variant, preview accessory state and synchronized scrolling.                        |
+| `frontend/src/ui/widgets/ReadingControls/`           | Reading mode hover- and focus-revealed Exit, sidebar and tab-bar controls and their overlays.                                                     |
+| `frontend/src/ui/widgets/PreviewContextMenu.tsx`     | Preview and Reading mode context menu (Copy, Select all) built from the action registry.                                                          |
+| `frontend/src/ui/widgets/useReadingPresentation.ts`  | Reading mode Escape and focus handling: closes an open overlay first, then leaves Reading mode.                                                   |
 | `frontend/src/ui/widgets/ProblemsPanel/`             | Accessible presentation of active-document lint findings; activation returns through the guarded editor command seam.                             |
 | `frontend/src/ui/widgets/dialogs/`                   | Settings, About, Shortcuts, close, conflict and normalization dialogs.                                                                            |
 | `frontend/src/ui/widgets/StartupFailure/`            | Per-step startup failure, Retry and Quit.                                                                                                         |
@@ -101,13 +105,14 @@ registry.
 ### Popup — `frontend/src/ui/components/Popup/`
 
 Popup owns the portal, open/close lifecycle, Escape and outside-pointer dismissal, focus restoration,
-menu navigation, collision handling and frame-bounded placement. It portals into the document body
+menu navigation, collision handling and frame-bounded placement (a popup that does not fit above or below
+pins below its anchor and scrolls within the frame, measured from its natural height). It portals into the document body
 with fixed viewport coordinates, uses an 8 px application-frame collision margin, and supports
 trigger, point and bounds anchors. The body portal keeps floating surfaces outside the application
 frame's backdrop root so their blur samples the document content beneath them.
 
 Consumers: File menu, Settings menu, View menu, About menu, narrow menubar overflow, tab context menu,
-workspace tree context menu (point-anchored), editor context menu, formatting-toolbar overflow and the
+workspace tree context menu (point-anchored), editor context menu, preview context menu, formatting-toolbar overflow and the
 StatusBar Document details disclosure.
 
 Popup establishes initial focus once after placement; moving an open popup (for example when a theme
@@ -121,7 +126,7 @@ live in `frontend/src/ui/styles/tokens.css`; rows can grow for larger content. P
 section labels and separators, without a competing row style.
 
 Consumers are File (including indented recent/reopen rows), Settings (Theme and Appearance radios,
-value rows and switches), View, About, narrow menubar overflow, tab and editor context menus, and
+value rows and switches), View, About, narrow menubar overflow, tab, editor and preview context menus, and
 formatting-toolbar overflow. Recent/reopen rows retain their indentation with the same typography
 and vertical spacing. The Shortcuts dialog also reuses the shared accelerator formatting helper.
 
@@ -478,9 +483,12 @@ For a feature-specific runtime check:
 ### Opening and identity
 
 Every file-entry route uses the application model's open flow. Supported suffixes are `.md`,
-`.markdown`, `.mdown` and `.txt`, case-insensitively. The global default open mode is applied first:
-Reading opens directly in Reading mode; Editor opens with the document's persisted view, then the last
-application arrangement, then Split; a new document always starts in Editor mode.
+`.markdown`, `.mdown` and `.txt`, case-insensitively. Every open takes the document's persisted view,
+then the last application arrangement, then Split, in both default open modes; a new document always starts
+in Editor mode. With the Reading (Viewer) default the backend sets `readingMode` on an `opened` result (never
+on `focused`, `refused`, `cancelled`, `folder-target` or a new document), and the frontend open commands
+enter Reading mode when the open is still the current activation. A false flag never leaves Reading mode, and
+the workspace tree's New File ignores the flag and leaves Reading mode.
 
 `frontend/src/logic/adapter/` carries the request identity and `internal/file/` resolves canonical
 paths and filesystem identity. A hard link focuses the existing document identity instead of creating
@@ -864,6 +872,18 @@ The owner decisions that shaped this refactor are recorded here so they are not 
   without replaying their deltas. Engineering rules live in `openspec/config.yaml`. Generated
   OpenSpec skills and commands under `.agents/` and `.claude/` are tool output refreshed by
   `openspec update`.
+
+- **D17 — Reading mode is transient frontend window state:** it refines ADR-0014. Whether the window
+  is in Reading mode lives in the frontend-owned
+  `frontend/src/logic/store/readingSlice.ts`. The state is never persisted: it is not stored per
+  document or across restarts, and it never changes a document's saved arrangement or the stored
+  sidebar visibility and width. With the Reading (Viewer) default open mode the backend signals
+  Reading-on-open to the frontend through `OpenResult.readingMode`, as described in the open-document
+  flow above.
+  The Reading width (Page or Full width, stored as `view.readingWidth`, `page` by default) is the
+  exception to this transience: it is a persisted appearance setting owned by the Go settings
+  service, projected into `settingsSlice` and applied as `data-reading-width` on the Reading stage,
+  while Reading mode itself stays unpersisted.
 
 ## Planning decisions retained
 

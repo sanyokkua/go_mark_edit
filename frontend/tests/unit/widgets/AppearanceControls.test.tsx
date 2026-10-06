@@ -22,6 +22,7 @@ jest.mock('../../../src/logic/adapter', () => ({
         getSettings: jest.fn(async () => ({
             appearance: {
                 defaultOpenMode: 'editor',
+                readingWidth: 'page',
                 mode: 'auto',
                 theme: 'material',
             },
@@ -49,11 +50,13 @@ const getSettings = settingsAdapter.getSettings as jest.MockedFunction<typeof se
 const resetAppearance = settingsAdapter.resetAppearance as jest.MockedFunction<typeof settingsAdapter.resetAppearance>;
 
 function AppearanceMenu(): React.JSX.Element {
-    const { appearance, onModeChange, onOpenAppearance, onThemeChange } = useAppearanceSettings();
+    const { appearance, onDefaultOpenModeChange, onModeChange, onOpenAppearance, onThemeChange } =
+        useAppearanceSettings();
     const { fileSettings, markdownSettings, updateFile, updateMarkdown } = useEditorSettings();
     return (
         <SettingsMenu
-            defaultOpenMode={appearance.defaultOpenMode as 'reading' | 'editor'}
+            defaultOpenMode={appearance.defaultOpenMode as 'viewer' | 'editor'}
+            onDefaultOpenModeChange={onDefaultOpenModeChange}
             fileSettings={fileSettings}
             markdownSettings={markdownSettings}
             mode={appearance.mode}
@@ -98,6 +101,7 @@ it('changes appearance from keyboard reachable controls after a successful write
     expect(document.documentElement).toHaveAttribute('data-mode', 'dark');
     expect(updateAppearance).toHaveBeenCalledWith({
         defaultOpenMode: 'editor',
+        readingWidth: 'page',
         mode: 'dark',
         theme: 'material',
     });
@@ -132,7 +136,7 @@ it('persists the selected standard and updates the acknowledged menu state', asy
 it('shows six Markdown preferences from hydration and applies each dialog change to the acknowledged group', async () => {
     store.dispatch(
         hydrateSettings({
-            appearance: { defaultOpenMode: 'editor', mode: 'auto', theme: 'material' },
+            appearance: { defaultOpenMode: 'editor', readingWidth: 'page', mode: 'auto', theme: 'material' },
             contentPrivacy: { remotePolicy: 'ask' },
             markdown: {
                 standard: 'full',
@@ -197,7 +201,7 @@ it('keeps the Markdown group unavailable before hydration and issues no write', 
 it('keeps acknowledged Markdown values on rejection and reports one error', async () => {
     store.dispatch(
         hydrateSettings({
-            appearance: { defaultOpenMode: 'editor', mode: 'auto', theme: 'material' },
+            appearance: { defaultOpenMode: 'editor', readingWidth: 'page', mode: 'auto', theme: 'material' },
             contentPrivacy: { remotePolicy: 'ask' },
             markdown: {
                 standard: 'full',
@@ -224,7 +228,7 @@ it('keeps acknowledged Markdown values on rejection and reports one error', asyn
 it('uses arrows and Space to change described Markdown controls', async () => {
     store.dispatch(
         hydrateSettings({
-            appearance: { defaultOpenMode: 'editor', mode: 'auto', theme: 'material' },
+            appearance: { defaultOpenMode: 'editor', readingWidth: 'page', mode: 'auto', theme: 'material' },
             contentPrivacy: { remotePolicy: 'ask' },
             markdown: {
                 standard: 'full',
@@ -257,7 +261,7 @@ it('uses arrows and Space to change described Markdown controls', async () => {
 it('merges a dialog change with a pending popup change and keeps both surfaces synchronized', async () => {
     store.dispatch(
         hydrateSettings({
-            appearance: { defaultOpenMode: 'editor', mode: 'auto', theme: 'material' },
+            appearance: { defaultOpenMode: 'editor', readingWidth: 'page', mode: 'auto', theme: 'material' },
             contentPrivacy: { remotePolicy: 'ask' },
             markdown: {
                 standard: 'full',
@@ -343,6 +347,7 @@ it('serializes rapid changes using the complete latest appearance choice', async
     await waitFor((): void => {
         expect(updateAppearance).toHaveBeenCalledWith({
             defaultOpenMode: 'editor',
+            readingWidth: 'page',
             mode: 'auto',
             theme: 'glass',
         });
@@ -352,6 +357,7 @@ it('serializes rapid changes using the complete latest appearance choice', async
     await waitFor((): void => {
         expect(updateAppearance).toHaveBeenLastCalledWith({
             defaultOpenMode: 'editor',
+            readingWidth: 'page',
             mode: 'dark',
             theme: 'glass',
         });
@@ -382,6 +388,7 @@ it('keeps an acknowledged appearance when the startup read resolves stale', asyn
         resolveSettings?.({
             appearance: {
                 defaultOpenMode: 'editor',
+                readingWidth: 'page',
                 mode: 'auto',
                 theme: 'material',
             },
@@ -406,6 +413,7 @@ it('normalizes invalid persisted values before exposing controls or root attribu
     getSettings.mockResolvedValueOnce({
         appearance: {
             defaultOpenMode: 'editor',
+            readingWidth: 'page',
             mode: 'future',
             theme: 'dracula',
         },
@@ -466,6 +474,7 @@ it('updates synchronized quick and modal Appearance only after reset is acknowle
     getSettings.mockResolvedValueOnce({
         appearance: {
             defaultOpenMode: 'viewer',
+            readingWidth: 'page',
             mode: 'dark',
             theme: 'minimal',
         },
@@ -514,6 +523,7 @@ it('retains acknowledged Appearance when the transactional reset is rejected', a
     getSettings.mockResolvedValueOnce({
         appearance: {
             defaultOpenMode: 'viewer',
+            readingWidth: 'page',
             mode: 'dark',
             theme: 'minimal',
         },
@@ -546,6 +556,7 @@ it('does not broadcast a reset into another mounted acknowledged Appearance proj
     const persisted: Awaited<ReturnType<typeof settingsAdapter.getSettings>> = {
         appearance: {
             defaultOpenMode: 'viewer',
+            readingWidth: 'page',
             mode: 'dark',
             theme: 'minimal',
         },

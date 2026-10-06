@@ -10,7 +10,7 @@ release workflow.
 
 ## Current scope
 
-The application includes rich Markdown rendering with local code highlighting, math and Mermaid; document-wide Format, Compact and Lint; and links to supported local Markdown files through the normal open flow. The command palette, Assistant, export, image authoring, file associations and broader asset support remain candidate work. Remote images retain their placeholder while a user-consent policy remains undefined. Start new product work with an approved numbered feature specification.
+The application includes rich Markdown rendering with local code highlighting, math and Mermaid; document-wide Format, Compact and Lint; a distraction-free Reading mode (Ctrl+Enter, Cmd+Enter on macOS) with a configurable default open mode and reading width; and links to supported local Markdown files through the normal open flow. The command palette, Assistant, export, image authoring, file associations and broader asset support remain candidate work. Remote images retain their placeholder while a user-consent policy remains undefined. Start new product work with an approved OpenSpec change (see `AGENTS.md`).
 
 ## Run it
 
@@ -38,9 +38,8 @@ On Linux, desktop builds need GTK 3 and WebKit2GTK 4.1 development headers.
 - [E2E performance notes](docs/e2e-performance.md) — real-backend test harness and verification findings.
 - [Working instructions](AGENTS.md) — repository conventions for contributors and agents.
 
-`app_version_1_codebase` is the integration branch for completed feature work. The repository owner
-controls the later integration into `master`. New work starts as an OpenSpec change under
-`openspec/changes/` and uses its own `feature/<short-description>` branch.
+New work starts as an OpenSpec change under `openspec/changes/` on its own `feature/<change-name>` branch;
+branches are squash-merged. See "Git workflow" in `AGENTS.md`.
 
 ## Build and release
 

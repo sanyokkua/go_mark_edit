@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { settingsAdapter } from '../../logic/adapter';
+import type { ReadingWidth } from '../../logic/adapter/settingsTypes';
+import { useAppDispatch } from '../../logic/store';
+import { readingWidthAcknowledged } from '../../logic/store/settingsSlice';
 import {
     applyThemeToRoot,
     normalizeAppearance,
@@ -17,12 +20,17 @@ import {
     useAppearanceSettings,
     type AppearanceSettingsController,
     type AppearanceState,
+    type DefaultOpenMode,
 } from './appearanceSettingsContext';
 
 export interface AppearanceSettingsProviderProps {
     children?: React.ReactNode;
     onSettingsOpenChange?: (open: boolean) => void;
     settingsOpen?: boolean;
+}
+
+function normalizeReadingWidth(value: string): ReadingWidth {
+    return value === 'full' ? 'full' : 'page';
 }
 
 function systemPrefersDark(): boolean {
@@ -44,6 +52,7 @@ export const AppearanceSettingsProvider: React.FC<AppearanceSettingsProviderProp
     onSettingsOpenChange,
     settingsOpen,
 }: AppearanceSettingsProviderProps): React.JSX.Element => {
+    const dispatch = useAppDispatch();
     const [appearance, setAppearance] = useState<AppearanceState>({
         ...defaultAppearanceSettings,
     });
@@ -73,12 +82,14 @@ export const AppearanceSettingsProvider: React.FC<AppearanceSettingsProviderProp
                 const next = {
                     defaultOpenMode: settings.appearance.defaultOpenMode,
                     mode: normalizeAppearance(settings.appearance.mode),
+                    readingWidth: normalizeReadingWidth(settings.appearance.readingWidth),
                     theme: normalizeTheme(settings.appearance.theme),
                 };
                 if (!appearanceWriteStarted.current) {
                     desiredAppearance.current = next;
                 }
                 setAppearance(next);
+                dispatch(readingWidthAcknowledged(next.readingWidth));
                 apply(next);
                 writeStartupThemeMirror(localStorage, {
                     theme: next.theme,
@@ -88,7 +99,7 @@ export const AppearanceSettingsProvider: React.FC<AppearanceSettingsProviderProp
             .catch((): void => {
                 apply(desiredAppearance.current);
             });
-    }, []);
+    }, [dispatch]);
 
     useEffect((): (() => void) => {
         if (typeof window.matchMedia !== 'function') {
@@ -108,7 +119,7 @@ export const AppearanceSettingsProvider: React.FC<AppearanceSettingsProviderProp
     }, [open, settingsReturnFocus]);
 
     const persist = useCallback(
-        (patch: Partial<Pick<AppearanceState, 'mode' | 'theme'>>): void => {
+        (patch: Partial<Pick<AppearanceState, 'defaultOpenMode' | 'mode' | 'readingWidth' | 'theme'>>): void => {
             appearanceWriteStarted.current = true;
             const next = { ...desiredAppearance.current, ...patch };
             desiredAppearance.current = next;
@@ -118,9 +129,11 @@ export const AppearanceSettingsProvider: React.FC<AppearanceSettingsProviderProp
                     const acknowledgedState: AppearanceState = {
                         defaultOpenMode: acknowledged.defaultOpenMode,
                         mode: normalizeAppearance(acknowledged.mode),
+                        readingWidth: normalizeReadingWidth(acknowledged.readingWidth),
                         theme: normalizeTheme(acknowledged.theme),
                     };
                     setAppearance(acknowledgedState);
+                    dispatch(readingWidthAcknowledged(acknowledgedState.readingWidth));
                     apply(acknowledgedState);
                     writeStartupThemeMirror(localStorage, {
                         theme: acknowledgedState.theme,
@@ -129,7 +142,7 @@ export const AppearanceSettingsProvider: React.FC<AppearanceSettingsProviderProp
                 })
                 .catch((): void => undefined);
         },
-        [settingsCommands],
+        [dispatch, settingsCommands],
     );
 
     const reset = useCallback((): void => {
@@ -140,10 +153,12 @@ export const AppearanceSettingsProvider: React.FC<AppearanceSettingsProviderProp
                 const acknowledgedState: AppearanceState = {
                     defaultOpenMode: acknowledged.defaultOpenMode,
                     mode: normalizeAppearance(acknowledged.mode),
+                    readingWidth: normalizeReadingWidth(acknowledged.readingWidth),
                     theme: normalizeTheme(acknowledged.theme),
                 };
                 desiredAppearance.current = acknowledgedState;
                 setAppearance(acknowledgedState);
+                dispatch(readingWidthAcknowledged(acknowledgedState.readingWidth));
                 apply(acknowledgedState);
                 writeStartupThemeMirror(localStorage, {
                     theme: acknowledgedState.theme,
@@ -151,7 +166,7 @@ export const AppearanceSettingsProvider: React.FC<AppearanceSettingsProviderProp
                 });
             })
             .catch((): void => undefined);
-    }, [settingsCommands]);
+    }, [dispatch, settingsCommands]);
 
     const onOpenAppearance = useCallback(
         (opener?: HTMLElement | null): void => {
@@ -165,9 +180,11 @@ export const AppearanceSettingsProvider: React.FC<AppearanceSettingsProviderProp
 
     const controller: AppearanceSettingsController = {
         appearance,
+        onDefaultOpenModeChange: (defaultOpenMode): void => persist({ defaultOpenMode }),
         onModeChange: (mode): void => persist({ mode }),
         onOpenAppearance,
         onOpenChange: setOpen,
+        onReadingWidthChange: (readingWidth): void => persist({ readingWidth }),
         onReset: reset,
         open,
         returnFocusTo: settingsReturnFocus,
@@ -193,12 +210,16 @@ export const AppearanceControlsContent: React.FC<AppearanceControlsContentProps>
         <>
             {children}
             <SettingsDialog
+                defaultOpenMode={controller.appearance.defaultOpenMode as DefaultOpenMode}
                 markdownSettings={markdown.markdownSettings}
                 mode={controller.appearance.mode}
                 open={controller.open}
+                readingWidth={controller.appearance.readingWidth}
                 returnFocusTo={controller.returnFocusTo}
                 theme={controller.appearance.theme}
+                onDefaultOpenModeChange={controller.onDefaultOpenModeChange}
                 onModeChange={controller.onModeChange}
+                onReadingWidthChange={controller.onReadingWidthChange}
                 onMarkdownSettingsChange={(patch): void => {
                     void markdown.updateMarkdown(patch).catch((): void => undefined);
                 }}

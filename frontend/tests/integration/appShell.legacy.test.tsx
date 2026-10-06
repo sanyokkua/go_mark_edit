@@ -365,6 +365,7 @@ it('projects an acknowledged autosave-on setting into status details', () => {
                 theme: 'glass',
                 mode: 'light',
                 defaultOpenMode: 'split',
+                readingWidth: 'page',
             },
             markdown: {
                 standard: 'gfm',
@@ -400,6 +401,7 @@ it('projects an acknowledged autosave-on setting into status details', () => {
                     theme: 'glass',
                     mode: 'light',
                     defaultOpenMode: 'split',
+                    readingWidth: 'page',
                 },
                 markdown: {
                     standard: 'gfm',

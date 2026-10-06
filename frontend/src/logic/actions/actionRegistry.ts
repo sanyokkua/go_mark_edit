@@ -57,6 +57,7 @@ export type ActionId =
     | 'appearance'
     | 'editor-settings'
     | 'default-open-mode'
+    | 'reading-width'
     | 'markdown-standard'
     | 'autosave'
     | 'format-on-save'
@@ -67,6 +68,8 @@ export type ActionId =
     | 'split'
     | 'preview'
     | 'refresh-preview'
+    | 'preview-copy'
+    | 'preview-select-all'
     | 'toggle-sidebar'
     | 'toggle-problems'
     | 'toggle-assistant'
@@ -273,9 +276,8 @@ export const actionRegistry: readonly ActionEntry[] = Object.freeze([
     entry('settings', 'application', ['settings-menu'], { shortcut: 'Mod+,' }),
     entry('appearance', 'application', ['settings-menu']),
     entry('editor-settings', 'application', ['settings-menu']),
-    entry('default-open-mode', 'application', ['settings-menu'], {
-        availability: laterDeferred,
-    }),
+    entry('default-open-mode', 'application', ['settings-menu']),
+    entry('reading-width', 'application', ['settings-menu']),
     entry('markdown-standard', 'application', ['settings-menu']),
     entry('autosave', 'application', ['settings-menu'], {
         availability: available(),
@@ -291,6 +293,8 @@ export const actionRegistry: readonly ActionEntry[] = Object.freeze([
     entry('split', 'window', ['view-menu', 'toolbar']),
     entry('preview', 'window', ['view-menu', 'toolbar']),
     entry('refresh-preview', 'window', ['preview']),
+    entry('preview-copy', 'window', ['preview']),
+    entry('preview-select-all', 'window', ['preview']),
     entry('toggle-sidebar', 'window', ['view-menu', 'toolbar'], {
         shortcut: 'Mod+\\',
     }),
@@ -301,8 +305,8 @@ export const actionRegistry: readonly ActionEntry[] = Object.freeze([
     entry('line-numbers', 'window', ['view-menu', 'overflow']),
     entry('word-wrap', 'window', ['view-menu', 'overflow']),
     entry('scroll-sync', 'window', ['view-menu', 'overflow']),
-    entry('distraction-free-reading', 'window', ['view-menu'], {
-        availability: laterDeferred,
+    entry('distraction-free-reading', 'window', ['view-menu', 'shortcuts'], {
+        shortcut: 'Mod+Enter',
     }),
     entry('fullscreen', 'window', ['view-menu', 'shortcuts'], {
         shortcut: 'F11',
@@ -520,7 +524,10 @@ export function getActionAvailability(
     const hasProjectedDocument =
         projected === undefined ? undefined : documentId !== undefined && document !== undefined;
 
-    if (id === 'toggle-problems' && (documentId === undefined || hasProjectedDocument === false)) {
+    if (
+        (id === 'toggle-problems' || id === 'distraction-free-reading') &&
+        (documentId === undefined || hasProjectedDocument === false)
+    ) {
         return { kind: 'unavailable', reason: 'no-document' };
     }
 

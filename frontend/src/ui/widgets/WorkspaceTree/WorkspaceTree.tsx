@@ -6,6 +6,7 @@ import type { WorkspaceNode, WorkspaceSnapshot } from '../../../logic/store/appM
 import type { ActionId } from '../../../logic/actions/actionRegistry';
 import Banner from '../../primitives/Banner';
 import Button from '../../primitives/Button';
+import { hasCommandModifier } from '../../primitives/commandModifier';
 import ToolButton from '../../primitives/ToolButton';
 import HiddenFoldersToggle from './HiddenFoldersToggle';
 import WorkspaceEmptyState from './WorkspaceEmptyState';
@@ -185,7 +186,7 @@ function OpenWorkspaceTree({ workspace, reading, revealRequest }: OpenWorkspaceT
     }, [reading, consumedReveal, rows]);
 
     const onKeyDownRow = (event: KeyboardEvent<HTMLLIElement>, node: WorkspaceNode): void => {
-        if (event.key === 'Enter') {
+        if (event.key === 'Enter' && !hasCommandModifier(event)) {
             event.preventDefault();
             if (node.isDir) {
                 setSelection({ activePath, localPath: node.path });

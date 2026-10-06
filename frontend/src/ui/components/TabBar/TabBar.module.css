@@ -20,6 +20,10 @@
     min-inline-size: 0;
 }
 
+.tabBar[hidden] {
+    display: none;
+}
+
 .tabBar [data-bar-slot='main'] {
     block-size: 100%;
     flex: 1 1 0;

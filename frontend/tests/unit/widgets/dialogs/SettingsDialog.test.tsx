@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 
 import SettingsDialog from '../../../../src/ui/widgets/dialogs/SettingsDialog';
 
@@ -125,4 +125,26 @@ it('portals the narrow settings dialog outside the application frame', () => {
             value: originalWidth,
         });
     }
+});
+
+it('shows the stored Reading width and sends page or full when a choice is selected', () => {
+    const onReadingWidthChange = jest.fn();
+    render(
+        <SettingsDialog
+            mode="auto"
+            onModeChange={jest.fn()}
+            onOpenChange={jest.fn()}
+            onReadingWidthChange={onReadingWidthChange}
+            onReset={jest.fn()}
+            onThemeChange={jest.fn()}
+            open
+            readingWidth="full"
+            theme="material"
+        />,
+    );
+
+    const group = screen.getByRole('radiogroup', { name: 'Reading width' });
+    expect(within(group).getByRole('radio', { name: 'Full width' })).toBeChecked();
+    fireEvent.click(within(group).getByRole('radio', { name: 'Page' }));
+    expect(onReadingWidthChange).toHaveBeenCalledWith('page');
 });

@@ -13,6 +13,7 @@ const settings = {
         theme: 'material',
         mode: 'auto',
         defaultOpenMode: 'edit',
+        readingWidth: 'page',
     },
     markdown: {
         standard: 'gfm',
@@ -75,6 +76,7 @@ it('guards and unwraps every settings call', async () => {
             theme: 'dark',
             mode: 'dark',
             defaultOpenMode: 'view',
+            readingWidth: 'page',
         }),
     ).resolves.toBeUndefined();
     await expect(adapter.updateContentPrivacy({ remotePolicy: 'block' })).resolves.toBeUndefined();

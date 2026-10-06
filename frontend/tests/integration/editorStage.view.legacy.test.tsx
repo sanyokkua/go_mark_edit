@@ -451,7 +451,7 @@ function appearanceSettings(
     theme: 'glass' | 'material' | 'minimal',
     mode: 'light' | 'dark',
 ): {
-    appearance: { defaultOpenMode: string; mode: string; theme: string };
+    appearance: { defaultOpenMode: string; mode: string; readingWidth: string; theme: string };
     contentPrivacy: { remotePolicy: string };
     markdown: {
         bulletMarker: string;
@@ -463,7 +463,7 @@ function appearanceSettings(
     };
 } {
     return {
-        appearance: { defaultOpenMode: 'editor', mode, theme },
+        appearance: { defaultOpenMode: 'editor', readingWidth: 'page', mode, theme },
         contentPrivacy: { remotePolicy: 'ask' },
         markdown: {
             bulletMarker: '-',

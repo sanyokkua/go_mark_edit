@@ -3,13 +3,15 @@ import { useContext, useMemo } from 'react';
 import { t } from '../../../i18n';
 import { setEditorPaneVisible, setPreviewPaneVisible, setViewArrangement } from '../../../logic/store/docViewCommands';
 import { useAppDispatch, useAppSelector } from '../../../logic/store';
+import { toggleReading, toggleReadingSidebar } from '../../../logic/store/readingSlice';
 import { notifyError } from '../../../logic/store/notificationsSlice';
 import { reportClassifiedError } from '../../../logic/store/classifiedNotification';
 import { setWorkspaceVisible } from '../../../logic/store/uiLayoutCommands';
 import type { ViewArrangement, RecentItem } from '../../../logic/store/appModelTypes';
 import { parseError } from '../../../logic/utils/parseError';
 import { useEditorSettings } from '../../../logic/settings/editorSettings';
-import { useAppearanceSettings } from '../appearanceSettingsContext';
+import { useAppearanceSettings, type DefaultOpenMode } from '../appearanceSettingsContext';
+import { useMinimumWindow } from '../minimumWindow';
 import type { ApplicationMenuTarget } from '../applicationMenuRequest';
 import Menubar from './Menubar';
 import type { SettingsMenuProps } from './SettingsMenu';
@@ -61,6 +63,9 @@ export default function ApplicationMenubar({
     );
     const workspaceVisible = useAppSelector((state) => state.ui.layout.sidebarVisible ?? true);
     const workspaceOpen = useAppSelector((state) => state.workspace.snapshot !== null);
+    const reading = useAppSelector((state) => state.reading.active);
+    const minimumWindow = useMinimumWindow();
+    const readingSidebarAvailable = workspaceOpen && !minimumWindow;
     const tabSetRevision = useAppSelector((state) => state.documents.tabSetRevision);
     const recentItems = useAppSelector((state) => state.documents.recentItems ?? []);
     const canReopenLastFile = useAppSelector((state) => state.documents.canReopenLastFile ?? false);
@@ -71,7 +76,10 @@ export default function ApplicationMenubar({
     const editorActions = useEditorActionExecutor();
     const settingsMenuProps: SettingsMenuProps = useMemo(
         () => ({
-            defaultOpenMode: appearanceSettings.appearance.defaultOpenMode as 'reading' | 'editor',
+            defaultOpenMode: appearanceSettings.appearance.defaultOpenMode as DefaultOpenMode,
+            onDefaultOpenModeChange: appearanceSettings.onDefaultOpenModeChange,
+            onReadingWidthChange: appearanceSettings.onReadingWidthChange,
+            readingWidth: appearanceSettings.appearance.readingWidth,
             editorSettings: editorSettings.settings,
             fileSettings: editorSettings.fileSettings,
             markdownSettings: editorSettings.markdownSettings,
@@ -149,6 +157,9 @@ export default function ApplicationMenubar({
                 onEditorVisibilityChange: (visible): void => {
                     void dispatch(setEditorPaneVisible(visible));
                 },
+                onDistractionFreeReading: (): void => {
+                    dispatch(toggleReading());
+                },
                 onFullscreen: (): void => {
                     void import('../../../logic/adapter').then(({ windowAdapter }) => {
                         void windowAdapter.toggleFullscreen();
@@ -170,13 +181,19 @@ export default function ApplicationMenubar({
                 scrollSync: editorSettings.settings.scrollSync,
                 wordWrap: editorSettings.settings.wordWrap,
                 workspaceVisible,
-                onWorkspaceVisibilityChange: (visible): void => {
-                    void dispatch(setWorkspaceVisible(visible))
-                        .unwrap()
-                        .catch((error: unknown): void => {
-                            dispatch(notifyError(parseError(error)));
-                        });
-                },
+                onWorkspaceVisibilityChange: reading
+                    ? readingSidebarAvailable
+                        ? (): void => {
+                              dispatch(toggleReadingSidebar());
+                          }
+                        : undefined
+                    : (visible): void => {
+                          void dispatch(setWorkspaceVisible(visible))
+                              .unwrap()
+                              .catch((error: unknown): void => {
+                                  dispatch(notifyError(parseError(error)));
+                              });
+                      },
             }}
             writable={menuState.writable}
         />

@@ -1,10 +1,12 @@
-import { useCallback, useRef, useState, type CSSProperties, type PropsWithChildren } from 'react';
+import { useCallback, useEffect, useRef, useState, type CSSProperties, type PropsWithChildren } from 'react';
 
 import { t } from '../../i18n';
 import { useAppDispatch, useAppSelector } from '../../logic/store';
+import { toggleReadingSidebar } from '../../logic/store/readingSlice';
 import { WORKSPACE_BINDING_WIDTH, setWorkspaceWidth } from '../../logic/store/uiLayoutCommands';
 import Sidebar from '../components/Sidebar';
 import { useMinimumWindow } from './minimumWindow';
+import ReadingControls from './ReadingControls/ReadingControls';
 import WorkspaceTree, { type WorkspaceTreeProps } from './WorkspaceTree/WorkspaceTree';
 import styles from './AppShell.module.css';
 
@@ -25,6 +27,9 @@ const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
 }: WorkspaceLayoutProps): React.JSX.Element => {
     const dispatch = useAppDispatch();
     const minimumWindow = useMinimumWindow();
+    const reading = useAppSelector((state) => state.reading.active);
+    const readingSidebarShown = useAppSelector((state) => state.reading.sidebarShown);
+    const workspaceOpen = useAppSelector((state) => state.workspace.snapshot !== null);
     const workspaceVisible = useAppSelector((state) => state.ui.layout.sidebarVisible ?? true);
     const acknowledgedWidth = useAppSelector((state) => state.ui.layout.sidebarWidth ?? WORKSPACE_BINDING_WIDTH);
     const [pendingWidth, setPendingWidth] = useState<PendingWidth | undefined>();
@@ -52,6 +57,11 @@ const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
         [acknowledgedWidth, dispatch],
     );
 
+    const sidebarAvailable = workspaceOpen && !minimumWindow;
+    // An overlay that can no longer be shown must not count as open, or Escape would close nothing visible.
+    useEffect((): void => {
+        if (readingSidebarShown && !sidebarAvailable) dispatch(toggleReadingSidebar());
+    }, [dispatch, readingSidebarShown, sidebarAvailable]);
     const shellStyle = {
         '--shell-left-width': `${workspaceWidth}px`,
     } as CSSProperties;
@@ -60,11 +70,12 @@ const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
         <div
             className={styles.shell}
             data-document-state={documentState}
+            data-reading={reading || undefined}
             data-testid="application-shell"
             data-workspace-visible={String(workspaceVisible)}
             style={shellStyle}
         >
-            {minimumWindow ? null : (
+            {minimumWindow || reading ? null : (
                 <Sidebar
                     ariaLabel={t('shell.sidebar')}
                     collapsed={!workspaceVisible}
@@ -78,9 +89,20 @@ const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
                     <WorkspaceTree revealRequest={treeRevealRequest} />
                 </Sidebar>
             )}
+            {reading && readingSidebarShown && sidebarAvailable ? (
+                <aside
+                    aria-label={t('shell.sidebar')}
+                    className={styles.readingSidebar}
+                    data-reading-overlay="sidebar"
+                    style={{ width: `${acknowledgedWidth}px` }}
+                >
+                    <WorkspaceTree revealRequest={treeRevealRequest} />
+                </aside>
+            ) : null}
             <main aria-label={t('shell.document')} className={styles.document}>
                 {children}
             </main>
+            {reading ? <ReadingControls sidebarAvailable={sidebarAvailable} sidebarWidth={acknowledgedWidth} /> : null}
         </div>
     );
 };

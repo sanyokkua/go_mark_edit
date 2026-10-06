@@ -116,7 +116,7 @@ The system SHALL open each new window as an independent application process with
 
 ### Requirement: Present-but-disabled controls
 
-The system SHALL display the Assistant toggle (View menu and, at normal width, a toolbar icon), Export to PDF (File menu), Command palette (editor context menu and shortcuts dialog), Distraction-free reading (View menu), Open logs folder and View on GitHub (About menu) as disabled controls. They SHALL perform no action, and the system SHALL NOT render an Assistant panel.
+The system SHALL display the Assistant toggle (View menu and, at normal width, a toolbar icon), Export to PDF (File menu), Command palette (editor context menu and shortcuts dialog), Open logs folder and View on GitHub (About menu) as disabled controls. They SHALL perform no action, and the system SHALL NOT render an Assistant panel.
 
 #### Scenario: Disabled Assistant
 

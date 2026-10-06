@@ -1,7 +1,8 @@
-import { useState, useSyncExternalStore } from 'react';
+import { useEffect, useState, useSyncExternalStore } from 'react';
 
 import { formatNumber, t } from '../../i18n';
-import { useAppSelector } from '../../logic/store';
+import { useAppDispatch, useAppSelector } from '../../logic/store';
+import { leaveReading } from '../../logic/store/readingSlice';
 import { useEditorSettings } from '../../logic/settings/editorSettings';
 import * as problemsSummary from '../../logic/operations/problemsSummary';
 import { dispatchAction } from '../../logic/actions/actionDispatcher';
@@ -76,6 +77,11 @@ const AppShell: React.FC<AppShellProps> = ({
         lineNumber: activeDocument?.view.cursor.line ?? 1,
         column: activeDocument?.view.cursor.column ?? 1,
     });
+    const dispatch = useAppDispatch();
+    const reading = useAppSelector((state) => state.reading.active);
+    useEffect((): void => {
+        if (reading && !hasActiveDocument) dispatch(leaveReading());
+    }, [dispatch, hasActiveDocument, reading]);
     const recentItems = useAppSelector((state) => state.documents.recentItems ?? []);
     const showLauncher = onNewDocument !== undefined || onOpenDocument !== undefined || recentItems.length > 0;
     const tabSetRevision = useAppSelector((state) => state.documents.tabSetRevision);
@@ -211,7 +217,7 @@ const AppShell: React.FC<AppShellProps> = ({
                 onExternalConflict={onExternalConflict}
                 onLiveCursorChange={setLiveCursor}
             />
-            {hasActiveDocument && activeDocument !== undefined ? (
+            {hasActiveDocument && activeDocument !== undefined && !reading ? (
                 <StatusBar
                     facts={statusFacts}
                     saveIdentity={t(`status.saveStatus.${activeDocument.status ?? 'not-saved'}`)}

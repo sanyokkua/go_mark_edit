@@ -12,6 +12,16 @@
     color: var(--accent-ink);
 }
 
+.stage[data-variant='reading'] > [data-pane-identity='preview'] {
+    margin-inline: auto;
+    max-width: var(--reading-column-max-width);
+    width: 100%;
+}
+
+.stage[data-variant='reading'][data-reading-width='full'] > [data-pane-identity='preview'] {
+    max-width: none;
+}
+
 .stage[data-split-resizable] {
     gap: 0;
 }
@@ -31,6 +41,11 @@
     min-width: 0;
     overflow: auto;
     padding: 6px 0;
+}
+
+/* The pane takes programmatic focus for keyboard menu access; it shows no ring. */
+.previewContent:focus-visible {
+    outline: none;
 }
 
 /* Scroll anchoring would move the preview under a synchronized write and fight it. */

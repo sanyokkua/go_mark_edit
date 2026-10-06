@@ -1,6 +1,6 @@
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
 
-import type { EditorSettings, FileSettings, MarkdownSettings, Settings } from '../adapter/settingsTypes';
+import type { EditorSettings, FileSettings, MarkdownSettings, ReadingWidth, Settings } from '../adapter/settingsTypes';
 
 export const defaultEditorSettings: EditorSettings = {
     lineNumbers: true,
@@ -18,6 +18,7 @@ export interface SettingsProjectionState {
     editor: EditorSettings;
     markdown: MarkdownSettings | undefined;
     file: FileSettings;
+    readingWidth: ReadingWidth;
 }
 
 export const initialSettingsState: SettingsProjectionState = {
@@ -25,6 +26,7 @@ export const initialSettingsState: SettingsProjectionState = {
     editor: defaultEditorSettings,
     markdown: undefined,
     file: defaultFileSettings,
+    readingWidth: 'page',
 };
 
 const settingsSlice = createSlice({
@@ -37,6 +39,7 @@ const settingsSlice = createSlice({
                 editor: action.payload.editor ?? defaultEditorSettings,
                 markdown: action.payload.markdown,
                 file: action.payload.file ?? defaultFileSettings,
+                readingWidth: action.payload.appearance.readingWidth === 'full' ? 'full' : 'page',
             };
         },
         acknowledgeEditorSettings(state, action: PayloadAction<EditorSettings>): void {
@@ -47,6 +50,9 @@ const settingsSlice = createSlice({
         },
         acknowledgeFileSettings(state, action: PayloadAction<FileSettings>): void {
             state.file = action.payload;
+        },
+        readingWidthAcknowledged(state, action: PayloadAction<ReadingWidth>): void {
+            state.readingWidth = action.payload;
         },
         resetSettingsProjection(): SettingsProjectionState {
             return initialSettingsState;
@@ -59,6 +65,7 @@ export const {
     acknowledgeFileSettings,
     acknowledgeMarkdownSettings,
     hydrateSettings,
+    readingWidthAcknowledged,
     resetSettingsProjection,
 } = settingsSlice.actions;
 

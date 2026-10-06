@@ -75,17 +75,49 @@ func TestNewDocumentKeepsAnOpenedFileAndUsesEditorDefaults(t *testing.T) {
 	}
 }
 
-func TestOpeningInViewerModeUsesPreviewArrangement(t *testing.T) {
+func TestOpeningInViewerModeKeepsTheArrangementAndReportsReadingMode(t *testing.T) {
 	service := NewAppModelServiceForHost(WithEmitter(&recordingEmitter{}))
 	service.SetDefaultOpenMode(OpenModeViewer)
-	_, documentID := openAutosaveDocument(t, service, "preview\n")
+	path := filepath.Join(t.TempDir(), "viewer.md")
+	if err := os.WriteFile(path, []byte("preview\n"), 0o640); err != nil {
+		t.Fatalf("write fixture: %v", err)
+	}
+	opened := service.OpenPath(context.Background(), path, 0)
+	if opened.Status != apperr.OpenStatusOpened || !opened.ReadingMode {
+		t.Fatalf("viewer open = %+v, want opened with readingMode", opened)
+	}
 	state, err := service.GetState(context.Background())
 	if err != nil {
 		t.Fatalf("GetState: %v", err)
 	}
-	view := state.Snapshot.Documents[documentID].View
-	if view.Arrangement != ArrangementPreview || view.EditorVisible || !view.PreviewVisible {
-		t.Fatalf("viewer-mode view = %+v, want preview-only", view)
+	view := state.Snapshot.Documents[opened.DocumentID].View
+	if view.Arrangement != ArrangementSplit || !view.EditorVisible || !view.PreviewVisible {
+		t.Fatalf("viewer-mode view = %+v, want the Split arrangement kept for Reading exit", view)
+	}
+
+	focused := service.OpenPath(context.Background(), path, state.Snapshot.TabSetRevision)
+	if focused.Status != apperr.OpenStatusFocused || focused.ReadingMode {
+		t.Fatalf("duplicate open = %+v, want focused without readingMode", focused)
+	}
+	refused := service.OpenPath(context.Background(), filepath.Join(t.TempDir(), "missing.md"), state.Snapshot.TabSetRevision)
+	if refused.Error == nil || refused.ReadingMode {
+		t.Fatalf("missing-file open = %+v, want a refusal without readingMode", refused)
+	}
+	created := service.NewDocument(context.Background(), state.Snapshot.TabSetRevision)
+	if created.Data == nil {
+		t.Fatalf("NewDocument = %+v", created)
+	}
+}
+
+func TestOpeningInEditorModeReportsNoReadingMode(t *testing.T) {
+	service := NewAppModelServiceForHost(WithEmitter(&recordingEmitter{}))
+	path := filepath.Join(t.TempDir(), "editor.md")
+	if err := os.WriteFile(path, []byte("text\n"), 0o640); err != nil {
+		t.Fatalf("write fixture: %v", err)
+	}
+	opened := service.OpenPath(context.Background(), path, 0)
+	if opened.Status != apperr.OpenStatusOpened || opened.ReadingMode {
+		t.Fatalf("editor open = %+v, want opened without readingMode", opened)
 	}
 }
 

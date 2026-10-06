@@ -211,6 +211,9 @@ describe('WorkspaceTree', () => {
         fireEvent.keyDown(folder, { key: 'Enter' });
         expect(folder).toHaveAttribute('aria-expanded', 'true');
         const file = screen.getByRole('treeitem', { name: 'inside.md' });
+        expect(fireEvent.keyDown(file, { key: 'Enter', ctrlKey: true })).toBe(true);
+        expect(fireEvent.keyDown(file, { key: 'Enter', metaKey: true })).toBe(true);
+        expect(commands.onOpenTreeFile).not.toHaveBeenCalled();
         fireEvent.keyDown(file, { key: 'Enter' });
         expect(commands.onOpenTreeFile).toHaveBeenCalledWith(`${rootPath}/inside.md`, 1);
     });

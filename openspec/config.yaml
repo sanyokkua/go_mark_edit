@@ -68,3 +68,4 @@ operations:
             - Check that proposal, design, delta specs and tasks still describe what was built; fix material drift and ignore wording differences.
             - Record durable architectural decisions in `docs/architecture.md` and public-surface changes in `docs/index.md`.
             - Confirm the merged `openspec/specs/` describe the resulting system without conflicting or duplicated requirements.
+            - Archive on the change branch and commit it there, then ask the user whether to squash-merge the change branch into `master` or keep it unmerged (see "Git workflow" in `AGENTS.md`).

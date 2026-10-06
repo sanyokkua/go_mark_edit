@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
@@ -264,4 +264,43 @@ it('leaves the arrangement rows available once a document is open', (): void => 
         expect(row).toHaveAttribute('data-availability', 'enabled');
         expect(row).not.toHaveAttribute('data-disabled');
     }
+});
+
+it('runs Distraction-free reading from the View menu while a document is open', async (): Promise<void> => {
+    const onDistractionFreeReading = jest.fn();
+    render(
+        <ViewMenu
+            editorVisible
+            previewVisible
+            onEditorVisibilityChange={jest.fn()}
+            onPreviewVisibilityChange={jest.fn()}
+            onDistractionFreeReading={onDistractionFreeReading}
+        />,
+    );
+
+    fireEvent.keyDown(screen.getByRole('button', { name: 'View' }), { key: 'ArrowDown' });
+    fireEvent.click(screen.getByRole('menuitem', { name: /Distraction-free reading/ }));
+
+    await waitFor(() => expect(onDistractionFreeReading).toHaveBeenCalledTimes(1));
+});
+
+it('disables Distraction-free reading while no document is open', (): void => {
+    const onDistractionFreeReading = jest.fn();
+    render(
+        <ViewMenu
+            documentOpen={false}
+            editorVisible
+            previewVisible
+            onEditorVisibilityChange={jest.fn()}
+            onPreviewVisibilityChange={jest.fn()}
+            onDistractionFreeReading={onDistractionFreeReading}
+        />,
+    );
+
+    fireEvent.keyDown(screen.getByRole('button', { name: 'View' }), { key: 'ArrowDown' });
+    const row = screen.getByRole('menuitem', { name: /Distraction-free reading/ });
+    fireEvent.click(row);
+
+    expect(row).toHaveAttribute('data-disabled');
+    expect(onDistractionFreeReading).not.toHaveBeenCalled();
 });

@@ -13,6 +13,7 @@ it('hydrates Redux settings once from the acknowledged adapter authority', async
                 theme: 'material',
                 mode: 'auto',
                 defaultOpenMode: 'editor',
+                readingWidth: 'page',
             },
             markdown: {
                 standard: 'gfm',

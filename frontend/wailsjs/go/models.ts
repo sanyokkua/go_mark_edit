@@ -422,6 +422,7 @@ export namespace apperr {
 	    theme: string;
 	    mode: string;
 	    defaultOpenMode: string;
+	    readingWidth: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new AppearanceSettings(source);
@@ -432,6 +433,7 @@ export namespace apperr {
 	        this.theme = source["theme"];
 	        this.mode = source["mode"];
 	        this.defaultOpenMode = source["defaultOpenMode"];
+	        this.readingWidth = source["readingWidth"];
 	    }
 	}
 	export class ClassifiedError {
@@ -1053,6 +1055,7 @@ export namespace apperr {
 	    treePath?: string;
 	    projectionRevision?: number;
 	    activeBuffer?: ActiveBuffer;
+	    readingMode?: boolean;
 	    error?: ClassifiedError;
 	
 	    static createFrom(source: any = {}) {
@@ -1073,6 +1076,7 @@ export namespace apperr {
 	        this.treePath = source["treePath"];
 	        this.projectionRevision = source["projectionRevision"];
 	        this.activeBuffer = this.convertValues(source["activeBuffer"], ActiveBuffer);
+	        this.readingMode = source["readingMode"];
 	        this.error = this.convertValues(source["error"], ClassifiedError);
 	    }
 	
