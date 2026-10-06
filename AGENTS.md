@@ -60,9 +60,9 @@ Before adding a UI widget, hook, Go type or utility, search `frontend/src/ui/` a
    ran. A non-zero stage that collected nothing, or a required test count that is unavailable, is
    unreliable, not clean; fix that runner before using the record. `scripts/baseline` names its
    record after the current branch.
-3. Work on a branch named `feature/<short-description>` (task branch:
-   `feature/<short-description>-<task>`), implement only the approved scope, and keep tests in
-   `tests/go/` or `frontend/tests/` unless the task explicitly names a white-box test.
+3. Work on the change branch or a task branch (see "Git workflow"), implement only the approved
+   scope, and keep tests in `tests/go/` or `frontend/tests/` unless the task explicitly names a
+   white-box test.
 4. Run the narrowest relevant checks while working, then the full six-stage verification before
    calling a task complete. Compare with the baseline only through `scripts/baseline --compare`.
    A green stage is necessary but not sufficient: trace each requirement to the code path that
@@ -70,9 +70,22 @@ Before adding a UI widget, hook, Go type or utility, search `frontend/src/ui/` a
    behaviour. Outside a Claude or Codex app session, check whether computer-use tooling is available;
    if not, ask the user to perform the real-app check in an app session.
 5. Review the diff for ownership, public-surface documentation, generated-file drift and unrelated
-   changes. Commit one task with a Conventional Commit message and squash-merge it into the feature
-   parent. Squash-merge a completed feature parent into `app_version_1_codebase`; the repository
-   owner controls the later integration into `master`.
+   changes. Finish the task as described in "Git workflow".
+
+## Git workflow
+
+1. Every new OpenSpec change gets its own change branch, `feature/<change-name>`, created from `master`
+   when the change is proposed or first applied. All of the change's work lands on it.
+2. A task that could reasonably need several commits gets a task branch,
+   `feature/<change-name>-<task>`, created from the change branch. A small task is committed on the
+   change branch directly.
+3. A task is finished only when it is implemented, verified, its docs are updated and it is marked
+   done in `tasks.md`. Then commit it with a Conventional Commit message and, if a task branch was
+   used, squash-merge that branch back into the change branch.
+4. When every task is done and the user asks to archive, run the archive on the change branch and
+   commit it there. Then ask the user whether to squash-merge the change branch into `master` or keep
+   it unmerged. Never merge into `master` without that answer.
+5. Every merge is a squash merge (`git merge --squash`, or `gh pr merge --squash`).
 
 The six verification stages are Lint, Format, Build, Unit, Integration and E2E, run by
 `scripts/verify` (single stage: `scripts/verify lint`; `--skip e2e`). Other entry points are
