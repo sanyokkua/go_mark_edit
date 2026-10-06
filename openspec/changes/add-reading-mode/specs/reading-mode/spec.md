@@ -9,7 +9,7 @@ with its hover-revealed controls, its optional sidebar and tab bar overlays, and
 
 WHILE Reading mode is active, the system SHALL hide all application chrome (menu bar with its document identity,
 toolbar, tab bar, sidebar, problems panel and status bar) and SHALL show the active document rendered as the preview
-renders it, in a centered column at most 700 px wide. Only the operating system's window frame remains. Entering or
+renders it, at the width set by the Reading width setting. Only the operating system's window frame remains. Entering or
 leaving Reading mode SHALL NOT change the document's arrangement, split ratio, cursor, selection, content or the stored
 sidebar state.
 
@@ -36,8 +36,35 @@ sidebar state.
 
 #### Scenario: Narrow window
 
-- **WHEN** Reading mode is active in a window 375 px wide
+- **WHEN** Reading mode is active with Reading width Page in a window 375 px wide
 - **THEN** the rendered document uses the full window width minus its padding
+
+### Requirement: Reading width
+
+WHILE Reading mode is active, the system SHALL lay out the rendered document by the Reading width setting: Page shows
+a centered column at most 700 px wide, and Full width uses the whole window width minus its padding. WHEN the setting
+changes while Reading mode is active, the rendered document SHALL take the new width at once and Reading mode SHALL
+stay active. The reading controls and overlays SHALL behave the same with either width.
+
+#### Scenario: Page
+
+- **WHEN** the Reading width is Page and Reading mode is active in a window 1,400 px wide
+- **THEN** the rendered document is a column 700 px wide, centered in the window
+
+#### Scenario: Full width
+
+- **WHEN** the Reading width is Full width and Reading mode is active in a window 1,400 px wide
+- **THEN** the rendered document spans the window width minus its padding
+
+#### Scenario: Narrow window with either width
+
+- **WHEN** Reading mode is active in a window 375 px wide, first with Page and then with Full width
+- **THEN** the rendered document has the same width both times
+
+#### Scenario: Change from the Settings menu
+
+- **WHEN** Reading mode is active with Page and the user presses Ctrl+, and selects Full width in the Settings menu
+- **THEN** the rendered document spans the window width minus its padding at once, and Reading mode stays active
 
 ### Requirement: Reading mode scroll position
 

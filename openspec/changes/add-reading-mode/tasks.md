@@ -139,7 +139,8 @@ Test edits listed under "Changes existing tests" are required by the named requi
       Verify that the named tests pass and `scripts/verify` is green.
     - Until task 6, choosing Reading (Viewer) keeps today's Preview-arrangement open behaviour. The repository stays
       valid.
-    - Requirements: settings "Default open mode choice", "Settings menu and dialog".
+    - Requirements: settings "Default open mode choice", "Settings menu and dialog" (the Default open mode entries;
+      the Reading width entries are task 5.2).
     - Design: Decision 9.
     - Work:
         - `onDefaultOpenModeChange` in the appearance controller and context (`ui/widgets/appearanceSettingsContext.ts`,
@@ -159,6 +160,62 @@ Test edits listed under "Changes existing tests" are required by the named requi
           Editor;
         - e2e: the choice persists after restart.
     - Docs: the `docs/index.md` preferences section lists Default open mode as selectable.
+- [ ] 5.2 Add the persisted Reading width setting (Page or Full width) to the Settings menu and the Settings dialog, and
+      lay out Reading mode by it. Verify that the named tests pass, `scripts/verify` is green, and in the real app Page
+      and Full width look right in Material, Glass and Minimal in light and dark, and switching through Ctrl+, while in
+      Reading mode restyles at once.
+    - Depends on 1.1 (the reading layout variant) and 5.1 (the appearance controller, menu rows and dialog row it
+      extends).
+    - Requirements: settings "Settings catalogue and defaults", "Allowed values", "Settings menu and dialog" (the
+      Reading width entries), "Reading width choice"; reading-mode "Reading width" and the Narrow window scenario of
+      "Reading mode shows only the rendered document".
+    - Design: Decision 11.
+    - Work:
+        - Go: `ReadingWidthPage` / `ReadingWidthFull` and the `page` default in `internal/settings/model.go`;
+          `ReadingWidth string json:"readingWidth"` in `AppearanceSettings` (`internal/apperr/results.go:9-14`); the
+          `view.readingWidth` key in `GetAppearance`, `UpdateAppearance` and `ResetAppearance`
+          (`internal/settings/repository_sqlite.go`); normalization of a missing or invalid stored value to `page` and
+          validation that refuses other written values in `internal/settings/service.go`;
+        - regenerate `frontend/wailsjs/go/models.ts` with `scripts/build`;
+        - `ReadingWidth = 'page' | 'full'` and `AppearanceSettings.readingWidth` in `logic/adapter/settingsTypes.ts`,
+          and `readingWidth: 'page'` in `defaultAppearanceSettings` (`logic/settings/settingsCommands.ts`);
+        - `logic/store/settingsSlice.ts`: `hydrateSettings` projects `appearance.readingWidth` (`page` for any other
+          value) and a new `readingWidthAcknowledged` action replaces it;
+        - `ui/widgets/appearanceSettingsContext.ts` and `ui/widgets/AppearanceControls.tsx`: `readingWidth` in the
+          appearance state, `onReadingWidthChange`, `persist` accepting `readingWidth`, and a `readingWidthAcknowledged`
+          dispatch after the startup `getSettings` and in the `persist` and `reset` acknowledgement callbacks; a
+          Reading width segmented row next to Default open mode in `AppearanceControlsContent`;
+        - `ui/widgets/Menubar/SettingsMenu.tsx`: a Reading width radio group (Page, Full width) after Default open mode,
+          typed `'page' | 'full'` with no cast, enabled by `rowUnavailable(id, writer)`; wiring in
+          `ui/widgets/Menubar/ApplicationMenubar.tsx`;
+        - the Reading width row in `ui/widgets/dialogs/SettingsDialog.tsx` through `AppearanceControlsContent` and the
+          dialog props;
+        - `ui/widgets/EditorView.tsx` passes the projected width to `ui/widgets/EditorStage/EditorStage.tsx`, which
+          sets `data-reading-width` on the reading stage; `ui/widgets/EditorStage/EditorStage.module.css` adds the
+          `full` rule with `max-width: none` and keeps the 700 px token for `page`;
+        - catalogue keys `settings.readingWidth`, `settings.readingWidth.page`, `settings.readingWidth.full` and
+          `settings.readingWidth.description` in `i18n/locales/en.json` ("Reading width", "Page", "Full width").
+    - Changes existing tests (each now includes `readingWidth` in the appearance group):
+        - Go: defaults and fallback in `tests/go/unit/settings/service_test.go`; the invalid-row case in
+          `tests/go/unit/settings/handler_test.go`; appearance reads and resets in
+          `tests/go/integration/settings/repository_sqlite_test.go`, including
+          `TestResetAppearanceChangesOnlyDeliveredAppearanceKeys`;
+        - frontend: `frontend/tests/unit/store/settingsSlice.test.ts`, `frontend/tests/unit/store/settingsProjection.test.ts`,
+          `frontend/tests/unit/settings/settingsCommands.test.ts`, `frontend/tests/unit/widgets/AppearanceControls.test.tsx`,
+          `frontend/tests/unit/widgets/dialogs/SettingsDialog.test.tsx` and `Settings` fixtures such as
+          `frontend/tests/support/loadedMarkdownSettings.ts`.
+    - Adds tests:
+        - Go black-box: default `page`; `full` saved and read back; any other written value refused with nothing
+          stored; Reset appearance restores `page`; a missing or invalid stored value read as `page`;
+        - unit: slice hydrate (valid, missing, invalid) and `readingWidthAcknowledged`; menu and dialog controls show the
+          stored choice and send `page` / `full`;
+        - integration: Full width removes the 700 px limit and Page keeps it; a width change while Reading mode is
+          active restyles without leaving it; the menu and the dialog stay in sync; Reset restores Page;
+        - e2e: switching to Full width through the Ctrl+, Settings menu while in Reading mode widens the document and
+          keeps Reading mode; the choice survives a restart.
+    - Docs: the `docs/index.md` preferences section lists Reading width (Page by default, Full width) beside Default
+      open mode; `docs/architecture.md` D17 notes that the Reading width is a persisted appearance setting while Reading
+      mode itself is not.
 
 ## 6. Reading mode on open
 

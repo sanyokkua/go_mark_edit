@@ -26,6 +26,13 @@ See proposal.md for motivation. Observed state (paths under `frontend/src/` unle
     - Appearance state is React state in `AppearanceSettingsProvider` (`ui/widgets/AppearanceControls.tsx:47`). Its
       `persist` (:110-133) already sends the whole `{defaultOpenMode, mode, theme}` group through `updateAppearance`;
       only its patch type excludes `defaultOpenMode`.
+    - The appearance group is `AppearanceSettings{Theme, Mode, DefaultOpenMode}` (`internal/apperr/results.go:9-14`),
+      stored under the keys at `internal/settings/repository_sqlite.go:14-16` (`GetAppearance` :49-64,
+      `UpdateAppearance` :145-151, `ResetAppearance` :155-162, which resets the whole group) and normalized and
+      validated in `internal/settings/service.go:241-255,293-305`.
+    - The Redux settings projection (`logic/store/settingsSlice.ts`, `hydrateSettings`) drops `appearance`, and
+      `AppShell`, `EditorView` and `EditorStage` sit outside `AppearanceSettingsProvider`. There is no settings-changed
+      event.
 - **Actions.** `distraction-free-reading` and `default-open-mode` are `laterDeferred` in
   `logic/actions/actionRegistry.ts:276-278,304-306`. The `preview` surface exists but only `refresh-preview` uses it,
   and there is no preview context menu. `formatShortcut` (`logic/actions/shortcutRegistry.ts:26-37`) has no special
@@ -62,6 +69,8 @@ See proposal.md for motivation. Observed state (paths under `frontend/src/` unle
       document's preview starts at 0.
     - Scroll sync is active only when both panes are visible (`logic/hooks/useScrollSync.ts:25`).
     - Preview text is natively selectable, and Wails' default context menu is off.
+    - The reading layout limits the preview pane to `var(--reading-column-max-width)`
+      (`ui/widgets/EditorStage/EditorStage.module.css:15-19`), defined as 700 px in `ui/styles/tokens.css:150`.
 
 ## Goals / Non-Goals
 
@@ -71,12 +80,14 @@ See proposal.md for motivation. Observed state (paths under `frontend/src/` unle
 - Exact restoration of the window and document state on exit, with no persisted writes caused by Reading mode
   except the preview scroll position.
 - Make the existing Default open mode setting work end to end.
+- A persisted, global Reading width choice: Page (centered column up to 700 px, the default) or Full width.
 
 **Non-Goals:**
 
 - Per-document or restart persistence of Reading mode.
 - OS file association and launch-argument file open (macOS file-open events, per-platform packaging; separate change).
 - Status-bar entry, print, export, new rendering features.
+- Reading widths other than Page and Full width, a user-entered width, or a per-document width.
 
 ## Decisions
 
@@ -95,7 +106,8 @@ See proposal.md for motivation. Observed state (paths under `frontend/src/` unle
         - Local `App.tsx` state: too much prop threading.
 2. **Reading mode is a presentation override of `EditorStage`, not a second surface.**
     - While `active`, `EditorView` passes effective visibility editor = hidden, preview = visible and a `reading` layout
-      variant: centered column up to 700 px, no pane header, no divider. The stored `view` is not written.
+      variant: a column whose width follows the Reading width setting (Decision 11; Page centers it at up to 700 px),
+      no pane header, no divider. The stored `view` is not written.
     - The pane's `LivePreview` is then the single renderer. Pause/Refresh, link handling, anchor jumps and the scroll
       offset updates come with no extra work.
     - "Reading mode scroll position" uses the saved pixel offset. `EditorStage` passes its layout variant
@@ -195,12 +207,59 @@ See proposal.md for motivation. Observed state (paths under `frontend/src/` unle
     - The Settings dialog gets a Default open mode row next to theme and mode, through `AppearanceControlsContent`
       (`AppearanceControls.tsx:185-200`) and the dialog props.
     - `persist` accepts `defaultOpenMode`.
-    - No new setting, storage or migration.
+    - Default open mode needs no new setting, storage or migration. The one new setting, Reading width, is
+      Decision 11.
 10. **Durable decision.** Add D17 to `docs/architecture.md`:
     - Reading mode is transient frontend window state held in a frontend-owned slice (refines ADR-0014).
-    - It is never persisted.
+    - It is never persisted. The Reading width choice is a persisted appearance setting (Decision 11); Reading mode
+      itself is not.
     - The backend signals Reading-on-open through `OpenResult.readingMode`.
     - The open-document text at `docs/architecture.md:481-483` is corrected to match.
+11. **Reading width setting.**
+    - Backend: `view.readingWidth` joins the appearance group.
+        - `internal/settings/model.go` gains `ReadingWidthPage = "page"` and `ReadingWidthFull = "full"` beside the
+          open-mode constants (:15-16), and the default appearance uses `page`.
+        - `AppearanceSettings` (`internal/apperr/results.go:9-14`) gains `ReadingWidth string json:"readingWidth"`.
+        - `internal/settings/repository_sqlite.go` adds the key constant and reads, writes and resets it in
+          `GetAppearance`, `UpdateAppearance` and `ResetAppearance`.
+        - `internal/settings/service.go` normalizes a missing or invalid stored value to `page` and refuses any other
+          written value with a validation error, beside `defaultOpenMode`.
+        - Handler, bridge methods and repository interface are unchanged, because the whole group already travels
+          through `UpdateAppearance` and `ResetAppearance`. No Go observer is added: the width is presentation only and
+          the application model does not use it.
+        - The generated `frontend/wailsjs/go/models.ts` gains the field through `scripts/build`.
+    - Frontend types and default: `ReadingWidth = 'page' | 'full'` in `logic/adapter/settingsTypes.ts`, used for
+      `AppearanceSettings.readingWidth`; `defaultAppearanceSettings` in `logic/settings/settingsCommands.ts` uses
+      `page`. Menu rows, dialog options and callbacks use this type directly, with no cast (unlike the old
+      `'reading' | 'editor'` cast at `ApplicationMenubar.tsx:74`).
+    - Projection: theme, mode and default open mode stay React state in `AppearanceSettingsProvider`, but
+      `EditorStage` sits outside that provider. The Redux settings slice (`logic/store/settingsSlice.ts`) therefore
+      projects `appearance.readingWidth`: `hydrateSettings` stores it (`page` when the value is not `page` or `full`),
+      and a new `readingWidthAcknowledged` action replaces it. The provider dispatches that action from its `persist`
+      and `reset` acknowledgement callbacks and after its startup `getSettings`, so the slice changes only after the
+      backend acknowledged the write ("Acknowledged, ordered updates") and a change applies at once while Reading mode
+      is active.
+    - Controls: the appearance controller (`ui/widgets/appearanceSettingsContext.ts`, `AppearanceControls.tsx`)
+      gains `readingWidth` in its state and `onReadingWidthChange`; `persist` accepts `readingWidth`. The Settings menu
+      (`ui/widgets/Menubar/SettingsMenu.tsx`) gets a Reading width radio group (Page, Full width) after Default open
+      mode, wired through `ApplicationMenubar.tsx` and enabled by the same `rowUnavailable(id, writer)` rule. The
+      Settings dialog gets a Reading width segmented row next to Default open mode through
+      `AppearanceControlsContent`.
+    - Strings: new catalogue keys `settings.readingWidth`, `settings.readingWidth.page`, `settings.readingWidth.full`
+      and `settings.readingWidth.description` in `i18n/locales/en.json`, plus menu labels where the menu uses
+      separate short labels.
+    - Rendering: `EditorView`, which already reads `state.reading.active` (`ui/widgets/EditorView.tsx:103`), reads the
+      projected width with `useAppSelector` and passes it to `EditorStage` as a `readingWidth` prop. `EditorStage` sets
+      `data-reading-width="page"` or `"full"` on the stage beside `data-variant='reading'`. `EditorStage.module.css`
+      keeps `max-width: var(--reading-column-max-width)` (:15-19) for `page` and adds a
+      `[data-reading-width='full']` rule with `max-width: none`, keeping the stage padding where the reading controls
+      sit. No new token is needed.
+    - No migration: a missing `view.readingWidth` row reads as `page`.
+    - Rejected:
+        - A frontend-only preference in `localStorage`: violates backend-owned settings and is lost with the webview
+          profile.
+        - Moving all appearance state into Redux: a larger refactor than the feature needs.
+        - Storing the width per document or in `UILayout`: the product choice is one global preference.
 
 ## Risks / Trade-offs
 
@@ -211,22 +270,31 @@ See proposal.md for motivation. Observed state (paths under `frontend/src/` unle
   listener remains.
 - [The `defaultPrevented` guard changes global dispatch] → existing shortcut unit, integration and e2e suites must stay
   green. The guard only skips keys another handler already consumed.
+- [Reading width is projected into Redux while the rest of the appearance group stays in the provider] → only
+  acknowledged values are dispatched, from the provider's own acknowledgement paths, so the two never disagree after a
+  save. A unit test covers hydrate, acknowledge and reset.
 - [Changing the viewer open arrangement affects stored `viewer` values] → the value was unreachable from the UI because
   the rows were disabled. The default is Editor.
 
 ## Migration Plan
 
-No data migration. The stored `view.defaultOpenMode` is unchanged. Rollback is reverting the change.
+No data migration. The stored `view.defaultOpenMode` is unchanged. `view.readingWidth` is a new key in the existing
+settings table: a missing row reads as `page`, and the first change or Reset appearance writes it. Rollback is reverting
+the change; an older build ignores the extra row.
 
 ## Verification
 
 - **Jest unit:** slice reducers, action availability, `formatShortcut`, dispatch guard.
 - **Jest integration:** chrome gating, the override restoring arrangement/cursor, Escape yielding, overlays and stored
-  layout, controls, context menu, Settings menu/dialog.
-- **Go black-box:** `OpenResult.readingMode` and arrangement in both modes.
+  layout, controls, context menu, Settings menu/dialog, Full width filling the window and a Reading width change
+  restyling Reading mode while it stays active.
+- **Go black-box:** `OpenResult.readingMode` and arrangement in both modes; `view.readingWidth` default `page`,
+  validation refusing other values, persistence, Reset appearance restoring `page`, and a missing or invalid stored
+  value read as `page`.
 - **Playwright** against the real backend: toggle, Escape, overlays, the `@native-clipboard` copy, open into an empty
-  window in each mode, the setting after restart. The copy text comes from `frontend/tests/fixtures/reference-document.md`
+  window in each mode, the setting after restart, switching Reading width through the Ctrl+, Settings menu while in
+  Reading mode, and the Reading width after restart. The copy text comes from `frontend/tests/fixtures/reference-document.md`
   ("Getting Started").
-- **Real application, manual:** control visibility on hover and focus, the column and typography in the three themes
-  in light and dark. The layout reference is the local, git-ignored mockup
+- **Real application, manual:** control visibility on hover and focus, the Page column and the Full width layout and
+  typography in the three themes in light and dark. The layout reference is the local, git-ignored mockup
   `.local_tmp_files/specification/mockups/gomarkedit-mockup.html`. The specs override its Done button.
