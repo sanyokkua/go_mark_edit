@@ -76,6 +76,7 @@ const AppShell: React.FC<AppShellProps> = ({
         lineNumber: activeDocument?.view.cursor.line ?? 1,
         column: activeDocument?.view.cursor.column ?? 1,
     });
+    const reading = useAppSelector((state) => state.reading.active);
     const recentItems = useAppSelector((state) => state.documents.recentItems ?? []);
     const showLauncher = onNewDocument !== undefined || onOpenDocument !== undefined || recentItems.length > 0;
     const tabSetRevision = useAppSelector((state) => state.documents.tabSetRevision);
@@ -211,7 +212,7 @@ const AppShell: React.FC<AppShellProps> = ({
                 onExternalConflict={onExternalConflict}
                 onLiveCursorChange={setLiveCursor}
             />
-            {hasActiveDocument && activeDocument !== undefined ? (
+            {hasActiveDocument && activeDocument !== undefined && !reading ? (
                 <StatusBar
                     facts={statusFacts}
                     saveIdentity={t(`status.saveStatus.${activeDocument.status ?? 'not-saved'}`)}

@@ -12,7 +12,7 @@ Test edits listed under "Changes existing tests" are required by the named requi
 
 ## 1. Reading mode toggle and presentation
 
-- [ ] 1.1 Enter and leave Reading mode with Ctrl/Cmd+Enter and View, Distraction-free reading, showing only the
+- [x] 1.1 Enter and leave Reading mode with Ctrl/Cmd+Enter and View, Distraction-free reading, showing only the
       rendered active document. Verify that the named tests pass, `scripts/verify` is green, and the real app shows the
       column in Material, Glass and Minimal in light and dark.
     - Requirements:
@@ -49,8 +49,8 @@ Test edits listed under "Changes existing tests" are required by the named requi
           and cursor; no editor pane and no scroll sync while active; the saved preview offset applied on entry from Split
           and from the Editor arrangement, and still in place after leaving to Split; a document over 2 MiB shows the paused notice and Refresh; a Light→Dark change
           restyles without leaving; the column fills a 375 px window;
-        - e2e (`frontend/tests/e2e/`): Ctrl+Enter twice and the View menu toggle; Ctrl+Tab and Ctrl+, still work in Reading
-          mode; the shortcuts dialog row; Ctrl+Enter in the Find input inserts a newline without entering Reading mode;
+        - e2e (`frontend/tests/e2e/`): Ctrl+Enter twice and the View menu toggle; Ctrl+Tab and Ctrl+, (which opens the Settings menu) still work in Reading
+          mode; the document identity is hidden in Reading mode and visible again afterwards; the shortcuts dialog row; Ctrl+Enter in the Find input inserts a newline without entering Reading mode;
           after a restart from Reading mode the window starts normal with the saved arrangement unchanged.
     - Docs:
         - `docs/architecture.md`: add D17 per Decision 10 (after D16, around line 866), and add the slice to the owner

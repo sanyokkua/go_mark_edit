@@ -1,4 +1,4 @@
-import { fireEvent, render } from '@testing-library/react';
+import { fireEvent, render, waitFor } from '@testing-library/react';
 
 import { createShellActionCatalogue } from '../../../src/logic/actions/shellActions';
 import { useShellShortcuts, type ShortcutAction } from '../../../src/logic/actions/useShellShortcuts';
@@ -153,4 +153,45 @@ it('routes canonical file/tab shortcuts through typed actions', () => {
     fireEvent.keyDown(window, { key: 'w', ctrlKey: true });
 
     expect(invoke).toHaveBeenCalledTimes(1);
+});
+
+function ReadingHarness({ documentOpen, toggleReading }: { documentOpen: boolean; toggleReading: () => void }): null {
+    useShellShortcuts(
+        createShellActionCatalogue({
+            modalOpen: false,
+            viewAvailable: true,
+            openSettings: jest.fn(),
+            openView: jest.fn(),
+            openAbout: jest.fn(),
+            toggleFullscreen,
+            toggleReading,
+            documentOpen,
+        }),
+    );
+    return null;
+}
+
+it('toggles Reading mode on Ctrl+Enter only while a document is open', async () => {
+    const toggleReading = jest.fn();
+    const { rerender } = render(<ReadingHarness documentOpen={false} toggleReading={toggleReading} />);
+
+    fireEvent.keyDown(window, { key: 'Enter', code: 'Enter', ctrlKey: true });
+    expect(toggleReading).not.toHaveBeenCalled();
+
+    rerender(<ReadingHarness documentOpen toggleReading={toggleReading} />);
+    fireEvent.keyDown(window, { key: 'Enter', code: 'Enter', ctrlKey: true });
+    await waitFor(() => expect(toggleReading).toHaveBeenCalledTimes(1));
+});
+
+it('ignores a key combination the focused control already handled', () => {
+    const toggleReading = jest.fn();
+    render(<ReadingHarness documentOpen toggleReading={toggleReading} />);
+    const input = document.createElement('input');
+    document.body.append(input);
+    input.addEventListener('keydown', (event) => event.preventDefault());
+
+    fireEvent.keyDown(input, { key: 'Enter', code: 'Enter', ctrlKey: true });
+
+    expect(toggleReading).not.toHaveBeenCalled();
+    input.remove();
 });

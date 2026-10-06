@@ -55,6 +55,9 @@ it('activates a finding with click and Enter, and keeps each row in keyboard ord
     expect(rows[0].tabIndex).toBe(0);
     expect(rows[1].tabIndex).toBe(0);
     fireEvent.click(rows[0]);
+    expect(fireEvent.keyDown(rows[1], { key: 'Enter', ctrlKey: true })).toBe(true);
+    expect(fireEvent.keyDown(rows[1], { key: 'Enter', metaKey: true })).toBe(true);
+    expect(onActivate).toHaveBeenCalledTimes(1);
     fireEvent.keyDown(rows[1], { key: 'Enter' });
     expect(onActivate).toHaveBeenNthCalledWith(1, expect.objectContaining({ startLine: 2, startColumn: 3 }));
     expect(onActivate).toHaveBeenNthCalledWith(2, expect.objectContaining({ startLine: 4, startColumn: 3 }));

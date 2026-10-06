@@ -3,6 +3,7 @@ import { useContext, useMemo } from 'react';
 import { t } from '../../../i18n';
 import { setEditorPaneVisible, setPreviewPaneVisible, setViewArrangement } from '../../../logic/store/docViewCommands';
 import { useAppDispatch, useAppSelector } from '../../../logic/store';
+import { toggleReading } from '../../../logic/store/readingSlice';
 import { notifyError } from '../../../logic/store/notificationsSlice';
 import { reportClassifiedError } from '../../../logic/store/classifiedNotification';
 import { setWorkspaceVisible } from '../../../logic/store/uiLayoutCommands';
@@ -148,6 +149,9 @@ export default function ApplicationMenubar({
                 },
                 onEditorVisibilityChange: (visible): void => {
                     void dispatch(setEditorPaneVisible(visible));
+                },
+                onDistractionFreeReading: (): void => {
+                    dispatch(toggleReading());
                 },
                 onFullscreen: (): void => {
                     void import('../../../logic/adapter').then(({ windowAdapter }) => {

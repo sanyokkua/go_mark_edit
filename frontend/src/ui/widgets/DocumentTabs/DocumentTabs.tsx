@@ -54,6 +54,8 @@ export interface DocumentTabsProps {
     ) => Promise<TabTransitionResult>;
     onNewDocument?: (expectedTabSetRevision: number) => Promise<unknown>;
     modalOpen?: boolean;
+    /** Keeps the strip mounted, with its keyboard shortcuts, while removing it from view. */
+    hidden?: boolean;
 }
 
 function announcementName(label: TabLabel | undefined, fallback: string): string {
@@ -68,6 +70,7 @@ const DocumentTabs: React.FC<DocumentTabsProps> = ({
     onNewDocument,
     revealRequest,
     modalOpen = false,
+    hidden = false,
 }: DocumentTabsProps): React.JSX.Element => {
     const dispatch = useAppDispatch();
     const orderedIds = useAppSelector((state) => state.documents.orderedIds);
@@ -546,6 +549,7 @@ const DocumentTabs: React.FC<DocumentTabsProps> = ({
         <>
             <TabBar
                 ariaLabel={t('editor.tabs')}
+                hidden={hidden}
                 revealRequest={revealRequest}
                 onActivate={(documentId): void => {
                     void activateDocument(documentId);

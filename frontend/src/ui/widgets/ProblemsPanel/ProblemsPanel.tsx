@@ -4,6 +4,7 @@ import type { LintFinding } from '../../../logic/tidy/protocol';
 import Pane from '../../components/Pane';
 import Banner from '../../primitives/Banner';
 import Button from '../../primitives/Button';
+import { hasCommandModifier } from '../../primitives/commandModifier';
 import Icon from '../../primitives/Icon';
 import styles from './ProblemsPanel.module.css';
 
@@ -71,7 +72,7 @@ export default function ProblemsPanel({ summary, onActivate, onClose }: Problems
                                             variant="quiet"
                                             onClick={(): void => onActivate(finding)}
                                             onKeyDown={(event): void => {
-                                                if (event.key === 'Enter') {
+                                                if (event.key === 'Enter' && !hasCommandModifier(event)) {
                                                     event.preventDefault();
                                                     onActivate(finding);
                                                 }

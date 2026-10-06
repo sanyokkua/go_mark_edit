@@ -7,10 +7,11 @@ with its hover-revealed controls, its optional sidebar and tab bar overlays, and
 
 ### Requirement: Reading mode shows only the rendered document
 
-WHILE Reading mode is active, the system SHALL hide the menu bar, toolbar, tab bar, sidebar, problems panel and status
-bar and SHALL show the active document rendered exactly as the preview renders it, in a centered column at most 700 px
-wide. Entering or leaving Reading mode SHALL NOT change the document's saved arrangement, split ratio, cursor,
-selection or content, or the stored sidebar visibility and width.
+WHILE Reading mode is active, the system SHALL hide all application chrome (menu bar with its document identity,
+toolbar, tab bar, sidebar, problems panel and status bar) and SHALL show the active document rendered as the preview
+renders it, in a centered column at most 700 px wide. Only the operating system's window frame remains. Entering or
+leaving Reading mode SHALL NOT change the document's arrangement, split ratio, cursor, selection, content or the stored
+sidebar state.
 
 #### Scenario: Enter from Split
 
@@ -20,8 +21,8 @@ selection or content, or the stored sidebar visibility and width.
 
 #### Scenario: Shortcuts keep working
 
-- **WHEN** two documents are open in Reading mode and the user presses Ctrl+Tab, then Ctrl+, and closes the dialog
-- **THEN** the other document is shown in Reading mode, and the Settings dialog opens and closes over it
+- **WHEN** two documents are open in Reading mode and the user presses Ctrl+Tab, then Ctrl+, and then Escape
+- **THEN** the other document is shown in Reading mode, and the Settings menu opens and closes over it
 
 #### Scenario: Large document
 

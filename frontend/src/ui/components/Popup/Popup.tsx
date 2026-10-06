@@ -14,6 +14,7 @@ import {
     forwardRef,
 } from 'react';
 
+import { hasCommandModifier } from '../../primitives/commandModifier';
 import styles from './Popup.module.css';
 
 export type PopupSize = 'menu' | 'wide' | 'details';
@@ -305,7 +306,7 @@ const Popup = ({
             menuItems(popupRef.current).at(-1)?.focus();
             return;
         }
-        if (event.key.length !== 1 || event.ctrlKey || event.metaKey || event.altKey) {
+        if (event.key.length !== 1 || event.altKey || hasCommandModifier(event)) {
             return;
         }
         typeahead.current += event.key.toLocaleLowerCase();
@@ -386,7 +387,10 @@ export const PopupTrigger = forwardRef<HTMLButtonElement, PopupTriggerProps>(fun
             onKeyDown={(event): void => {
                 onKeyDown?.(event);
                 if (event.defaultPrevented) return;
-                if (event.key !== 'ArrowDown' && event.key !== 'Enter' && event.key !== ' ') {
+                if (
+                    (event.key !== 'ArrowDown' && event.key !== 'Enter' && event.key !== ' ') ||
+                    hasCommandModifier(event)
+                ) {
                     return;
                 }
                 event.preventDefault();

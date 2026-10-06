@@ -32,8 +32,9 @@ See proposal.md for motivation. Observed state (paths under `frontend/src/` unle
   form for `Enter`.
 - **Shortcuts and Escape.**
     - `useShellShortcuts` (`logic/actions/useShellShortcuts.ts:32-61`) listens on `window` in the bubble phase and does
-      not check `defaultPrevented`. Monaco's Find input handles Ctrl/Cmd+Enter with `preventDefault` but without
-      `stopPropagation` (`monaco-editor/esm/.../find/findWidget.js:654-664`).
+      not check `defaultPrevented`. Monaco's Find input binds the physical Ctrl key (WinCtrl on macOS) plus Enter and
+      handles it with `preventDefault` but without `stopPropagation` (`monaco-editor/esm/.../find/findWidget.js:654-664`).
+      On macOS, Cmd+Enter in the Find input is not claimed by Monaco, so it enters Reading mode.
     - `Popup` (`ui/components/Popup/Popup.tsx:272-278`) and `ModalShell` (`ui/components/ModalShell/ModalShell.tsx:97-103`)
       close on Escape from document listeners with `preventDefault`.
     - `modalOpen` (`app/useAppPresentation.ts:32`) covers Settings, About, Shortcuts and workflow modals.
@@ -148,9 +149,11 @@ See proposal.md for motivation. Observed state (paths under `frontend/src/` unle
       document is open and no modal is open, and dispatches a toggle.
     - `formatShortcut` prints `Enter` as `Enter`, giving `Ctrl+Enter` on Windows/Linux and `⌘↩` on macOS.
     - `useShellShortcuts` returns early when `event.defaultPrevented` is already true, the same yielding rule
-      `Popup.tsx:287` and `MenuItem.tsx:63` use. This stops Ctrl+Enter in Monaco's Find input from toggling Reading
-      mode. Monaco's own bindings already `stopPropagation`, so the guard affects only keys a control handled
+      `Popup.tsx:287` and `MenuItem.tsx:63` use. This stops Ctrl+Enter (the physical Ctrl key, also on macOS) in
+      Monaco's Find input from toggling Reading mode. Monaco's own bindings already `stopPropagation`, so the guard affects only keys a control handled
       without stopping them.
+    - `ui/primitives/commandModifier.ts` (`hasCommandModifier`: Ctrl or Cmd, not Alt) lets controls that activate on
+      plain Enter/Space ignore Ctrl/Cmd so the window shortcut layer sees them.
     - Escape is not a catalogue command. It is a dismiss key, like Popup's. The Reading presentation registers a
       `window` keydown listener while `active`. The listener ignores events with `defaultPrevented` (menus, popups and
       overlays handled them) or while `modalOpen`, and otherwise leaves Reading mode.

@@ -93,6 +93,21 @@ it('resolves platform labels without changing the binding', () => {
     expect(formatShortcut('Mod+Shift+F', 'linux')).toBe('Ctrl+Shift+F');
 });
 
+it('prints Enter as the return glyph on macOS and as a word elsewhere', () => {
+    expect(formatShortcut('Mod+Enter', 'darwin')).toBe('⌘↩');
+    expect(formatShortcut('Mod+Enter', 'win32')).toBe('Ctrl+Enter');
+    expect(formatShortcut('Mod+Enter', 'linux')).toBe('Ctrl+Enter');
+});
+
+it('resolves Ctrl+Enter to the Distraction-free reading binding', () => {
+    expect(
+        shortcutForKeyEvent(
+            { key: 'Enter', code: 'Enter', metaKey: false, ctrlKey: true, altKey: false, shiftKey: false },
+            'linux',
+        ),
+    ).toBe('Mod+Enter');
+});
+
 it('keeps native macOS File accelerators while preserving canonical bindings', () => {
     expect(formatShortcut('Mod+N', 'darwin')).toBe('⌘N');
     expect(formatShortcut('Mod+O', 'darwin')).toBe('⌘O');

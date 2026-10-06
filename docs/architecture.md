@@ -69,6 +69,7 @@ receive commands through props and contexts.
 | `frontend/src/logic/adapter/`                        | The bridge boundary, request pacing, event subscriptions, service wrappers and the native `ClipboardPort`.                                        |
 | `frontend/src/logic/store/`                          | A disposable Redux projection of backend state; it is not the source of truth.                                                                    |
 | `frontend/src/logic/store/appModelProjection.ts`     | Initial hydration, ordered state-patch delivery and authoritative metadata recovery after revision gaps.                                          |
+| `frontend/src/logic/store/readingSlice.ts`           | Transient, never-persisted Reading mode window state: whether it is active.                                                                       |
 | `frontend/src/logic/store/workspaceSlice.ts`         | Disposable projection of the workspace snapshot and local tree-reading state.                                                                     |
 | `frontend/src/logic/actions/actionRegistry.ts`       | The action catalogue and availability decisions used by every command surface, including Markdown hydration, document and tidy-operation state.   |
 | `frontend/src/logic/actions/editorActionExecutor.ts` | The sole editor-action owner for dispatch, clipboard, formatting, selection snapshots and focus restoration.                                      |
@@ -86,7 +87,7 @@ receive commands through props and contexts.
 | `frontend/src/ui/widgets/DocumentTabs/`              | The DocumentTabs consumer of TabBar and tab-specific commands.                                                                                    |
 | `frontend/src/ui/widgets/WorkspaceTree/`             | Sidebar tree, header controls, empty and unavailable states, context menu and create-entry prompt.                                                |
 | `frontend/src/ui/widgets/FormattingToolbar/`         | Formatting groups, arrangement control and Bar overflow.                                                                                          |
-| `frontend/src/ui/widgets/EditorStage/`               | Editor/preview panes, arrangement, preview accessory state and synchronized scrolling.                                                            |
+| `frontend/src/ui/widgets/EditorStage/`               | Editor/preview panes, arrangement, the `reading` presentation variant, preview accessory state and synchronized scrolling.                        |
 | `frontend/src/ui/widgets/ProblemsPanel/`             | Accessible presentation of active-document lint findings; activation returns through the guarded editor command seam.                             |
 | `frontend/src/ui/widgets/dialogs/`                   | Settings, About, Shortcuts, close, conflict and normalization dialogs.                                                                            |
 | `frontend/src/ui/widgets/StartupFailure/`            | Per-step startup failure, Retry and Quit.                                                                                                         |
@@ -864,6 +865,14 @@ The owner decisions that shaped this refactor are recorded here so they are not 
   without replaying their deltas. Engineering rules live in `openspec/config.yaml`. Generated
   OpenSpec skills and commands under `.agents/` and `.claude/` are tool output refreshed by
   `openspec update`.
+
+- **D17 — Reading mode is transient frontend window state:** it refines ADR-0014. Whether the window
+  is in Reading mode lives in the frontend-owned
+  `frontend/src/logic/store/readingSlice.ts`. The state is never persisted: it is not stored per
+  document or across restarts, and it never changes a document's saved arrangement or the stored
+  sidebar visibility and width. The `add-reading-mode` change specifies that the backend signals
+  Reading-on-open to the frontend through `OpenResult.readingMode`; the open-document flow text in
+  this file is updated when that signal is delivered.
 
 ## Planning decisions retained
 

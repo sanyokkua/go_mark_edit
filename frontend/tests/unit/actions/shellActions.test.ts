@@ -69,3 +69,31 @@ it('includes the registry-owned Settings binding in shell dispatch', () => {
         shortcut: 'Mod+,',
     });
 });
+
+it('registers Distraction-free reading only when a toggle is supplied', () => {
+    expect(createShellActionCatalogue(actionContext()).map((action) => action.id)).not.toContain(
+        'distraction-free-reading',
+    );
+
+    const actions = createShellActionCatalogue({ ...actionContext(), toggleReading: jest.fn(), documentOpen: true });
+    expect(actions.find((action) => action.id === 'distraction-free-reading')).toMatchObject({
+        scope: 'window',
+        shortcut: 'Mod+Enter',
+    });
+});
+
+it('runs Distraction-free reading only with an open document and no modal', async () => {
+    const toggleReading = jest.fn();
+    const find = (context: ReturnType<typeof actionContext> & { documentOpen?: boolean }) =>
+        createShellActionCatalogue({ ...context, toggleReading }).find(
+            (action) => action.id === 'distraction-free-reading',
+        )!;
+
+    await expect(dispatchShellAction(find({ ...actionContext(), documentOpen: false }))).resolves.toBe(false);
+    await expect(dispatchShellAction(find(actionContext()))).resolves.toBe(false);
+    await expect(dispatchShellAction(find({ ...actionContext(true), documentOpen: true }))).resolves.toBe(false);
+    expect(toggleReading).not.toHaveBeenCalled();
+
+    await expect(dispatchShellAction(find({ ...actionContext(), documentOpen: true }))).resolves.toBe(true);
+    expect(toggleReading).toHaveBeenCalledTimes(1);
+});

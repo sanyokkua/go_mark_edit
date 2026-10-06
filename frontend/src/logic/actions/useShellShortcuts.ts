@@ -30,6 +30,9 @@ function isShellAction(action: ShellShortcutAction): action is ShellAction {
 export function useShellShortcuts(actions: readonly ShellShortcutAction[]): void {
     useEffect((): (() => void) => {
         const onKeyDown = (event: KeyboardEvent): void => {
+            if (event.defaultPrevented) {
+                return;
+            }
             const platform = currentPlatform();
             const eventBinding = shortcutForKeyEvent(event, platform);
             const action = actions.find(
@@ -42,9 +45,10 @@ export function useShellShortcuts(actions: readonly ShellShortcutAction[]): void
             if (action === undefined || !action.isAvailable()) {
                 return;
             }
-            const availability = isShellAction(action)
-                ? getActionAvailability(action.id)
-                : getActionAvailability(action.id, action.dispatchContext);
+            const availability = getActionAvailability(
+                action.id,
+                isShellAction(action) ? action.availabilityContext : action.dispatchContext,
+            );
             if (availability.kind !== 'available') {
                 return;
             }

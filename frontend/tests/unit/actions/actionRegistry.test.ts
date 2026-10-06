@@ -363,3 +363,20 @@ it('makes mutating editor commands unavailable for a non-writable document', () 
         expect(getActionAvailability('copy', { projectedState, documentId })).toEqual({ kind: 'available' });
     }
 });
+
+it('offers Distraction-free reading on Mod+Enter only while a document is open', () => {
+    const action = getAction('distraction-free-reading');
+    expect(action.shortcut).toBe('Mod+Enter');
+    expect(action.surfaces).toEqual(['view-menu', 'shortcuts']);
+    expect(getActionAvailability('distraction-free-reading', { documentId: 'doc-1' })).toEqual({ kind: 'available' });
+    expect(getActionAvailability('distraction-free-reading')).toEqual({
+        kind: 'unavailable',
+        reason: 'no-document',
+    });
+    expect(
+        getActionAvailability('distraction-free-reading', {
+            documentId: 'doc-1',
+            projectedState: { activeDocumentId: 'doc-2', documents: {} },
+        }),
+    ).toEqual({ kind: 'unavailable', reason: 'no-document' });
+});

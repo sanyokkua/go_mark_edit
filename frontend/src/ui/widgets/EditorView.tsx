@@ -1,4 +1,4 @@
-import { useCallback, useContext, useEffect, useRef, useState } from 'react';
+import { useCallback, useContext, useEffect, useLayoutEffect, useRef, useState } from 'react';
 
 import type { EditorPosition } from '../components/CodeEditor';
 import { appModelAdapter } from '../../logic/adapter';
@@ -100,6 +100,7 @@ const EditorView: React.FC<EditorViewProps> = ({
     const dispatch = useAppDispatch();
     const activeBuffer = useContext(EditorSessionContext);
     const minimumWindow = useMinimumWindow();
+    const reading = useAppSelector((state) => state.reading.active);
     const modalOpen = useModalState();
     const documentCommands = useContext(DocumentCommandContext);
     const handledEditorFocus = useRef(0);
@@ -134,6 +135,11 @@ const EditorView: React.FC<EditorViewProps> = ({
         },
         [editorFocusRequest?.documentId],
     );
+    useLayoutEffect((): void => {
+        if (reading && activeDocument?.view.editorVisible === true) {
+            stageRef.current?.captureViewState();
+        }
+    }, [reading, activeDocument?.view.editorVisible]);
     const onArrangementChange = useCallback(
         (nextArrangement: ViewArrangement): void => {
             if (nextArrangement === 'preview') {
@@ -211,14 +217,16 @@ const EditorView: React.FC<EditorViewProps> = ({
     }
 
     const view = activeDocument?.view ?? fallbackView();
-    const previewVisible = minimumWindow ? view.previewVisible && !view.editorVisible : view.previewVisible;
-    const editorVisible = minimumWindow ? !previewVisible : view.editorVisible;
+    const previewVisible =
+        reading || (minimumWindow ? view.previewVisible && !view.editorVisible : view.previewVisible);
+    const editorVisible = !reading && (minimumWindow ? !previewVisible : view.editorVisible);
     const arrangement = arrangementFor(view);
 
     return (
         <section aria-label={t('editor.view')} className={styles.editorView}>
             <DocumentTabs
                 adapter={tabAdapter}
+                hidden={reading}
                 revealRequest={tabRevealRequest}
                 modalOpen={modalOpen}
                 onActivateDocument={onActivateDocument}
@@ -226,7 +234,7 @@ const EditorView: React.FC<EditorViewProps> = ({
                 onExternalConflict={onExternalConflict}
                 onNewDocument={onNewDocument}
             />
-            <FormattingToolbar arrangement={arrangement} onArrangementChange={onArrangementChange} />
+            {reading ? null : <FormattingToolbar arrangement={arrangement} onArrangementChange={onArrangementChange} />}
             <EditorStage
                 ref={stageRef}
                 activeBuffer={activeBuffer}
@@ -244,9 +252,10 @@ const EditorView: React.FC<EditorViewProps> = ({
                 panelId={EDITOR_TABPANEL_ID}
                 previewVisible={previewVisible}
                 readOnly={activeDocumentReadOnly}
+                variant={reading ? 'reading' : 'normal'}
                 view={view}
             />
-            {problemsOpen && onCloseProblems !== undefined ? (
+            {!reading && problemsOpen && onCloseProblems !== undefined ? (
                 <div className={styles.problemsDock}>
                     <ProblemsPanel summary={problemsSummary} onActivate={activateFinding} onClose={onCloseProblems} />
                 </div>

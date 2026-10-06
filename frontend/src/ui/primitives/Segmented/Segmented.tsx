@@ -1,5 +1,6 @@
 import { useEffect, useRef, type ComponentPropsWithRef } from 'react';
 
+import { hasCommandModifier } from '../commandModifier';
 import styles from './Segmented.module.css';
 
 export interface SegmentedOption<Value extends string> {
@@ -121,7 +122,7 @@ const Segmented = <Value extends string>({
                         if (preserveSelection) event.preventDefault();
                     },
                     onKeyDown: (event): void => {
-                        if (event.key === ' ' || event.key === 'Enter') {
+                        if ((event.key === ' ' || event.key === 'Enter') && !hasCommandModifier(event)) {
                             event.preventDefault();
                             requestValue(option.value);
                             return;

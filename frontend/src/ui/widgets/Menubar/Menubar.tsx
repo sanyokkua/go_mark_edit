@@ -350,9 +350,11 @@ const Menubar: React.FC<MenubarProps> = ({
                         : (): void => {
                               viewMenuProps.onWorkspaceVisibilityChange?.(!viewMenuProps.workspaceVisible);
                           },
+                toggleReading: viewMenuProps?.onDistractionFreeReading,
+                documentOpen: documentId !== undefined,
                 toggleFullscreen,
             }),
-        [modalOpen, onAbout, onShortcuts, toggleFullscreen, viewMenuProps],
+        [documentId, modalOpen, onAbout, onShortcuts, toggleFullscreen, viewMenuProps],
     );
     /*
      * Every File row that both declares a registry shortcut and has a handler
@@ -411,6 +413,7 @@ const Menubar: React.FC<MenubarProps> = ({
         (action): boolean =>
             action.id !== 'fullscreen' &&
             action.id !== 'toggle-sidebar' &&
+            action.id !== 'distraction-free-reading' &&
             action.id !== 'keyboard-shortcuts' &&
             (action.id !== 'view' || viewMenuProps !== undefined),
     );

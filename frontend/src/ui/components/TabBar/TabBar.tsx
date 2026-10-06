@@ -37,6 +37,7 @@ export interface TabBarProps {
     readonly tabs: readonly TabBarTab[];
     readonly revealRequest?: { readonly documentId: string; readonly sequence: number } | null;
     readonly className?: string;
+    readonly hidden?: boolean;
     readonly newTabLabel?: string;
     readonly onTabRef?: (documentId: string, element: HTMLButtonElement | null) => void;
 }
@@ -72,6 +73,7 @@ function insertionIndicator(slot: number): React.JSX.Element {
 const TabBar: React.FC<TabBarProps> = ({
     ariaLabel,
     className,
+    hidden,
     newTabLabel = 'New tab',
     onActivate,
     onAdd,
@@ -320,6 +322,7 @@ const TabBar: React.FC<TabBarProps> = ({
         <Bar
             ariaLabel={ariaLabel}
             className={`${styles.tabBar} ${className ?? ''}`.trim()}
+            hidden={hidden}
             main={
                 <div
                     ref={stripRef}

@@ -78,3 +78,20 @@ it('focuses the first visible MenuItem when a responsive group is hidden', async
     await waitFor(() => expect(screen.getByRole('menuitem', { name: 'Visible' })).toHaveFocus());
     expect(document.activeElement).not.toBe(screen.getByText('Hidden'));
 });
+
+it('opens its trigger on plain Enter but leaves Ctrl/Cmd+Enter to window shortcuts', () => {
+    const onOpen = jest.fn();
+    render(
+        <PopupTrigger expanded={false} onOpen={onOpen}>
+            Menu
+        </PopupTrigger>,
+    );
+    const trigger = screen.getByRole('button', { name: 'Menu' });
+
+    expect(fireEvent.keyDown(trigger, { key: 'Enter', ctrlKey: true })).toBe(true);
+    expect(fireEvent.keyDown(trigger, { key: 'Enter', metaKey: true })).toBe(true);
+    expect(onOpen).not.toHaveBeenCalled();
+
+    expect(fireEvent.keyDown(trigger, { key: 'Enter' })).toBe(false);
+    expect(onOpen).toHaveBeenCalledTimes(1);
+});

@@ -1,8 +1,9 @@
-import { getAction, getActionAvailability } from './actionRegistry';
+import { getAction, getActionAvailability, type ActionAvailabilityContext } from './actionRegistry';
 import type { ActionScope } from './actionRegistry';
 import { dispatchAction } from './actionDispatcher';
 
-export type ShellActionId = 'settings' | 'view' | 'about' | 'keyboard-shortcuts' | 'fullscreen' | 'toggle-sidebar';
+export type ShellActionId =
+    'settings' | 'view' | 'about' | 'keyboard-shortcuts' | 'fullscreen' | 'toggle-sidebar' | 'distraction-free-reading';
 
 export type ShellActionScope = 'application' | 'window';
 
@@ -21,10 +22,14 @@ export interface ShellActionContext {
     openAbout: () => void;
     openShortcuts?: () => void;
     toggleSidebar?: () => void;
+    toggleReading?: () => void;
+    documentOpen?: boolean;
     toggleFullscreen: () => Promise<boolean>;
 }
 
 export interface ShellAction {
+    /** Extra facts the registry needs to judge this action, forwarded to its availability check and dispatch. */
+    availabilityContext?: ActionAvailabilityContext;
     accessibilityKey: string;
     id: ShellActionId;
     invoke: () => Promise<unknown> | unknown;
@@ -36,8 +41,8 @@ export interface ShellAction {
 
 export function createShellActionCatalogue(context: ShellActionContext): readonly ShellAction[] {
     const backgroundAvailable = (): boolean => !context.modalOpen;
-    const registryAvailable = (id: ShellActionId): boolean =>
-        getActionAvailability(id, { modalOpen: context.modalOpen }).kind === 'available';
+    const registryAvailable = (id: ShellActionId, extra?: ActionAvailabilityContext): boolean =>
+        getActionAvailability(id, { ...extra, modalOpen: context.modalOpen }).kind === 'available';
     const registryAction = (id: ShellActionId) => getAction(id);
     const catalogue: ShellAction[] = [
         {
@@ -99,6 +104,23 @@ export function createShellActionCatalogue(context: ShellActionContext): readonl
             invoke: context.toggleSidebar,
         });
     }
+    if (context.toggleReading !== undefined) {
+        const reading = registryAction('distraction-free-reading');
+        const availabilityContext: ActionAvailabilityContext = {
+            documentId: context.documentOpen === true ? 'active' : undefined,
+        };
+        catalogue.push({
+            id: 'distraction-free-reading',
+            availabilityContext,
+            labelKey: reading.labelKey,
+            accessibilityKey: reading.accessibilityKey,
+            scope: shellScope(reading.scope),
+            shortcut: reading.shortcut,
+            isAvailable: (): boolean =>
+                registryAvailable('distraction-free-reading', availabilityContext) && backgroundAvailable(),
+            invoke: context.toggleReading,
+        });
+    }
     return Object.freeze(catalogue);
 }
 
@@ -107,6 +129,7 @@ export async function dispatchShellAction(action: ShellAction): Promise<boolean>
         return false;
     }
     const result = await dispatchAction(action.id, {
+        ...action.availabilityContext,
         applicationFocused: action.scope === 'application',
         invoke: action.invoke,
         modalOpen: false,

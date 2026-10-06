@@ -23,7 +23,8 @@
         var(--shell-assistant-collapsed-width);
 }
 
-.shell[data-workspace-visible='false'] {
+.shell[data-workspace-visible='false'],
+.shell[data-reading] {
     --shell-workspace-column: 0px;
 }
 

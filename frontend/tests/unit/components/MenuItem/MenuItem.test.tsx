@@ -38,3 +38,20 @@ it('keeps a deferred menu item visible but unavailable', () => {
     expect(item).toBeDisabled();
     expect(item).toHaveAttribute('aria-disabled', 'true');
 });
+
+it('activates on plain Enter but leaves Ctrl/Cmd+Enter to window shortcuts', () => {
+    const onSelect = jest.fn();
+    render(
+        <div role="menu">
+            <MenuItem label="Save" onSelect={onSelect} />
+        </div>,
+    );
+    const item = screen.getByRole('menuitem', { name: 'Save' });
+
+    expect(fireEvent.keyDown(item, { key: 'Enter', ctrlKey: true })).toBe(true);
+    expect(fireEvent.keyDown(item, { key: 'Enter', metaKey: true })).toBe(true);
+    expect(onSelect).not.toHaveBeenCalled();
+
+    expect(fireEvent.keyDown(item, { key: 'Enter' })).toBe(false);
+    expect(onSelect).toHaveBeenCalledTimes(1);
+});

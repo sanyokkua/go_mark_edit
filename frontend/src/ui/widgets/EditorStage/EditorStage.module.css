@@ -12,6 +12,12 @@
     color: var(--accent-ink);
 }
 
+.stage[data-variant='reading'] > [data-pane-identity='preview'] {
+    margin-inline: auto;
+    max-width: var(--reading-column-max-width);
+    width: 100%;
+}
+
 .stage[data-split-resizable] {
     gap: 0;
 }

@@ -592,6 +592,67 @@ it('leaves the formatting toolbar live for a writable document', () => {
     }
 });
 
+it('keeps the Image action unavailable for a writable document, ignoring a click and Ctrl+Shift+I', () => {
+    store.dispatch(resetProjection());
+    store.dispatch(
+        hydrateProjection({
+            revision: 1,
+            documents: {
+                'doc-1': {
+                    documentId: 'doc-1',
+                    title: 'fine',
+                    path: '/documents/fine.md',
+                    dirty: false,
+                    encoding: 'utf-8',
+                    lineEnding: 'lf',
+                    wordCount: 0,
+                    capability: 'writable',
+                    view: {
+                        arrangement: 'editor',
+                        editorVisible: true,
+                        previewVisible: false,
+                        cursor: { line: 1, column: 1 },
+                        selection: { start: { line: 1, column: 1 }, end: { line: 1, column: 1 } },
+                        scroll: { editor: 0, preview: 0 },
+                    },
+                },
+            },
+            activeDocumentId: 'doc-1',
+            ui: {},
+        }),
+    );
+    const available = <T,>(value: T) => ({ status: 'available' as const, value });
+    const commands = {
+        focus: jest.fn(() => available(undefined)),
+        getContent: jest.fn(() => available('word')),
+        getSelection: jest.fn(() =>
+            available({ start: { lineNumber: 1, column: 1 }, end: { lineNumber: 1, column: 5 } }),
+        ),
+        replaceRange: jest.fn(() => available(undefined)),
+        replaceAll: jest.fn(() => available(undefined)),
+        applyEdits: jest.fn(() => available(undefined)),
+        setPosition: jest.fn(() => available(undefined)),
+        setMarkers: jest.fn(() => available(undefined)),
+    };
+    render(
+        <EditorSessionContext.Provider value={{ documentId: 'doc-1', content: 'word' }}>
+            <DocumentCommandContext.Provider value={commands}>
+                <FormattingToolbar arrangement="editor" onArrangementChange={jest.fn()} />
+            </DocumentCommandContext.Provider>
+        </EditorSessionContext.Provider>,
+    );
+    const image = screen.getByRole('button', { name: 'Image' });
+    expect(image).toBeDisabled();
+
+    fireEvent.click(image);
+    fireEvent.keyDown(window, { key: 'I', code: 'KeyI', ctrlKey: true, shiftKey: true });
+    fireEvent.keyDown(window, { key: 'I', code: 'KeyI', metaKey: true, shiftKey: true });
+
+    expect(commands.replaceRange).not.toHaveBeenCalled();
+    expect(commands.replaceAll).not.toHaveBeenCalled();
+    expect(commands.applyEdits).not.toHaveBeenCalled();
+});
+
 /*
  * , the toolbar half of the same decision. The overflow drew accelerators
  * from the registry but only on `?parity-case`, and `formatShortcut` had no

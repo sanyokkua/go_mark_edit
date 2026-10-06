@@ -25,6 +25,7 @@ const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
 }: WorkspaceLayoutProps): React.JSX.Element => {
     const dispatch = useAppDispatch();
     const minimumWindow = useMinimumWindow();
+    const reading = useAppSelector((state) => state.reading.active);
     const workspaceVisible = useAppSelector((state) => state.ui.layout.sidebarVisible ?? true);
     const acknowledgedWidth = useAppSelector((state) => state.ui.layout.sidebarWidth ?? WORKSPACE_BINDING_WIDTH);
     const [pendingWidth, setPendingWidth] = useState<PendingWidth | undefined>();
@@ -60,11 +61,12 @@ const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
         <div
             className={styles.shell}
             data-document-state={documentState}
+            data-reading={reading || undefined}
             data-testid="application-shell"
             data-workspace-visible={String(workspaceVisible)}
             style={shellStyle}
         >
-            {minimumWindow ? null : (
+            {minimumWindow || reading ? null : (
                 <Sidebar
                     ariaLabel={t('shell.sidebar')}
                     collapsed={!workspaceVisible}

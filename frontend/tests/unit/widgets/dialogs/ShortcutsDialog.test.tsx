@@ -50,6 +50,15 @@ it('explains that tidy shortcuts need an open document while the command palette
     expect(commandPalette).toHaveAttribute('data-availability', 'deferred');
 });
 
+it('lists Distraction-free reading with the Window scope and its Enter binding', () => {
+    render(<ShortcutsDialog open onOpenChange={jest.fn()} />);
+
+    const row = screen.getByText('Distraction-free reading').closest('[data-action-id="distraction-free-reading"]');
+    expect(row).toBeInTheDocument();
+    expect(row).toHaveTextContent('Window');
+    expect(row?.querySelector('kbd')).toHaveTextContent(/^(Ctrl\+Enter|⌘↩)$/);
+});
+
 it('closes the modal on a backdrop pointer interaction', () => {
     const onOpenChange = jest.fn();
     render(<ShortcutsDialog open onOpenChange={onOpenChange} />);

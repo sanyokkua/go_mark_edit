@@ -78,3 +78,18 @@ it('leaves focus on another group when an earlier selection is acknowledged', ()
     fireEvent.keyDown(document.activeElement as Element, { key: ' ' });
     expect(light).toBeChecked();
 });
+
+it('leaves Ctrl and Cmd with Enter or Space unhandled so window shortcuts receive them', () => {
+    const onChange = jest.fn();
+    render(<Segmented ariaLabel="View arrangement" options={options} value="editor" onChange={onChange} />);
+    const split = screen.getByRole('radio', { name: 'Split' });
+
+    for (const modifier of ['ctrlKey', 'metaKey'] as const) {
+        expect(fireEvent.keyDown(split, { key: 'Enter', [modifier]: true })).toBe(true);
+        expect(fireEvent.keyDown(split, { key: ' ', [modifier]: true })).toBe(true);
+    }
+    expect(onChange).not.toHaveBeenCalled();
+
+    expect(fireEvent.keyDown(split, { key: 'Enter' })).toBe(false);
+    expect(onChange).toHaveBeenCalledWith('split');
+});

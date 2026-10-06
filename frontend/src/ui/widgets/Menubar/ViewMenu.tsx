@@ -42,6 +42,7 @@ export interface ViewMenuProps {
     scrollSync?: boolean;
     onScrollSyncChange?: (enabled: boolean) => void;
     onFullscreen?: () => void;
+    onDistractionFreeReading?: () => void;
     problemsOpen?: boolean;
     onToggleProblems?: () => void;
 }
@@ -73,6 +74,7 @@ const ViewMenu: React.FC<ViewMenuProps> = ({
     scrollSync,
     onScrollSyncChange,
     onFullscreen,
+    onDistractionFreeReading,
     problemsOpen = false,
     onToggleProblems,
 }: ViewMenuProps): React.JSX.Element => {
@@ -99,7 +101,6 @@ const ViewMenu: React.FC<ViewMenuProps> = ({
     const assistantAvailability = getActionAvailability(assistantAction.id, {
         modalOpen,
     });
-    const availabilityOf = (id: ActionId): boolean => getActionAvailability(id, { modalOpen }).kind === 'available';
 
     const acceleratorFor = (id: ActionId): string | undefined => {
         const { shortcut } = getAction(id);
@@ -277,8 +278,24 @@ const ViewMenu: React.FC<ViewMenuProps> = ({
                 <PopupSeparator />
                 <MenuItem
                     accelerator={acceleratorFor('distraction-free-reading')}
-                    disabled={!availabilityOf('distraction-free-reading')}
+                    disabled={
+                        onDistractionFreeReading === undefined ||
+                        getActionAvailability('distraction-free-reading', {
+                            modalOpen,
+                            documentId: documentOpen ? 'active' : undefined,
+                        }).kind !== 'available'
+                    }
                     label={t(getAction('distraction-free-reading').labelKey)}
+                    onSelect={(): void => {
+                        if (!documentOpen || onDistractionFreeReading === undefined) return;
+                        void dispatchAction('distraction-free-reading', {
+                            invoke: onDistractionFreeReading,
+                            documentId: 'active',
+                            modalOpen,
+                            windowFocused: true,
+                        });
+                        setOpen(false);
+                    }}
                 />
                 {onFullscreen === undefined ? null : (
                     <MenuItem

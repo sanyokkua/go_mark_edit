@@ -30,7 +30,7 @@ WHEN a pressed key combination matches the shortcut of an available command, the
 
 #### Scenario: Key handled by the Find input
 
-- **WHEN** the editor's Find input has focus and the user presses Ctrl+Enter
+- **WHEN** the editor's Find input has focus and the user presses the physical Ctrl key with Enter (Ctrl+Enter on every platform, including macOS)
 - **THEN** the Find input handles the key and Reading mode is not entered
 
 ## ADDED Requirements

@@ -301,8 +301,8 @@ export const actionRegistry: readonly ActionEntry[] = Object.freeze([
     entry('line-numbers', 'window', ['view-menu', 'overflow']),
     entry('word-wrap', 'window', ['view-menu', 'overflow']),
     entry('scroll-sync', 'window', ['view-menu', 'overflow']),
-    entry('distraction-free-reading', 'window', ['view-menu'], {
-        availability: laterDeferred,
+    entry('distraction-free-reading', 'window', ['view-menu', 'shortcuts'], {
+        shortcut: 'Mod+Enter',
     }),
     entry('fullscreen', 'window', ['view-menu', 'shortcuts'], {
         shortcut: 'F11',
@@ -520,7 +520,10 @@ export function getActionAvailability(
     const hasProjectedDocument =
         projected === undefined ? undefined : documentId !== undefined && document !== undefined;
 
-    if (id === 'toggle-problems' && (documentId === undefined || hasProjectedDocument === false)) {
+    if (
+        (id === 'toggle-problems' || id === 'distraction-free-reading') &&
+        (documentId === undefined || hasProjectedDocument === false)
+    ) {
         return { kind: 'unavailable', reason: 'no-document' };
     }
 

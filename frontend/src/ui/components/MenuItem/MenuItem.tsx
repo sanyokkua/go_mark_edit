@@ -1,5 +1,6 @@
 import { forwardRef, type ButtonHTMLAttributes } from 'react';
 
+import { hasCommandModifier } from '../../primitives/commandModifier';
 import Icon from '../../primitives/Icon';
 import styles from './MenuItem.module.css';
 
@@ -61,7 +62,7 @@ const MenuItem = forwardRef<HTMLButtonElement, MenuItemProps>(
                 onKeyDown={(event): void => {
                     rest.onKeyDown?.(event);
                     if (event.defaultPrevented) return;
-                    if (event.key !== 'Enter' && event.key !== ' ') return;
+                    if ((event.key !== 'Enter' && event.key !== ' ') || hasCommandModifier(event)) return;
                     event.preventDefault();
                     event.currentTarget.click();
                 }}

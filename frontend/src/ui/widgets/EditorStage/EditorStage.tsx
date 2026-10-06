@@ -54,6 +54,8 @@ export interface EditorStageHandle {
     captureViewState: () => void;
 }
 
+export type EditorStageVariant = 'normal' | 'reading';
+
 export interface EditorStageProps {
     activeBuffer: ActiveBuffer;
     activeDocument?: DocumentMetadata;
@@ -70,6 +72,7 @@ export interface EditorStageProps {
     panelId?: string;
     previewVisible: boolean;
     readOnly: boolean;
+    variant?: EditorStageVariant;
     view: DocumentView;
 }
 
@@ -262,7 +265,7 @@ const ActiveEditor = forwardRef<ActiveEditorHandle, ActiveEditorProps>(function 
 interface LivePreviewProps {
     activeBuffer: ActiveBuffer;
     adapter: EditorStageAdapter;
-    claimScrollRestore: (documentId: string) => boolean;
+    claimScrollRestore: (documentId: string, variant: EditorStageVariant) => boolean;
     documentPath: string;
     fragmentRequest?: FragmentRequest | null;
     handledFragmentRef: { current: number };
@@ -273,6 +276,7 @@ interface LivePreviewProps {
     onScrollContainerChange: (container: HTMLElement | null) => void;
     savedScrollTop: number;
     scrollSyncActive: boolean;
+    variant: EditorStageVariant;
     visible: boolean;
 }
 
@@ -290,6 +294,7 @@ const LivePreview: React.FC<LivePreviewProps> = ({
     onScrollContainerChange,
     savedScrollTop,
     scrollSyncActive,
+    variant,
     visible,
 }: LivePreviewProps): React.JSX.Element | null => {
     const { markdownSettings } = useEditorSettings();
@@ -325,9 +330,9 @@ const LivePreview: React.FC<LivePreviewProps> = ({
         if (!visible) return;
         const node = contentRef.current;
         if (node === null) return;
-        if (!claimScrollRestore(activeBuffer.documentId)) return;
+        if (!claimScrollRestore(activeBuffer.documentId, variant)) return;
         node.scrollTop = savedScrollTop;
-    }, [activeBuffer.documentId, claimScrollRestore, savedScrollTop, visible]);
+    }, [activeBuffer.documentId, claimScrollRestore, savedScrollTop, variant, visible]);
 
     useLayoutEffect((): void => {
         if (
@@ -412,10 +417,17 @@ const LivePreview: React.FC<LivePreviewProps> = ({
                     />
                 </div>
             }
-            header={{
-                leading: <span className={styles.paneLive}>{t('editor.preview.live')}</span>,
-                trailing: standard === undefined ? undefined : <span>{t(`editor.preview.standard.${standard}`)}</span>,
-            }}
+            header={
+                variant === 'reading'
+                    ? undefined
+                    : {
+                          leading: <span className={styles.paneLive}>{t('editor.preview.live')}</span>,
+                          trailing:
+                              standard === undefined ? undefined : (
+                                  <span>{t(`editor.preview.standard.${standard}`)}</span>
+                              ),
+                      }
+            }
             identity="preview"
         />
     );
@@ -438,6 +450,7 @@ const EditorStage = forwardRef<EditorStageHandle, EditorStageProps>(function Edi
         panelId = EDITOR_TABPANEL_ID,
         previewVisible,
         readOnly,
+        variant = 'normal',
         view,
     }: EditorStageProps,
     ref,
@@ -463,10 +476,11 @@ const EditorStage = forwardRef<EditorStageHandle, EditorStageProps>(function Edi
         previewContainer,
         previewVisible,
     });
-    const restoredPreviewDocumentRef = useRef<string | null>(null);
-    const claimPreviewScrollRestore = useCallback((documentId: string): boolean => {
-        if (restoredPreviewDocumentRef.current === documentId) return false;
-        restoredPreviewDocumentRef.current = documentId;
+    const restoredPreviewRef = useRef<string | null>(null);
+    const claimPreviewScrollRestore = useCallback((documentId: string, presentation: EditorStageVariant): boolean => {
+        const claim = `${documentId}:${presentation}`;
+        if (restoredPreviewRef.current === claim) return false;
+        restoredPreviewRef.current = claim;
         return true;
     }, []);
 
@@ -495,6 +509,7 @@ const EditorStage = forwardRef<EditorStageHandle, EditorStageProps>(function Edi
             inert={interactionBlocked}
             role="tabpanel"
             data-split-resizable={split || undefined}
+            data-variant={variant}
             style={{ '--editor-split-ratio': splitRatio.ratio } as CSSProperties}
         >
             <Pane
@@ -568,6 +583,7 @@ const EditorStage = forwardRef<EditorStageHandle, EditorStageProps>(function Edi
                 onScrollContainerChange={setPreviewContainer}
                 savedScrollTop={view.scroll.preview}
                 scrollSyncActive={scrollSyncActive}
+                variant={variant}
                 visible={previewVisible}
             />
         </div>
