@@ -1,14 +1,17 @@
 import { t } from '../../../i18n';
 import type { MarkdownSettings } from '../../../logic/adapter/settingsTypes';
 import type { AppearanceChoice, Theme } from '../../../logic/theme/theme';
+import type { DefaultOpenMode } from '../appearanceSettingsContext';
 import ModalShell from '../../components/ModalShell';
 import Button from '../../primitives/Button';
 import Segmented, { type SegmentedOption } from '../../primitives/Segmented';
 import styles from './SettingsDialog.module.css';
 
 export interface SettingsDialogProps {
+    defaultOpenMode?: DefaultOpenMode;
     markdownSettings?: MarkdownSettings;
     mode: AppearanceChoice;
+    onDefaultOpenModeChange?: (defaultOpenMode: DefaultOpenMode) => void;
     onModeChange: (mode: AppearanceChoice) => void;
     onMarkdownSettingsChange?: (patch: Partial<MarkdownSettings>) => void;
     onOpenChange: (open: boolean) => void;
@@ -31,6 +34,11 @@ const modeOptions: readonly SegmentedOption<AppearanceChoice>[] = [
     { label: t('appearance.mode.dark'), value: 'dark' },
 ];
 
+const openModeOptions: readonly SegmentedOption<DefaultOpenMode>[] = [
+    { label: t('settings.openMode.reading'), value: 'viewer' },
+    { label: t('settings.openMode.editor'), value: 'editor' },
+];
+
 const standardOptions = [
     { label: t('settings.markdown.minimal'), value: 'minimal' },
     { label: t('settings.markdown.gfm'), value: 'gfm' },
@@ -51,8 +59,10 @@ const headingOptions = [
 ] as const;
 
 const SettingsDialog: React.FC<SettingsDialogProps> = ({
+    defaultOpenMode,
     markdownSettings,
     mode,
+    onDefaultOpenModeChange,
     onModeChange,
     onMarkdownSettingsChange,
     onOpenChange,
@@ -97,6 +107,16 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({
                         options={modeOptions}
                         value={mode}
                         onChange={onModeChange}
+                    />
+                </div>
+                <div className={styles.label}>
+                    <span>{t('settings.openMode')}</span>
+                    <Segmented
+                        ariaLabel={t('settings.openMode')}
+                        disabled={onDefaultOpenModeChange === undefined}
+                        options={openModeOptions}
+                        value={defaultOpenMode}
+                        onChange={(next): void => onDefaultOpenModeChange?.(next)}
                     />
                 </div>
             </section>

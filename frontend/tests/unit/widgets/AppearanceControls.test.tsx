@@ -49,11 +49,13 @@ const getSettings = settingsAdapter.getSettings as jest.MockedFunction<typeof se
 const resetAppearance = settingsAdapter.resetAppearance as jest.MockedFunction<typeof settingsAdapter.resetAppearance>;
 
 function AppearanceMenu(): React.JSX.Element {
-    const { appearance, onModeChange, onOpenAppearance, onThemeChange } = useAppearanceSettings();
+    const { appearance, onDefaultOpenModeChange, onModeChange, onOpenAppearance, onThemeChange } =
+        useAppearanceSettings();
     const { fileSettings, markdownSettings, updateFile, updateMarkdown } = useEditorSettings();
     return (
         <SettingsMenu
-            defaultOpenMode={appearance.defaultOpenMode as 'reading' | 'editor'}
+            defaultOpenMode={appearance.defaultOpenMode as 'viewer' | 'editor'}
+            onDefaultOpenModeChange={onDefaultOpenModeChange}
             fileSettings={fileSettings}
             markdownSettings={markdownSettings}
             mode={appearance.mode}

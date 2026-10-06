@@ -135,7 +135,7 @@ Test edits listed under "Changes existing tests" are required by the named requi
 
 ## 5. Default open mode choice in Settings
 
-- [ ] 5.1 Make Default open mode selectable in the Settings menu and the Settings dialog with the `viewer` value.
+- [x] 5.1 Make Default open mode selectable in the Settings menu and the Settings dialog with the `viewer` value.
       Verify that the named tests pass and `scripts/verify` is green.
     - Until task 6, choosing Reading (Viewer) keeps today's Preview-arrangement open behaviour. The repository stays
       valid.

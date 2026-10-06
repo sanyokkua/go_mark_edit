@@ -430,6 +430,10 @@ test('the Markdown controls remain visible and keyboard usable in all six palett
         await expect(appearanceTheme.getByRole('radio', { checked: true })).toBeFocused();
         await page.keyboard.press('Tab');
         await expect(appearanceMode.getByRole('radio', { checked: true })).toBeFocused();
+        await page.keyboard.press('Tab');
+        await expect(
+            dialog.getByRole('radiogroup', { name: 'Default open mode' }).getByRole('radio', { checked: true }),
+        ).toBeFocused();
         for (const [name, selected, nextLabel] of markdownGroups) {
             const control = markdownGroup(page).getByRole('radiogroup', { name });
             const radio = control.getByRole('radio', { name: selected, exact: true });

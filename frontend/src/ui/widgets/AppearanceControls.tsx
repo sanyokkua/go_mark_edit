@@ -17,6 +17,7 @@ import {
     useAppearanceSettings,
     type AppearanceSettingsController,
     type AppearanceState,
+    type DefaultOpenMode,
 } from './appearanceSettingsContext';
 
 export interface AppearanceSettingsProviderProps {
@@ -108,7 +109,7 @@ export const AppearanceSettingsProvider: React.FC<AppearanceSettingsProviderProp
     }, [open, settingsReturnFocus]);
 
     const persist = useCallback(
-        (patch: Partial<Pick<AppearanceState, 'mode' | 'theme'>>): void => {
+        (patch: Partial<Pick<AppearanceState, 'defaultOpenMode' | 'mode' | 'theme'>>): void => {
             appearanceWriteStarted.current = true;
             const next = { ...desiredAppearance.current, ...patch };
             desiredAppearance.current = next;
@@ -165,6 +166,7 @@ export const AppearanceSettingsProvider: React.FC<AppearanceSettingsProviderProp
 
     const controller: AppearanceSettingsController = {
         appearance,
+        onDefaultOpenModeChange: (defaultOpenMode): void => persist({ defaultOpenMode }),
         onModeChange: (mode): void => persist({ mode }),
         onOpenAppearance,
         onOpenChange: setOpen,
@@ -193,11 +195,13 @@ export const AppearanceControlsContent: React.FC<AppearanceControlsContentProps>
         <>
             {children}
             <SettingsDialog
+                defaultOpenMode={controller.appearance.defaultOpenMode as DefaultOpenMode}
                 markdownSettings={markdown.markdownSettings}
                 mode={controller.appearance.mode}
                 open={controller.open}
                 returnFocusTo={controller.returnFocusTo}
                 theme={controller.appearance.theme}
+                onDefaultOpenModeChange={controller.onDefaultOpenModeChange}
                 onModeChange={controller.onModeChange}
                 onMarkdownSettingsChange={(patch): void => {
                     void markdown.updateMarkdown(patch).catch((): void => undefined);

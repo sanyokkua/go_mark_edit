@@ -108,6 +108,8 @@ Detailed document lifecycle, conflict, close and shutdown flows are in [architec
 2. The backend validates and acknowledges the change.
 3. Settings, layout, Recent Items and per-document view metadata are stored in SQLite; document content stays in the original local files.
 
+Default open mode (Editor by default, or Reading (Viewer), stored as `viewer`) is selectable in both the Settings menu and the Settings dialog; both show the stored choice, Reset appearance restores Editor, and it survives restart. Until Reading mode opens files directly, choosing Reading (Viewer) keeps the existing Preview-arrangement open behavior.
+
 **State model:** document tabs and folder workspace are process state. There is no session/tab restore or crash-recovery file. Recent Items and window/application layout persist across launches.
 
 In Split mode, drag the editor/preview divider to change the editor's share from 20 to 80 percent.

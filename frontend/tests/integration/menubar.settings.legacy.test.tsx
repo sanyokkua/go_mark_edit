@@ -356,10 +356,7 @@ it('reports unavailable state for rows with no writer', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Settings' }));
 
     for (const label of STATE_ROW_LABELS) {
-        expect(settingsRow(label)).toHaveAttribute(
-            'data-availability',
-            label === 'Reading (Viewer)' || label === 'Editor' ? 'deferred' : 'available',
-        );
+        expect(settingsRow(label)).toHaveAttribute('data-availability', 'available');
         expect(settingsRow(label)).toHaveAttribute('aria-disabled', 'true');
     }
 });
@@ -414,7 +411,7 @@ it('updates each live save preference once from its row by click, Space, or Ente
     expect(onMarkdownSettingsChange).toHaveBeenLastCalledWith({ lintOnSave: false });
 });
 
-/* The open-mode rows still have no writer; Markdown standard now has one. */
+/* Default open mode and Markdown standard each activate through their own writer. */
 it('activates a hydrated standard exactly once through its settings writer', () => {
     const onMarkdownSettingsChange = jest.fn();
     withRegistryAvailability({
@@ -447,4 +444,19 @@ it('activates a hydrated standard exactly once through its settings writer', () 
     fireEvent.click(settingsRow('GFM'));
     expect(onMarkdownSettingsChange).toHaveBeenCalledTimes(1);
     expect(onMarkdownSettingsChange).toHaveBeenCalledWith({ standard: 'gfm' });
+});
+
+it('enables the open-mode rows once a writer is connected and sends the stored values', () => {
+    const onDefaultOpenModeChange = jest.fn();
+    render(<SettingsMenu {...props} defaultOpenMode="viewer" onDefaultOpenModeChange={onDefaultOpenModeChange} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Settings' }));
+
+    expect(settingsRow('Reading (Viewer)')).toHaveAttribute('aria-disabled', 'false');
+    expect(settingsRow('Editor')).toHaveAttribute('aria-disabled', 'false');
+    expect(screen.getByRole('menuitemradio', { name: 'Reading (Viewer)' })).toHaveAttribute('aria-checked', 'true');
+    expect(screen.getByRole('menuitemradio', { name: 'Editor' })).toHaveAttribute('aria-checked', 'false');
+    fireEvent.click(settingsRow('Editor'));
+    expect(onDefaultOpenModeChange).toHaveBeenLastCalledWith('editor');
+    fireEvent.click(settingsRow('Reading (Viewer)'));
+    expect(onDefaultOpenModeChange).toHaveBeenLastCalledWith('viewer');
 });
