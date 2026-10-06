@@ -1,6 +1,7 @@
 ## REMOVED Requirements
 
 ### Requirement: Default open mode
+
 **Reason**: The choice was shown disabled; it is now selectable, restated as "Default open mode choice". A MODIFIED
 block cannot drop the old "Disabled choice" scenario.
 **Migration**: See "Default open mode choice".

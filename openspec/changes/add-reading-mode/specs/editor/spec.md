@@ -21,6 +21,7 @@ mode SHALL show that arrangement.
 ## REMOVED Requirements
 
 ### Requirement: Unavailable controls
+
 **Reason**: Distraction-free reading is implemented as Reading mode, so the only unavailable control left is the Image
 formatting action, restated as "Image formatting action unavailable". A MODIFIED block cannot drop the old
 "Distraction-free reading" scenario.
