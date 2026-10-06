@@ -647,7 +647,9 @@ type OpenResult struct {
 	TreePath           string                       `json:"treePath,omitempty"`
 	ProjectionRevision uint64                       `json:"projectionRevision,omitempty"`
 	ActiveBuffer       *ActiveBufferAcknowledgement `json:"activeBuffer,omitempty"`
-	Error              *ClassifiedError             `json:"error,omitempty"`
+	// ReadingMode is true only for an opened file while the default open mode is Reading (Viewer).
+	ReadingMode bool             `json:"readingMode,omitempty"`
+	Error       *ClassifiedError `json:"error,omitempty"`
 }
 
 // OpenOutcome is the contract-level descriptive alias used by appmodel callers.

@@ -108,7 +108,7 @@ Detailed document lifecycle, conflict, close and shutdown flows are in [architec
 2. The backend validates and acknowledges the change.
 3. Settings, layout, Recent Items and per-document view metadata are stored in SQLite; document content stays in the original local files.
 
-Default open mode (Editor by default, or Reading (Viewer), stored as `viewer`) is selectable in both the Settings menu and the Settings dialog; both show the stored choice, Reset appearance restores Editor, and it survives restart. Until Reading mode opens files directly, choosing Reading (Viewer) keeps the existing Preview-arrangement open behavior.
+Default open mode (Editor by default, or Reading (Viewer), stored as `viewer`) is selectable in both the Settings menu and the Settings dialog; both show the stored choice, Reset appearance restores Editor, and it survives restart. With Reading (Viewer), a file opened from disk (Open dialog, Open Recent, the launcher, Reopen Last, the workspace tree, a preview link or drag and drop) opens in Reading mode and keeps its saved arrangement for when Reading mode is left; focusing an already open file does not enter Reading mode, and a file created with New File in the tree opens for editing.
 
 Reading width (Page by default, or Full width, stored as `page` or `full`) is also selectable in both the Settings menu and the Settings dialog. Page shows the Reading mode document as a centered column at most 700 px wide; Full width uses the whole window width minus its padding. A new choice applies at once, including while Reading mode is active, Reset appearance restores Page, and it survives restart.
 

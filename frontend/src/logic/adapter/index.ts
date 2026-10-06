@@ -266,6 +266,7 @@ function normalizeOpenResult(result: apperr.OpenResult): OpenResult {
         path: result.path,
         ...(result.revealPath === undefined ? {} : { revealPath: result.revealPath }),
         ...(result.treePath === undefined ? {} : { treePath: result.treePath }),
+        ...(result.readingMode === true ? { readingMode: true } : {}),
         documentId: result.documentId,
         projectionRevision: result.projectionRevision,
         activeBuffer:

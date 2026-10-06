@@ -592,3 +592,67 @@ test('Full width through the Ctrl+, Settings menu widens the document in Reading
     ).toHaveAttribute('aria-checked', 'true');
     app.expectNoForeignRequests();
 });
+
+async function chooseDefaultOpenMode(page: Page, name: 'Editor' | 'Reading (Viewer)'): Promise<void> {
+    await page.getByRole('button', { name: 'Settings', exact: true }).click();
+    const menu = page.getByRole('menu', { name: 'Settings menu' });
+    await menu.getByRole('menuitemradio', { name, exact: true }).click();
+    await page.keyboard.press('Escape');
+}
+
+test('opening a file from the launcher with Reading (Viewer) shows Reading mode and exit shows the saved arrangement', async ({
+    app,
+}) => {
+    const source = await app.writeDocument('on-open.md', '# On open\n\nOpen body.\n');
+    await app.seedRecents([source]);
+    await app.launch();
+    const { page } = app;
+    await page.setViewportSize({ width: 1280, height: 720 });
+    await chooseDefaultOpenMode(page, 'Reading (Viewer)');
+    await page
+        .getByRole('tab', { name: /Untitled/u })
+        .locator('..')
+        .getByRole('button', { name: /^Close /u })
+        .click();
+    await page.getByTestId('document-launcher').getByRole('button', { name: 'on-open.md', exact: true }).click();
+    await expectReading(page);
+    await expect(page.locator(PREVIEW)).toContainText('Open body.');
+
+    await page.keyboard.press('ControlOrMeta+Enter');
+    await expectNormal(page);
+});
+
+test('opening a file with the Editor default does not show Reading mode', async ({ app }) => {
+    const source = await app.writeDocument('on-open-editor.md', '# Editor open\n');
+    await app.seedRecents([source]);
+    await app.launch();
+    const { page } = app;
+    await page.setViewportSize({ width: 1280, height: 720 });
+    await openRecentFromLauncher(page, 'on-open-editor.md');
+    await expectNormal(page);
+});
+
+test('opening an already open file with Reading (Viewer) focuses it without entering Reading mode', async ({ app }) => {
+    const root = join(app.documentDirectory, 'on-open-notes');
+    const first = await app.writeDocument('on-open-notes/first.md', '# First\n\nFirst body.\n');
+    await app.writeDocument('on-open-notes/second.md', '# Second\n\nSecond body.\n');
+    await app.seedRecents([first]);
+    await app.launch();
+    await app.openWorkspace(root);
+    const { page } = app;
+    await page.setViewportSize({ width: 1280, height: 720 });
+    await chooseDefaultOpenMode(page, 'Reading (Viewer)');
+    const tree = page.getByRole('tree');
+    await tree.getByRole('treeitem', { name: 'first.md' }).click();
+    await expect(page.locator(SHELL)).toHaveAttribute('data-reading', 'true');
+    await page.keyboard.press('ControlOrMeta+Enter');
+    await expectNormal(page);
+    await tree.getByRole('treeitem', { name: 'second.md' }).click();
+    await expect(page.locator(SHELL)).toHaveAttribute('data-reading', 'true');
+    await page.keyboard.press('ControlOrMeta+Enter');
+    await expectNormal(page);
+
+    await tree.getByRole('treeitem', { name: 'first.md' }).click();
+    await expect(page.getByRole('tab', { name: 'first.md', selected: true })).toBeVisible();
+    await expectNormal(page);
+});

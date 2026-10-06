@@ -401,6 +401,7 @@ export interface OpenResult {
     documentId?: string;
     projectionRevision?: number;
     activeBuffer?: ActiveBuffer;
+    readingMode?: boolean;
     error?: ClassifiedError;
 }
 

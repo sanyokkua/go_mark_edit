@@ -219,7 +219,7 @@ Test edits listed under "Changes existing tests" are required by the named requi
 
 ## 6. Reading mode on open
 
-- [ ] 6.1 Report Reading-on-open from the backend, stop forcing the Preview arrangement, and enter Reading mode on
+- [x] 6.1 Report Reading-on-open from the backend, stop forcing the Preview arrangement, and enter Reading mode on
       every open entry point except tree New File. Verify that the named tests pass, `scripts/verify` is green, and in the
       real app opening a file from the launcher with Reading (Viewer) shows Reading mode.
     - Requirements: editor "Open mode"; reading-mode "Reading mode on open".

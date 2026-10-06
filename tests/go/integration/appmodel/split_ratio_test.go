@@ -290,7 +290,7 @@ func TestSplitRatioRestoresWhileDefaultOpenModeIsViewer(t *testing.T) {
 		t.Fatal(err)
 	}
 	view := state.Snapshot.Documents[opened.DocumentID].View
-	if view.Arrangement != appmodel.ArrangementPreview || view.SplitRatio != 0.7 {
+	if view.Arrangement != appmodel.ArrangementSplit || view.SplitRatio != 0.7 {
 		t.Fatalf("viewer open view = %+v", view)
 	}
 }

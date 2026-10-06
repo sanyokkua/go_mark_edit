@@ -135,7 +135,6 @@ func (service *AppModelService) PrepareOpen(ctx context.Context, path string, ex
 		return OpenPreparation{}, bridge.ClassifiedWithID(apperr.ClassifiedConflict, "document", "The tab set changed; Open must be retried.", apperr.RemediationRetry, "")
 	}
 	metadataRepository := service.metadata
-	defaultMode := service.defaultOpenMode
 	fallbackArrangement := ""
 	if service.state.ui.ViewArrangement != nil {
 		fallbackArrangement = *service.state.ui.ViewArrangement
@@ -165,7 +164,7 @@ func (service *AppModelService) PrepareOpen(ctx context.Context, path string, ex
 	if read.Error != nil {
 		return OpenPreparation{}, read.Error
 	}
-	arrangement := openArrangement(defaultMode, fallbackArrangement)
+	arrangement := openArrangement(fallbackArrangement)
 	splitRatio := defaultSplitRatio
 	if metadataRepository != nil {
 		persisted, found, metadataErr := metadataRepository.ReadView(ctx, read.CanonicalPath.Path)
@@ -173,9 +172,7 @@ func (service *AppModelService) PrepareOpen(ctx context.Context, path string, ex
 			warning := bridge.ClassifiedWithID(apperr.ClassifiedPersistenceWarning, read.CanonicalPath.Path, "The document opened with default view settings because its saved view could not be read.", apperr.RemediationNone, "")
 			service.emitAsyncError(ctx, apperr.ClassifiedToWire(warning), "document view read failure could not be surfaced")
 		} else if found {
-			if defaultMode == OpenModeEditor {
-				arrangement = persisted.Arrangement
-			}
+			arrangement = persisted.Arrangement
 			splitRatio = persisted.SplitRatio
 		}
 	}
@@ -292,6 +289,7 @@ func (service *AppModelService) CommitPreparedOpen(ctx context.Context, reservat
 	service.updateCanReopenLastFileLocked()
 	if !changed {
 		result := openOutcomeForDocument(status, documentID, service.state.revision, service.state.documents[documentID])
+		result.ReadingMode = service.readingModeForOpenLocked(status)
 		result.Error = promotionWarning
 		result.Failure = bridge.FailureFromClassified(promotionWarning)
 		service.mu.Unlock()
@@ -317,6 +315,7 @@ func (service *AppModelService) CommitPreparedOpen(ctx context.Context, reservat
 		return bridge.FromClassified[apperr.OpenOutcome](classified, apperr.OpenStatusRefused)
 	}
 	result := openOutcomeForDocument(status, documentID, service.state.revision, service.state.documents[documentID])
+	result.ReadingMode = service.readingModeForOpenLocked(status)
 	result.Error = promotionWarning
 	result.Failure = bridge.FailureFromClassified(promotionWarning)
 	service.mu.Unlock()
@@ -433,10 +432,7 @@ func openView(arrangement string, splitRatio float64) apperr.DocView {
 	return view
 }
 
-func openArrangement(defaultMode, fallback string) string {
-	if defaultMode == OpenModeViewer {
-		return ArrangementPreview
-	}
+func openArrangement(fallback string) string {
 	if validArrangement(fallback) {
 		return fallback
 	}
@@ -463,6 +459,11 @@ func (state applicationState) recentItemsChanged(before []apperr.RecentItem) boo
 		}
 	}
 	return false
+}
+
+// readingModeForOpenLocked reports whether the frontend should enter Reading mode for an open result.
+func (service *AppModelService) readingModeForOpenLocked(status apperr.OpenStatus) bool {
+	return status == apperr.OpenStatusOpened && service.defaultOpenMode == OpenModeViewer
 }
 
 func openOutcomeForDocument(status apperr.OpenStatus, documentID string, projectionRevision uint64, document *openDocument) apperr.OpenOutcome {

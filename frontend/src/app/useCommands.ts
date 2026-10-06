@@ -4,7 +4,7 @@ import { t } from '../i18n';
 import { appModelAdapter, windowAdapter } from '../logic/adapter';
 import type { LinkTarget } from '../logic/markdown/linkPolicy';
 import { store, useAppDispatch } from '../logic/store';
-import { leaveReading } from '../logic/store/readingSlice';
+import { enterReading, leaveReading } from '../logic/store/readingSlice';
 import { reportClassifiedError } from '../logic/store/classifiedNotification';
 import { buildUnsupportedFileNotice } from '../logic/store/linkNotification';
 import { notifyError, notifyToast } from '../logic/store/notificationsSlice';
@@ -100,6 +100,31 @@ export function useCommands(
         [onFocusedDocumentOpen],
     );
 
+    // The open result can precede the projection patch that makes the document active; AppShell leaves
+    // Reading mode while no document is active, so wait for the projection to catch up.
+    const enterReadingForOpen = useCallback(
+        (result: OpenResult | undefined, generation: number): void => {
+            const documentId = result?.documentId;
+            if (result?.readingMode !== true || documentId === undefined) return;
+            let settled = false;
+            const tryEnter = (): void => {
+                if (settled) return;
+                if (activation.isCurrent(generation) && store.getState().documents.activeDocumentId !== documentId) {
+                    return;
+                }
+                settled = true;
+                if (activation.isCurrent(generation)) dispatch(enterReading());
+            };
+            tryEnter();
+            if (settled) return;
+            const unsubscribe = store.subscribe((): void => {
+                tryEnter();
+                if (settled) unsubscribe();
+            });
+        },
+        [activation, dispatch],
+    );
+
     const openLink = useCallback(
         async (target: Extract<LinkTarget, { kind: 'localDocument' }>, sourceDocumentId: string): Promise<void> => {
             try {
@@ -112,6 +137,7 @@ export function useCommands(
                     if (documentId === undefined) return;
                     if (documentId !== sourceDocumentId) {
                         activation.acknowledge(generation, result.activeBuffer);
+                        enterReadingForOpen(result, generation);
                         onFocusedDocumentOpen(documentId);
                         const treePath = result.treePath;
                         if (treePath) {
@@ -144,7 +170,7 @@ export function useCommands(
                 dispatch(notifyError(parseError(error)));
             }
         },
-        [activation, dispatch, flushActiveDocument, onFocusedDocumentOpen, reportEntryError],
+        [activation, dispatch, enterReadingForOpen, flushActiveDocument, onFocusedDocumentOpen, reportEntryError],
     );
 
     const onNewDocument = useCallback(
@@ -166,11 +192,12 @@ export function useCommands(
             const generation = activation.begin();
             const result = await appModelAdapter.openDocument?.(expectedTabSetRevision);
             activation.acknowledge(generation, result?.activeBuffer);
+            enterReadingForOpen(result, generation);
             requestFocusedTabReveal(result);
             reportEntryError(result?.error, 'open-document');
             return result;
         },
-        [activation, flushActiveDocument, reportEntryError, requestFocusedTabReveal],
+        [activation, enterReadingForOpen, flushActiveDocument, reportEntryError, requestFocusedTabReveal],
     );
 
     const onOpenRecentFile = useCallback(
@@ -178,11 +205,13 @@ export function useCommands(
             path: string,
             expectedTabSetRevision: number,
             suppressCapacityNotice = false,
+            enterReadingOnOpen = true,
         ): Promise<EntryCommandOutcome | undefined> => {
             await flushActiveDocument();
             const generation = activation.begin();
             const result = await appModelAdapter.openRecentFile?.(path, expectedTabSetRevision);
             activation.acknowledge(generation, result?.activeBuffer);
+            if (enterReadingOnOpen) enterReadingForOpen(result, generation);
             requestFocusedTabReveal(result);
             const error = result?.error;
             if (!(suppressCapacityNotice && error?.category === 'capacity-limit'))
@@ -197,7 +226,7 @@ export function useCommands(
             if (error?.category === 'not-found') await appModelAdapter.refreshRecentItems?.();
             return result;
         },
-        [activation, flushActiveDocument, reportEntryError, requestFocusedTabReveal],
+        [activation, enterReadingForOpen, flushActiveDocument, reportEntryError, requestFocusedTabReveal],
     );
 
     const onRefreshRecentItems = useCallback(async (): Promise<void> => {
@@ -304,6 +333,7 @@ export function useCommands(
             const generation = activation.begin();
             const result = await appModelAdapter.reopenLastFile?.(expectedTabSetRevision);
             if (result?.status !== 'folder-target') activation.acknowledge(generation, result?.activeBuffer);
+            enterReadingForOpen(result, generation);
             requestFocusedTabReveal(result);
             if (result?.status === 'folder-target' && result.path !== undefined) {
                 await onOpenRecentItem({ path: result.path, kind: 'folder' }, expectedTabSetRevision);
@@ -314,6 +344,7 @@ export function useCommands(
         },
         [
             activation,
+            enterReadingForOpen,
             flushActiveDocument,
             onOpenRecentItem,
             onRefreshRecentItems,
@@ -381,7 +412,9 @@ export function useCommands(
                             `${parentPath}${parentPath.endsWith(separator) ? '' : separator}${name}`,
                             store.getState().documents.tabSetRevision,
                             true,
+                            false,
                         );
+                        if (openResult?.error === undefined) dispatch(leaveReading());
                     } catch {
                         dispatch(
                             notifyToast({

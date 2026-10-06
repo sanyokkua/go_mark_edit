@@ -479,9 +479,12 @@ For a feature-specific runtime check:
 ### Opening and identity
 
 Every file-entry route uses the application model's open flow. Supported suffixes are `.md`,
-`.markdown`, `.mdown` and `.txt`, case-insensitively. The global default open mode is applied first:
-Reading opens directly in Reading mode; Editor opens with the document's persisted view, then the last
-application arrangement, then Split; a new document always starts in Editor mode.
+`.markdown`, `.mdown` and `.txt`, case-insensitively. Every open takes the document's persisted view,
+then the last application arrangement, then Split, in both default open modes; a new document always starts
+in Editor mode. With the Reading (Viewer) default the backend sets `readingMode` on an `opened` result (never
+on `focused`, `refused`, `cancelled`, `folder-target` or a new document), and the frontend open commands
+enter Reading mode when the open is still the current activation. A false flag never leaves Reading mode, and
+the workspace tree's New File ignores the flag and leaves Reading mode.
 
 `frontend/src/logic/adapter/` carries the request identity and `internal/file/` resolves canonical
 paths and filesystem identity. A hard link focuses the existing document identity instead of creating

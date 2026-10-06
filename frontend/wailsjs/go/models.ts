@@ -1055,6 +1055,7 @@ export namespace apperr {
 	    treePath?: string;
 	    projectionRevision?: number;
 	    activeBuffer?: ActiveBuffer;
+	    readingMode?: boolean;
 	    error?: ClassifiedError;
 	
 	    static createFrom(source: any = {}) {
@@ -1075,6 +1076,7 @@ export namespace apperr {
 	        this.treePath = source["treePath"];
 	        this.projectionRevision = source["projectionRevision"];
 	        this.activeBuffer = this.convertValues(source["activeBuffer"], ActiveBuffer);
+	        this.readingMode = source["readingMode"];
 	        this.error = this.convertValues(source["error"], ClassifiedError);
 	    }
 	
