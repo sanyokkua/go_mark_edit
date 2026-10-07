@@ -8,6 +8,7 @@ import {
 const current: AppearanceSettings = {
     defaultOpenMode: 'editor',
     readingWidth: 'page',
+    pdfAppearance: 'styled',
     mode: 'auto',
     theme: 'material',
 };
@@ -60,6 +61,7 @@ it('applies the default appearance only after reset is acknowledged', async () =
     expect(acknowledge).toHaveBeenCalledWith({
         defaultOpenMode: 'editor',
         readingWidth: 'page',
+        pdfAppearance: 'styled',
         mode: 'auto',
         theme: 'material',
     });

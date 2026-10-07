@@ -9,7 +9,13 @@ import settingsReducer, {
 } from '../../../src/logic/store/settingsSlice';
 
 const settings: Settings = {
-    appearance: { theme: 'minimal', mode: 'dark', defaultOpenMode: 'editor', readingWidth: 'page' },
+    appearance: {
+        theme: 'minimal',
+        mode: 'dark',
+        defaultOpenMode: 'editor',
+        readingWidth: 'page',
+        pdfAppearance: 'styled',
+    },
     markdown: {
         standard: 'gfm',
         formatOnSave: false,

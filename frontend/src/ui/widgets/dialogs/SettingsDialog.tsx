@@ -1,5 +1,5 @@
 import { t } from '../../../i18n';
-import type { MarkdownSettings, ReadingWidth } from '../../../logic/adapter/settingsTypes';
+import type { MarkdownSettings, PdfAppearance, ReadingWidth } from '../../../logic/adapter/settingsTypes';
 import type { AppearanceChoice, Theme } from '../../../logic/theme/theme';
 import type { DefaultOpenMode } from '../appearanceSettingsContext';
 import ModalShell from '../../components/ModalShell';
@@ -15,10 +15,12 @@ export interface SettingsDialogProps {
     onModeChange: (mode: AppearanceChoice) => void;
     onMarkdownSettingsChange?: (patch: Partial<MarkdownSettings>) => void;
     onOpenChange: (open: boolean) => void;
+    onPdfAppearanceChange?: (pdfAppearance: PdfAppearance) => void;
     onReadingWidthChange?: (readingWidth: ReadingWidth) => void;
     onReset: () => void;
     onThemeChange: (theme: Theme) => void;
     open: boolean;
+    pdfAppearance?: PdfAppearance;
     readingWidth?: ReadingWidth;
     returnFocusTo?: HTMLElement | null;
     theme: Theme;
@@ -44,6 +46,11 @@ const openModeOptions: readonly SegmentedOption<DefaultOpenMode>[] = [
 const readingWidthOptions: readonly SegmentedOption<ReadingWidth>[] = [
     { label: t('settings.readingWidth.page'), value: 'page' },
     { label: t('settings.readingWidth.full'), value: 'full' },
+];
+
+const pdfAppearanceOptions: readonly SegmentedOption<PdfAppearance>[] = [
+    { label: t('settings.pdfAppearance.styled'), value: 'styled' },
+    { label: t('settings.pdfAppearance.clean'), value: 'clean' },
 ];
 
 const standardOptions = [
@@ -73,10 +80,12 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({
     onModeChange,
     onMarkdownSettingsChange,
     onOpenChange,
+    onPdfAppearanceChange,
     onReadingWidthChange,
     onReset,
     onThemeChange,
     open,
+    pdfAppearance,
     readingWidth,
     returnFocusTo,
     theme,
@@ -136,6 +145,18 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({
                         options={readingWidthOptions}
                         value={readingWidth}
                         onChange={(next): void => onReadingWidthChange?.(next)}
+                    />
+                </div>
+                <div className={styles.label}>
+                    <span>{t('settings.pdfAppearance')}</span>
+                    <p id="settings-pdf-appearance-description">{t('settings.pdfAppearance.description')}</p>
+                    <Segmented
+                        ariaLabel={t('settings.pdfAppearance')}
+                        ariaDescribedBy="settings-pdf-appearance-description"
+                        disabled={onPdfAppearanceChange === undefined}
+                        options={pdfAppearanceOptions}
+                        value={pdfAppearance}
+                        onChange={(next): void => onPdfAppearanceChange?.(next)}
                     />
                 </div>
             </section>

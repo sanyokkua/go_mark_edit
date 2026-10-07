@@ -79,7 +79,9 @@ export default function ApplicationMenubar({
         () => ({
             defaultOpenMode: appearanceSettings.appearance.defaultOpenMode as DefaultOpenMode,
             onDefaultOpenModeChange: appearanceSettings.onDefaultOpenModeChange,
+            onPdfAppearanceChange: appearanceSettings.onPdfAppearanceChange,
             onReadingWidthChange: appearanceSettings.onReadingWidthChange,
+            pdfAppearance: appearanceSettings.appearance.pdfAppearance,
             readingWidth: appearanceSettings.appearance.readingWidth,
             editorSettings: editorSettings.settings,
             fileSettings: editorSettings.fileSettings,

@@ -43,7 +43,7 @@ jest.mock('../../src/logic/adapter', () => ({
 import { AppFrame } from '../../src/app/AppFrame';
 import { usePdfExport } from '../../src/app/usePdfExport';
 import type { DocumentSession } from '../../src/app/useDocumentSession';
-import { appModelAdapter, windowAdapter } from '../../src/logic/adapter';
+import { appModelAdapter, settingsAdapter, windowAdapter } from '../../src/logic/adapter';
 import { mermaidQueue, type MermaidResult } from '../../src/logic/markdown/mermaid/queue';
 import { store } from '../../src/logic/store';
 import { hydrateProjection, resetProjection } from '../../src/logic/store/appModelProjectionActions';
@@ -217,6 +217,31 @@ describe('Export to PDF with a document open', () => {
             model.getState.mock.invocationCallOrder[0] ?? Infinity,
         );
         expect(store.getState().documents.byId['doc-1']?.dirty).toBe(true);
+    });
+
+    it.each([
+        ['clean', 'clean'],
+        ['styled', 'styled'],
+    ])('marks the print copy %s while the on-screen application keeps its dark theme', async (stored, expected) => {
+        (settingsAdapter.getSettings as jest.Mock).mockResolvedValueOnce({
+            appearance: {
+                defaultOpenMode: 'editor',
+                readingWidth: 'page',
+                pdfAppearance: stored,
+                mode: 'dark',
+                theme: 'material',
+            },
+        });
+        backendText('doc-1', '# Appearance');
+        renderApplication(sessionFor(doc));
+        await advance(100);
+
+        pressPrint();
+        await advance(300);
+
+        expect(printCopy()).toHaveAttribute('data-print-appearance', expected);
+        expect(document.documentElement).toHaveAttribute('data-mode', 'dark');
+        expect(root.querySelector('[data-print-appearance]')).toBeNull();
     });
 
     it('renders the copy as a child of the body outside the application root', async () => {

@@ -366,6 +366,7 @@ it('projects an acknowledged autosave-on setting into status details', () => {
                 mode: 'light',
                 defaultOpenMode: 'split',
                 readingWidth: 'page',
+                pdfAppearance: 'styled',
             },
             markdown: {
                 standard: 'gfm',
@@ -402,6 +403,7 @@ it('projects an acknowledged autosave-on setting into status details', () => {
                     mode: 'light',
                     defaultOpenMode: 'split',
                     readingWidth: 'page',
+                    pdfAppearance: 'styled',
                 },
                 markdown: {
                     standard: 'gfm',

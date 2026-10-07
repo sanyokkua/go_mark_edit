@@ -254,6 +254,9 @@ func normalizeAppearance(appearance apperr.AppearanceSettings) apperr.Appearance
 	if !isReadingWidth(appearance.ReadingWidth) {
 		appearance.ReadingWidth = defaults.ReadingWidth
 	}
+	if !isPdfAppearance(appearance.PdfAppearance) {
+		appearance.PdfAppearance = defaults.PdfAppearance
+	}
 	return appearance
 }
 
@@ -306,6 +309,9 @@ func validateAppearance(appearance apperr.AppearanceSettings) error {
 	if !isReadingWidth(appearance.ReadingWidth) {
 		return apperr.Validation("view.readingWidth", "page or full", appearance.ReadingWidth)
 	}
+	if !isPdfAppearance(appearance.PdfAppearance) {
+		return apperr.Validation("export.pdfAppearance", "styled or clean", appearance.PdfAppearance)
+	}
 	return nil
 }
 
@@ -345,6 +351,10 @@ func isTheme(value string) bool {
 
 func isMode(value string) bool {
 	return value == ModeAuto || value == ModeLight || value == ModeDark
+}
+
+func isPdfAppearance(value string) bool {
+	return value == PdfAppearanceStyled || value == PdfAppearanceClean
 }
 
 func isReadingWidth(value string) bool {

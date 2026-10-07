@@ -37,20 +37,24 @@ function rgbColor(value: string): string {
     return `rgb(${red}, ${green}, ${blue})`;
 }
 
-/** Read and resolve tokens synchronously so later theme changes cannot recolour queued jobs. */
-export function resolveMermaidTheme(): string {
+/**
+ * Read and resolve tokens synchronously so later theme changes cannot recolour queued jobs.
+ * The probe sits inside `element`, so a Clean print copy supplies its own light tokens.
+ */
+export function resolveMermaidTheme(element: Element): string {
     const probe = document.createElement('span');
     probe.style.position = 'absolute';
     probe.style.visibility = 'hidden';
-    document.body.appendChild(probe);
+    element.appendChild(probe);
     try {
         const themeVariables: Record<string, string> = {};
         for (const [variable, token] of Object.entries(tokens)) {
             probe.style.color = `var(${token})`;
             themeVariables[variable] = rgbColor(window.getComputedStyle(probe).color);
         }
+        const clean = element.closest("[data-print-appearance='clean']") !== null;
         return JSON.stringify({
-            darkMode: document.documentElement.getAttribute('data-mode') === 'dark',
+            darkMode: !clean && element.closest('[data-mode]')?.getAttribute('data-mode') === 'dark',
             themeVariables,
         });
     } finally {

@@ -316,7 +316,7 @@ Test edits listed under "Changes existing tests" are required by the named requi
 
 ## 8. PDF appearance setting
 
-- [ ] 8.1 Add the persisted PDF appearance setting (Styled or Clean) to the Settings menu and the Settings dialog, and
+- [x] 8.1 Add the persisted PDF appearance setting (Styled or Clean) to the Settings menu and the Settings dialog, and
       print the copy in neutral black-on-white tokens with Clean, including Mermaid diagrams. Verify that the named tests
       pass, `scripts/verify` is green, and the user confirms on macOS that a Clean export from Dark mode gives white pages
       with dark text and light diagrams while the screen keeps its theme.

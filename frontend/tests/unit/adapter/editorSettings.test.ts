@@ -15,6 +15,7 @@ it('keeps EditorSettings DTO and binding arity parity', async () => {
                     mode: 'auto',
                     defaultOpenMode: 'editor',
                     readingWidth: 'page',
+                    pdfAppearance: 'styled',
                 },
                 markdown: {
                     standard: 'gfm',

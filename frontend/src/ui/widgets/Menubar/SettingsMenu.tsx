@@ -10,7 +10,7 @@ import MenuItem, { MenuItemIndicator } from '../../components/MenuItem';
 import menuItemStyles from '../../components/MenuItem/MenuItem.module.css';
 import Popup, { PopupGroupLabel, PopupSeparator, PopupTrigger } from '../../components/Popup';
 import Segmented, { type SegmentedOption } from '../../primitives/Segmented';
-import type { ReadingWidth } from '../../../logic/adapter/settingsTypes';
+import type { PdfAppearance, ReadingWidth } from '../../../logic/adapter/settingsTypes';
 import type { DefaultOpenMode } from '../appearanceSettingsContext';
 import styles from './SettingsMenu.module.css';
 
@@ -20,8 +20,10 @@ export interface SettingsMenuProps {
     onDefaultOpenModeChange?: (defaultOpenMode: DefaultOpenMode) => void;
     onModeChange: (mode: AppearanceChoice) => void;
     onOpenAppearance: (opener?: HTMLElement | null) => void;
+    onPdfAppearanceChange?: (pdfAppearance: PdfAppearance) => void;
     onReadingWidthChange?: (readingWidth: ReadingWidth) => void;
     onThemeChange: (theme: Theme) => void;
+    pdfAppearance?: PdfAppearance;
     readingWidth?: ReadingWidth;
     theme: Theme;
     open?: boolean;
@@ -75,6 +77,11 @@ const readingWidthOptions: readonly { label: string; value: ReadingWidth }[] = [
     { label: t('settings.readingWidth.full'), value: 'full' },
 ];
 
+const pdfAppearanceOptions: readonly { label: string; value: PdfAppearance }[] = [
+    { label: t('settings.pdfAppearance.styled'), value: 'styled' },
+    { label: t('settings.pdfAppearance.clean'), value: 'clean' },
+];
+
 const markdownStandardOptions = [
     { label: t('settings.menu.markdown.minimal'), value: 'minimal' },
     { label: t('settings.menu.markdown.gfm'), value: 'gfm' },
@@ -97,8 +104,10 @@ interface CompactSettingsContentProps {
     onMarkdownSettingsChange?: (patch: Partial<MarkdownSettings>) => void;
     onModeChange: (mode: AppearanceChoice) => void;
     onOpenAppearance: () => void;
+    onPdfAppearanceChange?: (pdfAppearance: PdfAppearance) => void;
     onReadingWidthChange?: (readingWidth: ReadingWidth) => void;
     onThemeChange: (theme: Theme) => void;
+    pdfAppearance?: PdfAppearance;
     readingWidth?: ReadingWidth;
     theme: Theme;
 }
@@ -113,8 +122,10 @@ const CompactSettingsContent: React.FC<CompactSettingsContentProps> = ({
     onMarkdownSettingsChange,
     onModeChange,
     onOpenAppearance,
+    onPdfAppearanceChange,
     onReadingWidthChange,
     onThemeChange,
+    pdfAppearance = 'styled',
     readingWidth = 'page',
     theme,
 }: CompactSettingsContentProps): React.JSX.Element => {
@@ -262,6 +273,21 @@ const CompactSettingsContent: React.FC<CompactSettingsContentProps> = ({
                 />
             ))}
             <PopupSeparator />
+            <PopupGroupLabel>{t('settings.pdfAppearance')}</PopupGroupLabel>
+            {pdfAppearanceOptions.map((option) => (
+                <MenuItem
+                    data-availability={availabilityOf('pdf-appearance')}
+                    data-settings-row={option.label}
+                    checked={pdfAppearance === option.value}
+                    disabled={rowUnavailable('pdf-appearance', onPdfAppearanceChange)}
+                    key={option.value}
+                    label={option.label}
+                    onSelect={(): void => onPdfAppearanceChange?.(option.value)}
+                    radio
+                    trailing={<MenuItemIndicator checked={pdfAppearance === option.value} />}
+                />
+            ))}
+            <PopupSeparator />
             <PopupGroupLabel>{t('settings.menu.markdown')}</PopupGroupLabel>
             {markdownStandardOptions.map((option) => (
                 <MenuItem
@@ -314,8 +340,10 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({
     onDefaultOpenModeChange,
     onModeChange,
     onOpenAppearance,
+    onPdfAppearanceChange,
     onReadingWidthChange,
     onThemeChange,
+    pdfAppearance,
     readingWidth,
     theme,
     open: controlledOpen,
@@ -408,6 +436,13 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({
                             ? undefined
                             : (next): void => dispatchSettingsAction('reading-width', () => onReadingWidthChange(next))
                     }
+                    onPdfAppearanceChange={
+                        onPdfAppearanceChange === undefined
+                            ? undefined
+                            : (next): void =>
+                                  dispatchSettingsAction('pdf-appearance', () => onPdfAppearanceChange(next))
+                    }
+                    pdfAppearance={pdfAppearance}
                     readingWidth={readingWidth}
                     onFileSettingsChange={(patch): void =>
                         dispatchSettingsAction('autosave', () => onFileSettingsChange?.(patch))

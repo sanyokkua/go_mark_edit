@@ -423,6 +423,7 @@ export namespace apperr {
 	    mode: string;
 	    defaultOpenMode: string;
 	    readingWidth: string;
+	    pdfAppearance: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new AppearanceSettings(source);
@@ -434,6 +435,7 @@ export namespace apperr {
 	        this.mode = source["mode"];
 	        this.defaultOpenMode = source["defaultOpenMode"];
 	        this.readingWidth = source["readingWidth"];
+	        this.pdfAppearance = source["pdfAppearance"];
 	    }
 	}
 	export class ClassifiedError {

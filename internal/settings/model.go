@@ -18,6 +18,9 @@ const (
 	ReadingWidthPage = "page"
 	ReadingWidthFull = "full"
 
+	PdfAppearanceStyled = "styled"
+	PdfAppearanceClean  = "clean"
+
 	MarkdownMinimal = "minimal"
 	MarkdownGFM     = "gfm"
 	MarkdownFull    = "full"
@@ -52,6 +55,7 @@ func DefaultSettings() apperr.Settings {
 			Mode:            ModeAuto,
 			DefaultOpenMode: OpenModeEditor,
 			ReadingWidth:    ReadingWidthPage,
+			PdfAppearance:   PdfAppearanceStyled,
 		},
 		Markdown: apperr.MarkdownSettings{
 			Standard:       MarkdownFull,

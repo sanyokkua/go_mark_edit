@@ -418,7 +418,7 @@ test('the Markdown controls remain visible and keyboard usable in all six palett
     await page.setViewportSize({ width: 1280, height: 800 });
     const dialog = await openSettings(page);
     const appearanceTheme = dialog.getByRole('radiogroup', { name: 'Theme' });
-    const appearanceMode = dialog.getByRole('radiogroup', { name: 'Appearance' });
+    const appearanceMode = dialog.getByRole('radiogroup', { name: 'Appearance', exact: true });
     for (const [themeLabel, modeLabel, theme, mode] of palettes) {
         await appearanceTheme.getByRole('radio', { name: themeLabel, exact: true }).click();
         await appearanceMode.getByRole('radio', { name: modeLabel, exact: true }).click();
@@ -437,6 +437,10 @@ test('the Markdown controls remain visible and keyboard usable in all six palett
         await page.keyboard.press('Tab');
         await expect(
             dialog.getByRole('radiogroup', { name: 'Reading width' }).getByRole('radio', { checked: true }),
+        ).toBeFocused();
+        await page.keyboard.press('Tab');
+        await expect(
+            dialog.getByRole('radiogroup', { name: 'PDF appearance' }).getByRole('radio', { checked: true }),
         ).toBeFocused();
         for (const [name, selected, nextLabel] of markdownGroups) {
             const control = markdownGroup(page).getByRole('radiogroup', { name });

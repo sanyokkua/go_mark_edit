@@ -16,6 +16,7 @@ type SettingsDispatch = (
 export const defaultAppearanceSettings = {
     defaultOpenMode: 'editor',
     readingWidth: 'page',
+    pdfAppearance: 'styled',
     mode: 'auto',
     theme: 'material',
 } as const satisfies AppearanceSettings;

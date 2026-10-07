@@ -4,6 +4,7 @@ import { createPortal } from 'react-dom';
 import type { LivePreviewAdapter } from '../../logic/hooks/useLivePreview';
 import { isMarkdownStandard } from '../../logic/markdown/pipeline';
 import { useAppSelector } from '../../logic/store';
+import { useAppearanceSettings } from './appearanceSettingsContext';
 import LazyMarkdownView from './LazyMarkdownView';
 import { resolvePreviewImageSource } from './previewImageSource';
 import styles from './PrintDocument.module.css';
@@ -28,6 +29,7 @@ export interface PrintDocumentProps {
  * next to the application root so print rules can show it alone.
  */
 const PrintDocument: React.FC<PrintDocumentProps> = ({ linkAdapter, request }: PrintDocumentProps) => {
+    const { appearance } = useAppearanceSettings();
     const storedStandard = useAppSelector((state) => state.settings.markdown?.standard);
     const standard = storedStandard !== undefined && isMarkdownStandard(storedStandard) ? storedStandard : undefined;
     const documentId = request?.documentId;
@@ -52,7 +54,12 @@ const PrintDocument: React.FC<PrintDocumentProps> = ({ linkAdapter, request }: P
 
     if (request === null) return null;
     return createPortal(
-        <div className={styles.printCopy} data-print-copy="" data-print-request={request.id}>
+        <div
+            className={styles.printCopy}
+            data-print-appearance={appearance.pdfAppearance}
+            data-print-copy=""
+            data-print-request={request.id}
+        >
             {standard === undefined ? (
                 <span data-print-pending="" />
             ) : (

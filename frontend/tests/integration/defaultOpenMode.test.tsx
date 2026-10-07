@@ -85,6 +85,7 @@ it('sends the viewer value when Reading (Viewer) is chosen in the menu', async (
         expect(updateAppearance).toHaveBeenCalledWith({
             defaultOpenMode: 'viewer',
             readingWidth: 'page',
+            pdfAppearance: 'styled',
             mode: 'auto',
             theme: 'material',
         }),
@@ -113,6 +114,7 @@ it('keeps the dialog row and the menu in sync in both directions', async () => {
         expect(updateAppearance).toHaveBeenLastCalledWith({
             defaultOpenMode: 'editor',
             readingWidth: 'page',
+            pdfAppearance: 'styled',
             mode: 'auto',
             theme: 'material',
         }),

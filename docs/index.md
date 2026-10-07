@@ -123,6 +123,8 @@ Reading mode hides all chrome and shows only the rendered active document; Ctrl+
 
 Reading width (Page by default, or Full width, stored as `page` or `full`) is also selectable in both the Settings menu and the Settings dialog. Page shows the Reading mode document as a centered column at most 700 px wide; Full width uses the whole window width minus its padding. A new choice applies at once, including while Reading mode is active, Reset appearance restores Page, and it survives restart.
 
+PDF appearance (Styled by default, or Clean, stored as `styled` or `clean` under `export.pdfAppearance`) is selectable in both the Settings menu and the Settings dialog. Styled exports in the theme and mode shown on screen; Clean prints the copy in the Material Light palette (black text on white, light Mermaid diagrams) whatever the theme or mode, and the screen keeps its theme. Reset appearance restores Styled, and the choice survives restart.
+
 **State model:** document tabs and folder workspace are process state. There is no session/tab restore or crash-recovery file. Recent Items and window/application layout persist across launches.
 
 In Split mode, drag the editor/preview divider to change the editor's share from 20 to 80 percent.

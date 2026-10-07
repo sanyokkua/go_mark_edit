@@ -23,6 +23,7 @@ jest.mock('../../../src/logic/adapter', () => ({
             appearance: {
                 defaultOpenMode: 'editor',
                 readingWidth: 'page',
+                pdfAppearance: 'styled',
                 mode: 'auto',
                 theme: 'material',
             },
@@ -102,6 +103,7 @@ it('changes appearance from keyboard reachable controls after a successful write
     expect(updateAppearance).toHaveBeenCalledWith({
         defaultOpenMode: 'editor',
         readingWidth: 'page',
+        pdfAppearance: 'styled',
         mode: 'dark',
         theme: 'material',
     });
@@ -136,7 +138,13 @@ it('persists the selected standard and updates the acknowledged menu state', asy
 it('shows six Markdown preferences from hydration and applies each dialog change to the acknowledged group', async () => {
     store.dispatch(
         hydrateSettings({
-            appearance: { defaultOpenMode: 'editor', readingWidth: 'page', mode: 'auto', theme: 'material' },
+            appearance: {
+                defaultOpenMode: 'editor',
+                readingWidth: 'page',
+                pdfAppearance: 'styled',
+                mode: 'auto',
+                theme: 'material',
+            },
             contentPrivacy: { remotePolicy: 'ask' },
             markdown: {
                 standard: 'full',
@@ -201,7 +209,13 @@ it('keeps the Markdown group unavailable before hydration and issues no write', 
 it('keeps acknowledged Markdown values on rejection and reports one error', async () => {
     store.dispatch(
         hydrateSettings({
-            appearance: { defaultOpenMode: 'editor', readingWidth: 'page', mode: 'auto', theme: 'material' },
+            appearance: {
+                defaultOpenMode: 'editor',
+                readingWidth: 'page',
+                pdfAppearance: 'styled',
+                mode: 'auto',
+                theme: 'material',
+            },
             contentPrivacy: { remotePolicy: 'ask' },
             markdown: {
                 standard: 'full',
@@ -228,7 +242,13 @@ it('keeps acknowledged Markdown values on rejection and reports one error', asyn
 it('uses arrows and Space to change described Markdown controls', async () => {
     store.dispatch(
         hydrateSettings({
-            appearance: { defaultOpenMode: 'editor', readingWidth: 'page', mode: 'auto', theme: 'material' },
+            appearance: {
+                defaultOpenMode: 'editor',
+                readingWidth: 'page',
+                pdfAppearance: 'styled',
+                mode: 'auto',
+                theme: 'material',
+            },
             contentPrivacy: { remotePolicy: 'ask' },
             markdown: {
                 standard: 'full',
@@ -261,7 +281,13 @@ it('uses arrows and Space to change described Markdown controls', async () => {
 it('merges a dialog change with a pending popup change and keeps both surfaces synchronized', async () => {
     store.dispatch(
         hydrateSettings({
-            appearance: { defaultOpenMode: 'editor', readingWidth: 'page', mode: 'auto', theme: 'material' },
+            appearance: {
+                defaultOpenMode: 'editor',
+                readingWidth: 'page',
+                pdfAppearance: 'styled',
+                mode: 'auto',
+                theme: 'material',
+            },
             contentPrivacy: { remotePolicy: 'ask' },
             markdown: {
                 standard: 'full',
@@ -348,6 +374,7 @@ it('serializes rapid changes using the complete latest appearance choice', async
         expect(updateAppearance).toHaveBeenCalledWith({
             defaultOpenMode: 'editor',
             readingWidth: 'page',
+            pdfAppearance: 'styled',
             mode: 'auto',
             theme: 'glass',
         });
@@ -358,6 +385,7 @@ it('serializes rapid changes using the complete latest appearance choice', async
         expect(updateAppearance).toHaveBeenLastCalledWith({
             defaultOpenMode: 'editor',
             readingWidth: 'page',
+            pdfAppearance: 'styled',
             mode: 'dark',
             theme: 'glass',
         });
@@ -389,6 +417,7 @@ it('keeps an acknowledged appearance when the startup read resolves stale', asyn
             appearance: {
                 defaultOpenMode: 'editor',
                 readingWidth: 'page',
+                pdfAppearance: 'styled',
                 mode: 'auto',
                 theme: 'material',
             },
@@ -414,6 +443,7 @@ it('normalizes invalid persisted values before exposing controls or root attribu
         appearance: {
             defaultOpenMode: 'editor',
             readingWidth: 'page',
+            pdfAppearance: 'sepia',
             mode: 'future',
             theme: 'dracula',
         },
@@ -436,6 +466,7 @@ it('normalizes invalid persisted values before exposing controls or root attribu
     fireEvent.click(screen.getByRole('button', { name: 'Settings' }));
     expect(screen.getByRole('radio', { name: 'Material' })).toBeChecked();
     expect(screen.getByRole('radio', { name: 'Auto (system)' })).toBeChecked();
+    expect(screen.getByRole('menuitemradio', { name: 'Styled' })).toHaveAttribute('aria-checked', 'true');
 });
 
 it('owns one Auto listener, ignores a later system change while pinned, and stays silent on success', async (): Promise<void> => {
@@ -475,6 +506,7 @@ it('updates synchronized quick and modal Appearance only after reset is acknowle
         appearance: {
             defaultOpenMode: 'viewer',
             readingWidth: 'page',
+            pdfAppearance: 'styled',
             mode: 'dark',
             theme: 'minimal',
         },
@@ -524,6 +556,7 @@ it('retains acknowledged Appearance when the transactional reset is rejected', a
         appearance: {
             defaultOpenMode: 'viewer',
             readingWidth: 'page',
+            pdfAppearance: 'styled',
             mode: 'dark',
             theme: 'minimal',
         },
@@ -557,6 +590,7 @@ it('does not broadcast a reset into another mounted acknowledged Appearance proj
         appearance: {
             defaultOpenMode: 'viewer',
             readingWidth: 'page',
+            pdfAppearance: 'styled',
             mode: 'dark',
             theme: 'minimal',
         },

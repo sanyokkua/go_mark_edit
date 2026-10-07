@@ -1,6 +1,7 @@
 import type { Page } from '@playwright/test';
 import { writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { inflateSync } from 'node:zlib';
 
 import { expect, test } from '../support/harness';
 import { createCommandRecorder, type CommandRecorder } from '../support/commandRecorder';
@@ -201,6 +202,65 @@ test('Material in Dark mode prints on a dark page', async ({ app }) => {
     expect(colours.exact).toBe('exact');
     const [red = 255, green = 255, blue = 255] = (colours.background.match(/\d+/gu) ?? []).map(Number);
     expect(red + green + blue).toBeLessThan(3 * 128);
+});
+
+/** The drawing operators of every page, with each Flate stream expanded. */
+function pdfContent(pdf: Buffer): string {
+    const text = pdf.toString('latin1');
+    const streams: string[] = [];
+    for (const match of text.matchAll(/stream\r?\n([\s\S]*?)\r?\nendstream/gu)) {
+        try {
+            streams.push(inflateSync(Buffer.from(match[1] ?? '', 'latin1')).toString('latin1'));
+        } catch {
+            // Fonts and images are not Flate text; only page content matters here.
+        }
+    }
+    return streams.join('\n');
+}
+
+/** The fill of each full-page rectangle, in paint order: the last one is what the page shows. */
+function pageFills(content: string): number[][] {
+    const fill = /(-?[\d.]+) (-?[\d.]+) (-?[\d.]+) rg\s+(?:\/\S+ gs\s+)?0 0 \d+ \d+ re\s+f\b/gu;
+    return [...content.matchAll(fill)].map((match) => [Number(match[1]), Number(match[2]), Number(match[3])]);
+}
+
+test('Clean prints a white page from Dark mode, keeps the screen dark and survives a restart', async ({ app }) => {
+    await app.launch();
+    const { page } = app;
+    await page.getByRole('button', { name: 'Settings', exact: true }).click();
+    const menu = page.getByRole('menu', { name: 'Settings menu' });
+    await menu.getByRole('radio', { name: 'Material', exact: true }).click();
+    await menu.getByRole('radio', { name: 'Dark', exact: true }).click();
+    await menu.getByRole('menuitemradio', { name: 'Clean', exact: true }).click();
+    await expect(page.locator('html')).toHaveAttribute('data-mode', 'dark');
+    await page.keyboard.press('Escape');
+
+    await app.relaunch();
+    const restarted = app.page;
+    await restarted.getByRole('button', { name: 'Settings', exact: true }).click();
+    await expect(
+        restarted
+            .getByRole('menu', { name: 'Settings menu' })
+            .getByRole('menuitemradio', { name: 'Clean', exact: true }),
+    ).toBeChecked();
+    await restarted.keyboard.press('Escape');
+    await expect(restarted.locator('html')).toHaveAttribute('data-mode', 'dark');
+
+    const recorder = await recordPrintWindow(restarted);
+    await restarted.locator('[data-editor-surface] textarea').first().focus();
+    await restarted.keyboard.insertText('Clean page text');
+    await restarted.keyboard.press('ControlOrMeta+p');
+    await expect.poll(() => recorder.calls.length).toBe(1);
+
+    await restarted.emulateMedia({ media: 'print' });
+    const copy = restarted.locator('[data-print-copy]');
+    await expect(copy).toHaveAttribute('data-print-appearance', 'clean');
+    await expect(copy).toHaveCSS('background-color', 'rgb(255, 255, 255)');
+    const fills = pageFills(pdfContent(await restarted.pdf({ printBackground: true })));
+    expect(fills.at(-1)).toEqual([1, 1, 1]);
+
+    await restarted.emulateMedia({ media: 'screen' });
+    await expect(restarted.locator('html')).toHaveAttribute('data-mode', 'dark');
 });
 
 test('with no document open Export is disabled and Ctrl+P opens nothing', async ({ app }) => {

@@ -979,7 +979,9 @@ The owner decisions that shaped this refactor are recorded here so they are not 
   `useShellShortcuts` calls `preventDefault` for a matched `export-pdf` before its availability checks so the webview's
   own print never runs on WebView2 or WebKitGTK (unverified there). Rejected: `window.print()`, printing the live
   preview pane, seeding the copy from `useLivePreview`, and a Go-side or bundled PDF renderer. D8 stays as written; it
-  names no control.
+  names no control. The PDF appearance setting (`export.pdfAppearance`, `styled` default or `clean`, carried in the
+  appearance group) sets `data-print-appearance` on the copy; Clean redefines the colour tokens with the Material Light
+  values in `tokens.css`, and `resolveMermaidTheme(element)` probes inside the element so diagrams are drawn light.
 
 ## Planning decisions retained
 

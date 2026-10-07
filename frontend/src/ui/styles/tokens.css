@@ -561,6 +561,36 @@
     --scrollbar-thumb-hover: rgba(255, 255, 255, 0.34);
 }
 
+/* Clean PDF appearance: the Material theme's Light values, whatever the active theme and mode. */
+[data-print-appearance='clean'] {
+    --surface: #ffffff;
+    --surface-2: #eceaf6;
+    --elevated: #f3f1fb;
+    --stroke: #e3e1ee;
+    --stroke-soft: #eceaf6;
+    --text: #1b1b22;
+    --muted: #5c5c69;
+    --accent: #4f6bed;
+    --accent-soft: #dfe4ff;
+    --accent-ink: #0a1a52;
+    --warn: #8a5a00;
+    --err: #b3261e;
+    --md-strong: #b45309;
+    --md-emphasis: #7c3aed;
+    --md-quote: #0369a1;
+    --code-fg: #30343b;
+    --hl-keyword: #7c3aed;
+    --hl-string: #0369a1;
+    --hl-comment: #9aa1ab;
+    --hl-number: #b45309;
+    --hl-function: #3056d3;
+    --hl-type: #0f766e;
+    --hl-attr: #be123c;
+    --hl-punct: #5c5c69;
+    --surface-raised: var(--elevated);
+    --border: var(--stroke);
+}
+
 /* Compatibility names used by already-shipped screen components. */
 :root[data-theme][data-mode] {
     --surface-raised: var(--elevated);

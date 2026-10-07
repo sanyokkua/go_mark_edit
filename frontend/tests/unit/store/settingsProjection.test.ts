@@ -14,6 +14,7 @@ it('hydrates Redux settings once from the acknowledged adapter authority', async
                 mode: 'auto',
                 defaultOpenMode: 'editor',
                 readingWidth: 'page',
+                pdfAppearance: 'styled',
             },
             markdown: {
                 standard: 'gfm',

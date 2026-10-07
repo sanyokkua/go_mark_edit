@@ -333,6 +333,7 @@ it('passes acknowledged marker preferences into toolbar formatting', async () =>
                 mode: 'auto',
                 defaultOpenMode: 'editor',
                 readingWidth: 'page',
+                pdfAppearance: 'styled',
             },
             markdown: {
                 standard: 'gfm',

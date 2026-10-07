@@ -12,6 +12,7 @@ type AppearanceSettings struct {
 	Mode            string `json:"mode"`
 	DefaultOpenMode string `json:"defaultOpenMode"`
 	ReadingWidth    string `json:"readingWidth"`
+	PdfAppearance   string `json:"pdfAppearance"`
 }
 
 // MarkdownSettings contains the persisted Markdown and canonical-style settings.
