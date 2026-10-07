@@ -42,7 +42,7 @@ run_tier() {
     case "$name" in
         unit) capture_stage unit 'scripts/test unit' run_unit_stage || failed=1 ;;
         integration) capture_stage integration 'scripts/test integration' run_integration_stage || failed=1 ;;
-        e2e) capture_stage e2e 'scripts/test e2e' run_e2e_stage "${playwright_args[@]}" || failed=1 ;;
+        e2e) capture_stage e2e 'scripts/test e2e' run_e2e_stage ${playwright_args[@]+"${playwright_args[@]}"} || failed=1 ;;
     esac
 }
 

@@ -17,7 +17,8 @@ run_lint_stage() {
     run_reported_command 'ESLint' eslint "$RUN_DIR/reports/eslint.json" \
         env NODE_OPTIONS="$eslint_node_options" \
         "$REPO_ROOT/frontend/node_modules/.bin/eslint" \
-        --config "$REPO_ROOT/frontend/eslint.config.js" frontend tools --format json || failed=1
+        --config "$REPO_ROOT/frontend/eslint.config.js" frontend tools --format json \
+        --cache --cache-strategy content --cache-location "$REPO_ROOT/.local_tmp_files/cache/eslint/" || failed=1
     if (cd "$REPO_ROOT/frontend" && run_reported_command 'stylelint' stylelint "$RUN_DIR/reports/stylelint.json" --capture-stderr "$REPO_ROOT/frontend/node_modules/.bin/stylelint" 'src/**/*.css' --formatter json); then
         :
     else

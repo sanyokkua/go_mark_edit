@@ -30,6 +30,26 @@ require_command() {
     fi
 }
 
+# Installs a pinned Go tool unless the binary on PATH or in the Go bin directory was already
+# built from exactly that module version (keeps a restored ~/go/bin cache from reinstalling).
+# Usage: install_go_tool <binary> <module path> <version>
+install_go_tool() {
+    local binary="$1" module="$2" version="$3"
+    local gobin installed
+    gobin="$(go env GOBIN)"
+    [[ -n "$gobin" ]] || gobin="$(go env GOPATH)/bin"
+    for candidate in "$gobin/$binary" "$(command -v "$binary" 2>/dev/null || true)"; do
+        [[ -x "$candidate" ]] || continue
+        installed="$(go version -m "$candidate" 2>/dev/null | awk '$1 == "mod" {print $2 " " $3; exit}')"
+        if [[ "$installed" == "$module $version" ]]; then
+            log "$binary $version already installed"
+            return 0
+        fi
+    done
+    log "installing $binary $version"
+    go install "$module/cmd/$binary@$version"
+}
+
 run_command() {
     local label="$1"
     shift
