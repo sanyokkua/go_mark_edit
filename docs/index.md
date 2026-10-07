@@ -217,6 +217,8 @@ scripts/verify
 scripts/baseline --compare
 ```
 
+On Windows, `scripts/build` also builds the NSIS installer when `makensis` is on `PATH` and logs that it was skipped otherwise. On Linux it copies the desktop entry, MIME file, `install.sh` and the icon next to the binary in `build/bin/`; run `install.sh` there to install per user and `install.sh --uninstall` to remove it.
+
 Use `scripts/build setup --with-browser` to install Chromium for E2E verification. Linux desktop builds require GTK 3 and WebKit2GTK 4.1 development headers. Each verification run keeps only the 10 newest folders under `.local_tmp_files/runs/` and shares tool caches in `.local_tmp_files/cache/`. See [the E2E performance note](e2e-performance.md) for harness behavior.
 
 ### 10.3 CI and Release
@@ -226,6 +228,8 @@ Use `scripts/build setup --with-browser` to install Chromium for E2E verificatio
 - Cross-platform Go CI is configured, but Windows/Linux packaged release artifacts are not currently configured in the release workflow.
 
 Platform integration: the macOS bundle declares `.md`, `.markdown`, `.mdown` and `.txt` documents and folders with Alternate handler rank, so Finder lists GoMarkEdit under Open With and a folder can be dropped on its Dock or application icon. Finder has no Open With for folders. GoMarkEdit never becomes the default by itself; the user chooses it with Get Info > Change All. Finder opens reach the backend as file-open events (D19). A file already open in a live window opens nothing, and at most 50 windows are open at once.
+
+The Windows installer lists GoMarkEdit under Open With for those four suffixes and adds "Open with GoMarkEdit" to the context menu of a folder and of a folder's background (under "Show more options" on Windows 11); it never writes a default, and the uninstaller removes every registration it added. The Linux desktop entry declares Markdown, `text/plain` and `inode/directory`, so other text files are also listed and are refused when opened, and the file manager still opens folders itself. `install.sh` never sets a default. Windows and Linux behaviour is not verified at runtime.
 
 ## 11. Current Product Scope and Future Work
 

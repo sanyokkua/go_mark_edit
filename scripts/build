@@ -113,6 +113,15 @@ fi
 if [[ "$(uname -s)" == 'Linux' ]]; then
     build_args+=(-tags webkit2_41)
 fi
+case "$(uname -s)" in
+    MINGW* | MSYS* | CYGWIN*)
+        if command -v makensis >/dev/null 2>&1; then
+            build_args+=(-nsis)
+        else
+            log 'makensis not found; skipping the Windows installer'
+        fi
+        ;;
+esac
 if [[ ${#build_args[@]} -gt 0 ]]; then
     wails build "${build_args[@]}"
 else
@@ -125,6 +134,11 @@ if [[ -f "$build_state_dir/dist.gitkeep" ]]; then
 fi
 
 restore_tracked_modes
+
+if [[ "$(uname -s)" == 'Linux' ]]; then
+    cp "$REPO_ROOT"/build/linux/* "$REPO_ROOT/build/appicon.png" "$REPO_ROOT/build/bin/"
+    chmod 755 "$REPO_ROOT/build/bin/install.sh"
+fi
 
 if [[ "$(uname -s)" == 'Darwin' && -n "$version" ]]; then
     bundle="$REPO_ROOT/build/bin/GoMarkEdit.app/Contents/Info.plist"

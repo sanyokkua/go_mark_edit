@@ -239,7 +239,7 @@ bootstrap.status === 'ready')` (`app/App.tsx:49`) is the precedent for a hook th
       otherwise logs that the installer was skipped.
 7. **Linux.**
     - New `build/linux/gomarkedit.desktop` (`Type=Application`, `Name=GoMarkEdit`, `Exec=GoMarkEdit %f`,
-      `Icon=gomarkedit`, `Categories=Office;TextEditor;`,
+      `Icon=gomarkedit`, `Categories=Office;Utility;TextEditor;`,
       `MimeType=text/markdown;text/x-markdown;text/plain;inode/directory;`), `build/linux/gomarkedit-mime.xml`
       (adds `*.mdown` and `*.markdown` globs to `text/markdown`) and `build/linux/install.sh [--uninstall]`.
     - `install.sh` is POSIX `sh` (`#!/bin/sh`, `set -eu`), portable to macOS bash 3.2 and BSD tools: `mkdir -p` and

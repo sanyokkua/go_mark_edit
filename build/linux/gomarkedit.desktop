@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=GoMarkEdit
+Comment=Offline-first Markdown editor and viewer
+Exec=GoMarkEdit %f
+Icon=gomarkedit
+Terminal=false
+Categories=Office;Utility;TextEditor;
+MimeType=text/markdown;text/x-markdown;text/plain;inode/directory;

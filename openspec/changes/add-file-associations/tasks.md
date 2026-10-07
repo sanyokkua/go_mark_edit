@@ -154,7 +154,7 @@ Test edits listed under "Changes existing tests" are required by the named requi
 
 ## 4. Windows installer registration and folder menu
 
-- [ ] 4.1 Register Open With for the four suffixes and "Open with GoMarkEdit" for folders and folder backgrounds in the
+- [x] 4.1 Register Open With for the four suffixes and "Open with GoMarkEdit" for folders and folder backgrounds in the
       NSIS installer, remove them on uninstall, never take a default, and build the installer from `scripts/build` on
       Windows when `makensis` is present. Verify that the named tests pass, `scripts/verify` is green, and, when
       `makensis` is installed on the macOS host, `wails build -platform windows/amd64 -nsis` compiles the installer with
@@ -177,7 +177,7 @@ Test edits listed under "Changes existing tests" are required by the named requi
 
 ## 5. Linux desktop entry, MIME file and install script
 
-- [ ] 5.1 Add the Linux desktop entry, MIME file and POSIX `install.sh [--uninstall]`, and copy them next to the Linux
+- [x] 5.1 Add the Linux desktop entry, MIME file and POSIX `install.sh [--uninstall]`, and copy them next to the Linux
       binary in `scripts/build`. Verify that the named tests pass (including the install-script test on macOS),
       `scripts/format --check` accepts `install.sh`, `scripts/verify` is green, and `scripts/build` leaves a clean tree.
       Linux desktop behaviour is recorded as unverified.

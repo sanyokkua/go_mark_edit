@@ -942,6 +942,21 @@ The owner decisions that shaped this refactor are recorded here so they are not 
   `WindowRegistry` under `os.UserCacheDir()/GoMarkEdit/windows/`; entries of ended processes are ignored and removed.
   The registry holds launch targets, not documents opened later inside a window. Rejected: a spawn-depth counter, which
   also blocks legitimate chains of windows.
+  **Windows part:** `build/windows/installer/project.nsi` replaces the Wails `associateFiles` macros, which write the
+  default value of `Software\Classes\.<ext>` and so take over the default. Local macros register the
+  `GoMarkEdit.Document` ProgID, add it under `.<ext>\OpenWithProgids` for the four suffixes, add
+  `Applications\<exe>` with `SupportedTypes`, and add "Open with GoMarkEdit" verbs on `Directory\shell` (`"%1"`) and
+  `Directory\Background\shell` (`"%V"`), all under `SHCTX\Software\Classes`; the uninstaller deletes exactly those
+  keys and values and both sections notify the shell with `SHChangeNotify`. Windows 11 shows the folder verbs under
+  "Show more options". `scripts/build` adds `-nsis` on Windows when `makensis` is on `PATH`. The packaging test scans
+  the NSI lines. Explorer behaviour is not verified at runtime.
+  **Linux part:** `build/linux/` holds `gomarkedit.desktop` (`MimeType` text/markdown, text/x-markdown, text/plain,
+  inode/directory; `Exec=… %f`), `gomarkedit-mime.xml` (Markdown globs) and the POSIX `install.sh [--uninstall]`, which
+  installs per user, rewrites `Exec=` and `Icon=` to absolute paths, refreshes the desktop and MIME databases and never
+  runs `xdg-mime default` or edits `mimeapps.list`. `scripts/build` copies them and `build/appicon.png` next to the
+  Linux binary. Declaring `text/plain` lists the app for every text file; unsupported ones are refused by D18. Linux
+  desktop behaviour is not verified at runtime; `linux_install_test.go` runs the script with `/bin/sh` against a
+  temporary `HOME`.
 
 ## Planning decisions retained
 

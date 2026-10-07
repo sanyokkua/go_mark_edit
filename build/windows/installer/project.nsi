@@ -75,6 +75,50 @@ OutFile "..\..\bin\${INFO_PROJECTNAME}-${ARCH}-installer.exe" # Name of the inst
 InstallDir "$PROGRAMFILES64\${INFO_COMPANYNAME}\${INFO_PRODUCTNAME}" # Default installing folder ($PROGRAMFILES is Program Files folder).
 ShowInstDetails show # This will always show the installation details.
 
+# Open With registration. The Wails default helper is not used because it takes the defaults; this never writes the default value of a
+# Software\Classes\.<ext> key, so the user's default application for every suffix is left alone.
+!macro gomarkedit.register
+    WriteRegStr SHCTX "Software\Classes\GoMarkEdit.Document" "" "Markdown document"
+    WriteRegStr SHCTX "Software\Classes\GoMarkEdit.Document\DefaultIcon" "" "$INSTDIR\${PRODUCT_EXECUTABLE},0"
+    WriteRegStr SHCTX "Software\Classes\GoMarkEdit.Document\shell\open\command" "" '"$INSTDIR\${PRODUCT_EXECUTABLE}" "%1"'
+
+    WriteRegStr SHCTX "Software\Classes\.md\OpenWithProgids" "GoMarkEdit.Document" ""
+    WriteRegStr SHCTX "Software\Classes\.markdown\OpenWithProgids" "GoMarkEdit.Document" ""
+    WriteRegStr SHCTX "Software\Classes\.mdown\OpenWithProgids" "GoMarkEdit.Document" ""
+    WriteRegStr SHCTX "Software\Classes\.txt\OpenWithProgids" "GoMarkEdit.Document" ""
+
+    WriteRegStr SHCTX "Software\Classes\Applications\${PRODUCT_EXECUTABLE}" "FriendlyAppName" "${INFO_PRODUCTNAME}"
+    WriteRegStr SHCTX "Software\Classes\Applications\${PRODUCT_EXECUTABLE}\SupportedTypes" ".md" ""
+    WriteRegStr SHCTX "Software\Classes\Applications\${PRODUCT_EXECUTABLE}\SupportedTypes" ".markdown" ""
+    WriteRegStr SHCTX "Software\Classes\Applications\${PRODUCT_EXECUTABLE}\SupportedTypes" ".mdown" ""
+    WriteRegStr SHCTX "Software\Classes\Applications\${PRODUCT_EXECUTABLE}\SupportedTypes" ".txt" ""
+    WriteRegStr SHCTX "Software\Classes\Applications\${PRODUCT_EXECUTABLE}\shell\open\command" "" '"$INSTDIR\${PRODUCT_EXECUTABLE}" "%1"'
+
+    WriteRegStr SHCTX "Software\Classes\Directory\shell\GoMarkEdit" "" "Open with ${INFO_PRODUCTNAME}"
+    WriteRegStr SHCTX "Software\Classes\Directory\shell\GoMarkEdit" "Icon" "$INSTDIR\${PRODUCT_EXECUTABLE},0"
+    WriteRegStr SHCTX "Software\Classes\Directory\shell\GoMarkEdit\command" "" '"$INSTDIR\${PRODUCT_EXECUTABLE}" "%1"'
+    WriteRegStr SHCTX "Software\Classes\Directory\Background\shell\GoMarkEdit" "" "Open with ${INFO_PRODUCTNAME}"
+    WriteRegStr SHCTX "Software\Classes\Directory\Background\shell\GoMarkEdit" "Icon" "$INSTDIR\${PRODUCT_EXECUTABLE},0"
+    WriteRegStr SHCTX "Software\Classes\Directory\Background\shell\GoMarkEdit\command" "" '"$INSTDIR\${PRODUCT_EXECUTABLE}" "%V"'
+
+    System::Call 'shell32::SHChangeNotify(i 0x08000000, i 0, p 0, p 0)'
+!macroend
+
+!macro gomarkedit.unregister
+    DeleteRegKey SHCTX "Software\Classes\Directory\Background\shell\GoMarkEdit"
+    DeleteRegKey SHCTX "Software\Classes\Directory\shell\GoMarkEdit"
+    DeleteRegKey SHCTX "Software\Classes\Applications\${PRODUCT_EXECUTABLE}"
+
+    DeleteRegValue SHCTX "Software\Classes\.txt\OpenWithProgids" "GoMarkEdit.Document"
+    DeleteRegValue SHCTX "Software\Classes\.mdown\OpenWithProgids" "GoMarkEdit.Document"
+    DeleteRegValue SHCTX "Software\Classes\.markdown\OpenWithProgids" "GoMarkEdit.Document"
+    DeleteRegValue SHCTX "Software\Classes\.md\OpenWithProgids" "GoMarkEdit.Document"
+
+    DeleteRegKey SHCTX "Software\Classes\GoMarkEdit.Document"
+
+    System::Call 'shell32::SHChangeNotify(i 0x08000000, i 0, p 0, p 0)'
+!macroend
+
 Function .onInit
    !insertmacro wails.checkArchitecture
 FunctionEnd
@@ -91,7 +135,7 @@ Section
     CreateShortcut "$SMPROGRAMS\${INFO_PRODUCTNAME}.lnk" "$INSTDIR\${PRODUCT_EXECUTABLE}"
     CreateShortCut "$DESKTOP\${INFO_PRODUCTNAME}.lnk" "$INSTDIR\${PRODUCT_EXECUTABLE}"
 
-    !insertmacro wails.associateFiles
+    !insertmacro gomarkedit.register
     !insertmacro wails.associateCustomProtocols
 
     !insertmacro wails.writeUninstaller
@@ -107,7 +151,7 @@ Section "uninstall"
     Delete "$SMPROGRAMS\${INFO_PRODUCTNAME}.lnk"
     Delete "$DESKTOP\${INFO_PRODUCTNAME}.lnk"
 
-    !insertmacro wails.unassociateFiles
+    !insertmacro gomarkedit.unregister
     !insertmacro wails.unassociateCustomProtocols
 
     !insertmacro wails.deleteUninstaller
