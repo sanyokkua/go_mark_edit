@@ -96,6 +96,30 @@ run_reported_command() {
     return "$parser_status"
 }
 
+# Keeps the 10 newest folders of <root>/runs/ and removes end-to-end and tooling test
+# folders directly under <root> that are older than 24 hours. Nothing else is touched.
+prune_local_tmp() {
+    local root="$1"
+    local entry
+    local index=0
+
+    if [[ -d "$root/runs" ]]; then
+        # Run folder names are generated ids without whitespace, so `ls -t` is safe here.
+        while IFS= read -r entry; do
+            index=$((index + 1))
+            if [[ "$index" -gt 10 ]]; then
+                rm -rf "${root:?}/runs/$entry"
+            fi
+        done < <(cd "$root/runs" && ls -1t)
+    fi
+
+    if [[ -d "$root" ]]; then
+        find "$root" -mindepth 1 -maxdepth 1 -type d \( -name 'e2e-run-*' -o -name 'verification-test-*' \) \
+            -mmin +1440 -exec rm -rf {} +
+    fi
+    return 0
+}
+
 new_run_dir() {
     local kind="${1:-run}"
     local root="$REPO_ROOT/.local_tmp_files/runs"
@@ -104,6 +128,7 @@ new_run_dir() {
     RUN_DIR="$root/$run_id"
     export RUN_DIR
     mkdir -p "$RUN_DIR"
+    prune_local_tmp "$REPO_ROOT/.local_tmp_files"
     printf '%s\n' "$RUN_DIR"
 }
 

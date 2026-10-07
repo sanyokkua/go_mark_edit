@@ -217,7 +217,7 @@ scripts/verify
 scripts/baseline --compare
 ```
 
-Use `scripts/build setup --with-browser` to install Chromium for E2E verification. Linux desktop builds require GTK 3 and WebKit2GTK 4.1 development headers. See [the E2E performance note](e2e-performance.md) for harness behavior.
+Use `scripts/build setup --with-browser` to install Chromium for E2E verification. Linux desktop builds require GTK 3 and WebKit2GTK 4.1 development headers. Each verification run keeps only the 10 newest folders under `.local_tmp_files/runs/` and shares tool caches in `.local_tmp_files/cache/`. See [the E2E performance note](e2e-performance.md) for harness behavior.
 
 ### 10.3 CI and Release
 

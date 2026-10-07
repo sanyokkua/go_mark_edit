@@ -6,12 +6,12 @@ run_lint_stage() {
     local failed=0
     local frontend_bin="$REPO_ROOT/frontend/node_modules/.bin"
 
-    run_reported_command 'golangci-lint' golangci-lint "$RUN_DIR/reports/golangci-lint.json" env GOLANGCI_LINT_CACHE="$RUN_DIR/golangci-cache" golangci-lint run ./... --output.json.path stdout || failed=1
+    run_reported_command 'golangci-lint' golangci-lint "$RUN_DIR/reports/golangci-lint.json" env GOLANGCI_LINT_CACHE="$REPO_ROOT/.local_tmp_files/cache/golangci" golangci-lint run ./... --output.json.path stdout || failed=1
     run_command 'Go architecture checks' go run ./tools/archlint || failed=1
     run_command 'CGO-free Go build' env CGO_ENABLED=0 go build ./internal/... ./tools/... || failed=1
     (cd "$REPO_ROOT/frontend" && run_command 'TypeScript source check' "$frontend_bin/tsc" --noEmit -p tsconfig.json) || failed=1
     (cd "$REPO_ROOT/frontend" && run_command 'TypeScript test check' "$frontend_bin/tsc" --noEmit -p tsconfig.test.json) || failed=1
-    (cd "$REPO_ROOT/frontend" && run_command 'TypeScript node check' "$frontend_bin/tsc" --noEmit --tsBuildInfoFile "$RUN_DIR/tsconfig.node.tsbuildinfo" -p tsconfig.node.json) || failed=1
+    (cd "$REPO_ROOT/frontend" && run_command 'TypeScript node check' "$frontend_bin/tsc" --noEmit --tsBuildInfoFile "$REPO_ROOT/.local_tmp_files/cache/tsconfig.node.tsbuildinfo" -p tsconfig.node.json) || failed=1
     # Keep ESLint above Node's default heap limit on macOS arm64 release runners.
     local eslint_node_options="${NODE_OPTIONS:+$NODE_OPTIONS }--max-old-space-size=4096"
     run_reported_command 'ESLint' eslint "$RUN_DIR/reports/eslint.json" \
@@ -41,14 +41,15 @@ run_build_stage() {
 run_unit_stage() {
     local failed=0
     run_reported_command 'Go backend unit tests' go-test "$RUN_DIR/reports/go-unit.jsonl" go test -race -json ./tests/go/unit/... || failed=1
-    (cd "$REPO_ROOT/frontend" && run_command 'Jest frontend unit tests' "$REPO_ROOT/frontend/node_modules/.bin/jest" --ci --json --outputFile "$RUN_DIR/frontend-unit-jest.json" --cacheDirectory "$RUN_DIR/jest-unit-cache" --runInBand --config jest.config.mjs --selectProjects unit) || failed=1
+    (cd "$REPO_ROOT/frontend" && run_command 'Jest frontend unit tests' "$REPO_ROOT/frontend/node_modules/.bin/jest" --ci --json --outputFile "$RUN_DIR/frontend-unit-jest.json" --cacheDirectory "$REPO_ROOT/.local_tmp_files/cache/jest-unit" --runInBand --config jest.config.mjs --selectProjects unit) || failed=1
+    run_command 'Node verification tool tests' node --test tools/verify/results.test.mjs || failed=1
     return "$failed"
 }
 
 run_integration_stage() {
     local failed=0
     run_reported_command 'Go backend integration tests' go-test "$RUN_DIR/reports/go-integration.jsonl" go test -race -json ./tests/go/integration/... ./internal/... || failed=1
-    (cd "$REPO_ROOT/frontend" && run_command 'Jest frontend integration tests' "$REPO_ROOT/frontend/node_modules/.bin/jest" --ci --json --outputFile "$RUN_DIR/frontend-integration-jest.json" --cacheDirectory "$RUN_DIR/jest-integration-cache" --runInBand --config jest.config.mjs --selectProjects integration) || failed=1
+    (cd "$REPO_ROOT/frontend" && run_command 'Jest frontend integration tests' "$REPO_ROOT/frontend/node_modules/.bin/jest" --ci --json --outputFile "$RUN_DIR/frontend-integration-jest.json" --cacheDirectory "$REPO_ROOT/.local_tmp_files/cache/jest-integration" --runInBand --config jest.config.mjs --selectProjects integration) || failed=1
     return "$failed"
 }
 

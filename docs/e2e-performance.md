@@ -28,7 +28,8 @@ Each listed run passed 59/59. Run IDs are `baseline-20260927T213621Z-69023`,
 `test-e2e-20260927T232701Z-32716`, `test-e2e-20260927T234909Z-54091`,
 `verify-20260928T050559Z-82816` and `baseline-20260928T051053Z-88847`, respectively.
 The last two runs include both the projection fix and corrected scroll target.
-Raw reports remain under `.local_tmp_files/runs/`; detailed baseline profiles remain under
+These run folders have since been pruned: only the 10 newest folders of `.local_tmp_files/runs/` are kept, and
+tool caches live in `.local_tmp_files/cache/`. Raw reports of current runs remain under `.local_tmp_files/runs/`; detailed baseline profiles remain under
 `.local_tmp_files/e2e-performance/`. Lifecycle and browser-step totals are inclusive and can
 overlap, especially in parallel runs; they must not be added to derive wall time. Baseline
 preparation was repeated within launches and was not measured separately.

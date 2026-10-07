@@ -416,7 +416,8 @@ dev and setup. Hooks and CI call the scripts directly. A developer may use the f
   and E2E prints the frontend/browser count. A failed run marks later stages as NOT RUN.
 - `scripts/format --check` checks the repository formatter set. `scripts/baseline` captures a full
   stage record, and `scripts/baseline --compare` fails closed when findings remain or a new finding
-  appears. Verification run artifacts live under `.local_tmp_files/runs/`; the explicit baseline
+  appears. Verification run artifacts live under `.local_tmp_files/runs/`, of which only the 10 newest folders are kept
+  (each new run prunes older ones, and stale `e2e-run-*` and `verification-test-*` folders over 24 hours old); the explicit baseline
   record lives under `.local_tmp_files/baseline/` and is created or compared only by
   `scripts/baseline`. The record is named after the checked-out branch (slashes become dashes), or after the short
   commit on a detached HEAD. Required reports that are missing or malformed are UNAVAILABLE or UNRELIABLE,
@@ -424,7 +425,7 @@ dev and setup. Hooks and CI call the scripts directly. A developer may use the f
 - CI failure uploads allowlist stage JSON records, logs, stderr captures, normalized and raw reports,
   Jest/Playwright/Go test reports and E2E failure screenshots, error contexts and traces from
   `.local_tmp_files/runs/`; compiler, linter, Jest,
-  Playwright and TypeScript build-info caches are not uploaded.
+  Playwright and TypeScript build-info caches (kept in `.local_tmp_files/cache/`) are not uploaded.
 
 The E2E stage builds the standard Wails development executable and seed helper once, then starts two
 owned frontend listeners for the run: Vite development assets for functional cases by default and

@@ -15,7 +15,7 @@ Test edits listed under "Changes existing tests" are required by the named requi
 
 ## 1. Verification temp retention
 
-- [ ] 1.1 Share the tool caches in `.local_tmp_files/cache/`, keep only the 10 newest run folders, and remove stale E2E
+- [x] 1.1 Share the tool caches in `.local_tmp_files/cache/`, keep only the 10 newest run folders, and remove stale E2E
       and tooling test folders older than 24 hours. Verify that `node --test tools/verify/results.test.mjs` passes as
       part of the Unit stage, that a `scripts/verify lint` run leaves at most 10 folders under `.local_tmp_files/runs/`,
       and that `.local_tmp_files/specification/` and `.local_tmp_files/baseline/*.json` are unchanged.
