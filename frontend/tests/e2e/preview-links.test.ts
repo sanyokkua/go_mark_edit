@@ -415,7 +415,11 @@ test('editor links follow the preview path only when clicked with the platform m
     await expect(page.getByRole('tab', { name: 'b.md' })).toHaveAttribute('aria-selected', 'true');
     await expect(page.locator('[data-editor-surface] .view-lines')).toContainText('Sibling document');
     await expect
-        .poll(() => getState(page).then((state) => state.data?.activeBuffer?.content))
+        .poll(() =>
+            getState(page).then(
+                (state) => `${state.data?.snapshot?.activeDocumentId}\n${state.data?.activeBuffer?.content}`,
+            ),
+        )
         .toContain('Sibling document');
     await page.getByRole('tab', { name: 'a.md' }).click();
     await clickEditorText(page, '[sibling](sub/b.md)', 'sub/b.md', true);
@@ -513,6 +517,9 @@ test('preview links activate and reveal documents in and outside the folder', as
     await expect
         .poll(() => getState(page).then((state) => state.data?.activeBuffer?.content))
         .toContain('Unsaved source edit.');
+    // Monaco renders only the visible lines; the edit is on the last line, which a taller line
+    // height can leave below the viewport.
+    await page.locator('[data-editor-surface] textarea').first().press('ControlOrMeta+End');
     await expect(page.locator('[data-editor-surface] .view-lines')).toContainText('Unsaved source edit.');
     await clickWithoutNavigation(page, page.getByRole('link', { name: 'sibling' }), originalUrl);
     await expectActiveDocument(page, 'b.md', 'Sibling document');
