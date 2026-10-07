@@ -57,6 +57,16 @@ type VoidResult struct {
 	Error *WireError `json:"error,omitempty"`
 }
 
+// LaunchTargetResult is the path a starting window accepted from its command
+// line or the operating system. Kind is "file" or "folder"; a result without a
+// Path means the window accepted nothing.
+type LaunchTargetResult struct {
+	Failure
+	Path  string     `json:"path,omitempty"`
+	Kind  string     `json:"kind,omitempty"`
+	Error *WireError `json:"error,omitempty"`
+}
+
 // ClassifiedVoidResult is the no-payload envelope for a command whose failures
 // belong to the classified category and remediation contract rather than to the
 // internal wire vocabulary.

@@ -42,7 +42,7 @@ Test edits listed under "Changes existing tests" are required by the named requi
 
 ## 2. Opening paths from the operating system and the command line
 
-- [ ] 2.1 Route every path from argv or the operating system through one backend entry: a window accepts at most one,
+- [x] 2.1 Route every path from argv or the operating system through one backend entry: a window accepts at most one,
       only while it is starting, and every other path starts a new window whatever the window shows; the frontend takes
       the accepted path once after bootstrap and opens it with the existing open commands. Verify that the named tests pass,
       `scripts/verify` is green, and in the real app `GoMarkEdit.app/Contents/MacOS/GoMarkEdit ~/notes/a.md` shows
@@ -86,8 +86,8 @@ Test edits listed under "Changes existing tests" are required by the named requi
           as `file` instead of ignored; the folder child takes a `folder` target; retry opens nothing and the target is
           still takeable); `TestNewWindowLauncherReceivesEachRequestedFolderPath` (`:77`) also passes a file path;
         - `tests/go/integration/application/handlers_test.go:28-40`: the recording service gains `TakeLaunchTarget`;
-        - `frontend/tests/unit/adapter/windowAdapter.test.ts` and `frontend/tests/integration/bootstrap.test.tsx`
-          fakes gain `takeLaunchTarget`.
+        - `frontend/tests/unit/adapter/windowAdapter.test.ts` and `frontend/tests/integration/app.test.tsx`
+          fakes gain `takeLaunchTarget` (`bootstrap.test.tsx` only uses `windowReady`).
     - Adds tests:
         - Go black-box (`tests/go/integration/application/launch_target_test.go`): `-psn_0_1 a.md` accepts `a.md`;
           `a.md b.md` accepts only `a.md` and launches nothing; a relative path is made absolute; a directory is

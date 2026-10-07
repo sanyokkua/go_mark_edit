@@ -1,3 +1,4 @@
+import type { WireError } from '../../../src/logic/utils/parseError';
 import { createWindowAdapter, type WindowBindings } from '../../../src/logic/adapter/windowAdapter';
 
 it('uses public query/enter/exit operations and returns native full-screen state', async () => {
@@ -6,6 +7,7 @@ it('uses public query/enter/exit operations and returns native full-screen state
         retryStartup: jest.fn(async () => ({})),
         windowReady: jest.fn(async () => ({})),
         openNewWindow: jest.fn(async () => ({})),
+        takeLaunchTarget: jest.fn(async () => ({})),
         windowFullscreen: jest.fn((): void => {
             fullscreen = true;
         }),
@@ -39,6 +41,7 @@ it('invokes repeatable startup through the guarded typed command', async () => {
         retryStartup: jest.fn(async () => ({})),
         windowReady: jest.fn(async () => ({})),
         openNewWindow: jest.fn(async () => ({})),
+        takeLaunchTarget: jest.fn(async () => ({})),
         windowFullscreen: jest.fn(),
         windowGetSize: jest.fn(async () => ({ h: 768, w: 1024 })),
         windowIsFullscreen: jest.fn(async () => false),
@@ -60,6 +63,7 @@ it('When a folder path is given, the window adapter opens a new application wind
         retryStartup: async () => ({}),
         windowReady: async () => ({}),
         openNewWindow,
+        takeLaunchTarget: async () => ({}),
         windowFullscreen: (): void => undefined,
         windowGetSize: async () => ({ h: 768, w: 1024 }),
         windowIsFullscreen: async (): Promise<boolean> => false,
@@ -76,3 +80,35 @@ it('When a folder path is given, the window adapter opens a new application wind
     expect(openNewWindow).toHaveBeenCalledWith('/tmp/project');
     expect(openedFolderPaths).toEqual(['/tmp/project']);
 });
+
+it('returns the accepted launch target, or undefined when the window accepted nothing', async () => {
+    const takeLaunchTarget = jest
+        .fn()
+        .mockResolvedValueOnce({ path: '/notes/a.md', kind: 'file' })
+        .mockResolvedValueOnce({});
+    const adapter = createWindowAdapter({ ...emptyBindings(), takeLaunchTarget });
+
+    await expect(adapter.takeLaunchTarget()).resolves.toEqual({ path: '/notes/a.md', kind: 'file' });
+    await expect(adapter.takeLaunchTarget()).resolves.toBeUndefined();
+});
+
+it('rejects a launch target take that the backend refused', async () => {
+    const error: WireError = { code: 'internal', title: 'Something went wrong', message: 'x', retryable: true };
+    const adapter = createWindowAdapter({ ...emptyBindings(), takeLaunchTarget: async () => ({ error }) });
+
+    await expect(adapter.takeLaunchTarget()).rejects.toEqual(error);
+});
+
+function emptyBindings(): WindowBindings {
+    return {
+        retryStartup: async () => ({}),
+        windowReady: async () => ({}),
+        openNewWindow: async () => ({}),
+        takeLaunchTarget: async () => ({}),
+        windowFullscreen: (): void => undefined,
+        windowGetSize: async () => ({ h: 768, w: 1024 }),
+        windowIsFullscreen: async (): Promise<boolean> => false,
+        windowIsMaximised: async (): Promise<boolean> => false,
+        windowUnfullscreen: (): void => undefined,
+    };
+}

@@ -18,6 +18,10 @@ export function RetryStartup(arg1) {
   return window['go']['application']['ApplicationHandler']['RetryStartup'](arg1);
 }
 
+export function TakeLaunchTarget(arg1) {
+  return window['go']['application']['ApplicationHandler']['TakeLaunchTarget'](arg1);
+}
+
 export function WindowReady(arg1) {
   return window['go']['application']['ApplicationHandler']['WindowReady'](arg1);
 }

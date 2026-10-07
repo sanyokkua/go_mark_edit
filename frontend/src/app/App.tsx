@@ -19,6 +19,7 @@ import { useConflictCommands } from './useConflictCommands';
 import { useDocumentSession } from './useDocumentSession';
 import { useDocumentWrites } from './useDocumentWrites';
 import { useDropHandler } from './useDropHandler';
+import { useLaunchTarget } from './useLaunchTarget';
 import { useExternalChanges } from './useExternalChanges';
 import { useNotifications } from './useNotifications';
 import { useShutdown } from './useShutdown';
@@ -47,6 +48,7 @@ const AppWorkflows = ({
     const close = useCloseWorkflow({ session, shutdown, conflicts, recoverySurface: writes.recoverySurface, writes });
     const commands = useCommands(session, close.closeAllWindowTabs);
     const drops = useDropHandler(commands, bootstrap.status === 'ready');
+    useLaunchTarget(commands, bootstrap.status === 'ready');
     const external = useExternalChanges({
         session,
         conflicts,

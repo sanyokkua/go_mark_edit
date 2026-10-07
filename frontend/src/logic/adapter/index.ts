@@ -65,6 +65,7 @@ import {
     AuthorizeQuit,
     CancelQuit,
     OpenNewWindow,
+    TakeLaunchTarget,
 } from 'wailsjs/go/application/ApplicationHandler';
 
 import {
@@ -163,6 +164,7 @@ const commandArities: Readonly<Record<string, number>> = {
     'ApplicationHandler.RetryStartup': 0,
     'ApplicationHandler.WindowReady': 0,
     'ApplicationHandler.OpenNewWindow': 1,
+    'ApplicationHandler.TakeLaunchTarget': 0,
     'ApplicationHandler.AuthorizeQuit': 1,
     'ApplicationHandler.CancelQuit': 1,
 };
@@ -403,6 +405,7 @@ const commandInvokerExecuteClosePlan = command('AppModelHandler.ExecuteClosePlan
 const commandInvokerRetryStartup = command('ApplicationHandler.RetryStartup', RetryStartup);
 const commandInvokerWindowReady = command('ApplicationHandler.WindowReady', WindowReady);
 const commandInvokerOpenNewWindow = command('ApplicationHandler.OpenNewWindow', OpenNewWindow);
+const commandInvokerTakeLaunchTarget = command('ApplicationHandler.TakeLaunchTarget', TakeLaunchTarget);
 const commandInvokerAuthorizeQuit = command('ApplicationHandler.AuthorizeQuit', AuthorizeQuit);
 const commandInvokerCancelQuit = command('ApplicationHandler.CancelQuit', CancelQuit);
 
@@ -567,6 +570,7 @@ export const windowAdapter = createWindowAdapter({
     retryStartup: commandInvokerRetryStartup,
     windowReady: commandInvokerWindowReady,
     openNewWindow: commandInvokerOpenNewWindow,
+    takeLaunchTarget: commandInvokerTakeLaunchTarget,
     windowFullscreen: WindowFullscreen,
     windowGetSize: WindowGetSize,
     windowIsFullscreen: WindowIsFullscreen,

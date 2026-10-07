@@ -69,13 +69,13 @@ func (window retryStartupNativeWindow) SetSize(context.Context, int, int) {
 func (retryStartupNativeWindow) Maximise(context.Context) {}
 func (retryStartupNativeWindow) Show(context.Context)     {}
 
-func (launcher *recordingNewWindowLauncher) Launch(folderPath string) error {
-	launcher.paths = append(launcher.paths, folderPath)
+func (launcher *recordingNewWindowLauncher) Launch(targetPath string) error {
+	launcher.paths = append(launcher.paths, targetPath)
 	return launcher.err
 }
 
-func TestNewWindowLauncherReceivesEachRequestedFolderPath(t *testing.T) {
-	for _, folderPath := range []string{"", filepath.Join(t.TempDir(), "project")} {
+func TestNewWindowLauncherReceivesEachRequestedPath(t *testing.T) {
+	for _, folderPath := range []string{"", filepath.Join(t.TempDir(), "project"), filepath.Join(t.TempDir(), "notes.md")} {
 		t.Run(folderPath, func(t *testing.T) {
 			launcher := &recordingNewWindowLauncher{}
 			holder := application.NewApplicationContextHolderWithOptions(nil, nil, application.ApplicationContextOptions{
@@ -135,39 +135,32 @@ func TestOpenNewWindowLaunchesOnceWhenRequestIsRepeated(t *testing.T) {
 	}
 }
 
-func TestStartupArgumentOpensTheFirstDirectoryWhenSeveralArgumentsArePresent(t *testing.T) {
+func TestStartupAcceptsTheFirstDirectoryWhenSeveralArgumentsArePresent(t *testing.T) {
 	folderPath := t.TempDir()
-	var opened []string
-
-	result := application.OpenStartupFolderFromArgs([]string{folderPath, "/ignored/second"}, func(path string) apperr.WorkspaceOutcome {
-		opened = append(opened, path)
-		return apperr.WorkspaceOutcome{Status: apperr.WorkspaceStatusOpened}
+	launcher := &recordingNewWindowLauncher{}
+	holder := application.NewApplicationContextHolderWithOptions(nil, nil, application.ApplicationContextOptions{
+		StartupArgs:       []string{folderPath, "/ignored/second"},
+		NewWindowLauncher: launcher,
 	})
 
-	if result.Status != apperr.WorkspaceStatusOpened {
-		t.Fatalf("startup result status = %q, want %q", result.Status, apperr.WorkspaceStatusOpened)
-	}
-	if len(opened) != 1 || opened[0] != folderPath {
-		t.Fatalf("opened paths = %#v, want one open of %q", opened, folderPath)
-	}
-}
+	target := holder.TakeLaunchTarget(context.Background())
 
-func TestStartupArgumentDoesNotOpenFolderWhenNoArgumentIsPresent(t *testing.T) {
-	openCalls := 0
-
-	result := application.OpenStartupFolderFromArgs(nil, func(string) apperr.WorkspaceOutcome {
-		openCalls++
-		return apperr.WorkspaceOutcome{Status: apperr.WorkspaceStatusOpened}
-	})
-
-	if openCalls != 0 {
-		t.Fatalf("OpenWorkspace calls = %d, want 0 without a startup argument", openCalls)
+	if target.Path != folderPath || target.Kind != "folder" {
+		t.Fatalf("target = %+v, want folder %q", target, folderPath)
 	}
-	if result.Status != "" {
-		t.Fatalf("startup result status = %q, want no result", result.Status)
+	if len(launcher.paths) != 0 {
+		t.Fatalf("launcher paths = %#v, want none for an ignored extra argument", launcher.paths)
 	}
 }
+func TestStartupWithoutArgumentsAcceptsNoTarget(t *testing.T) {
+	holder := application.NewApplicationContextHolderWithOptions(nil, nil, application.ApplicationContextOptions{})
 
+	target := holder.TakeLaunchTarget(context.Background())
+
+	if target.Path != "" || target.Kind != "" {
+		t.Fatalf("target = %+v, want no target without a startup argument", target)
+	}
+}
 func TestNewWindowChildStartsWithoutFolderOrTabs(t *testing.T) {
 	t.Setenv("GOMARKEDIT_NEW_WINDOW_CHILD", "1")
 	holder := application.NewApplicationContextHolderWithOptions(nil, nil, application.ApplicationContextOptions{})
@@ -180,42 +173,41 @@ func TestNewWindowChildStartsWithoutFolderOrTabs(t *testing.T) {
 	}
 }
 
-func TestMarkedFolderChildOpensWorkspaceWithoutTabs(t *testing.T) {
+func TestMarkedFolderChildTakesAFolderTargetAndStartsWithoutTabs(t *testing.T) {
 	t.Setenv("GOMARKEDIT_NEW_WINDOW_CHILD", "1")
 	folderPath := t.TempDir()
-	if err := os.WriteFile(filepath.Join(folderPath, "chapter.md"), []byte("# Chapter"), 0o600); err != nil {
-		t.Fatalf("write folder child fixture: %v", err)
-	}
 	holder := application.NewApplicationContextHolderWithOptions(&startupFileUtils{databasePath: filepath.Join(t.TempDir(), "settings.db")}, nil, application.ApplicationContextOptions{
-		StartupFolderArgs: []string{folderPath},
-		AppModelOptions:   []appmodel.AppModelOption{appmodel.WithEmitter(&startupOrderRecorder{})},
+		StartupArgs:     []string{folderPath},
+		AppModelOptions: []appmodel.AppModelOption{appmodel.WithEmitter(&startupOrderRecorder{})},
 	})
 	if err := holder.Init(context.Background()); err != nil {
 		t.Fatalf("Init: %v", err)
 	}
 	t.Cleanup(func() { _ = holder.Close() })
-	result := holder.OpenPendingStartupFolder(context.Background())
-	if result.Status != apperr.WorkspaceStatusOpened {
-		t.Fatalf("startup folder status = %q, want opened", result.Status)
+
+	target := holder.TakeLaunchTarget(context.Background())
+
+	if target.Path != folderPath || target.Kind != "folder" {
+		t.Fatalf("target = %+v, want folder %q", target, folderPath)
 	}
 	state, err := holder.AppModelService.GetState(context.Background())
 	if err != nil {
 		t.Fatalf("GetState: %v", err)
 	}
-	canonicalFolder, err := filepath.EvalSymlinks(folderPath)
-	if err != nil {
-		t.Fatalf("canonicalize fixture folder: %v", err)
-	}
-	if len(state.Snapshot.OrderedDocumentIDs) != 0 || state.Snapshot.ActiveDocumentID != "" || state.ActiveBuffer != nil || state.Snapshot.Workspace == nil || state.Snapshot.Workspace.RootPath != canonicalFolder || len(state.Snapshot.Workspace.Root.Children) != 1 || state.Snapshot.Workspace.Root.Children[0].Name != "chapter.md" {
-		t.Fatalf("folder child state = %+v, want sidebar tree and no tabs", state)
+	if len(state.Snapshot.OrderedDocumentIDs) != 0 || state.Snapshot.ActiveDocumentID != "" || state.ActiveBuffer != nil || state.Snapshot.Workspace != nil {
+		t.Fatalf("folder child state = %+v, want no tabs and no workspace until the frontend opens the target", state)
 	}
 }
 
-func TestUnmarkedInvalidStartupArgumentKeepsUntitled(t *testing.T) {
+func TestUnmarkedMissingStartupArgumentKeepsUntitled(t *testing.T) {
 	t.Setenv("GOMARKEDIT_NEW_WINDOW_CHILD", "")
+	missing := filepath.Join(t.TempDir(), "missing")
 	holder := application.NewApplicationContextHolderWithOptions(nil, nil, application.ApplicationContextOptions{
-		StartupFolderArgs: []string{filepath.Join(t.TempDir(), "missing")},
+		StartupArgs: []string{missing},
 	})
+	if target := holder.TakeLaunchTarget(context.Background()); target.Path != missing || target.Kind != "file" {
+		t.Fatalf("target = %+v, want the missing path as a file target", target)
+	}
 	state, err := holder.AppModelService.GetState(context.Background())
 	if err != nil {
 		t.Fatalf("GetState: %v", err)
@@ -225,27 +217,22 @@ func TestUnmarkedInvalidStartupArgumentKeepsUntitled(t *testing.T) {
 	}
 }
 
-func TestStartupArgumentDoesNotOpenFolderWhenFirstArgumentIsNotDirectory(t *testing.T) {
+func TestStartupFileArgumentIsTakenAsAFile(t *testing.T) {
 	filePath := filepath.Join(t.TempDir(), "document.md")
 	if err := os.WriteFile(filePath, []byte("# doc"), 0o600); err != nil {
 		t.Fatalf("write startup file: %v", err)
 	}
-	openCalls := 0
-
-	result := application.OpenStartupFolderFromArgs([]string{filePath}, func(string) apperr.WorkspaceOutcome {
-		openCalls++
-		return apperr.WorkspaceOutcome{Status: apperr.WorkspaceStatusOpened}
+	holder := application.NewApplicationContextHolderWithOptions(nil, nil, application.ApplicationContextOptions{
+		StartupArgs: []string{filePath},
 	})
 
-	if openCalls != 0 {
-		t.Fatalf("OpenWorkspace calls = %d, want 0 for a non-directory argument", openCalls)
-	}
-	if result.Status != "" {
-		t.Fatalf("startup result status = %q, want no result", result.Status)
+	target := holder.TakeLaunchTarget(context.Background())
+
+	if target.Path != filePath || target.Kind != "file" {
+		t.Fatalf("target = %+v, want file %q", target, filePath)
 	}
 }
-
-func TestRetryStartupOpensPassedFolderOnceBeforeRestoringWindowAfterInitFailure(t *testing.T) {
+func TestRetryStartupOpensNothingAndKeepsTheTargetTakeableAfterInitFailure(t *testing.T) {
 	ctx := context.Background()
 	tempDir := t.TempDir()
 	folderPath := filepath.Join(tempDir, "workspace")
@@ -258,8 +245,8 @@ func TestRetryStartupOpensPassedFolderOnceBeforeRestoringWindowAfterInitFailure(
 		initialError:     errors.New("temporary initialization failure"),
 	}
 	holder := application.NewApplicationContextHolderWithOptions(fileUtils, nil, application.ApplicationContextOptions{
-		AppModelOptions:   []appmodel.AppModelOption{appmodel.WithEmitter(recorder)},
-		StartupFolderArgs: []string{folderPath},
+		AppModelOptions: []appmodel.AppModelOption{appmodel.WithEmitter(recorder)},
+		StartupArgs:     []string{folderPath},
 	})
 	holder.SetNativeWindow(retryStartupNativeWindow{recorder: recorder})
 	t.Cleanup(func() {
@@ -274,16 +261,13 @@ func TestRetryStartupOpensPassedFolderOnceBeforeRestoringWindowAfterInitFailure(
 	if err := holder.RetryStartup(ctx); err != nil {
 		t.Fatalf("retry startup: %v", err)
 	}
-	if got := strings.Join(recorder.snapshot(), ","); got != "workspace,restore" {
-		t.Fatalf("startup events = %q, want workspace open before native restore", got)
-	}
-	if result := holder.OpenPendingStartupFolder(ctx); result.Status != "" {
-		t.Fatalf("startup folder result after retry = %q, want no pending open", result.Status)
-	}
 	if err := holder.RetryStartup(ctx); err != nil {
 		t.Fatalf("second startup retry: %v", err)
 	}
-	if got := strings.Join(recorder.snapshot(), ","); got != "workspace,restore" {
-		t.Fatalf("startup events after repeated retry = %q, want one open and one restore", got)
+	if got := strings.Join(recorder.snapshot(), ","); got != "restore" {
+		t.Fatalf("startup events = %q, want one restore and no folder open", got)
+	}
+	if target := holder.TakeLaunchTarget(ctx); target.Path != folderPath || target.Kind != "folder" {
+		t.Fatalf("target after retry = %+v, want the folder still takeable", target)
 	}
 }

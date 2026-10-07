@@ -27,6 +27,7 @@ func (service *recordingAppModelService) Save(context.Context, string, uint64, s
 type recordingApplicationService struct {
 	application.ApplicationServiceAPI
 	readyCalls int
+	takeCalls  int
 }
 
 func (service *recordingApplicationService) FrontendReady(context.Context) {
@@ -35,6 +36,11 @@ func (service *recordingApplicationService) FrontendReady(context.Context) {
 
 func (service *recordingApplicationService) RetryStartup(context.Context) error {
 	return nil
+}
+
+func (service *recordingApplicationService) TakeLaunchTarget(context.Context) apperr.LaunchTargetResult {
+	service.takeCalls++
+	return apperr.LaunchTargetResult{Path: "/docs/a.md", Kind: "file"}
 }
 
 func TestRetryingSaveWithTheSameRequestIdentityRunsTheServiceOnce(t *testing.T) {
@@ -63,6 +69,25 @@ func TestRepeatingWindowReadyWithTheSameRequestIdentityIsIdempotent(t *testing.T
 
 	if service.readyCalls != 1 {
 		t.Fatalf("FrontendReady calls = %d, want 1", service.readyCalls)
+	}
+	if !reflect.DeepEqual(second, first) {
+		t.Fatalf("retry result = %#v, want original result %#v", second, first)
+	}
+}
+
+func TestRepeatingTakeLaunchTargetWithTheSameRequestIdentityTakesOnce(t *testing.T) {
+	service := &recordingApplicationService{}
+	handler := application.NewApplicationHandler(service, nil, nil)
+	request := bridge.Request{ID: "take-request"}
+
+	first := handler.TakeLaunchTarget(request)
+	second := handler.TakeLaunchTarget(request)
+
+	if service.takeCalls != 1 {
+		t.Fatalf("TakeLaunchTarget calls = %d, want 1", service.takeCalls)
+	}
+	if first.Path != "/docs/a.md" || first.Kind != "file" {
+		t.Fatalf("first result = %#v, want the service target", first)
 	}
 	if !reflect.DeepEqual(second, first) {
 		t.Fatalf("retry result = %#v, want original result %#v", second, first)

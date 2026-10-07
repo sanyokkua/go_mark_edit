@@ -54,7 +54,7 @@ jest.mock('../../src/logic/adapter', () => ({
         updateAppearance: jest.fn(async () => undefined),
     },
     nativeLifecycleAdapter: { requestQuit: jest.fn() },
-    windowAdapter: { toggleFullscreen: jest.fn() },
+    windowAdapter: { toggleFullscreen: jest.fn(), takeLaunchTarget: jest.fn(async () => undefined) },
 }));
 
 import { useBootstrap } from '../../src/app/useBootstrap';

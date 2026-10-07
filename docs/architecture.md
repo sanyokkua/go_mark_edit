@@ -491,6 +491,12 @@ on `focused`, `refused`, `cancelled`, `folder-target` or a new document), and th
 enter Reading mode when the open is still the current activation. A false flag never leaves Reading mode, and
 the workspace tree's New File ignores the flag and leaves Reading mode.
 
+Launch targets are the one non-interactive entry to that flow. A path from the command line or the
+operating system reaches `ApplicationContextHolder.AcceptOpenRequest`; a window that is still starting
+keeps the first one, and after bootstrap the frontend takes it once through `TakeLaunchTarget` and opens
+a folder with the workspace command or a file with the recent-file command (D18). Every other external
+path starts a new process.
+
 `frontend/src/logic/adapter/` carries the request identity and `internal/file/` resolves canonical
 paths and filesystem identity. A hard link focuses the existing document identity instead of creating
 a second tab. The file owner acquires metadata and identity through one platform-specific
@@ -791,7 +797,7 @@ part of the current product.
 | ADR-0031 | Format and Compact use remark-stringify with the maximal parse plugin set; Prettier remains a repository development tool, not a runtime formatter. Superseded by ADR-0038; only the rule that Prettier is not a runtime formatter survives, and ADR-0038 restates it.                                                                                                                                                                                                                                                                  |
 | ADR-0032 | Use one cancellable run registry and one deterministic shutdown order; a run has one terminal outcome and background panics are contained and logged. Refined by ADR-0039 for Format, Compact and Lint: the frontend operation slot is used and the run registry described here is not built; the single terminal outcome per run and contained background panics still apply.                                                                                                                                                          |
 | ADR-0033 | Workspace file operations are additive only: create, reveal and copy path are allowed; rename, move, delete and tree reorder are refused.                                                                                                                                                                                                                                                                                                                                                                                               |
-| ADR-0035 | `internal/workspace/` builds a bounded tree while `internal/appmodel/` owns each window's workspace session. New windows are independent processes; an explicit startup folder argument opens a workspace without session restore. Trees change on open, create or manual refresh, with no watcher. Workspace operations remain additive only as in ADR-0033. The hidden-folders setting is app-wide.                                                                                                                                   |
+| ADR-0035 | `internal/workspace/` builds a bounded tree while `internal/appmodel/` owns each window's workspace session. New windows are independent processes; an explicit startup folder argument opens a workspace without session restore (D18 refines this: the argument is a file or a folder, taken by the frontend after startup). Trees change on open, create or manual refresh, with no watcher. Workspace operations remain additive only as in ADR-0033. The hidden-folders setting is app-wide.                                       |
 | ADR-0036 | One raw-HTML policy applies at every Markdown standard: a bounded allowlist of raw HTML elements and Markdown-equivalent elements, removal together with their contents of executing, embedding, foreign-content and form elements, unwrapping of every other element, and no author-supplied style attribute, event handler, `javascript:` or `data:` address. Mermaid security stays strict and KaTeX trust stays off. Supersedes ADR-0030.                                                                                           |
 | ADR-0037 | Preview links open supported Markdown documents anywhere on the local disk through the one shared link handler and the normal open flow. Network and device paths are refused on every platform. An existing local file with an unsupported suffix is refused with an offer to reveal it in the file manager and is never launched. The backend resolver decides containment, symbolic links and folder-tree rows. Replaces the document-folder link limit of the earlier link rule; D11's single classifier and normal open flow stay. |
 | ADR-0038 | Format and Compact compute minimal source edits over the preview's parser with the Full syntax set, whatever standard is selected, apply them as one undo step and are refused when the result would render differently at the Full standard; Prettier stays a repository tool, not a runtime formatter. Lint shares the same parser and predicates. Supersedes ADR-0031.                                                                                                                                                               |
@@ -885,6 +891,26 @@ The owner decisions that shaped this refactor are recorded here so they are not 
   exception to this transience: it is a persisted appearance setting owned by the Go settings
   service, projected into `settingsSlice` and applied as `data-reading-width` on the Reading stage,
   while Reading mode itself stays unpersisted.
+
+- **D18 — One backend entry for paths from argv and the operating system:** `AcceptOpenRequest(path)` on
+  `ApplicationContextHolder` is the only place such a path is routed. The holder keeps `startupOpen`
+  (true from construction until `FrontendReady` runs), `targetAccepted` and the accepted `launchTarget`
+  under `holder.mu`. A path is accepted while `startupOpen` and nothing was accepted yet; no model state
+  is inspected, so an already-shown window never takes a later path. Every other path goes to
+  `NewWindowLauncher.Launch(targetPath)` after the mutex is released, and a launch failure is published
+  as a classified `state:error` ("A new window could not be opened.", Retry) through
+  `ApplicationContextOptions.EmitEvent` (production: `runtime.EventsEmit`), or only logged before the
+  lifecycle context exists. The constructor parses `StartupArgs` and passes the first argument that is
+  not empty and does not start with `-` (macOS adds `-psn_...`), made absolute, to `AcceptOpenRequest`.
+  The frontend hook `app/useLaunchTarget.ts` calls `TakeLaunchTarget` once when bootstrap is `ready`
+  (bootstrap has already called `windowReady`, which closes `startupOpen`) and opens the result with
+  `onOpenWorkspacePath` for a folder or `onOpenRecentFile` for a file, so the `OpenPath` checks, refusal
+  notices, Untitled replacement and Reading-on-open of D17 apply unchanged. `TakeLaunchTarget` returns
+  the target once and then an empty result; `Kind` is `folder` when the path is a directory at take
+  time and `file` otherwise. `OnStartup` and `RetryStartup` open nothing, so a target accepted before an
+  `Init` failure stays takeable after a successful retry. This supersedes the startup-folder open in
+  `OnStartup` of ADR-0035. Rejected: single-instance forwarding (ADR-0006) and putting the target in the
+  `GetState` snapshot, which races the projection's subscription.
 
 ## Planning decisions retained
 

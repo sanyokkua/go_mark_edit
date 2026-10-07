@@ -104,7 +104,8 @@ func main() {
 	applicationContext := application.NewApplicationContextHolderWithOptions(fileUtils, appLogger, application.ApplicationContextOptions{
 		AppModelOptions:   []appmodel.AppModelOption{appmodel.WithDialogs(dialogs, dialogs)},
 		NewWindowLauncher: application.NewOSNewWindowLauncher(appLogger),
-		StartupFolderArgs: os.Args[1:],
+		StartupArgs:       os.Args[1:],
+		EmitEvent:         runtime.EventsEmit,
 	}, outcomes)
 	if err := wails.Run(newAppOptionsWithLogger(applicationContext, appLogger)); err != nil {
 		bootstrapLogger.Error().Err(err).Msg("run application")
@@ -225,7 +226,6 @@ func newAppOptionsWithLogger(applicationContext *application.ApplicationContextH
 				ports.showStartupRecoveryWindow(ctx)
 				return
 			}
-			applicationContext.OpenPendingStartupFolder(ctx)
 			if err := applicationContext.RestoreNativeWindow(ctx); err != nil {
 				if appLogger != nil {
 					appLogger.Error(err.Error())

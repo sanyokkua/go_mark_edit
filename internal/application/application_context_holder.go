@@ -23,9 +23,16 @@ type ApplicationContextHolder struct {
 	mu      sync.Mutex
 	retryMu sync.Mutex
 
-	ctx                      context.Context
-	startupErr               error
-	pendingStartupFolderPath string
+	ctx        context.Context
+	startupErr error
+
+	// startupOpen is true until the frontend reports ready; only then does the
+	// window still accept one external path. targetAccepted and launchTarget
+	// hold that path until the frontend takes it.
+	startupOpen    bool
+	targetAccepted bool
+	launchTarget   string
+	emitEvent      func(context.Context, string, ...any)
 
 	DB *db.Database
 
@@ -51,7 +58,10 @@ type ApplicationContextOptions struct {
 	SettingsRepository settings.SettingsRepositoryAPI
 	AppModelOptions    []appmodel.AppModelOption
 	NewWindowLauncher  NewWindowLauncher
-	StartupFolderArgs  []string
+	// StartupArgs is the process argument list without the program name.
+	StartupArgs []string
+	// EmitEvent publishes a Wails event; hosts without a runtime leave it nil.
+	EmitEvent func(context.Context, string, ...any)
 }
 
 // NewApplicationContextHolderWithOptions constructs the phase-one graph with
@@ -84,13 +94,17 @@ func NewApplicationContextHolderWithOptions(fileService file.FileUtilsServiceAPI
 		modelOptions...,
 	)
 	holder := &ApplicationContextHolder{
-		fileService:              fileService,
-		appLogger:                appLogger,
-		settingsRepository:       options.SettingsRepository,
-		newWindowLauncher:        options.NewWindowLauncher,
-		pendingStartupFolderPath: firstStartupFolderArgument(options.StartupFolderArgs),
-		SettingsService:          settingsService,
-		AppModelService:          appModelService,
+		fileService:        fileService,
+		appLogger:          appLogger,
+		settingsRepository: options.SettingsRepository,
+		newWindowLauncher:  options.NewWindowLauncher,
+		emitEvent:          options.EmitEvent,
+		startupOpen:        true,
+		SettingsService:    settingsService,
+		AppModelService:    appModelService,
+	}
+	if startupPath := firstStartupPath(options.StartupArgs); startupPath != "" {
+		holder.AcceptOpenRequest(startupPath)
 	}
 	// Settings owns the autosave preference and the document model owns the
 	// scheduler; this composition root is the boundary where the preference
@@ -264,7 +278,6 @@ func (holder *ApplicationContextHolder) RetryStartup(ctx context.Context) error 
 	if err := holder.refreshPersistedSettings(ctx); err != nil {
 		return err
 	}
-	holder.OpenPendingStartupFolder(ctx)
 	return holder.RestoreNativeWindow(ctx)
 }
 
@@ -290,10 +303,12 @@ func (holder *ApplicationContextHolder) refreshPersistedSettings(ctx context.Con
 	return nil
 }
 
-// FrontendReady forwards the independent webview readiness signal to the
-// currently wired native-window service.
+// FrontendReady closes the window to further startup targets and forwards the
+// independent webview readiness signal to the currently wired native-window
+// service.
 func (holder *ApplicationContextHolder) FrontendReady(ctx context.Context) {
 	holder.mu.Lock()
+	holder.startupOpen = false
 	service := holder.NativeWindowService
 	shutdown := holder.Shutdown
 	holder.mu.Unlock()

@@ -192,7 +192,7 @@ bootstrap.status === 'ready')` (`app/App.tsx:49`) is the precedent for a hook th
       later paths as tabs of an existing window (the user asked for a new window per external open).
 3. **Argument parsing.** `ApplicationContextOptions.StartupFolderArgs` becomes `StartupArgs`. The constructor passes the
    first argument that is non-empty and does not start with `-`, made absolute against the working directory, to
-   `AcceptOpenRequest`; all others are ignored. The constructor runs before `wails.Run`, so the argument is always
+   `AcceptOpenRequest`; all others are ignored (a value that follows a flag, as in `-flag value`, is not recognised as the flag's value). The constructor runs before `wails.Run`, so the argument is always
    accepted.
 4. **Platform files hold the declarations; `wails.json` gets no `fileAssociations`.**
     - The Wails NSIS macro writes the default value of `Software\Classes\.<ext>` (takes over the default), and the plist
