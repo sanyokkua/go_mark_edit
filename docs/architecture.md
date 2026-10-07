@@ -422,6 +422,18 @@ dev and setup. Hooks and CI call the scripts directly. A developer may use the f
   `scripts/baseline`. The record is named after the checked-out branch (slashes become dashes), or after the short
   commit on a detached HEAD. Required reports that are missing or malformed are UNAVAILABLE or UNRELIABLE,
   never zero; warning counts do not fail a stage.
+- CI (`.github/workflows/`): `push.yml` `verify` runs on `ubuntu-24.04` with the Linux Wails toolchain
+  plus `lsof`, `xvfb` and `xclip`, and runs the complete `scripts/verify` including E2E under `xvfb-run`;
+  `cross-platform-go` keeps the Windows and macOS Go tests. Caches: Go modules and build cache
+  (`setup-go`), the Go tool binaries in `~/go/bin` (keyed by the pinned Wails, golangci-lint and shfmt
+  versions; `scripts/build setup` skips `go install` when the installed module version already matches),
+  Playwright browsers (keyed by the Playwright version in `package-lock.json`) and the ESLint cache
+  `.local_tmp_files/cache/eslint` (`--cache-strategy content`, restored by prefix). Each job appends a stage
+  timing table from `tools/verify/stage-timings.mjs` to `$GITHUB_STEP_SUMMARY`.
+  `release.yml` does not repeat verification: it first requires a successful `push.yml` run for
+  `GITHUB_SHA` (queried with `gh run list`) and fails otherwise, including for a commit whose push run was
+  skipped by `paths-ignore`; a manual dispatch with `full_verify` runs the complete `scripts/verify` on
+  macOS instead. Otherwise it runs only the macOS E2E subset, then builds and packages the application.
 - CI failure uploads allowlist stage JSON records, logs, stderr captures, normalized and raw reports,
   Jest/Playwright/Go test reports and E2E failure screenshots, error contexts and traces from
   `.local_tmp_files/runs/`; compiler, linter, Jest,
@@ -446,17 +458,24 @@ removes per-case state. `lsof` is required on Linux test hosts as well as macOS.
 both owned frontend processes and removes temporary state; `KEEP_E2E_ARTEFACTS=1` retains the
 case and preparation files for diagnosis.
 
-The OS clipboard writer cases run through the serial
-`chromium-native` Playwright project; the other cases run through `chromium`. Playwright retries are
-zero. Local workers are capped at four and the CPU capacity available to Node. CI uses one worker
-to avoid concurrent application/browser contention and allows 15 seconds for UI assertions rather
-than the local five seconds. Explicit assertion timeouts and product performance bounds remain
-unchanged. Automatic failure screenshots, error contexts and app output are retained, while traces
+Playwright runs four kinds of cases through projects. `chromium` holds every case that is not timing-bound
+and runs in parallel (CI: three workers; local: at most four and the available CPU capacity). Cases tagged
+`@perf` (latency bounds, deadline-based rendering, large-document and cancellation timing) run in
+`chromium-serial` with one worker, after `chromium`, so concurrent work never inflates a measurement;
+a case that proves flaky under parallel load is moved there rather than loosened. The OS clipboard
+writer cases (`@native-clipboard`) run in `chromium-native`, also serial and after `chromium-serial`.
+Setting `E2E_SUBSET=macos` replaces these with a macOS subset (`pdf-export`, `launch-target` and `menus`
+files, then the clipboard cases), which the release workflow runs on macOS. Playwright retries are zero.
+CI allows 15 seconds for UI assertions rather than the local five seconds. Product performance bounds and
+explicit assertion timeouts remain unchanged. Automatic failure screenshots, error contexts and app output are retained, while traces
 require explicit `--trace` to avoid recording overhead in timing-sensitive tests.
 The paced-typing performance check measures keydown-to-input latency against its existing 100 ms
 guard, alongside the 300 ms input-to-preview bound. Inter-input gaps
 remain diagnostic: Playwright's requested pacing also includes controller scheduling and browser
 protocol round trips, so subtracting that pacing does not measure application responsiveness.
+When `GOMARKEDIT_E2E_REUSE_DIST=1` and `frontend/dist/index.html` is newer than every input of
+`vite build` (checked before the generators run), preparation reuses the bundle the Build stage left
+instead of building it again; otherwise it builds. The E2E binary and seed helper are never shipped.
 The E2E summary reports preparation, wall, app launch/relaunch and teardown times; these totals can
 overlap and must not be added to derive wall time.
 

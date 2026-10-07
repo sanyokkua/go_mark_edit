@@ -292,7 +292,7 @@ const fenceSamples: readonly FenceSample[] = [
     { id: 'toml', code: 'sample="TOML_VALUE"', line: 'TOML_VALUE', word: '"TOML_VALUE"', family: 'string' },
 ];
 
-test('tokenises every supported canonical and alias fence in the real editor', async ({ app }) => {
+test('tokenises every supported canonical and alias fence in the real editor', { tag: '@perf' }, async ({ app }) => {
     test.setTimeout(180_000);
     await app.launch();
     const { page } = app;
@@ -360,7 +360,7 @@ test('colours structural JSON, diff, and Makefile tokens from the shared palette
     app.expectNoForeignRequests();
 });
 
-test('recolours CSS numbers, units, and hex values through every appearance', async ({ app }) => {
+test('recolours CSS numbers, units, and hex values through every appearance', { tag: '@perf' }, async ({ app }) => {
     await app.launch();
     const { page } = app;
     await page.getByRole('radiogroup', { name: 'View arrangement' }).getByRole('radio', { name: 'Editor' }).click();
@@ -583,7 +583,7 @@ const categorySamples: readonly CategorySample[] = [
     },
 ];
 
-test('colours supported source categories in every canonical and alias fence', async ({ app }) => {
+test('colours supported source categories in every canonical and alias fence', { tag: '@perf' }, async ({ app }) => {
     test.setTimeout(180_000);
     expect(categorySamples.flatMap(({ ids }) => ids).sort()).toEqual(fenceSamples.map(({ id }) => id).sort());
     await app.launch();
