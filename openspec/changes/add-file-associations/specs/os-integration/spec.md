@@ -7,16 +7,17 @@ and folders, and how paths passed by the operating system or on the command line
 
 ### Requirement: Open With registration
 
-The installed application SHALL register with the operating system as able to open files ending in .md, .markdown,
-.mdown and .txt, so that the file manager lists GoMarkEdit under Open With and the user can make it the default through
-the operating system's own controls. Installing, starting or updating GoMarkEdit SHALL NOT make it the default for any
-file type or folder and SHALL NOT ask to. Uninstalling SHALL remove every registration it added.
+The installed application SHALL register as able to open files ending in .md, .markdown, .mdown and .txt, so that the
+file manager lists it under Open With and the user can make it the default with the operating system's own controls.
+Installing, starting or updating it SHALL NOT set, request or ask for a default and SHALL leave existing defaults
+unchanged. Uninstalling SHALL remove every registration it added.
 
 #### Scenario: Listed in Open With on macOS
 
-- **WHEN** GoMarkEdit is installed in Applications and the user opens Open With for `notes.md` in Finder
+- **WHEN** another application is the default for `.md` files, GoMarkEdit is installed in Applications and the user
+  opens Open With for `notes.md` in Finder
 - **THEN** GoMarkEdit is listed
-- **AND** the default application for `.md` files is unchanged
+- **AND** the other application is still the default for `.md` files
 
 #### Scenario: Made the default by the user
 
@@ -31,9 +32,10 @@ file type or folder and SHALL NOT ask to. Uninstalling SHALL remove every regist
 
 #### Scenario: Linux install script
 
-- **WHEN** the user runs the install script shipped next to the Linux binary
+- **WHEN** a text editor is the default for Markdown and plain-text files and the user runs the install script shipped
+  next to the Linux binary
 - **THEN** the file manager lists GoMarkEdit under Open With for `notes.md` and `notes.txt`
-- **AND** the default application for Markdown and plain-text files is unchanged
+- **AND** that text editor is still the default for Markdown and plain-text files
 
 #### Scenario: Uninstall
 
@@ -44,20 +46,21 @@ file type or folder and SHALL NOT ask to. Uninstalling SHALL remove every regist
 ### Requirement: Opening from the operating system
 
 WHEN the operating system or the command line passes a path to GoMarkEdit, the system SHALL open a folder as the
-workspace and any other path as a document, with the same checks and refusal messages as Open File. A window SHALL
-accept at most one such path, and only while it is untouched: no workspace, no document opened from disk and no text in
-its Untitled document. Every other path SHALL open in a new, independent window, one window per path.
+workspace and any other path as a document, with the same checks and refusal messages as Open File. A window SHALL open
+at most one such path: the first one that reaches it before it has finished starting up. Every other path
+SHALL open in a new, independent window, one window per path, whatever the existing windows show.
 
 #### Scenario: Open a file into a starting window
 
 - **WHEN** GoMarkEdit is not running and the user opens `notes.md` with GoMarkEdit from the file manager
 - **THEN** one window opens and shows `notes.md` in place of the empty Untitled document
 
-#### Scenario: Untouched window takes the file
+#### Scenario: Started from its icon
 
-- **WHEN** on macOS the user starts GoMarkEdit from its icon and, without typing or opening anything, double-clicks
-  `notes.md` with GoMarkEdit as the default application for `.md`
-- **THEN** `notes.md` opens in that window and no second window opens
+- **WHEN** the user starts GoMarkEdit from its icon, its window shows the empty Untitled document, and the user then
+  double-clicks `notes.md` with GoMarkEdit as the default application for `.md`
+- **THEN** a new window opens and shows `notes.md`
+- **AND** the first window still shows only its empty Untitled document
 
 #### Scenario: Double-click while running
 
@@ -140,5 +143,6 @@ open as described in "Opening from the operating system".
 
 #### Scenario: Folders still open in the file manager
 
-- **WHEN** GoMarkEdit has been installed on Linux and the user double-clicks a folder in the file manager
+- **WHEN** the file manager is the default for folders, GoMarkEdit has been installed on Linux and the user
+  double-clicks a folder in the file manager
 - **THEN** the file manager opens the folder and GoMarkEdit does not start

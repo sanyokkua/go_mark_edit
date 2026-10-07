@@ -8,9 +8,9 @@ export follows the preview, and how the PDF appearance setting styles it.
 ### Requirement: Export to PDF
 
 WHEN a document is active and the user chooses File, Export to PDF… or presses Ctrl+P (Cmd+P on macOS), the system
-SHALL open the operating system's print dialog for the active document, from which the user can save a PDF or print.
-Cancelling the dialog SHALL write nothing. Exporting SHALL NOT change the document, its modified state, its arrangement
-or Reading mode. The command SHALL be unavailable while no document is open or a modal dialog is open.
+SHALL open the operating system's print dialog for it, to save a PDF or print. Cancelling SHALL write nothing.
+Exporting SHALL NOT change the document, its modified state, its arrangement or Reading mode. While no document or a
+modal dialog is open, the command SHALL be unavailable and Ctrl+P SHALL open no print dialog of any kind.
 
 #### Scenario: Save as PDF
 
@@ -31,7 +31,7 @@ or Reading mode. The command SHALL be unavailable while no document is open or a
 #### Scenario: No document
 
 - **WHEN** the launcher is shown because no document is open
-- **THEN** Export to PDF… in the File menu is disabled and Ctrl+P does nothing
+- **THEN** Export to PDF… in the File menu is disabled and Ctrl+P opens no print dialog
 
 #### Scenario: Reading mode stays active
 

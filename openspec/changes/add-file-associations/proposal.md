@@ -20,7 +20,7 @@ The verification tooling also leaks disk space. Every run keeps its own Jest, go
 - **Open With registration on macOS, Windows and Linux** for `.md`, `.markdown`, `.mdown` and `.txt`.
     - The user can pick GoMarkEdit in the operating system's Open With list and make it the default through the
       operating system's own controls.
-    - Installing or starting GoMarkEdit never makes it the default and never asks to.
+    - Installing or starting GoMarkEdit never sets or requests a default and never asks to; an existing default stays.
     - The Windows installer and the Linux install script remove their registrations on uninstall.
     - On Linux, GoMarkEdit declares plain text, so it is also listed for other plain-text files. Choosing it for an
       unsupported file shows the existing "not supported" refusal.
@@ -32,13 +32,15 @@ The verification tooling also leaks disk space. Every run keeps its own Jest, go
 - **Opening from the operating system and the command line.**
     - Only the first argument that does not start with `-` counts. A folder opens as the workspace; any other path
       opens as a document through the normal open checks, and a refusal is shown in the window.
-    - A window opens at most one such path, and only while it is untouched (no workspace, no document from disk, no
-      text in its Untitled document). Every other path, including a file double-clicked while GoMarkEdit already shows
-      a document, opens in a new, independent window. If that window cannot be started, the existing "A new window
-      could not be opened." message is shown.
+    - Every path opened from outside the application gets its own window. The process started for the path shows
+      it; on macOS, where the operating system sends paths to a running GoMarkEdit, only the first path that arrives
+      while the window is still starting opens in it. Every other path opens in a new, independent window, whatever
+      the existing windows show. Opening into the current window stays with drag and drop and the in-app commands. If
+      the new window cannot be started, the existing "A new window could not be opened." message is shown.
     - With the Reading (Viewer) default open mode, a file opened this way is shown in Reading mode.
 - **Export to PDF** becomes available from File, Export to PDF… and Ctrl+P (Cmd+P on macOS).
     - It opens the operating system's print dialog, where the user saves a PDF or prints. Cancelling writes nothing.
+    - The macOS minimum version rises from 10.13 to 11, the first version on which the webview can print.
     - The output is the active document rendered as the preview renders it: Mermaid diagrams as drawn, math only where
       the current Markdown standard renders it, the same placeholders for remote images and render limits. The whole
       document is exported, whatever the arrangement or scroll position.
@@ -53,6 +55,7 @@ Out of scope:
 - release artifacts for Windows and Linux: `.github/workflows/release.yml` stays macOS-only, and Windows and Linux
   packaging is built locally by developers;
 - a single-instance mode, and any "make GoMarkEdit the default" prompt or setting;
+- a setting that opens files from the operating system in the last active window instead of a new one;
 - a Finder Open With entry for folders, and a Quick Look or thumbnail extension;
 - a PDF writer that bypasses the print dialog, page size or margin settings, and headers or footers;
 - custom document icons (the application icon is used).
@@ -80,15 +83,15 @@ Out of scope:
 
 ## Impact
 
-- **Backend (Go):** the application context holder replaces its pending startup folder with one accepted launch
-  target per untouched window, a `TakeLaunchTarget` binding and an `application:launch-target` event; macOS file-open
-  events wired in `internal/application/options.go`; the new-window launcher passes any path; a `PrintWindow` binding;
+- **Backend (Go):** the application context holder replaces its pending startup folder with one launch target,
+  accepted only while the window is starting, and a `TakeLaunchTarget` binding; macOS file-open events wired in
+  `internal/application/options.go`; the new-window launcher passes any path; a `PrintWindow` binding;
   the appearance settings group gains `export.pdfAppearance` (`styled` or `clean`). Generated bindings and models
   follow.
 - **Frontend:** a launch-target hook that reuses the existing open commands; a print copy of the active document built
   on the existing Markdown renderer from the backend's flushed text, print styles, a wait for diagrams and images, the
   `export-pdf` action with Mod+P, and the PDF appearance controls in the Settings menu and dialog.
-- **Packaging:** `build/darwin/Info.plist` and `Info.dev.plist` document types; local registry macros in
+- **Packaging:** `build/darwin/Info.plist` and `Info.dev.plist` document types and `LSMinimumSystemVersion` 11.0; local registry macros in
   `build/windows/installer/project.nsi`; new `build/linux/` desktop entry, MIME file and install script; `scripts/build`
   builds the Windows installer when `makensis` is present and copies the Linux files next to the binary. `wails.json`
   stays without file associations.
