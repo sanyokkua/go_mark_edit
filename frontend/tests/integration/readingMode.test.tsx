@@ -232,6 +232,7 @@ function Harness({ content }: { content: string }): React.JSX.Element {
         onSave: noop,
         onSaveAs: noop,
         onCloseDocument: noop,
+        onExportPdf: noop,
         onQuit: (): void => undefined,
         documentId: 'doc-1',
         sessionDocumentId: 'doc-1',
@@ -249,6 +250,7 @@ function Harness({ content }: { content: string }): React.JSX.Element {
             <WorkspaceTreeTestProvider>
                 <EditorSessionProvider activeBuffer={{ documentId: 'doc-1', content }}>
                     <AppFrame
+                        printRequest={null}
                         banners={[]}
                         bootstrap={{
                             failure: null,

@@ -35,6 +35,7 @@ export interface ApplicationMenuState {
     onSave: () => Promise<unknown>;
     onSaveAs: () => Promise<unknown>;
     onCloseDocument: (documentId: string, expectedTabSetRevision: number) => Promise<unknown>;
+    onExportPdf: () => Promise<unknown>;
     onQuit: () => void;
     documentId?: string;
     sessionDocumentId?: string;
@@ -134,6 +135,7 @@ export default function ApplicationMenubar({
             onOpenRecentItem={(item): Promise<unknown> => menuState.onOpenRecentItem(item, tabSetRevision)}
             onRefreshRecentItems={menuState.onRefreshRecentItems}
             onClearRecentItems={menuState.onClearRecentItems}
+            onExportPdf={menuState.onExportPdf}
             onQuit={menuState.onQuit}
             onReopenLastFile={(): Promise<unknown> => menuState.onReopenLastFile(tabSetRevision)}
             onRequestedMenuHandled={menuState.onRequestedMenuHandled}

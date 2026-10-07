@@ -1,18 +1,18 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { t } from '../../i18n';
 import type { LivePreviewAdapter } from '../../logic/hooks/useLivePreview';
 import type { LinkRefusalReason, LinkTarget } from '../../logic/markdown/linkPolicy';
 import { scrollToAnchor } from '../../logic/markdown/headings';
 import type { MarkdownStandard } from '../../logic/markdown/pipeline';
-import { classifyImageSource } from '../../logic/markdown/imagePolicy';
 import type { CommittedMarkdownPreview } from '../components/MarkdownView';
 import Button from '../primitives/Button';
 import Icon from '../primitives/Icon';
+import LazyMarkdownView from './LazyMarkdownView';
+import { resolvePreviewImageSource } from './previewImageSource';
 import styles from './PreviewPane.module.css';
 
 export const PREVIEW_BYTE_LIMIT = 2_097_152;
-const MarkdownView = lazy(() => import('../components/MarkdownView'));
 
 export interface PreviewSnapshot {
     byteLength: number;
@@ -274,13 +274,8 @@ export const PreviewPaneContent: React.FC<PreviewPaneContentProps> = ({
     }, [onOpenLink]);
 
     const resolveImageSource = useCallback(
-        (source: string): string | undefined => {
-            const classified = classifyImageSource(source, documentPath);
-            if (classified.kind !== 'local' || documentId === undefined) {
-                return undefined;
-            }
-            return linkAdapter?.resolvePreviewImage?.(documentId, classified.source);
-        },
+        (source: string): string | undefined =>
+            resolvePreviewImageSource(source, documentId, documentPath, linkAdapter),
         [documentId, documentPath, linkAdapter],
     );
 
@@ -324,7 +319,7 @@ export const PreviewPaneContent: React.FC<PreviewPaneContentProps> = ({
                         />
                     ) : null}
                     <Suspense fallback={<span role="status">{t('preview.loading')}</span>}>
-                        <MarkdownView
+                        <LazyMarkdownView
                             committedPreview={committedPreview}
                             documentId={documentId}
                             documentPath={documentPath}

@@ -207,6 +207,38 @@ func TestApplicationContextKeepsNativeWindowHiddenForHeadlessE2E(t *testing.T) {
 	}
 }
 
+func TestApplicationContextPrintsThroughTheNativeWindowOnce(t *testing.T) {
+	ctx := context.Background()
+	holder := NewApplicationContextHolderWithOptions(&fakeFileUtils{databasePath: filepath.Join(t.TempDir(), "settings.db")}, nil, ApplicationContextOptions{})
+	native := &lifecycleRecordingNativeWindow{usableWidth: 1920, usableHeight: 1080}
+	holder.SetNativeWindow(native)
+	holder.SetContext(ctx)
+
+	if result := holder.ApplicationHandler.PrintWindow(bridge.Request{ID: "print-1"}); result.Error != nil {
+		t.Fatalf("print result = %+v, want acknowledgement", result)
+	}
+	if native.printCalls != 1 {
+		t.Fatalf("print calls = %d, want 1", native.printCalls)
+	}
+}
+
+func TestApplicationContextDoesNotPrintInHeadlessE2E(t *testing.T) {
+	t.Setenv("GOMARKEDIT_E2E_HEADLESS", "1")
+
+	ctx := context.Background()
+	holder := NewApplicationContextHolderWithOptions(&fakeFileUtils{databasePath: filepath.Join(t.TempDir(), "settings.db")}, nil, ApplicationContextOptions{})
+	native := &lifecycleRecordingNativeWindow{usableWidth: 1920, usableHeight: 1080}
+	holder.SetNativeWindow(native)
+	holder.SetContext(ctx)
+
+	if result := holder.ApplicationHandler.PrintWindow(bridge.Request{ID: "print-headless"}); result.Error != nil {
+		t.Fatalf("headless print result = %+v, want acknowledgement", result)
+	}
+	if native.printCalls != 0 {
+		t.Fatalf("headless E2E printed %d times, want 0", native.printCalls)
+	}
+}
+
 // Native close must not release the database while a timer-owned layout write
 // is already in flight; Close waits for that synchronous flush seam to settle.
 func TestApplicationContextCloseWaitsForInFlightTimerLayoutFlush(t *testing.T) {
@@ -337,6 +369,7 @@ type lifecycleRecordingNativeWindow struct {
 	usableWidth, usableHeight int
 	width, height             int
 	maximiseCalls, showCalls  int
+	printCalls                int
 }
 
 func (window *lifecycleRecordingNativeWindow) UsableSize(context.Context) (int, int) {
@@ -349,6 +382,7 @@ func (window *lifecycleRecordingNativeWindow) SetSize(_ context.Context, width, 
 
 func (window *lifecycleRecordingNativeWindow) Maximise(context.Context) { window.maximiseCalls++ }
 func (window *lifecycleRecordingNativeWindow) Show(context.Context)     { window.showCalls++ }
+func (window *lifecycleRecordingNativeWindow) Print(context.Context)    { window.printCalls++ }
 
 type discardingLifecycleEmitter struct{}
 

@@ -68,6 +68,7 @@ func (window retryStartupNativeWindow) SetSize(context.Context, int, int) {
 }
 func (retryStartupNativeWindow) Maximise(context.Context) {}
 func (retryStartupNativeWindow) Show(context.Context)     {}
+func (retryStartupNativeWindow) Print(context.Context)    {}
 
 func (launcher *recordingNewWindowLauncher) Launch(targetPath string) error {
 	launcher.paths = append(launcher.paths, targetPath)

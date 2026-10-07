@@ -130,3 +130,43 @@ it('gives duplicate SVG ids unique namespaces for each mounted diagram', async (
     const ids = [...container.querySelectorAll('[data-mermaid-block] svg g')].map((node) => node.id);
     expect(ids[0]).not.toBe(ids[1]);
 });
+
+describe('the diagram state attribute', () => {
+    const stateOf = (container: HTMLElement, index: number): string | null | undefined =>
+        container.querySelector(`[data-mermaid-block="${index}"]`)?.getAttribute('data-mermaid-state');
+
+    it('is pending while the diagram renders and drawn once the SVG is shown', async () => {
+        const pending = deferred();
+        mockRender.mockReturnValueOnce(pending.promise);
+        const { container } = render(<MermaidBlock index={1} source="graph TD; A-->B" />);
+        expect(stateOf(container, 1)).toBe('pending');
+
+        await act(async () => pending.resolve(svg('ready')));
+        expect(stateOf(container, 1)).toBe('drawn');
+    });
+
+    it('is pending before the theme has resolved', () => {
+        mockTheme.mockReturnValue(undefined as unknown as string);
+        const { container } = render(<MermaidBlock index={1} source="graph TD; A-->B" />);
+        expect(stateOf(container, 1)).toBe('pending');
+        expect(mockRender).not.toHaveBeenCalled();
+    });
+
+    it('is error for an invalid diagram', async () => {
+        mockRender.mockResolvedValue({ kind: 'error', message: 'Parse error' });
+        const { container } = render(<MermaidBlock index={1} source="invalid" />);
+        await screen.findByRole('alert');
+        expect(stateOf(container, 1)).toBe('error');
+    });
+
+    it('is limit for the 51st diagram and for an oversized source', () => {
+        const { container } = render(
+            <>
+                <MermaidBlock index={51} source="graph TD; A-->B" />
+                <MermaidBlock index={1} source={'x'.repeat(50_001)} />
+            </>,
+        );
+        expect(stateOf(container, 51)).toBe('limit');
+        expect(stateOf(container, 1)).toBe('limit');
+    });
+});

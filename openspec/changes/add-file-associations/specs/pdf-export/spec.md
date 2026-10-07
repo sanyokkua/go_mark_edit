@@ -18,6 +18,12 @@ modal dialog is open, the command SHALL be unavailable and Ctrl+P SHALL open no 
 - **THEN** `guide.pdf` contains the rendered document
 - **AND** it contains no menu bar, toolbar, tab bar, sidebar, editor, problems panel or status bar
 
+#### Scenario: Suggested file name
+
+- **WHEN** the saved document `guide.md` is exported
+- **THEN** the print dialog suggests the file name `guide`
+- **AND** an Untitled document keeps the default suggestion
+
 #### Scenario: Cancel the dialog
 
 - **WHEN** the user chooses File, Export to PDF… and cancels the print dialog

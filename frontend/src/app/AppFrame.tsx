@@ -1,6 +1,7 @@
 import type { ComponentProps, PropsWithChildren } from 'react';
 
 import { t } from '../i18n';
+import { appModelAdapter } from '../logic/adapter';
 import { useAppSelector } from '../logic/store';
 import type { RecoverySurface } from '../logic/store/appModelTypes';
 import Notifications, { type NotificationNotice } from '../ui/components/Notifications';
@@ -8,6 +9,7 @@ import Button from '../ui/primitives/Button';
 import AppShell from '../ui/widgets/AppShell';
 import { AppearanceControlsContent, AppearanceSettingsProvider } from '../ui/widgets/AppearanceControls';
 import ApplicationMenubar, { type ApplicationMenuState } from '../ui/widgets/Menubar/ApplicationMenubar';
+import PrintDocument, { type PrintRequest } from '../ui/widgets/PrintDocument';
 import StartupFailure from '../ui/widgets/StartupFailure/StartupFailure';
 import type { BootstrapController } from './useBootstrap';
 
@@ -25,6 +27,7 @@ export interface AppFrameProps extends PropsWithChildren {
     onDismiss: (id: number) => void;
     recovery: RecoverySurface | null;
     shell: ComponentProps<typeof AppShell>;
+    printRequest: PrintRequest | null;
 }
 
 /** Keeps the frame and portal root mounted across startup attempts. */
@@ -42,6 +45,7 @@ export function AppFrame({
     onDismiss,
     recovery,
     shell,
+    printRequest,
     children,
 }: AppFrameProps): React.JSX.Element {
     const ready = bootstrap.status === 'ready';
@@ -59,6 +63,7 @@ export function AppFrame({
                     ) : null}
                 </div>
                 <AppearanceControlsContent visible={ready} />
+                <PrintDocument linkAdapter={appModelAdapter} request={printRequest} />
             </AppearanceSettingsProvider>
             <div className="application-content">
                 <Notifications banners={ready ? banners : []} notices={ready ? notices : []} onDismiss={onDismiss} />

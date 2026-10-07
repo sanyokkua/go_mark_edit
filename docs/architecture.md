@@ -957,6 +957,29 @@ The owner decisions that shaped this refactor are recorded here so they are not 
   Linux binary. Declaring `text/plain` lists the app for every text file; unsupported ones are refused by D18. Linux
   desktop behaviour is not verified at runtime; `linux_install_test.go` runs the script with `/bin/sh` against a
   temporary `HOME`.
+- **D20 — PDF export prints a hidden print copy through the native print dialog:** File, Export to PDF… and
+  Ctrl/Cmd+P flush the active editor session and read the backend's copy of the text (`app/usePdfExport.ts`), so unsaved
+  and Untitled text is exported. `ui/widgets/PrintDocument.tsx` renders that fixed text with the preview renderer, which
+  is shared through `ui/widgets/LazyMarkdownView.ts` and `ui/widgets/previewImageSource.ts`, so limits, placeholders and
+  the local-image resolver are the preview's and nothing depends on the arrangement, scroll position or a paused preview.
+  The copy is portaled into `document.body` outside `#root` (so `PrintDocument.tsx` has a file-scoped ESLint portal
+  override: the copy must be a child of `body`); `@media print` hides every other body child and the copy
+  paints its own padding and background with `print-color-adjust: exact`. There is no `@page` rule: the spike showed it
+  neither changes the macOS landscape page nor paints its margins. The hook polls every 100 ms until the copy has no
+  `[data-print-pending]` element, no `[data-mermaid-state='pending']` diagram (`MermaidBlock` reports `pending`, `drawn`,
+  `error` or `limit`; the last two count as settled) and every `img` is `complete`, or until 10 seconds have passed, ignores a second request while waiting, and then
+  calls `ApplicationHandler.PrintWindow`, which reaches `runtime.WindowPrint` through `NativeWindowAPI.Print` (a no-op in E2E
+  headless mode). The copy stays mounted, hidden on screen, until the next export or an active-document change.
+  While the copy of a saved document is mounted, `PrintDocument` sets `document.title` to the file name without its last
+  extension (`fileStemOf` in `ui/widgets/tabLabel.ts`) and restores the previous title when the copy goes away, because
+  the print dialog suggests that title as the PDF name; Untitled documents keep the default title.
+  `runtime.WindowPrint` is the only print path that works on macOS (`window.print()` does nothing there) and needs
+  macOS 11, which becomes the minimum (`LSMinimumSystemVersion` 11.0). Known limitation: Wails hard-codes the macOS
+  print dialog to landscape with zero margins and CSS cannot override it; the user switches to portrait in the dialog.
+  `useShellShortcuts` calls `preventDefault` for a matched `export-pdf` before its availability checks so the webview's
+  own print never runs on WebView2 or WebKitGTK (unverified there). Rejected: `window.print()`, printing the live
+  preview pane, seeding the copy from `useLivePreview`, and a Go-side or bundled PDF renderer. D8 stays as written; it
+  names no control.
 
 ## Planning decisions retained
 

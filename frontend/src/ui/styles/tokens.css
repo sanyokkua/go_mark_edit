@@ -158,6 +158,7 @@
     --pane-header-meta-font-size: 10px;
     --preview-paused-bar-height: 39px;
     --preview-content-padding: 20px 26px;
+    --print-page-padding: 16mm;
     --editor-stage-gap: var(--editor-view-gap);
     --editor-stage-padding: var(--pane-body-padding-block) var(--pane-body-padding-inline);
     --preview-content-background: var(--editor-content-background);

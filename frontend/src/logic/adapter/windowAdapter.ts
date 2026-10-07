@@ -28,6 +28,7 @@ export interface WindowBindings {
     windowReady: () => Promise<VoidResult>;
     openNewWindow: (folderPath: string) => Promise<VoidResult>;
     takeLaunchTarget: () => Promise<LaunchTargetResult>;
+    printWindow: () => Promise<VoidResult>;
     windowFullscreen: () => void;
     windowGetSize: () => Promise<{ h: number; w: number }>;
     windowIsFullscreen: () => Promise<boolean>;
@@ -41,6 +42,8 @@ export interface WindowAdapter {
     openNewWindow: (folderPath: string) => Promise<void>;
     /** Takes the file or folder this window accepted at startup, once; undefined when there is none. */
     takeLaunchTarget: () => Promise<LaunchTarget | undefined>;
+    /** Opens the operating system's print dialog for the window's print copy. */
+    printWindow: () => Promise<void>;
     isFullscreen: () => Promise<boolean>;
     enterFullscreen: () => Promise<boolean>;
     exitFullscreen: () => Promise<boolean>;
@@ -69,6 +72,7 @@ export function createWindowAdapter(bindings: WindowBindings): WindowAdapter {
                 })),
             ) as Promise<LaunchTarget | undefined>,
     );
+    const printWindow = guardArity('ApplicationHandler.PrintWindow', bindings.printWindow);
     const windowIsFullscreen = guardArity('WindowIsFullscreen', bindings.windowIsFullscreen);
     const windowGetSize = guardArity('WindowGetSize', bindings.windowGetSize);
     const windowIsMaximised = guardArity('WindowIsMaximised', bindings.windowIsMaximised);
@@ -77,6 +81,7 @@ export function createWindowAdapter(bindings: WindowBindings): WindowAdapter {
         windowReady: (): Promise<void> => unwrapPromise(windowReady()),
         openNewWindow,
         takeLaunchTarget,
+        printWindow: (): Promise<void> => unwrapPromise(printWindow()),
         isFullscreen: (): Promise<boolean> => windowIsFullscreen(),
         async getNativeGeometry(): Promise<NativeWindowGeometry> {
             const [size, maximized] = await Promise.all([windowGetSize(), windowIsMaximised()]);

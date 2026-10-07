@@ -14,6 +14,10 @@ export function OpenNewWindow(arg1, arg2) {
   return window['go']['application']['ApplicationHandler']['OpenNewWindow'](arg1, arg2);
 }
 
+export function PrintWindow(arg1) {
+  return window['go']['application']['ApplicationHandler']['PrintWindow'](arg1);
+}
+
 export function RetryStartup(arg1) {
   return window['go']['application']['ApplicationHandler']['RetryStartup'](arg1);
 }

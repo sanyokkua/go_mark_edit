@@ -62,8 +62,15 @@ function MermaidBlock({ source, index, sourceLine }: MermaidBlockProps): React.J
         () => (svg === undefined ? '' : namespaceMermaidSvg(svg, namespace)),
         [svg, namespace],
     );
+    const state =
+        limit !== null ? 'limit' : current?.kind === 'svg' ? 'drawn' : current?.kind === 'error' ? 'error' : 'pending';
     return (
-        <div className={styles.block} data-mermaid-block={index} data-source-line={sourceLine}>
+        <div
+            className={styles.block}
+            data-mermaid-block={index}
+            data-mermaid-state={state}
+            data-source-line={sourceLine}
+        >
             {limit !== null ? (
                 <div className={styles.placeholder} role="status">
                     {t(`preview.mermaid.${limit}`)}

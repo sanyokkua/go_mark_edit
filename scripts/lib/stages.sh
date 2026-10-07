@@ -13,7 +13,7 @@ run_lint_stage() {
     (cd "$REPO_ROOT/frontend" && run_command 'TypeScript test check' "$frontend_bin/tsc" --noEmit -p tsconfig.test.json) || failed=1
     (cd "$REPO_ROOT/frontend" && run_command 'TypeScript node check' "$frontend_bin/tsc" --noEmit --tsBuildInfoFile "$REPO_ROOT/.local_tmp_files/cache/tsconfig.node.tsbuildinfo" -p tsconfig.node.json) || failed=1
     # Keep ESLint above Node's default heap limit on macOS arm64 release runners.
-    local eslint_node_options="${NODE_OPTIONS:+$NODE_OPTIONS }--max-old-space-size=4096"
+    local eslint_node_options="${NODE_OPTIONS:+$NODE_OPTIONS }--max-old-space-size=8192"
     run_reported_command 'ESLint' eslint "$RUN_DIR/reports/eslint.json" \
         env NODE_OPTIONS="$eslint_node_options" \
         "$REPO_ROOT/frontend/node_modules/.bin/eslint" \

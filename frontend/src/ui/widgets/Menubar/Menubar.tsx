@@ -59,6 +59,7 @@ const FILE_ACTIONS_WITH_INVOKERS: ReadonlySet<ActionId> = new Set<ActionId>([
     'close-folder',
     'save',
     'save-as',
+    'export-pdf',
     'close-tab',
     'reopen',
     'exit',
@@ -94,6 +95,7 @@ export interface MenubarProps {
     canReopenLastFile?: boolean;
     onSave?: () => Promise<unknown> | unknown;
     onSaveAs?: () => Promise<unknown> | unknown;
+    onExportPdf?: () => Promise<unknown> | unknown;
     onCloseDocument?: () => Promise<unknown> | unknown;
     onQuit?: () => void;
     activeDocument?: DocumentMetadata;
@@ -145,6 +147,7 @@ const Menubar: React.FC<MenubarProps> = ({
     canReopenLastFile = false,
     onSave,
     onSaveAs,
+    onExportPdf,
     onCloseDocument,
     onQuit,
     activeDocument,
@@ -256,13 +259,15 @@ const Menubar: React.FC<MenubarProps> = ({
                           ? onSave
                           : id === 'save-as'
                             ? onSaveAs
-                            : id === 'close-tab'
-                              ? onCloseDocument
-                              : id === 'reopen'
-                                ? onReopenLastFile
-                                : id === 'exit'
-                                  ? onQuit
-                                  : undefined,
+                            : id === 'export-pdf'
+                              ? onExportPdf
+                              : id === 'close-tab'
+                                ? onCloseDocument
+                                : id === 'reopen'
+                                  ? onReopenLastFile
+                                  : id === 'exit'
+                                    ? onQuit
+                                    : undefined,
         [
             onCloseDocument,
             onCloseFolder,
@@ -273,6 +278,7 @@ const Menubar: React.FC<MenubarProps> = ({
             onQuit,
             onReopenLastFile,
             onSave,
+            onExportPdf,
             onSaveAs,
         ],
     );

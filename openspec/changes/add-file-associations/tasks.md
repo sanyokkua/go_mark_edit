@@ -206,7 +206,7 @@ Test edits listed under "Changes existing tests" are required by the named requi
 
 ## 6. Export to PDF
 
-- [ ] 6.1 Make File, Export to PDF… and Ctrl+P (Cmd+P) open the system print dialog for a hidden print copy of the
+- [x] 6.1 Make File, Export to PDF… and Ctrl+P (Cmd+P) open the system print dialog for a hidden print copy of the
       active document's current text, rendered as the preview renders it. Verify that the named tests pass,
       `scripts/verify` is green, and the user confirms on macOS that Cmd+P opens the print panel, Save as PDF writes a
       multi-page PDF of a 400-paragraph document with headings, a table and code (no Mermaid; diagrams wait for 7.1)
@@ -290,7 +290,7 @@ Test edits listed under "Changes existing tests" are required by the named requi
 
 ## 7. Waiting for diagrams and images before printing
 
-- [ ] 7.1 Make the export print only once every diagram and image in the print copy has settled, or after 10 seconds,
+- [x] 7.1 Make the export print only once every diagram and image in the print copy has settled, or after 10 seconds,
       and ignore a second request while waiting. Verify that the named tests pass, `scripts/verify` is green, and the
       user confirms on macOS that a PDF of a document with two Mermaid diagrams and a local image shows both diagrams
       and the image.

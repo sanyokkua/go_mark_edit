@@ -49,9 +49,9 @@ it('suppresses editor actions without a focused identity-bound session', async (
     expect(invoke).not.toHaveBeenCalled();
 });
 
-it('rejects deferred Export, Assistant and command palette before any gate or command', async () => {
+it('rejects deferred Assistant and command palette before any gate or command', async () => {
     const invoke = jest.fn();
-    for (const actionId of ['export-pdf', 'toggle-assistant', 'command-palette'] as const) {
+    for (const actionId of ['toggle-assistant', 'command-palette'] as const) {
         await expect(
             dispatchAction(actionId, {
                 documentId: 'doc-1',
@@ -324,4 +324,42 @@ it('refuses to dispatch a mutating editor command for a non-writable document', 
         }),
     ).resolves.toMatchObject({ status: 'mutated' });
     expect(invoke).toHaveBeenCalled();
+});
+
+it('dispatches Export to PDF for an open read-only document and refuses it without a document or under a modal', async () => {
+    const invoke = jest.fn();
+    const projectedState = {
+        activeDocumentId: 'doc-1',
+        documents: { 'doc-1': { capability: 'unsafe-read-only', path: '/notes/a.md' } },
+        orderedDocumentIds: ['doc-1'],
+    };
+
+    await expect(
+        dispatchAction('export-pdf', {
+            applicationFocused: true,
+            documentId: 'doc-1',
+            invoke,
+            projectedState,
+            writable: false,
+        }),
+    ).resolves.toMatchObject({ status: 'mutated' });
+    expect(invoke).toHaveBeenCalledTimes(1);
+
+    await expect(
+        dispatchAction('export-pdf', {
+            applicationFocused: true,
+            invoke,
+            projectedState: { activeDocumentId: null, documents: {}, orderedDocumentIds: [] },
+        }),
+    ).resolves.toMatchObject({ status: 'unavailable', reason: 'no-document' });
+    await expect(
+        dispatchAction('export-pdf', {
+            applicationFocused: true,
+            documentId: 'doc-1',
+            invoke,
+            modalOpen: true,
+            projectedState,
+        }),
+    ).resolves.toMatchObject({ status: 'unavailable', reason: 'modal' });
+    expect(invoke).toHaveBeenCalledTimes(1);
 });

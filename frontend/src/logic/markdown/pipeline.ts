@@ -16,6 +16,10 @@ import { rehypeAlerts } from './syntax/alerts';
 export { syntaxPlugins } from './syntax';
 export type { MarkdownStandard } from './syntax';
 
+export function isMarkdownStandard(value: string): value is MarkdownStandard {
+    return value === 'minimal' || value === 'gfm' || value === 'full';
+}
+
 export interface MarkdownPipeline {
     remarkPlugins: PluggableList;
     rehypePlugins: PluggableList;

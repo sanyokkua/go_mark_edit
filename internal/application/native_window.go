@@ -30,6 +30,7 @@ type NativeWindowAPI interface {
 	SetSize(context.Context, int, int)
 	Maximise(context.Context)
 	Show(context.Context)
+	Print(context.Context)
 }
 
 // NativeWindowService coordinates hidden native restore with the frontend's
@@ -95,6 +96,18 @@ func (service *NativeWindowService) FrontendReady(ctx context.Context) {
 	defer service.mu.Unlock()
 	service.frontendReady = true
 	service.showIfReadyLocked(ctx)
+}
+
+// Print opens the operating system's print dialog for the window. It does
+// nothing without a native window or in headless E2E mode.
+func (service *NativeWindowService) Print(ctx context.Context) {
+	service.mu.Lock()
+	native, headless := service.native, service.headless
+	service.mu.Unlock()
+	if native == nil || headless {
+		return
+	}
+	native.Print(ctx)
 }
 
 func (service *NativeWindowService) showIfReadyLocked(ctx context.Context) {

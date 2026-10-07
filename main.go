@@ -274,6 +274,8 @@ func (wailsNativeWindow) Maximise(ctx context.Context) { runtime.WindowMaximise(
 
 func (wailsNativeWindow) Show(ctx context.Context) { runtime.WindowShow(ctx) }
 
+func (wailsNativeWindow) Print(ctx context.Context) { runtime.WindowPrint(ctx) }
+
 // nativeMenuForPlatform preserves the platform editing role without creating a
 // second About entry. The working About action belongs only to the application
 // shell, where it has access to the injected build identity.

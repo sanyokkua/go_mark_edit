@@ -336,6 +336,17 @@ func (holder *ApplicationContextHolder) FrontendReady(ctx context.Context) {
 	}
 }
 
+// PrintWindow opens the native print dialog through the currently wired
+// native-window service.
+func (holder *ApplicationContextHolder) PrintWindow(ctx context.Context) {
+	holder.mu.Lock()
+	service := holder.NativeWindowService
+	holder.mu.Unlock()
+	if service != nil {
+		service.Print(ctx)
+	}
+}
+
 // FlushBeforeClose is the synchronous native-close durability port. A caller
 // must veto close when it returns an error so SQLite remains available for a
 // later retry.

@@ -255,11 +255,51 @@ it('keeps File popup actions ordered and classifies deferred items explicitly', 
     ] as const) {
         expect(getAction(actionId).availability.kind).toBe('available');
     }
-    for (const actionId of ['export-pdf'] as const) {
-        expect(getAction(actionId).availability).toMatchObject({
-            kind: 'deferred',
+    expect(getAction('export-pdf').availability.kind).toBe('available');
+});
+
+describe('Export to PDF availability', () => {
+    const withDocument = {
+        documentId: 'doc-1',
+        projectedState: {
+            activeDocumentId: 'doc-1',
+            documents: { 'doc-1': { capability: 'writable', path: '/notes/a.md' } },
+            orderedDocumentIds: ['doc-1'],
+        },
+    };
+
+    it('is available for an open document, including a read-only one', () => {
+        expect(getActionAvailability('export-pdf', withDocument)).toEqual({ kind: 'available' });
+        expect(
+            getActionAvailability('export-pdf', {
+                ...withDocument,
+                projectedState: {
+                    ...withDocument.projectedState,
+                    documents: { 'doc-1': { capability: 'unsafe-read-only', path: '/notes/a.md' } },
+                },
+            }),
+        ).toEqual({ kind: 'available' });
+    });
+
+    it('is unavailable when no document is open', () => {
+        expect(
+            getActionAvailability('export-pdf', {
+                projectedState: { activeDocumentId: null, documents: {}, orderedDocumentIds: [] },
+            }),
+        ).toEqual({ kind: 'unavailable', reason: 'no-document' });
+    });
+
+    it('is unavailable while a modal dialog is open', () => {
+        expect(getActionAvailability('export-pdf', { ...withDocument, modalOpen: true })).toEqual({
+            kind: 'unavailable',
+            reason: 'modal',
         });
-    }
+    });
+
+    it('is bound to Mod+P and listed in the shortcuts surface', () => {
+        expect(getAction('export-pdf')).toMatchObject({ shortcut: 'Mod+P' });
+        expect(getAction('export-pdf').surfaces).toEqual(expect.arrayContaining(['file-menu', 'shortcuts']));
+    });
 });
 
 // Save As, and autosave MUST be unavailable" for an `unsafe-read-only`

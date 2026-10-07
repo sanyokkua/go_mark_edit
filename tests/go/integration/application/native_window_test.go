@@ -13,6 +13,7 @@ type recordingNativeWindow struct {
 	usableWidth, usableHeight int
 	width, height             int
 	maximiseCalls, showCalls  int
+	printCalls                int
 }
 
 type discardingEmitter struct{}
@@ -27,6 +28,7 @@ func (window *recordingNativeWindow) SetSize(_ context.Context, width, height in
 }
 func (window *recordingNativeWindow) Maximise(context.Context) { window.maximiseCalls++ }
 func (window *recordingNativeWindow) Show(context.Context)     { window.showCalls++ }
+func (window *recordingNativeWindow) Print(context.Context)    { window.printCalls++ }
 
 // Restore clamps only dimensions to the public usable display, keeps native
 // maximization independent, and makes visibility a one-shot readiness action.

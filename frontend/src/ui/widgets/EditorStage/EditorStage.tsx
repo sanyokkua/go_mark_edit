@@ -27,7 +27,7 @@ import { useScrollSync } from '../../../logic/hooks/useScrollSync';
 import { type EditorSynchronizationAdapter, useSyncedBuffer } from '../../../logic/hooks/useSyncedBuffer';
 import type { EditorScrollPort } from '../../../logic/scrollSync/scrollSyncTypes';
 import type { ReadingWidth } from '../../../logic/adapter/settingsTypes';
-import type { MarkdownStandard } from '../../../logic/markdown/pipeline';
+import { isMarkdownStandard } from '../../../logic/markdown/pipeline';
 import { extractHeadings, headingAnchor, scrollToAnchor } from '../../../logic/markdown/headings';
 import { classifyLink } from '../../../logic/markdown/linkPolicy';
 import type { ActiveBuffer, DocumentMetadata, DocumentView } from '../../../logic/store/appModelTypes';
@@ -106,10 +106,6 @@ interface ActiveEditorProps {
 
 interface ActiveEditorHandle {
     captureViewState: () => void;
-}
-
-function isMarkdownStandard(value: string): value is MarkdownStandard {
-    return value === 'minimal' || value === 'gfm' || value === 'full';
 }
 
 const ActiveEditor = forwardRef<ActiveEditorHandle, ActiveEditorProps>(function ActiveEditor(

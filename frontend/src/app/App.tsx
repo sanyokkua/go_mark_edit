@@ -22,6 +22,7 @@ import { useDropHandler } from './useDropHandler';
 import { useLaunchTarget } from './useLaunchTarget';
 import { useExternalChanges } from './useExternalChanges';
 import { useNotifications } from './useNotifications';
+import { usePdfExport } from './usePdfExport';
 import { useShutdown } from './useShutdown';
 import { useWindowGeometry } from './useWindowGeometry';
 import { useWorkflowPrompts } from './useWorkflowPrompts';
@@ -56,11 +57,13 @@ const AppWorkflows = ({
         blocked: close.active || writes.active,
     });
     const prompts = useWorkflowPrompts(close, writes, external);
+    const pdf = usePdfExport(session);
     const presentation = useAppPresentation({
         session,
         commands,
         writes,
         close,
+        exportPdf: pdf.exportPdf,
         requestQuit: shutdown.requestQuit,
         workflowModalOpen:
             prompts.modalOpen ||
@@ -95,6 +98,7 @@ const AppWorkflows = ({
                             banners={notifications.banners}
                             onDismiss={notifications.onDismiss}
                             recovery={writes.recoverySurface}
+                            printRequest={pdf.request}
                             shell={{
                                 ...commands,
                                 onOpenLink: commands.openLink,

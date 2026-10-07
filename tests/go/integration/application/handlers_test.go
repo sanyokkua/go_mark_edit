@@ -28,10 +28,15 @@ type recordingApplicationService struct {
 	application.ApplicationServiceAPI
 	readyCalls int
 	takeCalls  int
+	printCalls int
 }
 
 func (service *recordingApplicationService) FrontendReady(context.Context) {
 	service.readyCalls++
+}
+
+func (service *recordingApplicationService) PrintWindow(context.Context) {
+	service.printCalls++
 }
 
 func (service *recordingApplicationService) RetryStartup(context.Context) error {
@@ -69,6 +74,22 @@ func TestRepeatingWindowReadyWithTheSameRequestIdentityIsIdempotent(t *testing.T
 
 	if service.readyCalls != 1 {
 		t.Fatalf("FrontendReady calls = %d, want 1", service.readyCalls)
+	}
+	if !reflect.DeepEqual(second, first) {
+		t.Fatalf("retry result = %#v, want original result %#v", second, first)
+	}
+}
+
+func TestRepeatingPrintWindowWithTheSameRequestIdentityPrintsOnce(t *testing.T) {
+	service := &recordingApplicationService{}
+	handler := application.NewApplicationHandler(service, nil, nil)
+	request := bridge.Request{ID: "print-request"}
+
+	first := handler.PrintWindow(request)
+	second := handler.PrintWindow(request)
+
+	if service.printCalls != 1 {
+		t.Fatalf("PrintWindow calls = %d, want 1", service.printCalls)
 	}
 	if !reflect.DeepEqual(second, first) {
 		t.Fatalf("retry result = %#v, want original result %#v", second, first)

@@ -259,6 +259,9 @@ bootstrap.status === 'ready')` (`app/App.tsx:49`) is the precedent for a hook th
       calls it through `ApplicationServiceAPI.PrintWindow(context.Context)`; in E2E headless mode
       (`native_window.go:15`) it does nothing. This is the only print path that works on macOS, and it works from
       macOS 11, which becomes the minimum (Decision 5).
+    - Suggested name: the print dialog derives the PDF name from `document.title`, so `PrintDocument` sets it to the
+      saved document's file name without its last extension (`fileStemOf`, `ui/widgets/tabLabel.ts`) while the copy is
+      mounted and restores the previous title when the copy goes away; Untitled documents leave the title unchanged.
     - Source text: `app/usePdfExport.ts` calls `flushActiveDocument()` and then `appModelAdapter.getState()`, and takes
       `activeBuffer.content` when `activeBuffer.documentId` is still the document being exported, exactly as Save does
       (`useDocumentWrites.ts:294-295`). That is the backend's copy of the editor model after the flush, including

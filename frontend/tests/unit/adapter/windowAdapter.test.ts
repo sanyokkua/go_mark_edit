@@ -8,6 +8,7 @@ it('uses public query/enter/exit operations and returns native full-screen state
         windowReady: jest.fn(async () => ({})),
         openNewWindow: jest.fn(async () => ({})),
         takeLaunchTarget: jest.fn(async () => ({})),
+        printWindow: jest.fn(async () => ({})),
         windowFullscreen: jest.fn((): void => {
             fullscreen = true;
         }),
@@ -42,6 +43,7 @@ it('invokes repeatable startup through the guarded typed command', async () => {
         windowReady: jest.fn(async () => ({})),
         openNewWindow: jest.fn(async () => ({})),
         takeLaunchTarget: jest.fn(async () => ({})),
+        printWindow: jest.fn(async () => ({})),
         windowFullscreen: jest.fn(),
         windowGetSize: jest.fn(async () => ({ h: 768, w: 1024 })),
         windowIsFullscreen: jest.fn(async () => false),
@@ -64,6 +66,7 @@ it('When a folder path is given, the window adapter opens a new application wind
         windowReady: async () => ({}),
         openNewWindow,
         takeLaunchTarget: async () => ({}),
+        printWindow: async () => ({}),
         windowFullscreen: (): void => undefined,
         windowGetSize: async () => ({ h: 768, w: 1024 }),
         windowIsFullscreen: async (): Promise<boolean> => false,
@@ -99,12 +102,25 @@ it('rejects a launch target take that the backend refused', async () => {
     await expect(adapter.takeLaunchTarget()).rejects.toEqual(error);
 });
 
+it('prints the window once per call through the guarded command and rejects a refused print', async () => {
+    const printWindow = jest.fn(async () => ({}));
+    const adapter = createWindowAdapter({ ...emptyBindings(), printWindow });
+
+    await expect(adapter.printWindow()).resolves.toBeUndefined();
+    expect(printWindow).toHaveBeenCalledTimes(1);
+
+    const error: WireError = { code: 'internal', title: 'Something went wrong', message: 'x', retryable: true };
+    const refused = createWindowAdapter({ ...emptyBindings(), printWindow: async () => ({ error }) });
+    await expect(refused.printWindow()).rejects.toEqual(error);
+});
+
 function emptyBindings(): WindowBindings {
     return {
         retryStartup: async () => ({}),
         windowReady: async () => ({}),
         openNewWindow: async () => ({}),
         takeLaunchTarget: async () => ({}),
+        printWindow: async () => ({}),
         windowFullscreen: (): void => undefined,
         windowGetSize: async () => ({ h: 768, w: 1024 }),
         windowIsFullscreen: async (): Promise<boolean> => false,

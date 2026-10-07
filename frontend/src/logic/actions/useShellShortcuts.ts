@@ -42,6 +42,10 @@ export function useShellShortcuts(actions: readonly ShellShortcutAction[]): void
                         (candidate.shortcut === eventBinding ||
                             (!isShellAction(candidate) && candidate.shortcutAliases?.includes(eventBinding) === true))),
             );
+            if (action?.id === 'export-pdf') {
+                // The webview's own print must never run, whether or not Export is available.
+                event.preventDefault();
+            }
             if (action === undefined || !action.isAvailable()) {
                 return;
             }

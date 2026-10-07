@@ -1,6 +1,6 @@
 import { expect, test } from '../support/harness';
 
-test('runs tidy from the active document and enables Distraction-free reading while Assistant and Export stay deferred', async ({
+test('runs tidy from the active document and enables Export and Distraction-free reading while Assistant and the About links stay deferred', async ({
     app,
 }) => {
     const source = await app.writeDocument('tidy-surface.md', '* item\n');
@@ -58,7 +58,13 @@ test('runs tidy from the active document and enables Distraction-free reading wh
     await page.getByRole('button', { name: 'File', exact: true }).click();
     const fileMenu = page.getByRole('menu', { name: 'File' });
     await expect(fileMenu.getByRole('menuitem', { name: 'Open Folder', exact: true })).toBeEnabled();
-    await expect(fileMenu.getByRole('menuitem', { name: 'Export to PDF', exact: true })).toBeDisabled();
+    await expect(fileMenu.getByRole('menuitem', { name: 'Export to PDF', exact: true })).toBeEnabled();
+    await page.keyboard.press('Escape');
+
+    await page.getByRole('button', { name: 'About', exact: true }).click();
+    const aboutMenu = page.locator('[data-viewport-popup="about-menu"]');
+    await expect(aboutMenu.getByRole('menuitem', { name: 'Open logs folder' })).toBeDisabled();
+    await expect(aboutMenu.getByRole('menuitem', { name: /View on GitHub/u })).toBeDisabled();
     await page.keyboard.press('Escape');
 
     await page.getByRole('button', { name: 'View', exact: true }).click();
