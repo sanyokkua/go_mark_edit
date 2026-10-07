@@ -473,7 +473,7 @@ The paced-typing performance check measures keydown-to-input latency against its
 guard, alongside the 300 ms input-to-preview bound. Inter-input gaps
 remain diagnostic: Playwright's requested pacing also includes controller scheduling and browser
 protocol round trips, so subtracting that pacing does not measure application responsiveness.
-When `GOMARKEDIT_E2E_REUSE_DIST=1` and `frontend/dist/index.html` is newer than every input of
+When `GOMARKEDIT_E2E_REUSE_DIST=1` and the bundle in `frontend/dist` is newer than every input of
 `vite build` (checked before the generators run), preparation reuses the bundle the Build stage left
 instead of building it again; otherwise it builds. The E2E binary and seed helper are never shipped.
 The E2E summary reports preparation, wall, app launch/relaunch and teardown times; these totals can

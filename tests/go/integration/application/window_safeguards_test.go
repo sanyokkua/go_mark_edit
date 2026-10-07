@@ -17,7 +17,8 @@ import (
 // macOS does exactly that for a path in argv, which made every spawned window
 // spawn the next one without end.
 func TestAWindowNeverRespawnsForItsOwnStartupPath(t *testing.T) {
-	for _, path := range []string{"/docs/a.md", "/docs/missing.md", "/docs/folder"} {
+	docs := t.TempDir()
+	for _, path := range []string{filepath.Join(docs, "a.md"), filepath.Join(docs, "missing.md"), filepath.Join(docs, "folder")} {
 		launcher := &lockedLauncher{}
 		holder := newLaunchHolder(t, application.ApplicationContextOptions{
 			NewWindowLauncher: launcher,
@@ -148,13 +149,14 @@ func TestAWindowIsOpenedJustBelowTheLimit(t *testing.T) {
 
 func TestClosingTheHolderRemovesItsWindowEntry(t *testing.T) {
 	dir := t.TempDir()
+	target := filepath.Join(t.TempDir(), "a.md")
 	holder := application.NewApplicationContextHolderWithOptions(nil, nil, application.ApplicationContextOptions{
 		WindowRegistry: registryFor(dir),
-		StartupArgs:    []string{"/docs/a.md"},
+		StartupArgs:    []string{target},
 	})
 	observer := application.NewWindowRegistry(dir, os.Getppid())
-	if observer.Count() != 1 || !observer.IsOpen("/docs/a.md") {
-		t.Fatalf("count=%d open=%v, want the starting window registered with its target", observer.Count(), observer.IsOpen("/docs/a.md"))
+	if observer.Count() != 1 || !observer.IsOpen(target) {
+		t.Fatalf("count=%d open=%v, want the starting window registered with its target", observer.Count(), observer.IsOpen(target))
 	}
 	if err := holder.Close(); err != nil {
 		t.Fatalf("Close: %v", err)
