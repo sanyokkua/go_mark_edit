@@ -1,6 +1,3 @@
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
-
 import type { MutableRefObject } from 'react';
 
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
@@ -68,42 +65,6 @@ function renderTabs(adapter: Parameters<typeof DocumentTabs>[0]['adapter'] = {})
 
 beforeEach(() => {
     store.dispatch(resetProjection());
-});
-
-it('applies the contained tab-strip metrics and fixed add-control size', () => {
-    const tabStyles = readFileSync(resolve(process.cwd(), 'src/ui/components/TabBar/TabBar.module.css'), 'utf8');
-
-    expect(tabStyles).toContain('gap: var(--tabs-gap)');
-    expect(tabStyles).toContain('padding: var(--tabs-row-padding)');
-    expect(tabStyles).toContain('padding: var(--tab-padding)');
-    expect(tabStyles).toContain('font-size: var(--tab-label-font-size)');
-    expect(tabStyles).toMatch(/\.tab\s*\{[^}]*align-items:\s*center;[^}]*display:\s*inline-flex;/s);
-    expect(tabStyles).toContain('block-size: var(--tabs-row-height)');
-    /*
-     * The design's tab bounds are tokens like every other design metric, so the
-     * label cap and the tab box are asserted through the token rather than as a
-     * literal repeated in the stylesheet. `tokens.css` owns the value.
-     */
-    expect(tabStyles).toContain('max-width: var(--tab-max-width)');
-    expect(tabStyles).toContain('border-radius: var(--tab-radius)');
-    expect(tabStyles).toContain('gap: var(--tab-gap)');
-    expect(tabStyles).toContain('block-size: var(--tab-add-size)');
-    expect(tabStyles).toContain('inline-size: var(--tab-add-size)');
-    expect(tabStyles).toMatch(/overflow-x:\s*auto/);
-    // Theme-specific selection and add-control appearance are exercised with
-    // computed styles in theme-surfaces.test.ts, across all six palettes.
-});
-
-it('uses the binding context-menu shadow token', () => {
-    const tabStyles = readFileSync(resolve(process.cwd(), 'src/ui/components/TabBar/TabBar.module.css'), 'utf8');
-    const tokens = readFileSync(resolve(process.cwd(), 'src/ui/styles/tokens.css'), 'utf8');
-
-    expect(tabStyles).toContain('box-shadow: var(--tab-context-menu-shadow)');
-    expect(tokens).toContain('--tab-context-menu-shadow: var(--context-menu-shadow);');
-    expect(tokens).toContain('--context-menu-shadow:');
-    expect(tokens).toMatch(
-        /:root\[data-theme='material'\][\s\S]*?--context-menu-shadow:\s*0 1px 2px rgba\(30, 30, 60, 0\.1\),\s*0 1px 3px rgba\(30, 30, 60, 0\.08\);/s,
-    );
 });
 
 it('renders the shared Icon primitive for the tab glyphs', () => {

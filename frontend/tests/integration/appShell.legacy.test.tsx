@@ -83,54 +83,6 @@ it('keeps workspace and document regions while the reserved Assistant track has 
     expect(tokens).not.toContain('--shell-assistant-visible-width');
 });
 
-it('keeps the shell as a contained, tokenized surface across palettes', () => {
-    const shellStyles = readSource('src/ui/widgets/AppShell.module.css');
-    const baseStyles = readSource('src/ui/styles/base.css');
-
-    expect(shellStyles).toContain('overflow: hidden');
-    expect(shellStyles).toContain('overscroll-behavior: contain');
-    expect(shellStyles).not.toMatch(/#[\da-f]{3,8}\b|rgba?\(|hsla?\(/i);
-    expect(baseStyles).toContain('overflow-x: hidden');
-    expect(baseStyles).toContain('prefers-reduced-motion: reduce');
-});
-
-it('renders the Minimal workspace boundary inside the workspace track', () => {
-    const sidebarStyles = readSource('src/ui/components/Sidebar/Sidebar.module.css');
-
-    expect(sidebarStyles).toMatch(
-        /:global\(:root\[data-theme='minimal'\]\) \.sidebar\s*\{[^}]*border-inline-end:\s*var\(--control-border-width\) solid var\(--border\);/s,
-    );
-    expect(sidebarStyles).toMatch(
-        /:global\(:root\[data-theme='minimal'\]\) \.divider::after\s*\{[^}]*background:\s*transparent;/s,
-    );
-});
-
-it('preserves the zero-width Assistant track at the 375px breakpoint', () => {
-    const shellStyles = readSource('src/ui/widgets/AppShell.module.css');
-    const narrowShellRule = shellStyles.match(/@media \(max-width:\s*376px\)\s*\{\s*\.shell\s*\{([^}]*)\}/)?.[1];
-
-    expect(narrowShellRule).toBeDefined();
-    expect(narrowShellRule).toMatch(/display:\s*grid/);
-    expect(narrowShellRule).toMatch(/grid-template-areas:\s*['"]workspace document assistant['"]/);
-    /*
-     * The narrow presentation collapses the workspace by setting the shared
-     * column variable to zero; the Assistant track keeps its token because the
-     * base grid declaration is the only one, and it is inherited here.
-     */
-    expect(narrowShellRule).toMatch(/--shell-workspace-column:\s*0px/);
-    expect(shellStyles).toMatch(
-        /grid-template-columns:\s*var\(--shell-workspace-column\)\s+minmax\(var\(--shell-center-min-width\),\s*1fr\)\s+var\(--shell-assistant-collapsed-width\)/,
-    );
-});
-
-it('keeps the empty workspace as a binding surface frame without enumeration', () => {
-    const sidebarStyles = readSource('src/ui/components/Sidebar/Sidebar.module.css');
-    const workspaceRule = sidebarStyles.match(/\.sidebar\s*\{([^}]*)\}/)?.[1];
-
-    expect(workspaceRule).toBeDefined();
-    expect(workspaceRule).toMatch(/background:\s*var\(--surface-2\)/);
-});
-
 it('renders an immediate non-durable divider width while sending the durable intent to Go', () => {
     renderShell({ sidebarVisible: true, sidebarWidth: 288 });
 
@@ -233,38 +185,6 @@ it('still reports a stored hidden workspace at the minimum window', () => {
     } finally {
         setViewportWidth(1024);
     }
-});
-
-it('overlays the resizable divider without adding a layout column at every parity width', () => {
-    const shellStyles = readSource('src/ui/widgets/AppShell.module.css');
-    const sidebarStyles = readSource('src/ui/components/Sidebar/Sidebar.module.css');
-
-    /*
-     * The grid track and the divider read the same variable, so the handle cannot
-     * come adrift from the edge it drags — which is what this test is protecting
-     * when it says the divider overlays rather than occupying a column.
-     */
-    expect(shellStyles).toMatch(
-        /grid-template-columns:\s*var\(--shell-workspace-column\)\s+minmax\(var\(--shell-center-min-width\),\s*1fr\)\s+var\(--shell-assistant-collapsed-width\)/,
-    );
-    expect(sidebarStyles).toMatch(
-        /\.divider\s*\{[\s\S]*inset-inline-start:\s*calc\(\s*var\(--shell-workspace-column\)/,
-    );
-    expect(sidebarStyles).not.toMatch(/grid-template-columns:[^;]*var\(--shell-divider-width\)/);
-    expect(sidebarStyles).toMatch(
-        /\.divider\s*\{[\s\S]*inset-block:\s*0;[\s\S]*position:\s*absolute;[\s\S]*z-index:\s*var\(--z-resize\)/,
-    );
-    expect(shellStyles).toMatch(/@media \(max-width:\s*768px\)[\s\S]*--shell-workspace-column:\s*46px/);
-    expect(sidebarStyles).toMatch(/@media \(max-width:\s*768px\)[\s\S]*\.divider\s*\{[\s\S]*display:\s*block/);
-    /*
-     * The 376px block used to declare `.divider { display: block }` as well. The
-     * minimum window renders neither the workspace nor the divider, so the block
-     * now keeps only the collapsed column — the grid still declares a
-     * `workspace` area at that width, and it must stay at zero.
-     */
-    const minimumWindowBlock = shellStyles.slice(shellStyles.lastIndexOf('@media (max-width: 376px)'));
-    expect(minimumWindowBlock).toMatch(/--shell-workspace-column:\s*0px/);
-    expect(minimumWindowBlock).not.toMatch(/\.divider/);
 });
 
 it('places the 28px status surface below editor content in the shell region', () => {

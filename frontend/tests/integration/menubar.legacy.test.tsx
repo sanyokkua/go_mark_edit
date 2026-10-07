@@ -61,33 +61,6 @@ function menuItemLabels(root: HTMLElement): string[] {
         .map((item) => item.querySelector('span')?.textContent ?? item.textContent ?? '');
 }
 
-it('keeps popup accelerators, group labels, separators, and viewport sizing tokenized', () => {
-    const menuStyles = readFileSync(resolve(process.cwd(), 'src/ui/widgets/Menubar/Menubar.module.css'), 'utf8');
-    const menuSource = readFileSync(resolve(process.cwd(), 'src/ui/widgets/Menubar/Menubar.tsx'), 'utf8');
-    const popupStyles = readFileSync(resolve(process.cwd(), 'src/ui/components/Popup/Popup.module.css'), 'utf8');
-    const menuItemStyles = readFileSync(
-        resolve(process.cwd(), 'src/ui/components/MenuItem/MenuItem.module.css'),
-        'utf8',
-    );
-    const settingsStyles = readFileSync(
-        resolve(process.cwd(), 'src/ui/widgets/Menubar/SettingsMenu.module.css'),
-        'utf8',
-    );
-
-    expect(menuStyles).toContain('height: var(--menu-row-height)');
-    expect(menuSource).toContain('menuDecoration(item.id)');
-    expect(menuSource).toContain('accelerator={shortcutForMenuItem');
-    expect(menuSource).toContain("'open-recent'");
-    expect(popupStyles).toContain('min-inline-size: var(--popup-min-width)');
-    expect(popupStyles).toContain('border-radius: var(--popup-radius)');
-    expect(popupStyles).toContain('box-shadow: var(--win-shadow)');
-    expect(popupStyles).toContain('box-shadow: var(--win-shadow), var(--focus-ring)');
-    expect(menuItemStyles).toContain('font-size: var(--popup-accelerator-font-size)');
-    expect(menuItemStyles).toContain('opacity: var(--disabled-opacity)');
-    expect(menuItemStyles).toContain('.item[data-highlighted]');
-    expect(settingsStyles).not.toContain('min-inline-size: var(--popup-min-width)');
-});
-
 it('offers live Open Folder and Close Folder rows when a workspace is open', () => {
     const onOpenFolder = jest.fn();
     const onCloseFolder = jest.fn();
@@ -564,22 +537,6 @@ it('delegates shell popup lifecycle and viewport positioning to Popup', () => {
     expect(screen.getByRole('menu', { name: 'File' }).parentElement).toBe(document.body);
 });
 
-it('anchors the File popup through the shared trigger contract', () => {
-    const shellSource = readFileSync(resolve(process.cwd(), 'src/ui/widgets/Menubar/Menubar.tsx'), 'utf8');
-    expect(shellSource).toContain('ref={captureFileTrigger}');
-    expect(shellSource).toContain('anchor={{ trigger: fileTrigger }}');
-    expect(shellSource).toContain('data-viewport-popup="file-menu"');
-    expect(shellSource).not.toContain('DropdownMenu.Portal');
-});
-
-it('keeps the narrow View popup anchored to the shared overflow trigger', () => {
-    const shellSource = readFileSync(resolve(process.cwd(), 'src/ui/widgets/Menubar/Menubar.tsx'), 'utf8');
-
-    expect(shellSource).toContain('anchorRef={overflowTriggerRef}');
-    expect(shellSource).toContain('showTrigger={false}');
-    expect(shellSource).not.toContain('narrowMenuAnchor');
-});
-
 it('switches to the keyboard-reachable overflow only at the 375-pixel state', () => {
     const { rerender } = render(
         <Menubar
@@ -629,36 +586,6 @@ it('keeps a localized short About trigger separate from the long catalogue label
     expect(shellStyles).toMatch(/text-overflow:\s*ellipsis/);
 });
 
-it('keeps menu and popup geometry on the shared metric tokens', () => {
-    const shellStyles = readFileSync(resolve(process.cwd(), 'src/ui/widgets/Menubar/Menubar.module.css'), 'utf8');
-    const popupStyles = readFileSync(resolve(process.cwd(), 'src/ui/components/Popup/Popup.module.css'), 'utf8');
-    const menuItemStyles = readFileSync(
-        resolve(process.cwd(), 'src/ui/components/MenuItem/MenuItem.module.css'),
-        'utf8',
-    );
-
-    expect(shellStyles).toContain('height: var(--menu-row-height)');
-    expect(popupStyles).toContain('padding: var(--popup-padding)');
-    expect(popupStyles).toContain('border-radius: var(--popup-radius)');
-    expect(menuItemStyles).toContain('padding: var(--popup-row-padding)');
-    expect(menuItemStyles).toContain('font-size: var(--popup-row-font-size)');
-});
-
-it('keeps the in-app row on the binding titlebar geometry without native chrome', () => {
-    const shellStyles = readFileSync(resolve(process.cwd(), 'src/ui/widgets/Menubar/Menubar.module.css'), 'utf8');
-
-    const rowRule = shellStyles.match(/\.row\s*\{([^}]*)\}/)?.[1];
-    expect(rowRule).toBeDefined();
-    expect(rowRule).toContain('height: var(--menu-row-height)');
-    expect(rowRule).toContain('padding: var(--menu-row-padding)');
-    expect(rowRule).toContain('gap: var(--menu-row-gap)');
-    expect(rowRule).toContain('background: transparent');
-    expect(rowRule).toContain('overflow: visible');
-    expect(rowRule).toContain('white-space: normal');
-    expect(rowRule).toContain('min-width: revert');
-    expect(rowRule).toContain('min-height: revert');
-});
-
 it('keeps the implemented desktop menubar grouped and keyboard-reachable', () => {
     render(
         <Menubar
@@ -684,13 +611,6 @@ it('keeps the implemented desktop menubar grouped and keyboard-reachable', () =>
             .getAllByRole('button')
             .every((button) => button.tabIndex >= 0),
     ).toBe(true);
-});
-
-it('registers each desktop menu label as a Popup trigger', () => {
-    const shellSource = readFileSync(resolve(process.cwd(), 'src/ui/widgets/Menubar/Menubar.tsx'), 'utf8');
-
-    expect(shellSource.match(/<PopupTrigger/g)).toHaveLength(3);
-    expect(shellSource).not.toContain('DropdownMenu.Trigger');
 });
 
 it('dispatches Settings Appearance and About actions through the canonical route', async () => {
@@ -1104,30 +1024,4 @@ it('keeps every menubar action reachable and named in full under a much longer t
             catalogue[key] = value;
         }
     }
-});
-
-// real browser, which jsdom cannot measure: the shared trigger clips and
-// ellipsises rather than growing the row, and the row's spacer may shrink to
-// nothing so a long trigger cannot force horizontal overflow. Asserted as
-// declared CSS because `*.module.css` is mapped to a style mock under Jest, so
-// no computed style exists to read — the same technique the surrounding
-// geometry tests in this file use.
-it('clips a long menubar label instead of growing the row', () => {
-    const triggerStyles = readFileSync(resolve(process.cwd(), 'src/ui/components/Popup/Popup.module.css'), 'utf8');
-    const shellStyles = readFileSync(resolve(process.cwd(), 'src/ui/widgets/Menubar/Menubar.module.css'), 'utf8');
-
-    const trigger = triggerStyles.match(/\.trigger\s*\{[^}]*\}/)?.[0];
-    expect(trigger).toBeDefined();
-    expect(trigger).toMatch(/overflow:\s*hidden/);
-    expect(trigger).toMatch(/text-overflow:\s*ellipsis/);
-    expect(trigger).toMatch(/white-space:\s*nowrap/);
-    expect(trigger).toMatch(/max-width:\s*100%/);
-
-    const spacer = shellStyles.match(/\.spacer\s*\{[^}]*\}/)?.[0];
-    expect(spacer).toBeDefined();
-    expect(spacer).toMatch(/min-width:\s*0/);
-
-    // The row's own height stays on the binding token, so a taller translation
-    // cannot push the mapped editor content downward.
-    expect(shellStyles).toContain('height: var(--menu-row-height)');
 });

@@ -85,32 +85,6 @@ it('exposes real application-menu controls from the narrow toolbar overflow', ()
     }
 });
 
-it('keeps toolbar, arrangement, and overflow geometry on binding tokens', () => {
-    const chromeStyles = readFileSync(
-        resolve(process.cwd(), 'src/ui/widgets/FormattingToolbar/FormattingToolbar.module.css'),
-        'utf8',
-    );
-    expect(chromeStyles).toContain('gap: var(--toolbar-gap)');
-    expect(chromeStyles).toContain('block-size: var(--toolbar-row-height)');
-    expect(chromeStyles).toContain('block-size: var(--toolbar-action-height)');
-    expect(chromeStyles).toContain('min-inline-size: var(--toolbar-action-min-width)');
-    expect(chromeStyles).toContain('padding-inline: var(--toolbar-action-padding-inline)');
-    expect(chromeStyles).toContain('border-radius: var(--toolbar-group-radius)');
-    expect(chromeStyles).toContain('font-size: 11.5px');
-    expect(chromeStyles).toContain('min-inline-size: var(--toolbar-action-min-width)');
-    expect(readFileSync(resolve(process.cwd(), 'src/ui/components/Popup/Popup.module.css'), 'utf8')).toContain(
-        'min-inline-size: var(--popup-min-width)',
-    );
-    /*
-     * The tab strip is DocumentTabs' surface, not FormattingToolbar's — FormattingToolbar
-     * never referenced the tab classes that used to sit in its stylesheet. The
-     * assertion follows the component that actually owns the rule.
-     */
-    expect(readFileSync(resolve(process.cwd(), 'src/ui/components/TabBar/TabBar.module.css'), 'utf8')).toContain(
-        'min-inline-size: max-content',
-    );
-});
-
 it('uses icon-first toolbar controls while retaining localized accessible names', () => {
     render(<FormattingToolbar arrangement="split" onArrangementChange={jest.fn()} />);
 

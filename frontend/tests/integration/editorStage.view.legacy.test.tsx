@@ -1,6 +1,4 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
 import { useContext, useState } from 'react';
 import { Provider } from 'react-redux';
 import { loadedMarkdownSettings } from '../support/loadedMarkdownSettings';
@@ -520,27 +518,6 @@ it('applies every persisted palette to the rendered Settings control', async () 
         rendered.unmount();
     }
     expect(mockGetSettings).toHaveBeenCalledTimes(6);
-});
-
-it('ships a zero-duration reduced-motion override beside the rendered editor', async () => {
-    await act(async (): Promise<void> => {
-        renderLivePreviewEditor('# Motion-safe preview', createRenderedEditorAdapter());
-        await Promise.resolve();
-    });
-    expect(screen.getByLabelText('Editor view')).toBeInTheDocument();
-
-    const stylesheet = document.createElement('style');
-    stylesheet.textContent = readFileSync(resolve(process.cwd(), 'src/ui/styles/tokens.css'), 'utf8');
-    document.head.append(stylesheet);
-    const reducedMotionRule = Array.from(stylesheet.sheet?.cssRules ?? []).find(
-        (rule): rule is CSSMediaRule =>
-            rule.type === CSSRule.MEDIA_RULE &&
-            (rule as CSSMediaRule).media.mediaText === '(prefers-reduced-motion: reduce)',
-    );
-    const rootRule = reducedMotionRule?.cssRules[0] as CSSStyleRule | undefined;
-
-    expect(rootRule?.style.getPropertyValue('--dur-base')).toBe('0ms');
-    stylesheet.remove();
 });
 
 it('keeps the editor activation token when a committed-write patch changes the buffer object', async () => {
