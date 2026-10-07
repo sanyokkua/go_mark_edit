@@ -114,14 +114,14 @@ Test edits listed under "Changes existing tests" are required by the named requi
 
 ## 3. macOS document types and file-open events
 
-- [ ] 3.1 Declare the four suffixes and folders in the macOS bundle without taking any default, pass macOS file-open
+- [x] 3.1 Declare the four suffixes and folders in the macOS bundle without taking any default, pass macOS file-open
       events to `AcceptOpenRequest`, and add the packaging test for the plists. Verify that the named tests pass,
       `scripts/verify` is green, and the user runs the task 3.1 items of the macOS checklist in design "Verification"
       (Open With, Change All, cold-start and running double-clicks, three files, Dock folder, Finder folders, Viewer
       default) on an installed `.app`; the print items belong to tasks 6.1-8.1.
     - Depends on 2.1.
     - Requirements:
-        - os-integration "Open With registration" (macOS scenarios), "Opening from the operating system" (Started from
+        - os-integration "Window safeguards", "Open With registration" (macOS scenarios), "Opening from the operating system" (Started from
           its icon, Double-click while running, Several files at once), "Folder open from the operating
           system" (Folder dropped on the macOS Dock icon);
         - file-lifecycle "Open a document" (Opened from the operating system scenario);
@@ -133,12 +133,18 @@ Test edits listed under "Changes existing tests" are required by the named requi
           `{{if .Info.FileAssociations}}` block (`Info.plist:26-44`);
         - `internal/application/options.go:18-55`: `Options.OnFileOpen` set into `Mac.OnFileOpen`; `main.go` passes
           `applicationContext.AcceptOpenRequest`;
+        - `internal/application/window_registry.go` (pid files under the user cache directory, `MaxWindows` = 50) and the
+          checks in `AcceptOpenRequest` (`new_window.go`): own-target, already-open, just-launched and limit, with
+          `ApplicationContextOptions.WindowRegistry` set by `main.go` and the entry removed in `Close`;
         - `tests/go/integration/packaging/associations_test.go` (macOS part of Decision 4): the `encoding/xml` walk of
           both plists equals `file.SupportedDocumentSuffixes()` (`internal/file/paths.go:246`), and a `public.folder`
           entry exists.
     - Changes existing tests: `tests/go/integration/application/options_test.go:38` also asserts `Mac.OnFileOpen` is
       set while `SingleInstanceLock` stays nil.
-    - Adds tests: the packaging test above. Event routing itself is covered by task 2's Go tests.
+      `launch_target_test.go` `TestConcurrentOpenRequestsAcceptExactlyOnePath` sends distinct paths, because the same path
+      is now launched at most once.
+    - Adds tests: `tests/go/integration/application/window_safeguards_test.go` (own path never respawns, path open in
+      another live window, dead process ignored, same path twice, limit and just below it, entry removed on close); the packaging test above. Event routing itself is covered by task 2's Go tests.
     - Docs:
         - `docs/architecture.md`: add D19 (macOS part) after D18; the "Packaged verification walkthrough" (line 723)
           gains the macOS association checklist; ADR-0001 (line 774) points to D19;

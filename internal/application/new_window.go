@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/sanyokkua/go_mark_edit/internal/apperr"
 	"github.com/sanyokkua/go_mark_edit/internal/bridge"
@@ -129,13 +130,30 @@ func (holder *ApplicationContextHolder) AcceptOpenRequest(path string) {
 	if holder.startupOpen && !holder.targetAccepted {
 		holder.targetAccepted = true
 		holder.launchTarget = path
+		holder.ownTarget = path
 		holder.mu.Unlock()
 		return
 	}
 	ctx := holder.ctx
 	emit := holder.emitEvent
 	logger := holder.appLogger
+	windows := holder.windows
+	suppressed := holder.suppressDuplicateLocked(path)
 	holder.mu.Unlock()
+
+	// A window never opens another one for its own path or for a path another
+	// live window already shows. macOS reports the path in a spawned window's
+	// argv again as a file-open event, so without this check each new window
+	// started the next one without end.
+	if suppressed || windows.IsOpen(path) {
+		return
+	}
+	if windows.Count() >= MaxWindows {
+		if ctx != nil && emit != nil {
+			emit(ctx, bridge.EventStateError, windowLimitEvent())
+		}
+		return
+	}
 
 	if err := holder.LaunchNewWindow(ctx, path); err != nil {
 		if logger != nil {
@@ -148,6 +166,45 @@ func (holder *ApplicationContextHolder) AcceptOpenRequest(path string) {
 			emit(ctx, bridge.EventStateError, newWindowFailureEvent())
 		}
 	}
+}
+
+// recentLaunchWindow is how long a path counts as "being opened" after a window
+// was started for it, which covers the time before that window registers.
+const recentLaunchWindow = 10 * time.Second
+
+// suppressDuplicateLocked reports whether path is this window's own target or
+// was just launched, and otherwise records the launch. The caller holds
+// holder.mu.
+func (holder *ApplicationContextHolder) suppressDuplicateLocked(path string) bool {
+	key := normalizeWindowTarget(path)
+	if holder.ownTarget != "" && normalizeWindowTarget(holder.ownTarget) == key {
+		return true
+	}
+	now := time.Now()
+	for known, at := range holder.recentLaunches {
+		if now.Sub(at) > recentLaunchWindow {
+			delete(holder.recentLaunches, known)
+		}
+	}
+	if _, recent := holder.recentLaunches[key]; recent {
+		return true
+	}
+	holder.recentLaunches[key] = now
+	return false
+}
+
+const windowLimitMessage = "Too many GoMarkEdit windows are open."
+
+// windowLimitEvent is the state:error payload for a window that was not opened
+// because MaxWindows windows are already open. Retry would not help.
+func windowLimitEvent() apperr.WireError {
+	return apperr.ClassifiedToWire(bridge.ClassifiedWithID(
+		apperr.ClassifiedSystemCommandFailure,
+		"window",
+		windowLimitMessage,
+		apperr.RemediationNone,
+		"",
+	))
 }
 
 // TakeLaunchTarget removes and returns the path this window accepted at

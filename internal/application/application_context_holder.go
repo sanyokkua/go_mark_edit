@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"sync"
+	"time"
 
 	"github.com/sanyokkua/go_mark_edit/internal/apperr"
 	"github.com/sanyokkua/go_mark_edit/internal/appmodel"
@@ -33,6 +34,12 @@ type ApplicationContextHolder struct {
 	targetAccepted bool
 	launchTarget   string
 	emitEvent      func(context.Context, string, ...any)
+	// ownTarget is the path this window was opened for; the window never opens
+	// another window for it. recentLaunches holds paths a window was just started
+	// for, until that window has registered itself.
+	ownTarget      string
+	recentLaunches map[string]time.Time
+	windows        *WindowRegistry
 
 	DB *db.Database
 
@@ -62,6 +69,9 @@ type ApplicationContextOptions struct {
 	StartupArgs []string
 	// EmitEvent publishes a Wails event; hosts without a runtime leave it nil.
 	EmitEvent func(context.Context, string, ...any)
+	// WindowRegistry lists the live windows so a file is not opened twice and the
+	// window count stays bounded; hosts without one leave it nil.
+	WindowRegistry *WindowRegistry
 }
 
 // NewApplicationContextHolderWithOptions constructs the phase-one graph with
@@ -99,13 +109,19 @@ func NewApplicationContextHolderWithOptions(fileService file.FileUtilsServiceAPI
 		settingsRepository: options.SettingsRepository,
 		newWindowLauncher:  options.NewWindowLauncher,
 		emitEvent:          options.EmitEvent,
+		windows:            options.WindowRegistry,
+		recentLaunches:     map[string]time.Time{},
 		startupOpen:        true,
 		SettingsService:    settingsService,
 		AppModelService:    appModelService,
 	}
-	if startupPath := firstStartupPath(options.StartupArgs); startupPath != "" {
+	startupPath := firstStartupPath(options.StartupArgs)
+	if startupPath != "" {
 		holder.AcceptOpenRequest(startupPath)
 	}
+	// Register after the target is known so a path for this window is never
+	// opened again, and so this window counts toward the limit.
+	_ = holder.windows.Register(startupPath)
 	// Settings owns the autosave preference and the document model owns the
 	// scheduler; this composition root is the boundary where the preference
 	// becomes a command rather than a passive projection.
@@ -404,7 +420,9 @@ func (holder *ApplicationContextHolder) Close() error {
 	holder.mu.Lock()
 	database := holder.DB
 	holder.DB = nil
+	windows := holder.windows
 	holder.mu.Unlock()
+	windows.Unregister()
 
 	if database == nil {
 		return nil

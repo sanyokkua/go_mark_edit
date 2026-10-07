@@ -353,6 +353,12 @@ bootstrap.status === 'ready')` (`app/App.tsx:49`) is the precedent for a hook th
       starting (until the frontend reports ready). The frontend takes the accepted target once after bootstrap and opens
       it with the ordinary open commands. Every other target starts a new independent process, whatever existing windows
       show. Refines ADR-0035 and keeps ADR-0006.
+      Three safeguards stop a path from spawning windows without end (macOS reports a path in a spawned window's argv
+      again as a file-open event, which made each new window start the next): a window never opens another window for
+      its own target; a path that a live window was opened for, or that was just launched, opens nothing; and no window
+      opens while 50 are open. Live windows are listed in per-user pid files under the user cache directory
+      (`GoMarkEdit/windows/<pid>.json`), ignored when their process is gone. The registry holds launch targets, not
+      documents opened later inside a window.
     - **D19 — Installers offer Open With and never take a default:** platform declarations live in `build/darwin`,
       `build/windows/installer/project.nsi` and `build/linux`, not in `wails.json`; nothing writes a default handler.
     - **D20 — PDF export prints a hidden print copy through the native print dialog:** the copy reuses the preview

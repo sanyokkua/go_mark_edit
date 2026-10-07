@@ -3,6 +3,7 @@ package application_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -222,7 +223,7 @@ func TestConcurrentOpenRequestsAcceptExactlyOnePath(t *testing.T) {
 		group.Add(1)
 		go func() {
 			defer group.Done()
-			holder.AcceptOpenRequest(filepath.Join("/docs", "file.md"))
+			holder.AcceptOpenRequest(filepath.Join("/docs", fmt.Sprintf("file-%d.md", index)))
 		}()
 	}
 	group.Wait()

@@ -770,6 +770,18 @@ interaction, so use a feature-specific manual walkthrough when changes affect th
 19. Drop a folder into a window with a folder already open; exercise Replace and New window, then
     close a folder through the sidebar and File menu, including Cancel and Keep tabs open.
 
+### macOS association checklist
+
+On an installed `.app` (copy to Applications, `lsregister -f` it, relaunch Finder if needed):
+
+1. Open With for a `.md` file lists GoMarkEdit while the previous default application is unchanged.
+2. Get Info > Open with GoMarkEdit > Change All makes double-clicking any `.md` file open it.
+3. With GoMarkEdit not running, double-clicking a file shows it in the single window.
+4. With a window showing `a.md`, double-clicking `b.md` opens a new window that shows only `b.md`.
+5. Opening three selected files opens three windows, one file each.
+6. Dropping a folder on the Dock icon opens a new window with that folder as workspace.
+7. With the Viewer default, a double-clicked file starts in Reading mode and a dropped folder does not.
+
 ## Durable decisions
 
 These decisions are carried forward from the accepted decision records and are restated here as current
@@ -778,7 +790,7 @@ part of the current product.
 
 | Record   | Current decision                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
 | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| ADR-0001 | Use stable Wails v2 with a CGO-free Go backend and pure-Go SQLite. Native webviews and file association remain the platform boundary.                                                                                                                                                                                                                                                                                                                                                                                                   |
+| ADR-0001 | Use stable Wails v2 with a CGO-free Go backend and pure-Go SQLite. Native webviews and file association remain the platform boundary; D19 covers the macOS declarations.                                                                                                                                                                                                                                                                                                                                                                |
 | ADR-0002 | Use Monaco for v1 source editing; keep CodeMirror 6 as a future contained alternative. Bundle editor workers locally.                                                                                                                                                                                                                                                                                                                                                                                                                   |
 | ADR-0004 | Keep documents file-first and use a small SQLite KV store for settings, recents, layout and view state. Launch clean with no session restore or swap files.                                                                                                                                                                                                                                                                                                                                                                             |
 | ADR-0005 | Use one token-driven layout with three built-in themes and light/dark modes; keep editor and preview appearance unified and do not support user-authored themes.                                                                                                                                                                                                                                                                                                                                                                        |
@@ -911,6 +923,25 @@ The owner decisions that shaped this refactor are recorded here so they are not 
   `Init` failure stays takeable after a successful retry. This supersedes the startup-folder open in
   `OnStartup` of ADR-0035. Rejected: single-instance forwarding (ADR-0006) and putting the target in the
   `GetState` snapshot, which races the projection's subscription.
+- **D19 — macOS declares document types and receives Finder opens as events (macOS part):** the bundle plists
+  `build/darwin/Info.plist` and `Info.dev.plist` carry a static `CFBundleDocumentTypes` (Markdown through
+  `net.daringfireball.markdown`, Plain text `txt`, Folder `public.folder` as Viewer), all with `LSHandlerRank`
+  Alternate, and a `UTImportedTypeDeclarations` entry for `net.daringfireball.markdown` (`md`, `markdown`,
+  `mdown`). The entries sit outside the unused Wails `FileAssociations` template block. Alternate rank lists the
+  app under Open With without taking any default; the user chooses with Get Info > Change All. Finder has no
+  Open With for folders, so a folder is opened by dropping it on the Dock or application icon.
+  `LSMinimumSystemVersion` is 11.0. Finder opens arrive as Apple Events, not argv: `application.Options.OnFileOpen`
+  is set into `Mac.OnFileOpen` and `main.go` passes `applicationContext.AcceptOpenRequest`, so D18 routes them
+  (first path into a starting window, every other path to a new window). The packaging test
+  `tests/go/integration/packaging/associations_test.go` walks both plists and compares the declared suffixes with
+  `file.SupportedDocumentSuffixes()`.
+  The same event is delivered for a path in a spawned window's argv, so D19 adds three safeguards in
+  `AcceptOpenRequest`: a window never opens another window for its own target, a path that a live window was opened
+  for or that was launched in the last 10 seconds opens nothing, and no window opens while `MaxWindows` (50) are open
+  (a classified error without Retry: "Too many GoMarkEdit windows are open."). Live windows are the pid files of
+  `WindowRegistry` under `os.UserCacheDir()/GoMarkEdit/windows/`; entries of ended processes are ignored and removed.
+  The registry holds launch targets, not documents opened later inside a window. Rejected: a spawn-depth counter, which
+  also blocks legitimate chains of windows.
 
 ## Planning decisions retained
 

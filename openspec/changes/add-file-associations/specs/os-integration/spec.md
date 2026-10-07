@@ -146,3 +146,33 @@ open as described in "Opening from the operating system".
 - **WHEN** the file manager is the default for folders, GoMarkEdit has been installed on Linux and the user
   double-clicks a folder in the file manager
 - **THEN** the file manager opens the folder and GoMarkEdit does not start
+
+### Requirement: Window safeguards
+
+The system SHALL NOT open a new window for a path that a live GoMarkEdit window was already opened for, and SHALL NOT
+open a new window while 50 GoMarkEdit windows are open. A window SHALL NOT open another window for the path it was
+opened for, even when the operating system reports that path to it again.
+
+#### Scenario: Path already open in a window
+
+- **WHEN** a GoMarkEdit window was opened for `notes.md` and the user opens `notes.md` with GoMarkEdit from the file
+  manager again
+- **THEN** no new window opens
+
+#### Scenario: Path reported again to its own window
+
+- **WHEN** a window starts for `notes.md` and the operating system reports `notes.md` to that window as a file-open
+  event
+- **THEN** no further window opens, whether or not `notes.md` exists
+
+#### Scenario: Window limit
+
+- **WHEN** 50 GoMarkEdit windows are open and the user opens another file with GoMarkEdit from the file manager
+- **THEN** no new window opens
+- **AND** the window that received the request reports "Too many GoMarkEdit windows are open." without a retry action
+
+#### Scenario: Closed or crashed window
+
+- **WHEN** the window opened for `notes.md` has been closed or its process has ended and the user opens `notes.md` with
+  GoMarkEdit
+- **THEN** a window opens and shows `notes.md`

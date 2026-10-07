@@ -105,6 +105,7 @@ func main() {
 		AppModelOptions:   []appmodel.AppModelOption{appmodel.WithDialogs(dialogs, dialogs)},
 		NewWindowLauncher: application.NewOSNewWindowLauncher(appLogger),
 		StartupArgs:       os.Args[1:],
+		WindowRegistry:    application.NewDefaultWindowRegistry(),
 		EmitEvent:         runtime.EventsEmit,
 	}, outcomes)
 	if err := wails.Run(newAppOptionsWithLogger(applicationContext, appLogger)); err != nil {
@@ -217,6 +218,7 @@ func newAppOptionsWithLogger(applicationContext *application.ApplicationContextH
 		Assets:         assets,
 		PreviewHandler: application.NewPreviewImageHandler(applicationContext.AppModelService),
 		Menu:           nativeMenuForPlatform(goruntime.GOOS),
+		OnFileOpen:     applicationContext.AcceptOpenRequest,
 		OnStartup: func(ctx context.Context) {
 			applicationContext.SetContext(ctx)
 			if err := applicationContext.Init(ctx); err != nil {

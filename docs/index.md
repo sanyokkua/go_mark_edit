@@ -225,11 +225,13 @@ Use `scripts/build setup --with-browser` to install Chromium for E2E verificatio
 - `.github/workflows/release.yml` runs full verification and produces a macOS arm64 `.app` zip. It accepts stable, alpha and beta version forms. Manual dispatch uploads a dry-run artifact; a tagged push creates a GitHub Release.
 - Cross-platform Go CI is configured, but Windows/Linux packaged release artifacts are not currently configured in the release workflow.
 
+Platform integration: the macOS bundle declares `.md`, `.markdown`, `.mdown` and `.txt` documents and folders with Alternate handler rank, so Finder lists GoMarkEdit under Open With and a folder can be dropped on its Dock or application icon. Finder has no Open With for folders. GoMarkEdit never becomes the default by itself; the user chooses it with Get Info > Change All. Finder opens reach the backend as file-open events (D19). A file already open in a live window opens nothing, and at most 50 windows are open at once.
+
 ## 11. Current Product Scope and Future Work
 
 Current behaviour is specified in `openspec/specs/`; the earlier native shell, editor, real-file lifecycle, architecture refactor, folder workspace, rich Markdown, resize/find, table and conflict-comparison work is kept under `openspec/changes/archive/`.
 
-The app provides editor, split and preview arrangements; Minimal, GFM and Full rendering with local code highlighting, math and Mermaid; document-wide Format, Compact and Lint; settings, local file operations, external-change handling and folder browsing. It opens `.md`, `.markdown`, `.mdown` and `.txt` documents. Work still deferred includes the command palette, Assistant, export, image authoring and broader asset handling, and operating-system file associations. Remote images remain placeholders until a user-consent policy is specified. Treat these as candidate work only; propose and approve an OpenSpec change and confirm priorities before implementing any item.
+The app provides editor, split and preview arrangements; Minimal, GFM and Full rendering with local code highlighting, math and Mermaid; document-wide Format, Compact and Lint; settings, local file operations, external-change handling and folder browsing. It opens `.md`, `.markdown`, `.mdown` and `.txt` documents. Work still deferred includes the command palette, Assistant, export, image authoring and broader asset handling. Remote images remain placeholders until a user-consent policy is specified. Treat these as candidate work only; propose and approve an OpenSpec change and confirm priorities before implementing any item.
 
 Future implementation work starts as an OpenSpec change on its own feature branch.
 
