@@ -424,7 +424,10 @@ dev and setup. Hooks and CI call the scripts directly. A developer may use the f
   never zero; warning counts do not fail a stage.
 - CI (`.github/workflows/`): `push.yml` runs the stages as parallel `ubuntu-24.04` jobs so the wall time
   is that of the slowest one: `static` (Lint, Format, Build), `tests` (Unit, Integration) and `e2e`, a
-  three-way matrix (`E2E_SHARD=<n>/3`, read by `frontend/playwright.config.ts`) run under `xvfb-run`. They
+  matrix run under `xvfb-run`: the parallel `chromium` project in four shards (`E2E_SHARD=<n>/4`) and a
+  `serial` job for the timing-bound and clipboard projects. `E2E_PROJECTS` and `E2E_SHARD` are read by
+  `frontend/playwright.config.ts`, which keeps a project dependency only when both projects are selected,
+  because Playwright runs a selected project's dependencies in full on every shard. They
   share the `.github/actions/setup` composite action (Linux Wails toolchain plus `lsof`, `xvfb` and `xclip`,
   Go, Node, tool and browser caches, `scripts/build setup`). The stages are independent because the Wails
   bindings and generated themes are tracked. `cross-platform-go` keeps the Windows and macOS Go tests. Caches: Go modules and build cache
