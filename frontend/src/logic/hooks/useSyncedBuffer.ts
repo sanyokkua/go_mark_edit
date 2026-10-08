@@ -109,18 +109,29 @@ export function useSyncedBuffer(
         toEditorPosition(view.cursor.line, view.cursor.column),
     );
 
+    /*
+     * The session refs belong to one document. The editor surface outlives a
+     * document switch, and the outgoing Monaco instance can report a blur while
+     * React commits the incoming document, before any passive effect runs. Every
+     * callback therefore adopts its own render's document first, so it never
+     * captures the outgoing document's text or caret under the incoming identity.
+     */
+    const adoptDocument = useCallback((): void => {
+        if (currentDocumentRef.current === documentId) return;
+        const cursor = toEditorPosition(view.cursor.line, view.cursor.column);
+        currentDocumentRef.current = documentId;
+        viewRef.current = view;
+        contentRef.current = initialContent;
+        cursorRef.current = cursor;
+        selectionRef.current = view.selection;
+        scrollRef.current = view.scroll;
+        setLiveCursor(cursor);
+    }, [documentId, initialContent, view]);
+
     useEffect((): void => {
         viewRef.current = view;
-        if (currentDocumentRef.current !== documentId) {
-            const cursor = toEditorPosition(view.cursor.line, view.cursor.column);
-            currentDocumentRef.current = documentId;
-            contentRef.current = initialContent;
-            cursorRef.current = cursor;
-            selectionRef.current = view.selection;
-            scrollRef.current = view.scroll;
-            setLiveCursor(cursor);
-        }
-    }, [documentId, initialContent, view]);
+        adoptDocument();
+    }, [adoptDocument, view]);
 
     useEffect((): (() => void) => {
         sessionActiveRef.current = true;
@@ -149,41 +160,52 @@ export function useSyncedBuffer(
             lifecycleBarrier.flushActiveSession(
                 expectedDocumentId,
                 expectedActivationToken,
-                (): LifecycleCapture<string, DocViewInput, symbol> => ({
-                    documentId,
-                    activationToken: activation.token,
-                    content: contentRef.current,
-                    view: toDocViewInput(viewRef.current, cursorRef.current, selectionRef.current, scrollRef.current),
-                }),
+                (): LifecycleCapture<string, DocViewInput, symbol> => {
+                    adoptDocument();
+                    return {
+                        documentId,
+                        activationToken: activation.token,
+                        content: contentRef.current,
+                        view: toDocViewInput(
+                            viewRef.current,
+                            cursorRef.current,
+                            selectionRef.current,
+                            scrollRef.current,
+                        ),
+                    };
+                },
             ),
-        [activation.token, documentId, lifecycleBarrier],
+        [activation.token, adoptDocument, documentId, lifecycleBarrier],
     );
 
     const updateDocView = useCallback((): void => {
         if (!sessionActiveRef.current) return;
+        adoptDocument();
         const update = adapter.updateLocalDocView ?? adapter.updateDocView;
         void update(
             documentId,
             toDocViewInput(viewRef.current, cursorRef.current, selectionRef.current, scrollRef.current),
         );
-    }, [adapter, documentId]);
+    }, [adapter, adoptDocument, documentId]);
 
     const onChange = useCallback(
         (content: string): void => {
             if (!sessionActiveRef.current) return;
+            adoptDocument();
             contentRef.current = content;
             void adapter.updateBuffer(documentId, content);
         },
-        [adapter, documentId],
+        [adapter, adoptDocument, documentId],
     );
 
     const onCursorPositionChange = useCallback(
         (position: EditorPosition): void => {
+            adoptDocument();
             cursorRef.current = position;
             setLiveCursor(position);
             updateDocView();
         },
-        [updateDocView],
+        [adoptDocument, updateDocView],
     );
 
     const onSelectionChange = useCallback(
@@ -191,26 +213,29 @@ export function useSyncedBuffer(
             if (selection === null) {
                 return;
             }
+            adoptDocument();
             selectionRef.current = toSelectionRange(selection);
             updateDocView();
         },
-        [updateDocView],
+        [adoptDocument, updateDocView],
     );
 
     const onEditorScrollChange = useCallback(
         (scrollTop: number): void => {
+            adoptDocument();
             scrollRef.current = { ...scrollRef.current, editor: scrollTop };
             updateDocView();
         },
-        [updateDocView],
+        [adoptDocument, updateDocView],
     );
 
     const onPreviewScrollChange = useCallback(
         (scrollTop: number): void => {
+            adoptDocument();
             scrollRef.current = { ...scrollRef.current, preview: scrollTop };
             updateDocView();
         },
-        [updateDocView],
+        [adoptDocument, updateDocView],
     );
 
     const onBlur = useCallback((): void => {

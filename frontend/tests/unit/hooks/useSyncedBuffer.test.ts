@@ -1,8 +1,9 @@
 import { act, renderHook } from '@testing-library/react';
+import { useLayoutEffect } from 'react';
 
 import { VIEW_SYNC_MS, createAppModelAdapter } from '../../../src/logic/adapter';
 import type { DocumentView } from '../../../src/logic/store/appModelTypes';
-import { useSyncedBuffer } from '../../../src/logic/hooks/useSyncedBuffer';
+import { useSyncedBuffer, type EditorSynchronizationAdapter } from '../../../src/logic/hooks/useSyncedBuffer';
 
 const view: DocumentView = {
     arrangement: 'editor',
@@ -235,4 +236,57 @@ it('starts a new editor session for an external replacement only', () => {
     // A reload advances the epoch, which is the only thing that restarts it.
     rerender({ content: 'theirs\n', epoch: 1 });
     expect(result.current.activationId).not.toBe(first);
+});
+
+/*
+ * The editor surface outlives a document switch: the outgoing Monaco instance is
+ * removed while React commits the incoming document, and a focused editor reports
+ * that removal as a blur through the callbacks of the render that removed it.
+ * The layout effect below fires in that same commit, before passive effects run.
+ */
+it('never flushes the outgoing document text or caret into the incoming document', async () => {
+    const updateBuffer = jest.fn((documentId: string, content: string): Promise<void> => {
+        void documentId;
+        void content;
+        return Promise.resolve();
+    });
+    const updateDocView = jest.fn((documentId: string, docView: unknown): Promise<void> => {
+        void documentId;
+        void docView;
+        return Promise.resolve();
+    });
+    const adapter: EditorSynchronizationAdapter = {
+        flushBuffer: () => Promise.resolve(),
+        flushDocView: () => Promise.resolve(),
+        updateBuffer,
+        updateDocView,
+    };
+    const { rerender, result } = renderHook(
+        ({ documentId, content }: { documentId: string; content: string }) => {
+            const session = useSyncedBuffer(documentId, view, adapter, content);
+            const { onBlur } = session;
+            useLayoutEffect((): void => {
+                if (documentId === 'b') onBlur();
+            }, [documentId, onBlur]);
+            return session;
+        },
+        { initialProps: { documentId: 'a', content: 'a text\n' } },
+    );
+
+    act((): void => {
+        result.current.onChange('a edited\n');
+        result.current.onCursorPositionChange({ lineNumber: 7, column: 3 });
+    });
+    updateBuffer.mockClear();
+    updateDocView.mockClear();
+
+    await act(async (): Promise<void> => {
+        rerender({ documentId: 'b', content: 'b text\n' });
+        await Promise.resolve();
+    });
+
+    expect(updateBuffer).not.toHaveBeenCalledWith('b', 'a edited\n');
+    for (const [documentId, docView] of updateDocView.mock.calls) {
+        expect([documentId, (docView as { cursor: unknown }).cursor]).toEqual(['b', { line: 1, column: 1 }]);
+    }
 });
