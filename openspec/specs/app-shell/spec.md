@@ -95,9 +95,20 @@ The system SHALL start in four steps: native bridge, application model, settings
 - **WHEN** the native bridge step fails
 - **THEN** only Quit is offered, and the window is still shown so the screen is visible
 
-### Requirement: Multiple windows
+### Requirement: Full screen and About
 
-The system SHALL open each new window as an independent application process with its own tabs and workspace. WHEN a folder path is the first command-line argument and names an existing directory, the system SHALL open it as the workspace after startup.
+WHEN the user chooses Full screen, the system SHALL toggle the native window between full screen and normal. WHEN the user chooses About GoMarkEdit, the system SHALL show a dialog with the application version and a Close button.
+
+#### Scenario: Toggle full screen
+
+- **WHEN** the user presses F11 or chooses View, Full screen
+- **THEN** the window enters full screen, and the same command leaves it
+
+### Requirement: Independent windows
+
+The system SHALL open each new window as an independent application process with its own tabs and workspace. How a path
+passed by the operating system or on the command line is opened, and in which window, is defined by the os-integration
+capability.
 
 #### Scenario: New Window
 
@@ -109,30 +120,18 @@ The system SHALL open each new window as an independent application process with
 - **WHEN** the new process cannot be started
 - **THEN** the system reports "A new window could not be opened." and keeps the current window unchanged
 
-#### Scenario: Startup folder
+### Requirement: Controls shown disabled
 
-- **WHEN** the application is started with an existing directory as its first argument
-- **THEN** that directory opens as the workspace and no previous session is restored for it
-
-### Requirement: Present-but-disabled controls
-
-The system SHALL display the Assistant toggle (View menu and, at normal width, a toolbar icon), Export to PDF (File menu), Command palette (editor context menu and shortcuts dialog), Open logs folder and View on GitHub (About menu) as disabled controls. They SHALL perform no action, and the system SHALL NOT render an Assistant panel.
+The system SHALL display the Assistant toggle (View menu and, at normal width, a toolbar icon), Command palette (editor
+context menu and shortcuts dialog), Open logs folder and View on GitHub (About menu) as disabled controls. They SHALL
+perform no action, and the system SHALL NOT render an Assistant panel.
 
 #### Scenario: Disabled Assistant
 
 - **WHEN** the user looks at the toolbar icon or the View menu entry for Assistant
 - **THEN** it is shown disabled and activating it does nothing
 
-#### Scenario: Disabled export
+#### Scenario: Disabled About entries
 
-- **WHEN** the user opens the File menu
-- **THEN** "Export to PDF" is listed and disabled
-
-### Requirement: Full screen and About
-
-WHEN the user chooses Full screen, the system SHALL toggle the native window between full screen and normal. WHEN the user chooses About GoMarkEdit, the system SHALL show a dialog with the application version and a Close button.
-
-#### Scenario: Toggle full screen
-
-- **WHEN** the user presses F11 or chooses View, Full screen
-- **THEN** the window enters full screen, and the same command leaves it
+- **WHEN** the user opens the About menu
+- **THEN** Open logs folder and View on GitHub are listed and disabled
