@@ -422,9 +422,12 @@ dev and setup. Hooks and CI call the scripts directly. A developer may use the f
   `scripts/baseline`. The record is named after the checked-out branch (slashes become dashes), or after the short
   commit on a detached HEAD. Required reports that are missing or malformed are UNAVAILABLE or UNRELIABLE,
   never zero; warning counts do not fail a stage.
-- CI (`.github/workflows/`): `push.yml` `verify` runs on `ubuntu-24.04` with the Linux Wails toolchain
-  plus `lsof`, `xvfb` and `xclip`, and runs the complete `scripts/verify` including E2E under `xvfb-run`;
-  `cross-platform-go` keeps the Windows and macOS Go tests. Caches: Go modules and build cache
+- CI (`.github/workflows/`): `push.yml` runs the stages as parallel `ubuntu-24.04` jobs so the wall time
+  is that of the slowest one: `static` (Lint, Format, Build), `tests` (Unit, Integration) and `e2e`, a
+  three-way matrix (`E2E_SHARD=<n>/3`, read by `frontend/playwright.config.ts`) run under `xvfb-run`. They
+  share the `.github/actions/setup` composite action (Linux Wails toolchain plus `lsof`, `xvfb` and `xclip`,
+  Go, Node, tool and browser caches, `scripts/build setup`). The stages are independent because the Wails
+  bindings and generated themes are tracked. `cross-platform-go` keeps the Windows and macOS Go tests. Caches: Go modules and build cache
   (`setup-go`), the Go tool binaries in `~/go/bin` (keyed by the pinned Wails, golangci-lint and shfmt
   versions; `scripts/build setup` skips `go install` when the installed module version already matches),
   Playwright browsers (keyed by the Playwright version in `package-lock.json`) and the ESLint cache

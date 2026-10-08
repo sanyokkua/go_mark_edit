@@ -234,7 +234,7 @@ Use `scripts/build setup --with-browser` to install Chromium for E2E verificatio
 
 ### 10.3 CI and Release
 
-- `.github/workflows/push.yml` runs Go package tests on macOS and Windows, builds Go packages, and runs the complete verification, including E2E, on Ubuntu 24.04. A push that changes only documentation, agent, OpenSpec or tooling-configuration files (the `paths-ignore` list in `push.yml`) skips it; any other changed file, including test fixtures, scripts and workflows, runs it. Tag releases always run.
+- `.github/workflows/push.yml` runs Go package tests on macOS and Windows, builds Go packages, and runs the verification stages as parallel Ubuntu 24.04 jobs (static checks, unit and integration tests, and E2E in three shards). A push that changes only documentation, agent, OpenSpec or tooling-configuration files (the `paths-ignore` list in `push.yml`) skips it; any other changed file, including test fixtures, scripts and workflows, runs it. Tag releases always run.
 - `.github/workflows/release.yml` requires a successful `push.yml` run for the tagged commit (or a manual dispatch with `full_verify`, which runs the complete verification on macOS), runs the macOS E2E subset and produces a macOS arm64 `.app` zip. It accepts stable, alpha and beta version forms. Manual dispatch uploads a dry-run artifact; a tagged push creates a GitHub Release.
 - Cross-platform Go CI is configured, but Windows/Linux packaged release artifacts are not currently configured in the release workflow.
 

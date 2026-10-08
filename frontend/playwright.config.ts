@@ -4,6 +4,10 @@ import { defineConfig, devices } from '@playwright/test';
 
 const isCI = Boolean(process.env.CI);
 
+// The push workflow splits the suite across jobs: E2E_SHARD='<current>/<total>'.
+const shardMatch = /^(\d+)\/(\d+)$/u.exec(process.env.E2E_SHARD ?? '');
+const shard = shardMatch === null ? undefined : { current: Number(shardMatch[1]), total: Number(shardMatch[2]) };
+
 // Files that exercise behaviour tied to the platform the product ships on. The release
 // workflow sets E2E_SUBSET=macos to run only these plus the @native-clipboard tests, serially.
 const macosSubset = process.env.E2E_SUBSET === 'macos';
@@ -17,6 +21,7 @@ export default defineConfig({
     forbidOnly: true,
     fullyParallel: true,
     retries: 0,
+    shard,
     timeout: 180_000,
     workers: isCI ? 3 : Math.min(4, availableParallelism()),
     expect: { timeout: isCI ? 15_000 : 5_000 },
