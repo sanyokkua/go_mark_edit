@@ -135,14 +135,14 @@ it('assigns every toolbar group to the overflow bucket its width owns', () => {
             never: false,
         },
         { ids: ['link', 'image', 'table'], priority: '400', never: false },
-        { ids: ['format', 'compact', 'lint'], priority: '0', never: true },
+        { ids: ['format'], priority: '0', never: true },
     ]);
 
     // With no open document, tidy actions are unavailable; image remains deferred.
     const disabled = Array.from(document.body.querySelectorAll<HTMLButtonElement>('[data-action-id]'))
         .filter((element) => element.disabled)
         .map((element) => element.getAttribute('data-action-id'));
-    expect([...new Set(disabled)].sort()).toEqual(['compact', 'format', 'image', 'lint']);
+    expect([...new Set(disabled)].sort()).toEqual(['format', 'image']);
 });
 
 it('closes the toolbar overflow on Escape and outside pointer input', () => {
@@ -496,11 +496,10 @@ it('disables the formatting toolbar for a non-writable document', () => {
     for (const name of ['Bold', 'Italic', 'Heading 1', 'Table']) {
         expect(screen.getByRole('button', { name })).toBeDisabled();
     }
-    for (const name of ['Format', 'Compact']) {
-        expect(screen.getByRole('button', { name })).toBeDisabled();
-        expect(screen.getByRole('button', { name })).toHaveAttribute('title', 'This document is read-only.');
-    }
-    expect(screen.getByRole('button', { name: 'Lint' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Format' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Format' })).toHaveAttribute('title', 'This document is read-only.');
+    expect(screen.queryByRole('button', { name: 'Compact' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Lint' })).not.toBeInTheDocument();
 
     let slot: ReturnType<typeof acquire> = null;
     act(() => {
@@ -508,9 +507,10 @@ it('disables the formatting toolbar for a non-writable document', () => {
     });
     try {
         act(() => slot?.setProgress(1, 2));
-        for (const name of ['Format', 'Compact', 'Lint']) {
-            expect(screen.getByRole('button', { name })).toHaveAttribute('title', 'Another operation is in progress.');
-        }
+        expect(screen.getByRole('button', { name: 'Format' })).toHaveAttribute(
+            'title',
+            'Another operation is in progress.',
+        );
     } finally {
         act(() => slot?.release());
     }
@@ -563,9 +563,7 @@ it('leaves the formatting toolbar live for a writable document', () => {
     for (const name of ['Bold', 'Italic', 'Heading 1', 'Table']) {
         expect(screen.getByRole('button', { name })).toBeEnabled();
     }
-    for (const name of ['Format', 'Compact', 'Lint']) {
-        expect(screen.getByRole('button', { name })).toBeEnabled();
-    }
+    expect(screen.getByRole('button', { name: 'Format' })).toBeEnabled();
 });
 
 it('keeps the Image action unavailable for a writable document, ignoring a click and Ctrl+Shift+I', () => {

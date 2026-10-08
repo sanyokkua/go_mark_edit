@@ -272,14 +272,18 @@ command seam to move the caret and focus the editor, first restoring the editor 
 the document is in preview-only mode. The panel renders up to 10,000 ordered findings and reports
 any remaining count without truncating the status total.
 
-The action registry now exposes Format, Compact and Lint on the toolbar, editor context menu,
-Format menu and editor-scoped shortcuts. Its availability check distinguishes loading settings,
+The action registry exposes Format, Compact and Lint on the Markdown menu, the editor context menu and
+editor-scoped shortcuts; the toolbar shows only Format. Its availability check distinguishes loading settings,
 no document, read-only Format/Compact and a busy operation slot; read-only Lint remains available.
 `editorActionExecutor.ts` invokes the single tidy command owner and maps its terminal outcomes
-into dispatcher results. The Format menu uses the captured editor session even after the popup
-takes focus. The operation slot's kind and visible progress replace the matching toolbar or
-Format-menu action with Cancel; the toolbar's never-overflowing control also serves runs started
-from context menus or shortcuts. Feature 006 leaves the command palette, Assistant, Export PDF and
+into dispatcher results. The Markdown menu (`MarkdownMenu.tsx`) is built from the registry's
+`markdown-menu` surface: `groupedActionsForSurface` groups consecutive actions by their
+`surfaceGroupKeys` heading (Text, Headings, Lists & quotes, Links, images & tables, Formatting &
+verification), and each group renders as a `role="group"` with a visible heading. It uses the captured
+editor session even after the popup takes focus. The operation slot's kind and visible progress replace the
+running action in the Markdown menu with Cancel, and the toolbar's never-overflowing Format control shows the
+progress and Cancel of whichever of Format, Compact or Lint is running, including runs started from context
+menus or shortcuts. Feature 006 leaves the command palette, Assistant, Export PDF and
 image insertion deferred.
 
 `frontend/src/logic/tidy/` owns source tidying independently of Monaco, Redux and the bridge.
@@ -385,8 +389,10 @@ All appearance values come from `frontend/src/ui/styles/tokens.css`. The three t
 values are selected on the document root. Widget stylesheets do not select themes and portalled
 surfaces inherit the root attributes.
 Popup and ModalShell share dedicated floating-surface background and backdrop-filter tokens.
-Liquid Glass floating surfaces use strong frost in both appearances; these tokens do not change
-the application-wide blur or the solid Material and Minimal surfaces.
+Liquid Glass floating surfaces reuse `--elevated` and `--blur` (white at 80% / `rgb(28, 30, 54)` at 82%, a
+28-pixel blur with 150% / 160% saturation); these tokens do not change the application-wide blur or the solid
+Material and Minimal surfaces. Behind every dialog `ModalShell` paints the `--overlay` scrim
+(`rgb(6, 8, 16)` at 42%) with `--overlay-backdrop-filter` (a 3-pixel blur) in every theme.
 `frontend/src/ui/styles/base.css` paints the application tint and optional Glass highlight/backdrop
 on `.application-frame`, above the body canvas. Header and status rows show that continuous app
 surface; the status row adds only the theme backdrop. Surface opacity must not depend on tab count,

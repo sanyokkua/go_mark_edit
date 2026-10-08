@@ -1,4 +1,5 @@
 import { expect, test } from '../support/harness';
+import { runFromMarkdownMenu } from '../support/markdownMenu';
 
 for (const scenario of [
     { name: 'writable', text: '* item\n', readOnly: false },
@@ -33,8 +34,7 @@ for (const scenario of [
                 await expect(page.locator('[data-editor-surface] .view-lines')).toContainText('* item');
                 const toolbar = page.getByRole('toolbar', { name: 'Document toolbar' });
                 if (scenario.readOnly) await expect(toolbar.locator('[data-action-id="format"]')).toBeDisabled();
-                await expect(toolbar.locator('[data-action-id="lint"]')).toBeEnabled();
-                await toolbar.locator('[data-action-id="lint"]').click();
+                await runFromMarkdownMenu(page, 'lint');
                 const marker = page.locator('.squiggly-warning').first();
                 await expect(marker).toBeVisible();
                 const markerBox = await marker.boundingBox();

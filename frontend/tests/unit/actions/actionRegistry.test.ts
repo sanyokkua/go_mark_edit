@@ -2,6 +2,7 @@ import { t } from '../../../src/i18n';
 import {
     actionRegistry,
     actionsForSurface,
+    groupedActionsForSurface,
     getActionAvailability,
     getAction,
     type ActionId,
@@ -206,7 +207,10 @@ it('gates each tidy action by settings, document capability, and the operation s
     expect(getActionAvailability('lint', { markdownSettingsLoaded: true, projectedState: readOnly })).toEqual({
         kind: 'available',
     });
-    expect(actionsForSurface('format-menu').map(({ id }) => id)).toEqual(['format', 'compact', 'lint']);
+    expect(actionsForSurface('markdown-menu').map(({ id }) => id)).toContain('lint');
+    expect(actionsForSurface('toolbar').map(({ id }) => id)).toContain('format');
+    expect(actionsForSurface('toolbar').map(({ id }) => id)).not.toContain('compact');
+    expect(actionsForSurface('toolbar').map(({ id }) => id)).not.toContain('lint');
     expect(actionsForSurface('context').map(({ id }) => id)).toContain('lint');
 });
 
@@ -424,4 +428,20 @@ it('offers Distraction-free reading on Mod+Enter only while a document is open',
             projectedState: { activeDocumentId: 'doc-2', documents: {} },
         }),
     ).toEqual({ kind: 'unavailable', reason: 'no-document' });
+});
+
+it('groups the Markdown menu actions under their heading keys in registry order', () => {
+    expect(
+        groupedActionsForSurface('markdown-menu').map(({ groupKey, actions }) => [
+            groupKey,
+            actions.map(({ id }) => id),
+        ]),
+    ).toEqual([
+        ['menu.markdown.group.text', ['bold', 'italic', 'strike', 'inline-code']],
+        ['menu.markdown.group.headings', ['heading-1', 'heading-2', 'heading-3']],
+        ['menu.markdown.group.lists', ['bullet-list', 'numbered-list', 'task-list', 'quote']],
+        ['menu.markdown.group.insert', ['link', 'image', 'table']],
+        ['menu.markdown.group.tidy', ['format', 'compact', 'lint']],
+    ]);
+    expect(getAction('table').surfaceLabelKeys?.['markdown-menu']).toBe('action.table.markdown-menu.label');
 });

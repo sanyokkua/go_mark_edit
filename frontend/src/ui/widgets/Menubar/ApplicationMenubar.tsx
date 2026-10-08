@@ -109,7 +109,7 @@ export default function ApplicationMenubar({
             activeDocument={activeDocument}
             canReopenLastFile={canReopenLastFile}
             documentId={menuState.documentId}
-            formatMenuProps={{
+            markdownMenuProps={{
                 markdownSettingsLoaded: editorSettings.markdownSettings !== undefined,
                 slot,
                 capture: editorActions.capture,

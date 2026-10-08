@@ -119,7 +119,7 @@ it('draws every menubar trigger from one owner', () => {
     );
 
     const menu = screen.getByRole('navigation', { name: 'Application actions' });
-    const triggers = ['File', 'Format', 'Settings', 'View', 'About'].map((name) =>
+    const triggers = ['File', 'Markdown', 'Settings', 'View', 'About'].map((name) =>
         within(menu).getByRole('button', { name }),
     );
 
@@ -131,7 +131,7 @@ it('draws every menubar trigger from one owner', () => {
     }
 });
 
-it.each(['File', 'Format', 'Settings', 'View', 'About'])(
+it.each(['File', 'Markdown', 'Settings', 'View', 'About'])(
     'opens the %s menu from ArrowDown like every other menubar trigger',
     (name) => {
         render(
@@ -156,7 +156,7 @@ it.each(['File', 'Format', 'Settings', 'View', 'About'])(
     },
 );
 
-it('renders File, Format, Settings, View, About in binding order with exact menu inventories', async () => {
+it('renders File, Markdown, Settings, View, About in binding order with exact menu inventories', async () => {
     const onAbout = jest.fn();
     render(
         <Menubar
@@ -175,13 +175,31 @@ it('renders File, Format, Settings, View, About in binding order with exact menu
         within(menu)
             .getAllByRole('button')
             .map((button) => button.textContent),
-    ).toEqual(['File', 'Format', 'Settings', 'View', 'About']);
+    ).toEqual(['File', 'Markdown', 'Settings', 'View', 'About']);
 
-    fireEvent.click(within(menu).getByRole('button', { name: 'Format' }));
-    const formatMenu = screen.getByRole('menu', { name: 'Format' });
-    expect(formatMenu).toHaveAttribute('data-viewport-popup', 'format-menu');
-    expect(menuItemLabels(formatMenu)).toEqual(['Format', 'Compact', 'Lint']);
-    fireEvent.click(within(menu).getByRole('button', { name: 'Format' }));
+    fireEvent.click(within(menu).getByRole('button', { name: 'Markdown' }));
+    const markdownMenu = screen.getByRole('menu', { name: 'Markdown' });
+    expect(markdownMenu).toHaveAttribute('data-viewport-popup', 'markdown-menu');
+    expect(menuItemLabels(markdownMenu)).toEqual([
+        'Bold',
+        'Italic',
+        'Strikethrough',
+        'Inline code',
+        'Heading 1',
+        'Heading 2',
+        'Heading 3',
+        'Bullet list',
+        'Numbered list',
+        'Task list',
+        'Quote',
+        'Link',
+        'Image',
+        'Table…',
+        'Format',
+        'Compact',
+        'Lint',
+    ]);
+    fireEvent.click(within(menu).getByRole('button', { name: 'Markdown' }));
 
     fireEvent.click(within(menu).getByRole('button', { name: 'Settings' }));
     const settingsMenu = screen.getByRole('menu', { name: 'Settings menu' });
@@ -354,7 +372,7 @@ it('moves the same ordered top-level actions into overflow at narrow width', () 
     fireEvent.keyDown(overflow, { key: 'ArrowDown' });
     expect(menuItemLabels(screen.getByRole('menu', { name: 'Application actions' }))).toEqual([
         'File',
-        'Format',
+        'Markdown',
         'Settings',
         'View',
         'About',
@@ -568,7 +586,7 @@ it('switches to the keyboard-reachable overflow only at the 375-pixel state', ()
     fireEvent.keyDown(overflow, { key: 'ArrowDown' });
     expect(menuItemLabels(screen.getByRole('menu', { name: 'Application actions' }))).toEqual([
         'File',
-        'Format',
+        'Markdown',
         'Settings',
         'View',
         'About',
@@ -605,7 +623,7 @@ it('keeps the implemented desktop menubar grouped and keyboard-reachable', () =>
         within(menu as HTMLElement)
             .getAllByRole('button')
             .map((button) => button.textContent),
-    ).toEqual(['File', 'Format', 'Settings', 'View', 'About']);
+    ).toEqual(['File', 'Markdown', 'Settings', 'View', 'About']);
     expect(
         within(menu as HTMLElement)
             .getAllByRole('button')

@@ -76,7 +76,7 @@ it('renders grouped formatting controls with a trailing arrangement island', () 
     expect(screen.getByRole('button', { name: 'Format' })).toHaveAttribute('data-tool-button-variant', 'text');
 });
 
-it('replaces the matching always-visible tidy control with Cancel while progress is visible', () => {
+it('replaces the Format control with Cancel while any tidy run, here Compact, shows progress', () => {
     const slot = acquire('compact', { documentId: 'doc-1', size: 1024 * 1024 + 1 });
     expect(slot).not.toBeNull();
     const cancel = jest.fn();
@@ -90,7 +90,8 @@ it('replaces the matching always-visible tidy control with Cancel while progress
         const control = within(toolbar).getByRole('button', { name: 'Cancel' });
         expect(control.closest('[data-bar-overflow="never"]')).toBeInTheDocument();
         expect(within(toolbar).queryByRole('button', { name: 'Compact' })).not.toBeInTheDocument();
-        expect(within(toolbar).getByRole('button', { name: 'Format' })).toBeDisabled();
+        expect(within(toolbar).queryByRole('button', { name: 'Format' })).not.toBeInTheDocument();
+        expect(control).toHaveAttribute('data-action-id', 'format');
         fireEvent.click(control);
         expect(cancel).toHaveBeenCalledTimes(1);
     } finally {

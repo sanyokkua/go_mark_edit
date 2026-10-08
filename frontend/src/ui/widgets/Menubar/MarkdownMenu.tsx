@@ -1,10 +1,10 @@
-import { useEffect, useRef, useState } from 'react';
+import { Fragment, useEffect, useRef, useState } from 'react';
 
 import { t } from '../../../i18n';
 import {
     actionUnavailableLabelKey,
     getActionAvailability,
-    type ActionEntry,
+    type ActionGroup,
     type ActionId,
     type ProjectedActionState,
 } from '../../../logic/actions/actionRegistry';
@@ -13,10 +13,10 @@ import type { EditorActionSnapshot } from '../../../logic/actions/editorActionEx
 import type { OperationSlotState } from '../../../logic/operations/operationSlot';
 import { currentPlatform, formatShortcut } from '../../../logic/actions/shortcutRegistry';
 import MenuItem from '../../components/MenuItem';
-import Popup, { PopupTrigger } from '../../components/Popup';
+import Popup, { PopupGroupLabel, PopupSeparator, PopupTrigger } from '../../components/Popup';
 
-export interface FormatMenuProps {
-    actions: readonly ActionEntry[];
+export interface MarkdownMenuProps {
+    groups: readonly ActionGroup[];
     markdownSettingsLoaded: boolean;
     projectedState?: ProjectedActionState;
     slot: OperationSlotState;
@@ -30,8 +30,8 @@ export interface FormatMenuProps {
     anchorElement?: HTMLElement | null;
 }
 
-export default function FormatMenu({
-    actions,
+export default function MarkdownMenu({
+    groups,
     markdownSettingsLoaded,
     projectedState,
     slot,
@@ -43,7 +43,7 @@ export default function FormatMenu({
     onTrigger,
     showTrigger = true,
     anchorElement,
-}: FormatMenuProps): React.JSX.Element {
+}: MarkdownMenuProps): React.JSX.Element {
     const [trigger, setTrigger] = useState<HTMLButtonElement | null>(null);
     const snapshot = useRef<EditorActionSnapshot | undefined>(undefined);
     useEffect(() => {
@@ -69,13 +69,13 @@ export default function FormatMenu({
                         setOpen(true);
                     }}
                 >
-                    {t('shell.format')}
+                    {t('shell.markdown')}
                 </PopupTrigger>
             ) : null}
             <Popup
                 anchor={{ trigger: showTrigger ? trigger : (anchorElement ?? null) }}
-                aria-label={t('shell.format')}
-                data-viewport-popup="format-menu"
+                aria-label={t('shell.markdown')}
+                data-viewport-popup="markdown-menu"
                 initialFocus="first"
                 open={open}
                 returnFocusTo={showTrigger ? trigger : anchorElement}
@@ -83,43 +83,61 @@ export default function FormatMenu({
                 size="menu"
                 onOpenChange={setOpen}
             >
-                {actions.map((item) => {
-                    const availability = getActionAvailability(item.id, {
-                        markdownSettingsLoaded,
-                        projectedState,
-                        slotBusy: slot.state === 'running',
-                    });
-                    const cancellable = slot.state === 'running' && slot.progress !== null && slot.kind === item.id;
-                    const progress = slot.state === 'running' ? slot.progress : null;
-                    const disabled = !cancellable && (availability.kind === 'unavailable' || onExecute === undefined);
-                    const accelerator =
-                        item.shortcut === undefined ? undefined : formatShortcut(item.shortcut, currentPlatform());
-                    return (
-                        <MenuItem
-                            accelerator={cancellable ? undefined : accelerator}
-                            aria-keyshortcuts={cancellable ? undefined : accelerator}
-                            data-action-id={item.id}
-                            disabled={disabled}
-                            key={item.id}
-                            label={cancellable ? t('tidy.cancel') : t(item.labelKey)}
-                            title={
-                                cancellable
-                                    ? t('tidy.running')
-                                    : availability.kind === 'unavailable'
-                                      ? t(actionUnavailableLabelKey(availability.reason))
-                                      : undefined
-                            }
-                            trailing={
-                                cancellable && progress !== null ? `${progress.done}/${progress.total}` : undefined
-                            }
-                            onSelect={(): void => {
-                                if (cancellable) onCancel?.();
-                                else void onExecute?.(item.id, snapshot.current);
-                                setOpen(false);
-                            }}
-                        />
-                    );
-                })}
+                {groups.map((group, groupIndex) => (
+                    <Fragment key={group.groupKey}>
+                        {groupIndex === 0 ? null : <PopupSeparator />}
+                        <div aria-label={t(group.groupKey)} role="group">
+                            <PopupGroupLabel>{t(group.groupKey)}</PopupGroupLabel>
+                            {group.actions.map((item) => {
+                                const availability = getActionAvailability(item.id, {
+                                    markdownSettingsLoaded,
+                                    projectedState,
+                                    slotBusy: slot.state === 'running',
+                                });
+                                const cancellable =
+                                    slot.state === 'running' && slot.progress !== null && slot.kind === item.id;
+                                const progress = slot.state === 'running' ? slot.progress : null;
+                                const disabled =
+                                    !cancellable && (availability.kind === 'unavailable' || onExecute === undefined);
+                                const accelerator =
+                                    item.shortcut === undefined
+                                        ? undefined
+                                        : formatShortcut(item.shortcut, currentPlatform());
+                                return (
+                                    <MenuItem
+                                        accelerator={cancellable ? undefined : accelerator}
+                                        aria-keyshortcuts={cancellable ? undefined : accelerator}
+                                        data-action-id={item.id}
+                                        disabled={disabled}
+                                        key={item.id}
+                                        label={
+                                            cancellable
+                                                ? t('tidy.cancel')
+                                                : t(item.surfaceLabelKeys?.['markdown-menu'] ?? item.labelKey)
+                                        }
+                                        title={
+                                            cancellable
+                                                ? t('tidy.running')
+                                                : availability.kind === 'unavailable'
+                                                  ? t(actionUnavailableLabelKey(availability.reason))
+                                                  : undefined
+                                        }
+                                        trailing={
+                                            cancellable && progress !== null
+                                                ? `${progress.done}/${progress.total}`
+                                                : undefined
+                                        }
+                                        onSelect={(): void => {
+                                            if (cancellable) onCancel?.();
+                                            else void onExecute?.(item.id, snapshot.current);
+                                            setOpen(false);
+                                        }}
+                                    />
+                                );
+                            })}
+                        </div>
+                    </Fragment>
+                ))}
             </Popup>
         </>
     );

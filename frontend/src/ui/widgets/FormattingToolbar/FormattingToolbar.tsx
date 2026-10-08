@@ -37,7 +37,7 @@ const textActions = ['bold', 'italic', 'strike', 'inline-code'] as const;
 const headingActions = ['heading-1', 'heading-2', 'heading-3'] as const;
 const listActions = ['bullet-list', 'numbered-list', 'task-list', 'quote'] as const;
 const insertActions = ['link', 'image', 'table'] as const;
-const tidyActions = ['format', 'compact', 'lint'] as const;
+const tidyActions = ['format'] as const;
 const arrangementValues = ['editor', 'split', 'preview'] as const;
 const arrangementOptions: readonly SegmentedOption<ViewArrangement>[] = arrangementValues.map((value) => ({
     label: t(action(value).accessibilityKey),
@@ -49,7 +49,7 @@ const textualControlIds = new Set<ActionEntry['id']>(['format', 'compact', 'lint
 const applicationOverflowLabels = {
     about: t('shell.about'),
     file: t('shell.file'),
-    format: t('shell.format'),
+    markdown: t('shell.markdown'),
     settings: t('shell.settings'),
     view: t('action.view.label'),
 } as const;
@@ -92,7 +92,9 @@ const ActionButton: React.FC<ActionButtonProps> = ({ entry, onActivate }: Action
     });
     const unavailable = availability.kind === 'unavailable';
     const icon = textualControlIds.has(entry.id) ? undefined : (entry.id as IconName);
-    const cancellable = slot.state === 'running' && slot.progress !== null && slot.kind === entry.id;
+    // The toolbar's Format control carries the progress and Cancel of whichever tidy run is active.
+    const cancellable =
+        slot.state === 'running' && slot.progress !== null && (entry.id === 'format' || slot.kind === entry.id);
     const progress = slot.state === 'running' ? slot.progress : null;
     if (overflowMenu) {
         const binding = entry.shortcut;
@@ -293,7 +295,7 @@ const FormattingToolbar: React.FC<FormattingToolbarProps> = ({
                 }
                 overflowContent={
                     <div className={styles.applicationOverflowItems}>
-                        {(['file', 'format', 'settings', 'view', 'about'] as const).map((target, index) => (
+                        {(['file', 'markdown', 'settings', 'view', 'about'] as const).map((target, index) => (
                             <Fragment key={target}>
                                 {index === 0 ? <PopupSeparator /> : null}
                                 <MenuItem

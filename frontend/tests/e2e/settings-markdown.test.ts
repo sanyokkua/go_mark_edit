@@ -2,6 +2,7 @@ import { readFile } from 'node:fs/promises';
 import type { Locator, Page } from '@playwright/test';
 
 import { expect, test, type E2EAppHarness } from '../support/harness';
+import { runFromMarkdownMenu } from '../support/markdownMenu';
 
 const markdownGroups = [
     ['Markdown standard', 'Full', 'Minimal'],
@@ -304,7 +305,7 @@ test('Format and Lint use stored markers while toolbar headings stay ATX', async
     await expect.poll(() => activeText(page)).toContain('*an emphasis*');
 
     await editDocument(page, '# Wrong heading\n\n- wrong bullet\n');
-    await toolbarAction(page, 'lint').click();
+    await runFromMarkdownMenu(page, 'lint');
     await expect(page.getByRole('button', { name: '2 problems' })).toBeVisible();
     await page.getByRole('button', { name: '2 problems' }).click();
     const problems = page.getByRole('region', { name: 'Problems' });

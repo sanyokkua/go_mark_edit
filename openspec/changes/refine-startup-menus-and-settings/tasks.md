@@ -165,7 +165,7 @@ and squash-merge it back.
 
 ## 3. Liquid Glass translucency and dialog backdrop
 
-- [ ] 3.1 Give Liquid Glass menus, popups and dialogs the mockup's translucency and blur, and every dialog a dimmed and
+- [x] 3.1 Give Liquid Glass menus, popups and dialogs the mockup's translucency and blur, and every dialog a dimmed and
       blurred backdrop. Verify that the named tests pass, `scripts/verify lint build e2e` is green, and in the real app
       the Settings popup and the Settings dialog in Glass Light and Glass Dark match `Mockup_Settings_Appearance.png`
       for translucency.
@@ -193,7 +193,7 @@ and squash-merge it back.
 
 ## 4. Markdown menu and a toolbar with only Format
 
-- [ ] 4.1 Rename the in-app Format menu to Markdown and build it from the action registry in headed groups, using the
+- [x] 4.1 Rename the in-app Format menu to Markdown and build it from the action registry in headed groups, using the
       actions that exist today. Remove Compact and Lint from the formatting toolbar, and let the toolbar's Format
       control carry the progress and Cancel of any long tidy run. Verify that the named tests pass, `scripts/verify`
       is green, and in the real app:

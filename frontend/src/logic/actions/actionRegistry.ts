@@ -4,7 +4,7 @@ export type ActionSurface =
     | 'settings-menu'
     | 'view-menu'
     | 'about-menu'
-    | 'format-menu'
+    | 'markdown-menu'
     | 'toolbar'
     | 'preview'
     | 'overflow'
@@ -125,6 +125,7 @@ export interface ActionEntry {
     readonly surfaceOrder?: Partial<Record<ActionSurface, number>>;
     readonly separatorBefore?: readonly ActionSurface[];
     readonly surfaceLabelKeys?: Partial<Record<ActionSurface, string>>;
+    readonly surfaceGroupKeys?: Partial<Record<ActionSurface, string>>;
     readonly nativeRole: NativeActionRole;
 }
 
@@ -186,6 +187,7 @@ function entry(
             | 'surfaceOrder'
             | 'separatorBefore'
             | 'surfaceLabelKeys'
+            | 'surfaceGroupKeys'
         >
     > = {},
 ): ActionEntry {
@@ -198,6 +200,7 @@ function entry(
         nativeRole: options.nativeRole ?? 'none',
         availability: options.availability ?? available(),
         ...(options.surfaceLabelKeys === undefined ? {} : { surfaceLabelKeys: options.surfaceLabelKeys }),
+        ...(options.surfaceGroupKeys === undefined ? {} : { surfaceGroupKeys: options.surfaceGroupKeys }),
         ...(options.surfaceOrder === undefined ? {} : { surfaceOrder: options.surfaceOrder }),
         ...(options.separatorBefore === undefined ? {} : { separatorBefore: options.separatorBefore }),
         ...(options.shortcut === undefined ? {} : { shortcut: options.shortcut }),
@@ -327,64 +330,82 @@ export const actionRegistry: readonly ActionEntry[] = Object.freeze([
     entry('find', 'editor', ['shortcuts'], { shortcut: 'Mod+F' }),
     entry('replace', 'editor', ['shortcuts'], { shortcut: 'Mod+R' }),
 
-    entry('bold', 'editor', ['toolbar', 'context', 'shortcuts'], {
+    entry('bold', 'editor', ['toolbar', 'context', 'markdown-menu', 'shortcuts'], {
+        surfaceGroupKeys: { 'markdown-menu': 'menu.markdown.group.text' },
         shortcut: 'Mod+B',
         surfaceOrder: { context: 4 },
         separatorBefore: ['context'],
     }),
-    entry('italic', 'editor', ['toolbar', 'context', 'shortcuts'], {
+    entry('italic', 'editor', ['toolbar', 'context', 'markdown-menu', 'shortcuts'], {
+        surfaceGroupKeys: { 'markdown-menu': 'menu.markdown.group.text' },
         shortcut: 'Mod+I',
         surfaceOrder: { context: 5 },
     }),
-    entry('strike', 'editor', ['toolbar', 'shortcuts'], {
+    entry('strike', 'editor', ['toolbar', 'markdown-menu', 'shortcuts'], {
+        surfaceGroupKeys: { 'markdown-menu': 'menu.markdown.group.text' },
         shortcut: 'Mod+Shift+X',
     }),
-    entry('inline-code', 'editor', ['toolbar', 'shortcuts'], {
+    entry('inline-code', 'editor', ['toolbar', 'markdown-menu', 'shortcuts'], {
+        surfaceGroupKeys: { 'markdown-menu': 'menu.markdown.group.text' },
         shortcut: 'Mod+E',
     }),
-    entry('heading-1', 'editor', ['toolbar', 'overflow', 'shortcuts'], {
+    entry('heading-1', 'editor', ['toolbar', 'overflow', 'markdown-menu', 'shortcuts'], {
+        surfaceGroupKeys: { 'markdown-menu': 'menu.markdown.group.headings' },
         shortcut: 'Mod+1',
     }),
-    entry('heading-2', 'editor', ['toolbar', 'overflow', 'shortcuts'], {
+    entry('heading-2', 'editor', ['toolbar', 'overflow', 'markdown-menu', 'shortcuts'], {
+        surfaceGroupKeys: { 'markdown-menu': 'menu.markdown.group.headings' },
         shortcut: 'Mod+2',
     }),
-    entry('heading-3', 'editor', ['toolbar', 'overflow', 'shortcuts'], {
+    entry('heading-3', 'editor', ['toolbar', 'overflow', 'markdown-menu', 'shortcuts'], {
+        surfaceGroupKeys: { 'markdown-menu': 'menu.markdown.group.headings' },
         shortcut: 'Mod+3',
     }),
-    entry('bullet-list', 'editor', ['toolbar', 'overflow', 'shortcuts'], {
+    entry('bullet-list', 'editor', ['toolbar', 'overflow', 'markdown-menu', 'shortcuts'], {
+        surfaceGroupKeys: { 'markdown-menu': 'menu.markdown.group.lists' },
         shortcut: 'Mod+Shift+8',
     }),
-    entry('numbered-list', 'editor', ['toolbar', 'overflow', 'shortcuts'], {
+    entry('numbered-list', 'editor', ['toolbar', 'overflow', 'markdown-menu', 'shortcuts'], {
+        surfaceGroupKeys: { 'markdown-menu': 'menu.markdown.group.lists' },
         shortcut: 'Mod+Shift+7',
     }),
-    entry('task-list', 'editor', ['toolbar', 'overflow', 'shortcuts'], {
+    entry('task-list', 'editor', ['toolbar', 'overflow', 'markdown-menu', 'shortcuts'], {
+        surfaceGroupKeys: { 'markdown-menu': 'menu.markdown.group.lists' },
         shortcut: 'Mod+Shift+9',
     }),
-    entry('quote', 'editor', ['toolbar', 'overflow', 'shortcuts'], {
+    entry('quote', 'editor', ['toolbar', 'overflow', 'markdown-menu', 'shortcuts'], {
+        surfaceGroupKeys: { 'markdown-menu': 'menu.markdown.group.lists' },
         shortcut: 'Mod+Shift+.',
     }),
-    entry('link', 'editor', ['toolbar', 'overflow', 'context', 'shortcuts'], {
+    entry('link', 'editor', ['toolbar', 'overflow', 'context', 'markdown-menu', 'shortcuts'], {
+        surfaceGroupKeys: { 'markdown-menu': 'menu.markdown.group.insert' },
         shortcut: 'Mod+K',
         surfaceOrder: { context: 6 },
     }),
-    entry('image', 'editor', ['toolbar', 'overflow', 'shortcuts'], {
+    entry('image', 'editor', ['toolbar', 'overflow', 'markdown-menu', 'shortcuts'], {
+        surfaceGroupKeys: { 'markdown-menu': 'menu.markdown.group.insert' },
         shortcut: 'Mod+Shift+I',
         availability: deferred('image-lifecycle-deferred'),
     }),
-    entry('table', 'editor', ['toolbar', 'overflow', 'shortcuts'], {
+    entry('table', 'editor', ['toolbar', 'overflow', 'markdown-menu', 'shortcuts'], {
+        surfaceGroupKeys: { 'markdown-menu': 'menu.markdown.group.insert' },
+        surfaceLabelKeys: { 'markdown-menu': 'action.table.markdown-menu.label' },
         shortcut: 'Mod+Shift+T',
     }),
-    entry('format', 'document', ['toolbar', 'overflow', 'context', 'format-menu', 'shortcuts'], {
+    entry('format', 'document', ['toolbar', 'overflow', 'context', 'markdown-menu', 'shortcuts'], {
+        surfaceGroupKeys: { 'markdown-menu': 'menu.markdown.group.tidy' },
         shortcut: 'Alt+Shift+F',
         surfaceOrder: { context: 7 },
         separatorBefore: ['context'],
         surfaceLabelKeys: { context: 'action.format-document.label' },
     }),
-    entry('compact', 'document', ['toolbar', 'overflow', 'context', 'format-menu', 'shortcuts'], {
+    entry('compact', 'document', ['context', 'markdown-menu', 'shortcuts'], {
+        surfaceGroupKeys: { 'markdown-menu': 'menu.markdown.group.tidy' },
         shortcut: 'Alt+Shift+C',
         surfaceOrder: { context: 8 },
     }),
-    entry('lint', 'document', ['toolbar', 'overflow', 'context', 'format-menu', 'shortcuts'], {
+    entry('lint', 'document', ['context', 'markdown-menu', 'shortcuts'], {
+        surfaceGroupKeys: { 'markdown-menu': 'menu.markdown.group.tidy' },
         shortcut: 'Alt+Shift+L',
         surfaceOrder: { context: 9 },
     }),
@@ -672,6 +693,23 @@ export function actionsForSurface(surface: ActionSurface): readonly ActionEntry[
             return leftOrder - rightOrder || left.index - right.index;
         })
         .map(({ action }) => action);
+}
+
+export interface ActionGroup {
+    readonly groupKey: string;
+    readonly actions: readonly ActionEntry[];
+}
+
+/** Groups consecutive `actionsForSurface` results that share a `surfaceGroupKeys` heading. */
+export function groupedActionsForSurface(surface: ActionSurface): readonly ActionGroup[] {
+    const groups: { groupKey: string; actions: ActionEntry[] }[] = [];
+    for (const action of actionsForSurface(surface)) {
+        const groupKey = action.surfaceGroupKeys?.[surface] ?? '';
+        const last = groups[groups.length - 1];
+        if (last !== undefined && last.groupKey === groupKey) last.actions.push(action);
+        else groups.push({ groupKey, actions: [action] });
+    }
+    return groups;
 }
 
 export function actionUnavailableLabelKey(reason: ActionUnavailableReason): string {
