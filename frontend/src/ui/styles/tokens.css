@@ -57,7 +57,8 @@
     --z-toast: 90;
     --dur-base: 180ms;
     --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
-    --overlay: rgba(0, 0, 0, 0.4);
+    --overlay: rgba(6, 8, 16, 0.42);
+    --overlay-backdrop-filter: blur(3px);
     --control-radius: 0.5rem;
     --control-padding: 0.375rem 0.625rem;
     --control-gap: 0.25rem;
@@ -343,8 +344,8 @@
     --surface-2: rgba(255, 255, 255, 0.24);
     --surface-3: rgba(255, 255, 255, 0.58);
     --elevated: rgba(255, 255, 255, 0.8);
-    --floating-backdrop-filter: blur(48px) saturate(180%);
-    --floating-surface: rgba(255, 255, 255, 0.88);
+    --floating-backdrop-filter: var(--blur);
+    --floating-surface: var(--elevated);
     --stroke: rgba(70, 84, 140, 0.24);
     --stroke-soft: rgba(70, 84, 140, 0.15);
     --text: #1c2338;
@@ -376,8 +377,8 @@
     --surface-2: rgba(255, 255, 255, 0.07);
     --surface-3: rgba(255, 255, 255, 0.16);
     --elevated: rgba(28, 30, 54, 0.82);
-    --floating-backdrop-filter: blur(48px) saturate(180%);
-    --floating-surface: rgba(28, 30, 54, 0.9);
+    --floating-backdrop-filter: var(--blur);
+    --floating-surface: var(--elevated);
     --stroke: rgba(255, 255, 255, 0.18);
     --stroke-soft: rgba(255, 255, 255, 0.11);
     --text: #eaf0ff;

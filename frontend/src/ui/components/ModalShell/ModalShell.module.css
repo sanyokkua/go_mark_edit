@@ -1,4 +1,6 @@
 .overlay {
+    -webkit-backdrop-filter: var(--overlay-backdrop-filter);
+    backdrop-filter: var(--overlay-backdrop-filter);
     background: var(--overlay);
     inset: 0;
     position: fixed;
