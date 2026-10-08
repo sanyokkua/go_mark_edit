@@ -241,6 +241,11 @@ export default tseslint.config(
         rules: { 'no-restricted-syntax': 'off' },
     },
     {
+        // The hidden print copy must sit outside the application root (design Decision 8).
+        files: ['frontend/src/ui/widgets/PrintDocument.tsx'],
+        rules: { 'no-restricted-syntax': 'off' },
+    },
+    {
         files: ['frontend/src/ui/components/TabBar/**/*.{ts,tsx}'],
         rules: { 'no-restricted-syntax': 'off' },
     },

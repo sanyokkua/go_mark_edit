@@ -9,6 +9,10 @@ export function CancelQuit(arg1:bridge.Request,arg2:string):Promise<apperr.Class
 
 export function OpenNewWindow(arg1:bridge.Request,arg2:string):Promise<apperr.VoidResult>;
 
+export function PrintWindow(arg1:bridge.Request):Promise<apperr.VoidResult>;
+
 export function RetryStartup(arg1:bridge.Request):Promise<apperr.VoidResult>;
+
+export function TakeLaunchTarget(arg1:bridge.Request):Promise<apperr.LaunchTargetResult>;
 
 export function WindowReady(arg1:bridge.Request):Promise<apperr.VoidResult>;

@@ -1,0 +1,22 @@
+/* On screen the copy is never shown; it exists only for the print dialog. */
+.printCopy {
+    display: none;
+}
+
+@media print {
+    /* Everything else in the page, including portaled dialogs, is hidden while printing. */
+    body > :not(.printCopy) {
+        display: none !important;
+    }
+
+    .printCopy {
+        background: var(--surface);
+        box-sizing: border-box;
+        color: var(--text);
+        display: block;
+        min-height: 100vh;
+        padding: var(--print-page-padding);
+        print-color-adjust: exact;
+        -webkit-print-color-adjust: exact;
+    }
+}

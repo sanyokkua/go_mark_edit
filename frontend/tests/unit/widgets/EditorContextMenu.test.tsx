@@ -263,6 +263,7 @@ it('passes acknowledged marker preferences into context formatting', () => {
                 mode: 'auto',
                 defaultOpenMode: 'editor',
                 readingWidth: 'page',
+                pdfAppearance: 'styled',
             },
             markdown: {
                 standard: 'gfm',

@@ -84,6 +84,7 @@ it('shows Page selected and sends full when Full width is chosen in the menu', a
         expect(updateAppearance).toHaveBeenCalledWith({
             defaultOpenMode: 'editor',
             readingWidth: 'full',
+            pdfAppearance: 'styled',
             mode: 'auto',
             theme: 'material',
         }),
@@ -110,6 +111,7 @@ it('keeps the dialog row and the menu in sync and restores Page on Reset appeara
         expect(updateAppearance).toHaveBeenLastCalledWith({
             defaultOpenMode: 'editor',
             readingWidth: 'page',
+            pdfAppearance: 'styled',
             mode: 'auto',
             theme: 'material',
         }),

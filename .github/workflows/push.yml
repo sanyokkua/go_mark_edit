@@ -72,30 +72,115 @@ jobs:
                   ./tests/go/integration/appmodel ./tests/go/integration/application
             - name: Build Go packages
               run: go build ./...
-    verify:
+    # The stages are independent (generated bindings and themes are tracked), so each runs in its
+    # own job and the workflow takes as long as the slowest one.
+    static:
         runs-on: ubuntu-24.04
-        timeout-minutes: 40
+        timeout-minutes: 20
         steps:
             - uses: actions/checkout@v7
-            - name: Install Linux Wails toolchain
-              run: sudo apt-get update && sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev lsof
-            - uses: actions/setup-go@v7
+            - uses: ./.github/actions/setup
+            - name: Cache ESLint results
+              uses: actions/cache@v4
               with:
-                  go-version-file: go.mod
-            - uses: actions/setup-node@v7
-              with:
-                  node-version-file: .nvmrc
-                  cache: npm
-                  cache-dependency-path: frontend/package-lock.json
-            - name: Install dependencies
-              run: scripts/build setup
-            - name: Verify
-              run: scripts/verify --skip e2e
+                  path: .local_tmp_files/cache/eslint
+                  key: eslint-${{ runner.os }}-${{ hashFiles('frontend/package-lock.json', 'frontend/eslint.config.js') }}-${{ github.sha }}
+                  restore-keys: |
+                      eslint-${{ runner.os }}-${{ hashFiles('frontend/package-lock.json', 'frontend/eslint.config.js') }}-
+            - name: Lint, Format and Build
+              run: |
+                  scripts/verify lint
+                  scripts/verify format
+                  scripts/verify build
+            - name: Stage timings
+              if: always()
+              run: node tools/verify/stage-timings.mjs >> "$GITHUB_STEP_SUMMARY"
             - name: Upload verification artifacts on failure
               if: failure()
               uses: actions/upload-artifact@v7
               with:
-                  name: verification-runs-${{ github.run_id }}
+                  name: verification-runs-static-${{ github.run_id }}
+                  path: |
+                      .local_tmp_files/runs/**/summary.json
+                      .local_tmp_files/runs/**/lint.json
+                      .local_tmp_files/runs/**/format.json
+                      .local_tmp_files/runs/**/build.json
+                      .local_tmp_files/runs/**/unit.json
+                      .local_tmp_files/runs/**/integration.json
+                      .local_tmp_files/runs/**/e2e.json
+                      .local_tmp_files/runs/**/reports/**
+                      .local_tmp_files/runs/**/*.log
+                      .local_tmp_files/runs/**/*.stderr
+                      .local_tmp_files/runs/**/frontend-*.json
+                      .local_tmp_files/runs/**/frontend-e2e-results/**
+                  include-hidden-files: true
+                  if-no-files-found: ignore
+    tests:
+        runs-on: ubuntu-24.04
+        timeout-minutes: 20
+        steps:
+            - uses: actions/checkout@v7
+            - uses: ./.github/actions/setup
+            - name: Unit and Integration
+              run: |
+                  scripts/verify unit
+                  scripts/verify integration
+            - name: Stage timings
+              if: always()
+              run: node tools/verify/stage-timings.mjs >> "$GITHUB_STEP_SUMMARY"
+            - name: Upload verification artifacts on failure
+              if: failure()
+              uses: actions/upload-artifact@v7
+              with:
+                  name: verification-runs-tests-${{ github.run_id }}
+                  path: |
+                      .local_tmp_files/runs/**/summary.json
+                      .local_tmp_files/runs/**/lint.json
+                      .local_tmp_files/runs/**/format.json
+                      .local_tmp_files/runs/**/build.json
+                      .local_tmp_files/runs/**/unit.json
+                      .local_tmp_files/runs/**/integration.json
+                      .local_tmp_files/runs/**/e2e.json
+                      .local_tmp_files/runs/**/reports/**
+                      .local_tmp_files/runs/**/*.log
+                      .local_tmp_files/runs/**/*.stderr
+                      .local_tmp_files/runs/**/frontend-*.json
+                      .local_tmp_files/runs/**/frontend-e2e-results/**
+                  include-hidden-files: true
+                  if-no-files-found: ignore
+    # Playwright runs a project's dependencies in full on every shard, so the parallel group is
+    # sharded alone and the timing-bound and clipboard tests run serially in a job of their own.
+    e2e:
+        name: e2e (${{ matrix.name }})
+        runs-on: ubuntu-24.04
+        timeout-minutes: 30
+        strategy:
+            fail-fast: false
+            matrix:
+                include:
+                    - { name: parallel 1/4, projects: chromium, shard: 1/4 }
+                    - { name: parallel 2/4, projects: chromium, shard: 2/4 }
+                    - { name: parallel 3/4, projects: chromium, shard: 3/4 }
+                    - { name: parallel 4/4, projects: chromium, shard: 4/4 }
+                    - { name: serial, projects: 'chromium-serial,chromium-native', shard: '' }
+        env:
+            E2E_PROJECTS: ${{ matrix.projects }}
+            E2E_SHARD: ${{ matrix.shard }}
+        steps:
+            - uses: actions/checkout@v7
+            - uses: ./.github/actions/setup
+              with:
+                  browser: 'true'
+            - name: E2E (${{ matrix.name }})
+              run: xvfb-run --auto-servernum scripts/verify e2e
+            - name: Stage timings
+              if: always()
+              run: node tools/verify/stage-timings.mjs >> "$GITHUB_STEP_SUMMARY"
+            - name: Upload verification artifacts on failure
+              if: failure()
+              uses: actions/upload-artifact@v7
+              with:
+                  name: verification-runs-e2e-${{ strategy.job-index }}-${{ github.run_id }}
                   path: |
                       .local_tmp_files/runs/**/summary.json
                       .local_tmp_files/runs/**/lint.json

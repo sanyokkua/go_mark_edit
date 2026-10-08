@@ -1,12 +1,14 @@
 import type { ResultEnvelope } from './envelope';
 
 export type ReadingWidth = 'page' | 'full';
+export type PdfAppearance = 'styled' | 'clean';
 
 export interface AppearanceSettings {
     theme: string;
     mode: string;
     defaultOpenMode: string;
     readingWidth: string;
+    pdfAppearance: string;
 }
 
 export interface ContentPrivacySettings {

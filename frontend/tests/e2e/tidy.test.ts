@@ -307,36 +307,40 @@ test('keeps visible Monaco text when changing views and docking or closing Probl
     app.expectNoForeignRequests();
 });
 
-test('shows real worker progress, cancels a large Format without edits, and completes a repeat run', async ({
-    app,
-}) => {
-    test.setTimeout(240_000);
-    const source = makeLargeMarkdown(3 * 1024 * 1024);
-    expect(Buffer.byteLength(source, 'utf8')).toBeGreaterThanOrEqual(3 * 1024 * 1024);
-    expect(Buffer.byteLength(source, 'utf8')).toBeLessThan(10 * 1024 * 1024);
-    await openDocument(app, 'large-format.md', source);
-    const { page } = app;
-    await disableAutosave(page);
-    const started = performance.now();
-    await action(page, 'format').click();
-    const cancel = action(page, 'format');
-    await expect(cancel).toHaveAccessibleName('Cancel');
-    await expect(page.getByRole('status', { name: 'Tidying document…' })).toContainText(/\d+\/\d+/u);
-    await cancel.click();
-    await expect(page.locator('[data-notification-code="tidy-cancelled"]')).toBeVisible();
-    await expect.poll(() => activeText(page), { timeout: 20_000 }).toBe(source);
-    console.log(`[tidy] large cancelMs=${Math.round(performance.now() - started)} ${process.platform}/${process.arch}`);
+test(
+    'shows real worker progress, cancels a large Format without edits, and completes a repeat run',
+    { tag: '@perf' },
+    async ({ app }) => {
+        test.setTimeout(240_000);
+        const source = makeLargeMarkdown(3 * 1024 * 1024);
+        expect(Buffer.byteLength(source, 'utf8')).toBeGreaterThanOrEqual(3 * 1024 * 1024);
+        expect(Buffer.byteLength(source, 'utf8')).toBeLessThan(10 * 1024 * 1024);
+        await openDocument(app, 'large-format.md', source);
+        const { page } = app;
+        await disableAutosave(page);
+        const started = performance.now();
+        await action(page, 'format').click();
+        const cancel = action(page, 'format');
+        await expect(cancel).toHaveAccessibleName('Cancel');
+        await expect(page.getByRole('status', { name: 'Tidying document…' })).toContainText(/\d+\/\d+/u);
+        await cancel.click();
+        await expect(page.locator('[data-notification-code="tidy-cancelled"]')).toBeVisible();
+        await expect.poll(() => activeText(page), { timeout: 20_000 }).toBe(source);
+        console.log(
+            `[tidy] large cancelMs=${Math.round(performance.now() - started)} ${process.platform}/${process.arch}`,
+        );
 
-    const repeated = performance.now();
-    await action(page, 'format').click();
-    await expect.poll(() => activeText(page), { timeout: 180_000 }).not.toBe(source);
-    await expect.poll(() => action(page, 'format').getAttribute('aria-label'), { timeout: 180_000 }).toBe('Format');
-    expect(await activeText(page)).toContain('- item 0-0 with _emphasis_ and prose.');
-    console.log(
-        `[tidy] large completeMs=${Math.round(performance.now() - repeated)} ${process.platform}/${process.arch}`,
-    );
-    app.expectNoForeignRequests();
-});
+        const repeated = performance.now();
+        await action(page, 'format').click();
+        await expect.poll(() => activeText(page), { timeout: 180_000 }).not.toBe(source);
+        await expect.poll(() => action(page, 'format').getAttribute('aria-label'), { timeout: 180_000 }).toBe('Format');
+        expect(await activeText(page)).toContain('- item 0-0 with _emphasis_ and prose.');
+        console.log(
+            `[tidy] large completeMs=${Math.round(performance.now() - repeated)} ${process.platform}/${process.arch}`,
+        );
+        app.expectNoForeignRequests();
+    },
+);
 
 test('blocks typing during close Save Format while progress and Cancel remain usable', async ({ app }) => {
     test.setTimeout(240_000);
@@ -406,7 +410,7 @@ test('disables other tidy actions while Format runs and discards a result after 
     app.expectNoForeignRequests();
 });
 
-test('reveals Cancel after one second for a smaller nested-list run', async ({ app }) => {
+test('reveals Cancel after one second for a smaller nested-list run', { tag: '@perf' }, async ({ app }) => {
     test.setTimeout(120_000);
     const source = makeDeepLists(512 * 1024);
     expect(Buffer.byteLength(source, 'utf8')).toBeGreaterThanOrEqual(512 * 1024);

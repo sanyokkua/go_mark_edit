@@ -23,6 +23,8 @@ type ApplicationHandler struct {
 type ApplicationServiceAPI interface {
 	FrontendReady(context.Context)
 	RetryStartup(context.Context) error
+	TakeLaunchTarget(context.Context) apperr.LaunchTargetResult
+	PrintWindow(context.Context)
 }
 
 // NativeCloseServiceAPI is optional so the startup lifecycle seam remains
@@ -48,6 +50,24 @@ func (handler *ApplicationHandler) WindowReady(request bridge.Request) (result a
 	return bridge.Once(handler.outcomes, request, func() apperr.VoidResult {
 		handler.service.FrontendReady(handler.context())
 		return apperr.VoidResult{}
+	})
+}
+
+// PrintWindow opens the operating system's print dialog for the window.
+func (handler *ApplicationHandler) PrintWindow(request bridge.Request) (result apperr.VoidResult) {
+	defer bridge.Guard(&result)
+	return bridge.Once(handler.outcomes, request, func() apperr.VoidResult {
+		handler.service.PrintWindow(handler.context())
+		return apperr.VoidResult{}
+	})
+}
+
+// TakeLaunchTarget returns the file or folder this window accepted at startup
+// once, then an empty result.
+func (handler *ApplicationHandler) TakeLaunchTarget(request bridge.Request) (result apperr.LaunchTargetResult) {
+	defer bridge.Guard(&result)
+	return bridge.Once(handler.outcomes, request, func() apperr.LaunchTargetResult {
+		return handler.service.TakeLaunchTarget(handler.context())
 	})
 }
 

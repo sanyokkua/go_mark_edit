@@ -194,103 +194,110 @@ test('fresh Markdown preferences are named and persist after keyboard changes an
     app.expectNoForeignRequests();
 });
 
-test('changing standards updates every open document and the visible labels within one second', async ({ app }) => {
-    const source = [
-        '# Dialect',
-        '',
-        '$E=mc^2$',
-        '',
-        ':::note',
-        'A note.',
-        ':::',
-        '',
-        '| Name | Count |',
-        '| --- | ---: |',
-        '| one | 1 |',
-        '',
-        'Footnote[^one].',
-        '',
-        '[^one]: Detail.',
-        '',
-        '```mermaid',
-        'flowchart LR',
-        '    A --> B',
-        '```',
-        '',
-    ].join('\n');
-    const first = await app.writeDocument('first.md', source);
-    const second = await app.writeDocument('second.md', source.replace('# Dialect', '# Second dialect'));
-    await app.seedRecents([first, second]);
-    await app.launch();
-    const { page } = app;
-    await page
-        .getByRole('tab', { name: /Untitled/u })
-        .locator('..')
-        .getByRole('button', { name: /^Close /u })
-        .click();
-    await page.getByTestId('document-launcher').getByRole('button', { name: 'first.md' }).click();
-    await page.getByRole('button', { name: 'File', exact: true }).click();
-    await page.getByRole('menu', { name: 'File' }).getByRole('menuitem', { name: 'second.md' }).click();
-    await expect(page.getByRole('tab', { name: 'first.md' })).toBeVisible();
-    await expect(page.getByRole('tab', { name: 'second.md' })).toBeVisible();
-    await page.getByRole('radiogroup', { name: 'View arrangement' }).getByRole('radio', { name: 'Preview' }).click();
-    const preview = page.getByRole('region', { name: 'Preview pane' });
-    await expect(preview.locator('.katex').first()).toBeVisible();
-    await expect(preview.getByRole('note')).toBeVisible();
-    await expect(preview.getByRole('table')).toBeVisible();
-    await expect(preview.locator('section[data-footnotes]')).toBeVisible();
-    await expect(preview.locator('[data-mermaid-block] svg')).toBeVisible();
+test(
+    'changing standards updates every open document and the visible labels within one second',
+    { tag: '@perf' },
+    async ({ app }) => {
+        const source = [
+            '# Dialect',
+            '',
+            '$E=mc^2$',
+            '',
+            ':::note',
+            'A note.',
+            ':::',
+            '',
+            '| Name | Count |',
+            '| --- | ---: |',
+            '| one | 1 |',
+            '',
+            'Footnote[^one].',
+            '',
+            '[^one]: Detail.',
+            '',
+            '```mermaid',
+            'flowchart LR',
+            '    A --> B',
+            '```',
+            '',
+        ].join('\n');
+        const first = await app.writeDocument('first.md', source);
+        const second = await app.writeDocument('second.md', source.replace('# Dialect', '# Second dialect'));
+        await app.seedRecents([first, second]);
+        await app.launch();
+        const { page } = app;
+        await page
+            .getByRole('tab', { name: /Untitled/u })
+            .locator('..')
+            .getByRole('button', { name: /^Close /u })
+            .click();
+        await page.getByTestId('document-launcher').getByRole('button', { name: 'first.md' }).click();
+        await page.getByRole('button', { name: 'File', exact: true }).click();
+        await page.getByRole('menu', { name: 'File' }).getByRole('menuitem', { name: 'second.md' }).click();
+        await expect(page.getByRole('tab', { name: 'first.md' })).toBeVisible();
+        await expect(page.getByRole('tab', { name: 'second.md' })).toBeVisible();
+        await page
+            .getByRole('radiogroup', { name: 'View arrangement' })
+            .getByRole('radio', { name: 'Preview' })
+            .click();
+        const preview = page.getByRole('region', { name: 'Preview pane' });
+        await expect(preview.locator('.katex').first()).toBeVisible();
+        await expect(preview.getByRole('note')).toBeVisible();
+        await expect(preview.getByRole('table')).toBeVisible();
+        await expect(preview.locator('section[data-footnotes]')).toBeVisible();
+        await expect(preview.locator('[data-mermaid-block] svg')).toBeVisible();
 
-    async function changeStandard(label: string, target: 'GFM' | 'Minimal'): Promise<void> {
-        await page.getByRole('button', { name: 'Settings', exact: true }).click();
-        const choice = page.getByRole('menu', { name: 'Settings menu' }).getByRole('menuitemradio', {
-            name: label,
-            exact: true,
-        });
-        const started = performance.now();
-        await choice.click({ timeout: 1_000 });
-        const remaining = 1_000 - (performance.now() - started);
-        expect(remaining).toBeGreaterThan(0);
-        await expect
-            .poll(
-                async () => {
-                    const header = await preview.locator('header').textContent();
-                    const status = await page.getByRole('status', { name: 'Document status' }).textContent();
-                    return [header?.includes(target), status?.includes(`Markdown · ${target}`)];
-                },
-                { timeout: remaining },
-            )
-            .toEqual([true, true]);
-        const menu = page.getByRole('menu', { name: 'Settings menu' });
-        if (await menu.isVisible()) await page.keyboard.press('Escape');
-    }
+        async function changeStandard(label: string, target: 'GFM' | 'Minimal'): Promise<void> {
+            await page.getByRole('button', { name: 'Settings', exact: true }).click();
+            const choice = page.getByRole('menu', { name: 'Settings menu' }).getByRole('menuitemradio', {
+                name: label,
+                exact: true,
+            });
+            const started = performance.now();
+            await choice.click({ timeout: 1_000 });
+            const remaining = 1_000 - (performance.now() - started);
+            expect(remaining).toBeGreaterThan(0);
+            await expect
+                .poll(
+                    async () => {
+                        const header = await preview.locator('header').textContent();
+                        const status = await page.getByRole('status', { name: 'Document status' }).textContent();
+                        return [header?.includes(target), status?.includes(`Markdown · ${target}`)];
+                    },
+                    { timeout: remaining },
+                )
+                .toEqual([true, true]);
+            const menu = page.getByRole('menu', { name: 'Settings menu' });
+            if (await menu.isVisible()) await page.keyboard.press('Escape');
+        }
 
-    await changeStandard('GFM', 'GFM');
-    await expect(preview.locator('.katex')).toHaveCount(0);
-    await expect(preview).toContainText('$E=mc^2$');
-    await expect(preview).toContainText(':::note');
-    await expect(preview.getByRole('note')).toHaveCount(0);
-    await expect(preview.getByRole('table')).toBeVisible();
-    await expect(preview.locator('section[data-footnotes]')).toBeVisible();
-    await page.getByRole('tab', { name: 'first.md' }).click();
-    await expect(preview).toContainText('$E=mc^2$');
-    await expect(preview.getByRole('table')).toBeVisible();
-    await expect(preview.locator('section[data-footnotes]')).toBeVisible();
-    await expect(preview.locator('header')).toContainText('GFM');
-    await expect(page.getByRole('status', { name: 'Document status' })).toContainText('Markdown · GFM');
+        await changeStandard('GFM', 'GFM');
+        await expect(preview.locator('.katex')).toHaveCount(0);
+        await expect(preview).toContainText('$E=mc^2$');
+        await expect(preview).toContainText(':::note');
+        await expect(preview.getByRole('note')).toHaveCount(0);
+        await expect(preview.getByRole('table')).toBeVisible();
+        await expect(preview.locator('section[data-footnotes]')).toBeVisible();
+        await page.getByRole('tab', { name: 'first.md' }).click();
+        await expect(preview).toContainText('$E=mc^2$');
+        await expect(preview.getByRole('table')).toBeVisible();
+        await expect(preview.locator('section[data-footnotes]')).toBeVisible();
+        await expect(preview.locator('header')).toContainText('GFM');
+        await expect(page.getByRole('status', { name: 'Document status' })).toContainText('Markdown · GFM');
 
-    await changeStandard('Minimal (CommonMark)', 'Minimal');
-    await expect(preview.getByRole('table')).toHaveCount(0);
-    await expect(preview).toContainText('| Name | Count |');
-    await expect(preview.locator('[data-mermaid-block] svg')).toBeVisible();
-    await page.getByRole('tab', { name: 'second.md' }).click();
-    await expect(preview.getByRole('table')).toHaveCount(0);
-    await expect(preview).toContainText('| Name | Count |');
-    await expect(preview.locator('[data-mermaid-block] svg')).toBeVisible();
-    await expect(preview.locator('header')).toContainText('Minimal');
-    await expect(page.getByRole('status', { name: 'Document status' })).toContainText('Markdown · Minimal');
-    app.expectNoForeignRequests();
-});
+        await changeStandard('Minimal (CommonMark)', 'Minimal');
+        await expect(preview.getByRole('table')).toHaveCount(0);
+        await expect(preview).toContainText('| Name | Count |');
+        await expect(preview.locator('[data-mermaid-block] svg')).toBeVisible();
+        await page.getByRole('tab', { name: 'second.md' }).click();
+        await expect(preview.getByRole('table')).toHaveCount(0);
+        await expect(preview).toContainText('| Name | Count |');
+        await expect(preview.locator('[data-mermaid-block] svg')).toBeVisible();
+        await expect(preview.locator('header')).toContainText('Minimal');
+        await expect(page.getByRole('status', { name: 'Document status' })).toContainText('Markdown · Minimal');
+        app.expectNoForeignRequests();
+    },
+);
 
 test('Format and Lint use stored markers while toolbar headings stay ATX', async ({ app }) => {
     await openDocument(app, 'markers.md', '# Title\n\n- item\n\n_an emphasis_\n');
@@ -418,7 +425,7 @@ test('the Markdown controls remain visible and keyboard usable in all six palett
     await page.setViewportSize({ width: 1280, height: 800 });
     const dialog = await openSettings(page);
     const appearanceTheme = dialog.getByRole('radiogroup', { name: 'Theme' });
-    const appearanceMode = dialog.getByRole('radiogroup', { name: 'Appearance' });
+    const appearanceMode = dialog.getByRole('radiogroup', { name: 'Appearance', exact: true });
     for (const [themeLabel, modeLabel, theme, mode] of palettes) {
         await appearanceTheme.getByRole('radio', { name: themeLabel, exact: true }).click();
         await appearanceMode.getByRole('radio', { name: modeLabel, exact: true }).click();
@@ -437,6 +444,10 @@ test('the Markdown controls remain visible and keyboard usable in all six palett
         await page.keyboard.press('Tab');
         await expect(
             dialog.getByRole('radiogroup', { name: 'Reading width' }).getByRole('radio', { checked: true }),
+        ).toBeFocused();
+        await page.keyboard.press('Tab');
+        await expect(
+            dialog.getByRole('radiogroup', { name: 'PDF appearance' }).getByRole('radio', { checked: true }),
         ).toBeFocused();
         for (const [name, selected, nextLabel] of markdownGroups) {
             const control = markdownGroup(page).getByRole('radiogroup', { name });

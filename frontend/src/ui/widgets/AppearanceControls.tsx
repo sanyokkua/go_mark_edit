@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { settingsAdapter } from '../../logic/adapter';
-import type { ReadingWidth } from '../../logic/adapter/settingsTypes';
+import type { PdfAppearance, ReadingWidth } from '../../logic/adapter/settingsTypes';
 import { useAppDispatch } from '../../logic/store';
 import { readingWidthAcknowledged } from '../../logic/store/settingsSlice';
 import {
@@ -31,6 +31,10 @@ export interface AppearanceSettingsProviderProps {
 
 function normalizeReadingWidth(value: string): ReadingWidth {
     return value === 'full' ? 'full' : 'page';
+}
+
+function normalizePdfAppearance(value: string): PdfAppearance {
+    return value === 'clean' ? 'clean' : 'styled';
 }
 
 function systemPrefersDark(): boolean {
@@ -82,6 +86,7 @@ export const AppearanceSettingsProvider: React.FC<AppearanceSettingsProviderProp
                 const next = {
                     defaultOpenMode: settings.appearance.defaultOpenMode,
                     mode: normalizeAppearance(settings.appearance.mode),
+                    pdfAppearance: normalizePdfAppearance(settings.appearance.pdfAppearance),
                     readingWidth: normalizeReadingWidth(settings.appearance.readingWidth),
                     theme: normalizeTheme(settings.appearance.theme),
                 };
@@ -119,7 +124,11 @@ export const AppearanceSettingsProvider: React.FC<AppearanceSettingsProviderProp
     }, [open, settingsReturnFocus]);
 
     const persist = useCallback(
-        (patch: Partial<Pick<AppearanceState, 'defaultOpenMode' | 'mode' | 'readingWidth' | 'theme'>>): void => {
+        (
+            patch: Partial<
+                Pick<AppearanceState, 'defaultOpenMode' | 'mode' | 'pdfAppearance' | 'readingWidth' | 'theme'>
+            >,
+        ): void => {
             appearanceWriteStarted.current = true;
             const next = { ...desiredAppearance.current, ...patch };
             desiredAppearance.current = next;
@@ -129,6 +138,7 @@ export const AppearanceSettingsProvider: React.FC<AppearanceSettingsProviderProp
                     const acknowledgedState: AppearanceState = {
                         defaultOpenMode: acknowledged.defaultOpenMode,
                         mode: normalizeAppearance(acknowledged.mode),
+                        pdfAppearance: normalizePdfAppearance(acknowledged.pdfAppearance),
                         readingWidth: normalizeReadingWidth(acknowledged.readingWidth),
                         theme: normalizeTheme(acknowledged.theme),
                     };
@@ -153,6 +163,7 @@ export const AppearanceSettingsProvider: React.FC<AppearanceSettingsProviderProp
                 const acknowledgedState: AppearanceState = {
                     defaultOpenMode: acknowledged.defaultOpenMode,
                     mode: normalizeAppearance(acknowledged.mode),
+                    pdfAppearance: normalizePdfAppearance(acknowledged.pdfAppearance),
                     readingWidth: normalizeReadingWidth(acknowledged.readingWidth),
                     theme: normalizeTheme(acknowledged.theme),
                 };
@@ -184,6 +195,7 @@ export const AppearanceSettingsProvider: React.FC<AppearanceSettingsProviderProp
         onModeChange: (mode): void => persist({ mode }),
         onOpenAppearance,
         onOpenChange: setOpen,
+        onPdfAppearanceChange: (pdfAppearance): void => persist({ pdfAppearance }),
         onReadingWidthChange: (readingWidth): void => persist({ readingWidth }),
         onReset: reset,
         open,
@@ -214,11 +226,13 @@ export const AppearanceControlsContent: React.FC<AppearanceControlsContentProps>
                 markdownSettings={markdown.markdownSettings}
                 mode={controller.appearance.mode}
                 open={controller.open}
+                pdfAppearance={controller.appearance.pdfAppearance}
                 readingWidth={controller.appearance.readingWidth}
                 returnFocusTo={controller.returnFocusTo}
                 theme={controller.appearance.theme}
                 onDefaultOpenModeChange={controller.onDefaultOpenModeChange}
                 onModeChange={controller.onModeChange}
+                onPdfAppearanceChange={controller.onPdfAppearanceChange}
                 onReadingWidthChange={controller.onReadingWidthChange}
                 onMarkdownSettingsChange={(patch): void => {
                     void markdown.updateMarkdown(patch).catch((): void => undefined);

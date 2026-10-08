@@ -217,13 +217,9 @@ const Popup = ({
         const fitsBelow = anchorPosition.top + height <= metrics.height - margin;
         const fitsAbove = anchorPosition.anchorTop - height - margin >= margin;
         const spaceBelow = Math.max(margin, metrics.height - margin - anchorPosition.top);
-        // A popup that fits in the frame but on neither side of the anchor stays below it and
-        // scrolls, rather than covering the trigger that opened it, when more room is below.
-        const pinBelow =
-            !fitsBelow &&
-            !fitsAbove &&
-            height <= availableHeight &&
-            spaceBelow >= anchorPosition.anchorTop - margin * 2;
+        // A popup that fits on neither side of the anchor stays below it and scrolls, rather
+        // than covering the trigger that opened it, when more room is below.
+        const pinBelow = !fitsBelow && !fitsAbove && spaceBelow >= anchorPosition.anchorTop - margin * 2;
         const constrainedHeight = pinBelow ? spaceBelow : availableHeight;
         const maxBlockSize = height > constrainedHeight ? constrainedHeight : undefined;
         const placedHeight = maxBlockSize ?? height;

@@ -74,6 +74,18 @@ export function safeBasenameOf(source: string | undefined): string | undefined {
     return isolateUserText(basename);
 }
 
+/**
+ * The file name of a path without its last extension, for the name a save
+ * dialog suggests. A leading dot is part of the name, not an extension.
+ * Returns `undefined` for an empty path.
+ */
+export function fileStemOf(path: string): string | undefined {
+    const name = splitPath(path).at(-1);
+    if (name === undefined) return undefined;
+    const dot = name.lastIndexOf('.');
+    return dot > 0 ? name.slice(0, dot) : name;
+}
+
 function shortestUniqueSuffix(document: DocumentMetadata, matching: readonly DocumentMetadata[]): string | undefined {
     if (matching.length < 2) return undefined;
     const parents = matching.map(rawParentParts);

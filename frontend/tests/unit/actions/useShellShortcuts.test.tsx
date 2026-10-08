@@ -195,3 +195,45 @@ it('ignores a key combination the focused control already handled', () => {
     expect(toggleReading).not.toHaveBeenCalled();
     input.remove();
 });
+
+describe('Export to PDF shortcut', () => {
+    function ExportHarness({ available, invoke }: { available: boolean; invoke: () => void }): null {
+        useShellShortcuts([
+            {
+                id: 'export-pdf',
+                invoke,
+                isAvailable: (): boolean => available,
+                shortcut: 'Mod+P',
+                dispatchContext: { applicationFocused: true, documentId: 'doc-1', writable: true },
+            },
+            { id: 'save', invoke: jest.fn(), isAvailable: (): boolean => false, shortcut: 'Mod+S' },
+        ]);
+        return null;
+    }
+
+    it('prevents the webview default for Mod+P even when Export is unavailable, and runs nothing', () => {
+        const invoke = jest.fn();
+        render(<ExportHarness available={false} invoke={invoke} />);
+
+        const notCancelled = fireEvent.keyDown(window, { key: 'p', code: 'KeyP', ctrlKey: true });
+
+        expect(notCancelled).toBe(false);
+        expect(invoke).not.toHaveBeenCalled();
+    });
+
+    it('invokes Export once for Mod+P when it is available', async () => {
+        const invoke = jest.fn();
+        render(<ExportHarness available invoke={invoke} />);
+
+        const notCancelled = fireEvent.keyDown(window, { key: 'p', code: 'KeyP', ctrlKey: true });
+
+        expect(notCancelled).toBe(false);
+        await waitFor(() => expect(invoke).toHaveBeenCalledTimes(1));
+    });
+
+    it('leaves other unavailable shortcuts to the webview', () => {
+        render(<ExportHarness available invoke={jest.fn()} />);
+
+        expect(fireEvent.keyDown(window, { key: 's', code: 'KeyS', ctrlKey: true })).toBe(true);
+    });
+});

@@ -29,7 +29,7 @@ func TestInvalidOrMissingSettingFallsBackToDefault(t *testing.T) {
 		{
 			name: "malformed scalar values",
 			repository: fakeSettingsRepository{
-				appearance:     apperr.AppearanceSettings{Theme: "neon", Mode: "midnight", DefaultOpenMode: "split", ReadingWidth: "wide"},
+				appearance:     apperr.AppearanceSettings{Theme: "neon", Mode: "midnight", DefaultOpenMode: "split", ReadingWidth: "wide", PdfAppearance: "glossy"},
 				markdown:       apperr.MarkdownSettings{Standard: "commonmark-plus", FormatOnSave: defaults.Markdown.FormatOnSave, LintOnSave: defaults.Markdown.LintOnSave},
 				contentPrivacy: apperr.ContentPrivacySettings{RemotePolicy: "sometimes"},
 			},
@@ -106,6 +106,7 @@ func TestAppearanceUsesTheGlassValueAndReadsTheRetiredValue(t *testing.T) {
 			Mode:            ModeDark,
 			DefaultOpenMode: OpenModeEditor,
 			ReadingWidth:    ReadingWidthFull,
+			PdfAppearance:   PdfAppearanceClean,
 		}
 
 		if err := service.UpdateAppearance(context.Background(), appearance); err != nil {
@@ -123,6 +124,7 @@ func TestAppearanceUsesTheGlassValueAndReadsTheRetiredValue(t *testing.T) {
 				Mode:            ModeLight,
 				DefaultOpenMode: OpenModeEditor,
 				ReadingWidth:    ReadingWidthFull,
+				PdfAppearance:   PdfAppearanceClean,
 			},
 		})
 
@@ -308,7 +310,7 @@ func TestDefaultReadingWidthIsPage(t *testing.T) {
 func TestAppearanceReadingWidthSavedAndRefused(t *testing.T) {
 	repository := &fakeSettingsRepository{}
 	service := NewSettingsService(repository)
-	valid := apperr.AppearanceSettings{Theme: ThemeMaterial, Mode: ModeAuto, DefaultOpenMode: OpenModeEditor, ReadingWidth: ReadingWidthFull}
+	valid := apperr.AppearanceSettings{Theme: ThemeMaterial, Mode: ModeAuto, DefaultOpenMode: OpenModeEditor, ReadingWidth: ReadingWidthFull, PdfAppearance: PdfAppearanceStyled}
 	if err := service.UpdateAppearance(context.Background(), valid); err != nil {
 		t.Fatalf("update full reading width: %v", err)
 	}
@@ -327,5 +329,59 @@ func TestAppearanceReadingWidthSavedAndRefused(t *testing.T) {
 	}
 	if repository.appearance.ReadingWidth != ReadingWidthFull {
 		t.Fatalf("stored reading width after refused write = %q, want full", repository.appearance.ReadingWidth)
+	}
+}
+
+func TestDefaultPdfAppearanceIsStyled(t *testing.T) {
+	if got := DefaultSettings().Appearance.PdfAppearance; got != PdfAppearanceStyled {
+		t.Fatalf("default PDF appearance = %q, want %q", got, PdfAppearanceStyled)
+	}
+	if PdfAppearanceStyled != "styled" || PdfAppearanceClean != "clean" {
+		t.Fatalf("PDF appearance values = %q and %q, want styled and clean", PdfAppearanceStyled, PdfAppearanceClean)
+	}
+}
+
+func TestAppearancePdfAppearanceSavedAndRefused(t *testing.T) {
+	repository := &fakeSettingsRepository{}
+	service := NewSettingsService(repository)
+	valid := apperr.AppearanceSettings{Theme: ThemeMaterial, Mode: ModeAuto, DefaultOpenMode: OpenModeEditor, ReadingWidth: ReadingWidthPage, PdfAppearance: PdfAppearanceClean}
+	if err := service.UpdateAppearance(context.Background(), valid); err != nil {
+		t.Fatalf("update clean PDF appearance: %v", err)
+	}
+	got, err := service.Get(context.Background())
+	if err != nil {
+		t.Fatalf("read PDF appearance: %v", err)
+	}
+	if got.Appearance.PdfAppearance != PdfAppearanceClean {
+		t.Fatalf("PDF appearance = %q, want clean", got.Appearance.PdfAppearance)
+	}
+
+	for _, invalidValue := range []string{"glossy", ""} {
+		invalid := valid
+		invalid.PdfAppearance = invalidValue
+		if err := service.UpdateAppearance(context.Background(), invalid); err == nil {
+			t.Fatalf("update with PDF appearance %q succeeded, want a validation error", invalidValue)
+		}
+		if repository.appearance.PdfAppearance != PdfAppearanceClean {
+			t.Fatalf("stored PDF appearance after refused write = %q, want clean", repository.appearance.PdfAppearance)
+		}
+	}
+}
+
+func TestInvalidStoredPdfAppearanceIsReadAsStyled(t *testing.T) {
+	for _, stored := range []string{"", "glossy", "CLEAN"} {
+		service := NewSettingsService(&fakeSettingsRepository{
+			appearance: apperr.AppearanceSettings{
+				Theme: ThemeGlass, Mode: ModeDark, DefaultOpenMode: OpenModeViewer, ReadingWidth: ReadingWidthFull, PdfAppearance: stored,
+			},
+		})
+		got, err := service.Get(context.Background())
+		if err != nil {
+			t.Fatalf("read stored PDF appearance %q: %v", stored, err)
+		}
+		want := apperr.AppearanceSettings{Theme: ThemeGlass, Mode: ModeDark, DefaultOpenMode: OpenModeViewer, ReadingWidth: ReadingWidthFull, PdfAppearance: PdfAppearanceStyled}
+		if got.Appearance != want {
+			t.Fatalf("appearance with stored PDF appearance %q = %+v, want %+v", stored, got.Appearance, want)
+		}
 	}
 }

@@ -225,11 +225,11 @@ restarts, and each window SHALL have its own Reading mode.
 
 ### Requirement: Reading mode on open
 
-WHEN the default open mode is Reading (Viewer) and a file is opened from disk through the Open dialog, Open Recent,
-the launcher's Recent list, Reopen Last, the workspace tree, a preview link or drag and drop, including into a window
-that shows the launcher, the system SHALL show that document in Reading mode. A file created with New File in the
-workspace tree SHALL open without Reading mode and SHALL leave it if active. Opening a file SHALL NOT otherwise change
-whether Reading mode is active.
+WHEN the default open mode is Reading (Viewer) and a file is opened through the Open dialog, a Recent list, Reopen Last,
+the workspace tree, a preview link, drag and drop, the operating system or a command-line argument (also into a window
+showing the launcher), the system SHALL show it in Reading mode. A file created with New File in the workspace tree
+SHALL open without Reading mode and SHALL leave it if active. Opening a file SHALL NOT otherwise change whether Reading
+mode is active.
 
 #### Scenario: Open into an empty window
 
@@ -256,6 +256,22 @@ whether Reading mode is active.
 
 - **WHEN** Reading mode is active and the user creates `draft.md` with New File in the sidebar overlay's tree
 - **THEN** Reading mode is left and `draft.md` is shown in its arrangement
+
+#### Scenario: Opened from the operating system
+
+- **WHEN** the default open mode is Reading (Viewer), a GoMarkEdit window shows `a.md` and the user double-clicks
+  `notes.md` in the file manager
+- **THEN** a new window opens and shows `notes.md` in Reading mode
+
+#### Scenario: Command-line argument
+
+- **WHEN** the default open mode is Reading (Viewer) and the application is started with `notes.md` as its argument
+- **THEN** the window shows `notes.md` in Reading mode
+
+#### Scenario: Folder argument
+
+- **WHEN** the default open mode is Reading (Viewer) and the application is started with a folder as its argument
+- **THEN** the folder opens as the workspace and Reading mode is not entered
 
 ### Requirement: Reading mode focus
 

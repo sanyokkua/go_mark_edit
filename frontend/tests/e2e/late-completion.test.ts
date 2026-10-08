@@ -91,48 +91,52 @@ async function closeUntitledDocument(page: Page): Promise<void> {
         .click();
 }
 
-test('a late recent-file completion remains single and respects retry and cancel', async ({ app }) => {
-    const source = await app.writeDocument('late.md', '# Late');
-    const other = await app.writeDocument('other.md', '# Other');
-    await app.seedRecents([other, source]);
-    await app.launch();
+test(
+    'a late recent-file completion remains single and respects retry and cancel',
+    { tag: '@perf' },
+    async ({ app }) => {
+        const source = await app.writeDocument('late.md', '# Late');
+        const other = await app.writeDocument('other.md', '# Other');
+        await app.seedRecents([other, source]);
+        await app.launch();
 
-    const runVariant = async (remediation: 'retry' | 'cancel'): Promise<void> => {
-        await closeUntitledDocument(app.page);
-        const launcher = app.page.getByTestId('document-launcher');
-        await expect(launcher).toBeVisible();
+        const runVariant = async (remediation: 'retry' | 'cancel'): Promise<void> => {
+            await closeUntitledDocument(app.page);
+            const launcher = app.page.getByTestId('document-launcher');
+            await expect(launcher).toBeVisible();
 
-        const heldLock = await startHeldLock(app.repositoryDirectory, app.profileDirectory);
-        try {
-            const recent = launcher.getByRole('button', { name: 'late.md' });
-            await expect(recent).toBeVisible();
-            const startedAt = Date.now();
-            await recent.click();
+            const heldLock = await startHeldLock(app.repositoryDirectory, app.profileDirectory);
+            try {
+                const recent = launcher.getByRole('button', { name: 'late.md' });
+                await expect(recent).toBeVisible();
+                const startedAt = Date.now();
+                await recent.click();
 
-            const stuck = app.page.locator('[data-notification-code="command-stuck"]');
-            await expect(stuck).toBeVisible({ timeout: 11_000 });
-            if (remediation === 'retry') {
-                const retryAt = startedAt + 10_500;
-                const wait = retryAt - Date.now();
-                if (wait > 0) await app.page.waitForTimeout(wait);
-                await stuck.getByRole('button', { name: 'Retry', exact: true }).click();
-            } else {
-                await stuck.getByRole('button', { name: 'Cancel', exact: true }).click();
-                await expect(stuck).toHaveCount(0);
+                const stuck = app.page.locator('[data-notification-code="command-stuck"]');
+                await expect(stuck).toBeVisible({ timeout: 11_000 });
+                if (remediation === 'retry') {
+                    const retryAt = startedAt + 10_500;
+                    const wait = retryAt - Date.now();
+                    if (wait > 0) await app.page.waitForTimeout(wait);
+                    await stuck.getByRole('button', { name: 'Retry', exact: true }).click();
+                } else {
+                    await stuck.getByRole('button', { name: 'Cancel', exact: true }).click();
+                    await expect(stuck).toHaveCount(0);
+                }
+
+                await expect(app.page.getByRole('tab', { name: 'late.md' })).toBeVisible({
+                    timeout: 20_000,
+                });
+                await expect(app.page.getByRole('tab')).toHaveCount(1);
+                await expect(stuck).toHaveCount(0, { timeout: 5_000 });
+            } finally {
+                await stopHeldLock(heldLock.process);
             }
+        };
 
-            await expect(app.page.getByRole('tab', { name: 'late.md' })).toBeVisible({
-                timeout: 20_000,
-            });
-            await expect(app.page.getByRole('tab')).toHaveCount(1);
-            await expect(stuck).toHaveCount(0, { timeout: 5_000 });
-        } finally {
-            await stopHeldLock(heldLock.process);
-        }
-    };
-
-    await runVariant('retry');
-    await app.relaunch();
-    await app.seedRecents([other, source]);
-    await runVariant('cancel');
-});
+        await runVariant('retry');
+        await app.relaunch();
+        await app.seedRecents([other, source]);
+        await runVariant('cancel');
+    },
+);

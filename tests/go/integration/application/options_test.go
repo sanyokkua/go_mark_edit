@@ -26,6 +26,7 @@ func TestNewOptionsBuildsAHiddenFramedWindowWithTheEmbeddedFrontend(t *testing.T
 		OnStartup:      startup,
 		OnShutdown:     shutdown,
 		OnBeforeClose:  beforeClose,
+		OnFileOpen:     func(string) {},
 		Bind:           []interface{}{"app-model", "settings", "application"},
 		EnumBind:       []interface{}{apperr.AllErrorCodes},
 	})
@@ -35,7 +36,7 @@ func TestNewOptionsBuildsAHiddenFramedWindowWithTheEmbeddedFrontend(t *testing.T
 	if configured.MinWidth != 375 || configured.MinHeight != 480 || configured.Frameless || configured.DisableResize || !configured.StartHidden {
 		t.Fatalf("window constraints = %+v, want hidden resizable native frame", configured)
 	}
-	if configured.SingleInstanceLock != nil || configured.Mac == nil || configured.Mac.DisableZoom {
+	if configured.SingleInstanceLock != nil || configured.Mac == nil || configured.Mac.DisableZoom || configured.Mac.OnFileOpen == nil {
 		t.Fatalf("native ownership options = %+v, want independent macOS zoomable window", configured)
 	}
 	if configured.DragAndDrop == nil || !configured.DragAndDrop.EnableFileDrop || !configured.DragAndDrop.DisableWebViewDrop {

@@ -1,4 +1,4 @@
-import { memo, useEffect, useId, useMemo, useState } from 'react';
+import { memo, useEffect, useId, useMemo, useRef, useState } from 'react';
 
 import { t } from '../../i18n';
 import { mermaidQueue, type MermaidResult } from '../../logic/markdown/mermaid/queue';
@@ -19,14 +19,16 @@ interface DisplayedResult {
 
 function MermaidBlock({ source, index, sourceLine }: MermaidBlockProps): React.JSX.Element {
     const namespace = useId();
+    const rootRef = useRef<HTMLDivElement>(null);
     const [theme, setTheme] = useState<string>();
     const [displayed, setDisplayed] = useState<DisplayedResult>();
     const limit = index > 50 ? 'tooManyDiagrams' : source.length > 50_000 ? 'tooLarge' : null;
 
     useEffect(() => {
-        if (limit !== null) return;
+        const element = rootRef.current;
+        if (limit !== null || element === null) return;
         const root = document.documentElement;
-        const apply = (): void => setTheme(resolveMermaidTheme());
+        const apply = (): void => setTheme(resolveMermaidTheme(element));
         apply();
         const observer = new MutationObserver(apply);
         observer.observe(root, { attributes: true, attributeFilter: ['data-theme', 'data-mode'] });
@@ -62,8 +64,16 @@ function MermaidBlock({ source, index, sourceLine }: MermaidBlockProps): React.J
         () => (svg === undefined ? '' : namespaceMermaidSvg(svg, namespace)),
         [svg, namespace],
     );
+    const state =
+        limit !== null ? 'limit' : current?.kind === 'svg' ? 'drawn' : current?.kind === 'error' ? 'error' : 'pending';
     return (
-        <div className={styles.block} data-mermaid-block={index} data-source-line={sourceLine}>
+        <div
+            ref={rootRef}
+            className={styles.block}
+            data-mermaid-block={index}
+            data-mermaid-state={state}
+            data-source-line={sourceLine}
+        >
             {limit !== null ? (
                 <div className={styles.placeholder} role="status">
                     {t(`preview.mermaid.${limit}`)}

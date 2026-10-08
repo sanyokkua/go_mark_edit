@@ -34,7 +34,7 @@ func TestUpdateAppearancePropagatesDefaultOpenModeToDocumentModel(t *testing.T) 
 
 	assertNextOpenReadingMode(t, holder, false)
 
-	appearance := apperr.AppearanceSettings{Theme: "material", Mode: "auto", DefaultOpenMode: settings.OpenModeViewer, ReadingWidth: settings.ReadingWidthPage}
+	appearance := apperr.AppearanceSettings{Theme: "material", Mode: "auto", DefaultOpenMode: settings.OpenModeViewer, ReadingWidth: settings.ReadingWidthPage, PdfAppearance: settings.PdfAppearanceStyled}
 	if err := holder.SettingsService.UpdateAppearance(context.Background(), appearance); err != nil {
 		t.Fatalf("UpdateAppearance(viewer): %v", err)
 	}

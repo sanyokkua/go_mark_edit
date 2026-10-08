@@ -5,17 +5,19 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/sanyokkua/go_mark_edit/internal/apperr"
 	"github.com/sanyokkua/go_mark_edit/internal/bridge"
 	"github.com/sanyokkua/go_mark_edit/internal/logging"
 )
 
-// NewWindowLauncher starts another application process, optionally with a
-// folder to open when that process initializes.
+// NewWindowLauncher starts another application process, optionally with a file
+// or folder to open when that process initializes.
 type NewWindowLauncher interface {
-	Launch(folderPath string) error
+	Launch(targetPath string) error
 }
 
 type processNewWindowLauncher struct {
@@ -29,15 +31,15 @@ func NewOSNewWindowLauncher(logger *logging.Logger) NewWindowLauncher {
 	return processNewWindowLauncher{logger: logger}
 }
 
-func (launcher processNewWindowLauncher) Launch(folderPath string) error {
+func (launcher processNewWindowLauncher) Launch(targetPath string) error {
 	executablePath, err := os.Executable()
 	if err != nil {
 		return err
 	}
 
 	var args []string
-	if folderPath != "" {
-		args = []string{folderPath}
+	if targetPath != "" {
+		args = []string{targetPath}
 	}
 	command := exec.Command(executablePath, args...)
 	for _, entry := range os.Environ() {
@@ -60,13 +62,28 @@ func (launcher processNewWindowLauncher) Launch(folderPath string) error {
 	return nil
 }
 
+const newWindowFailureMessage = "A new window could not be opened."
+
 func newWindowRefusal() apperr.VoidResult {
 	return bridge.Refused[apperr.VoidResult](
 		apperr.ClassifiedSystemCommandFailure,
 		"window",
-		"A new window could not be opened.",
+		newWindowFailureMessage,
 		apperr.RemediationRetry,
 	)
+}
+
+// newWindowFailureEvent is the state:error payload for a launch that failed
+// outside any command: a classified error carries the message and Retry that a
+// void result's generic wire error does not.
+func newWindowFailureEvent() apperr.WireError {
+	return apperr.ClassifiedToWire(bridge.ClassifiedWithID(
+		apperr.ClassifiedSystemCommandFailure,
+		"window",
+		newWindowFailureMessage,
+		apperr.RemediationRetry,
+		"",
+	))
 }
 
 // NewWindowServiceAPI is the host capability used by ApplicationHandler to
@@ -84,52 +101,126 @@ func (holder *ApplicationContextHolder) LaunchNewWindow(_ context.Context, folde
 	return holder.newWindowLauncher.Launch(folderPath)
 }
 
-// OpenStartupFolderFromArgs opens only the first startup argument when it
-// names an existing directory. The caller invokes this after application
-// initialization so startup arguments never restore persisted session state.
-func OpenStartupFolderFromArgs(args []string, openWorkspace func(string) apperr.WorkspaceOutcome) apperr.WorkspaceOutcome {
-	if len(args) == 0 || args[0] == "" || openWorkspace == nil {
-		return apperr.WorkspaceOutcome{}
+// firstStartupPath returns the first argument that names a path: not empty and
+// not a flag such as the -psn_ argument macOS adds. It is made absolute against
+// the working directory because the window opens it after startup.
+func firstStartupPath(args []string) string {
+	for _, arg := range args {
+		if arg == "" || strings.HasPrefix(arg, "-") {
+			continue
+		}
+		if absolute, err := filepath.Abs(arg); err == nil {
+			return absolute
+		}
+		return arg
 	}
-
-	info, err := os.Stat(args[0])
-	if err != nil || !info.IsDir() {
-		return apperr.WorkspaceOutcome{}
-	}
-
-	return openWorkspace(args[0])
+	return ""
 }
 
-func firstStartupFolderArgument(args []string) string {
-	if len(args) == 0 {
-		return ""
+// AcceptOpenRequest routes a path that arrived from argv or the operating
+// system. A window that is still starting keeps the first one for the frontend
+// to take; every other path starts a new application process, whatever the
+// window currently shows. The launcher and the event emitter run outside the
+// holder mutex.
+func (holder *ApplicationContextHolder) AcceptOpenRequest(path string) {
+	if path == "" {
+		return
 	}
-	return args[0]
-}
-
-// OpenPendingStartupFolder consumes and opens the explicit startup argument
-// after application initialization. The in-memory argument is never restored
-// from persisted state and is consumed even when opening it is refused.
-func (holder *ApplicationContextHolder) OpenPendingStartupFolder(ctx context.Context) apperr.WorkspaceOutcome {
 	holder.mu.Lock()
-	folderPath := holder.pendingStartupFolderPath
-	holder.pendingStartupFolderPath = ""
-	service := holder.AppModelService
+	if holder.startupOpen && !holder.targetAccepted {
+		holder.targetAccepted = true
+		holder.launchTarget = path
+		holder.ownTarget = path
+		holder.mu.Unlock()
+		return
+	}
+	ctx := holder.ctx
+	emit := holder.emitEvent
 	logger := holder.appLogger
+	windows := holder.windows
+	suppressed := holder.suppressDuplicateLocked(path)
 	holder.mu.Unlock()
-	if folderPath == "" {
-		return apperr.WorkspaceOutcome{}
+
+	// A window never opens another one for its own path or for a path another
+	// live window already shows. macOS reports the path in a spawned window's
+	// argv again as a file-open event, so without this check each new window
+	// started the next one without end.
+	if suppressed || windows.IsOpen(path) {
+		return
+	}
+	if windows.Count() >= MaxWindows {
+		if ctx != nil && emit != nil {
+			emit(ctx, bridge.EventStateError, windowLimitEvent())
+		}
+		return
 	}
 
-	result := OpenStartupFolderFromArgs([]string{folderPath}, func(path string) apperr.WorkspaceOutcome {
-		return service.OpenWorkspace(ctx, path)
-	})
-	if result.Status == apperr.WorkspaceStatusRefused && logger != nil {
-		zlog := logger.Zerolog()
-		zlog.Warn().
-			Str("category", string(result.Category)).
-			Str("subject", result.Subject).
-			Msg("startup folder could not be opened")
+	if err := holder.LaunchNewWindow(ctx, path); err != nil {
+		if logger != nil {
+			zlog := logger.Zerolog()
+			zlog.Warn().
+				Str("category", string(apperr.ClassifiedSystemCommandFailure)).
+				Msg("new application window could not be opened for an external path")
+		}
+		if ctx != nil && emit != nil {
+			emit(ctx, bridge.EventStateError, newWindowFailureEvent())
+		}
 	}
-	return result
+}
+
+// recentLaunchWindow is how long a path counts as "being opened" after a window
+// was started for it, which covers the time before that window registers.
+const recentLaunchWindow = 10 * time.Second
+
+// suppressDuplicateLocked reports whether path is this window's own target or
+// was just launched, and otherwise records the launch. The caller holds
+// holder.mu.
+func (holder *ApplicationContextHolder) suppressDuplicateLocked(path string) bool {
+	key := normalizeWindowTarget(path)
+	if holder.ownTarget != "" && normalizeWindowTarget(holder.ownTarget) == key {
+		return true
+	}
+	now := time.Now()
+	for known, at := range holder.recentLaunches {
+		if now.Sub(at) > recentLaunchWindow {
+			delete(holder.recentLaunches, known)
+		}
+	}
+	if _, recent := holder.recentLaunches[key]; recent {
+		return true
+	}
+	holder.recentLaunches[key] = now
+	return false
+}
+
+const windowLimitMessage = "Too many GoMarkEdit windows are open."
+
+// windowLimitEvent is the state:error payload for a window that was not opened
+// because MaxWindows windows are already open. Retry would not help.
+func windowLimitEvent() apperr.WireError {
+	return apperr.ClassifiedToWire(bridge.ClassifiedWithID(
+		apperr.ClassifiedSystemCommandFailure,
+		"window",
+		windowLimitMessage,
+		apperr.RemediationNone,
+		"",
+	))
+}
+
+// TakeLaunchTarget removes and returns the path this window accepted at
+// startup, or an empty result when there is none or it was already taken.
+func (holder *ApplicationContextHolder) TakeLaunchTarget(_ context.Context) apperr.LaunchTargetResult {
+	holder.mu.Lock()
+	path := holder.launchTarget
+	holder.launchTarget = ""
+	holder.mu.Unlock()
+	if path == "" {
+		return apperr.LaunchTargetResult{}
+	}
+
+	kind := "file"
+	if info, err := os.Stat(path); err == nil && info.IsDir() {
+		kind = "folder"
+	}
+	return apperr.LaunchTargetResult{Path: path, Kind: kind}
 }

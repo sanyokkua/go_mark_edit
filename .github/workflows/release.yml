@@ -10,9 +10,15 @@ on:
                 description: 'Release version (X.Y.Z, X.Y.Z-alpha.N, or X.Y.Z-beta.N)'
                 required: true
                 type: string
+            full_verify:
+                description: 'Run the complete scripts/verify here instead of requiring a green push run'
+                required: false
+                default: false
+                type: boolean
 
 permissions:
     contents: write
+    actions: read
 
 jobs:
     release:
@@ -58,22 +64,83 @@ jobs:
                   else
                     echo 'on_master=true' >> "$GITHUB_OUTPUT"
                   fi
+            - name: Require a green push workflow run for this commit
+              id: gate
+              if: steps.branch-guard.outputs.on_master == 'true'
+              env:
+                  GH_TOKEN: ${{ github.token }}
+                  FULL_VERIFY: ${{ inputs.full_verify }}
+              run: |
+                  if [ "$FULL_VERIFY" = 'true' ]; then
+                    echo 'full_verify requested; running the complete verification here.'
+                    echo 'full=true' >> "$GITHUB_OUTPUT"
+                    exit 0
+                  fi
+                  echo 'full=false' >> "$GITHUB_OUTPUT"
+                  conclusion=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow push.yml --commit "$GITHUB_SHA" \
+                    --status completed --json conclusion --jq '[.[] | select(.conclusion == "success")] | length')
+                  if [ "${conclusion:-0}" -lt 1 ]; then
+                    echo "No successful push workflow run exists for $GITHUB_SHA." >&2
+                    echo 'Wait for the push run on this commit to pass, or re-run with full_verify=true.' >&2
+                    exit 1
+                  fi
+                  echo "Found a successful push workflow run for $GITHUB_SHA."
             - uses: actions/setup-go@v7
               if: steps.branch-guard.outputs.on_master == 'true'
               with:
                   go-version-file: go.mod
+                  cache: true
             - uses: actions/setup-node@v7
               if: steps.branch-guard.outputs.on_master == 'true'
               with:
                   node-version-file: .nvmrc
                   cache: npm
                   cache-dependency-path: frontend/package-lock.json
+            - name: Read tool versions
+              id: tools
+              if: steps.branch-guard.outputs.on_master == 'true'
+              run: |
+                  source scripts/lib/common.sh
+                  wails=$(sed -nE 's/^[[:space:]]*github\.com\/wailsapp\/wails\/v2[[:space:]]+([^[:space:]]+).*/\1/p' go.mod | head -1)
+                  playwright=$(node -p "require('./frontend/package-lock.json').packages['node_modules/@playwright/test'].version")
+                  echo "go-tools=$wails-$GOLANGCI_LINT_VERSION-$SHFMT_VERSION" >> "$GITHUB_OUTPUT"
+                  echo "playwright=$playwright" >> "$GITHUB_OUTPUT"
+            - name: Cache Go tools
+              if: steps.branch-guard.outputs.on_master == 'true'
+              uses: actions/cache@v4
+              with:
+                  path: ~/go/bin
+                  key: go-tools-${{ runner.os }}-${{ steps.tools.outputs.go-tools }}
+            - name: Cache Playwright browsers
+              if: steps.branch-guard.outputs.on_master == 'true'
+              uses: actions/cache@v4
+              with:
+                  path: ~/Library/Caches/ms-playwright
+                  key: playwright-${{ runner.os }}-${{ steps.tools.outputs.playwright }}
+            - name: Cache ESLint results
+              if: steps.branch-guard.outputs.on_master == 'true' && steps.gate.outputs.full == 'true'
+              uses: actions/cache@v4
+              with:
+                  path: .local_tmp_files/cache/eslint
+                  key: eslint-${{ runner.os }}-${{ hashFiles('frontend/package-lock.json', 'frontend/eslint.config.js') }}-${{ github.sha }}
+                  restore-keys: |
+                      eslint-${{ runner.os }}-${{ hashFiles('frontend/package-lock.json', 'frontend/eslint.config.js') }}-
             - name: Install dependencies
               if: steps.branch-guard.outputs.on_master == 'true'
               run: scripts/build setup --with-browser
-            - name: Verify
-              if: steps.branch-guard.outputs.on_master == 'true'
+            - name: Full verify (requested)
+              if: steps.branch-guard.outputs.on_master == 'true' && steps.gate.outputs.full == 'true'
+              env:
+                  GOMARKEDIT_E2E_REUSE_DIST: '1'
               run: scripts/verify
+            - name: macOS E2E subset
+              if: steps.branch-guard.outputs.on_master == 'true' && steps.gate.outputs.full != 'true'
+              env:
+                  E2E_SUBSET: macos
+              run: scripts/verify e2e
+            - name: Stage timings
+              if: always() && steps.branch-guard.outputs.on_master == 'true'
+              run: node tools/verify/stage-timings.mjs >> "$GITHUB_STEP_SUMMARY"
             - name: Upload verification artifacts on failure
               if: failure() && steps.branch-guard.outputs.on_master == 'true'
               uses: actions/upload-artifact@v7

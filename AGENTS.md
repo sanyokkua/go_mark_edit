@@ -91,7 +91,8 @@ The six verification stages are Lint, Format, Build, Unit, Integration and E2E, 
 `scripts/verify` (single stage: `scripts/verify lint`; `--skip e2e`). Other entry points are
 `scripts/build` (`setup`, `setup --with-browser`, `dev`), `scripts/test`, `scripts/format`
 (`--check`) and `scripts/baseline`; `just --list` shows the optional aliases. Raw reports remain
-under `.local_tmp_files/runs/<run-id>/`.
+under `.local_tmp_files/runs/<run-id>/`; only the 10 newest run folders are kept, and tool caches live in
+`.local_tmp_files/cache/`.
 
 | Stage       | What it establishes                                                                                         |
 | ----------- | ----------------------------------------------------------------------------------------------------------- |

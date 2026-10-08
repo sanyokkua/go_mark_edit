@@ -10,7 +10,7 @@ release workflow.
 
 ## Current scope
 
-The application includes rich Markdown rendering with local code highlighting, math and Mermaid; document-wide Format, Compact and Lint; a distraction-free Reading mode (Ctrl+Enter, Cmd+Enter on macOS) with a configurable default open mode and reading width; and links to supported local Markdown files through the normal open flow. The command palette, Assistant, export, image authoring, file associations and broader asset support remain candidate work. Remote images retain their placeholder while a user-consent policy remains undefined. Start new product work with an approved OpenSpec change (see `AGENTS.md`).
+The application includes rich Markdown rendering with local code highlighting, math and Mermaid; document-wide Format, Compact and Lint; a distraction-free Reading mode (Ctrl+Enter, Cmd+Enter on macOS) with a configurable default open mode and reading width; and links to supported local Markdown files through the normal open flow. The command palette, Assistant, image authoring and broader asset support remain candidate work. Remote images retain their placeholder while a user-consent policy remains undefined. Start new product work with an approved OpenSpec change (see `AGENTS.md`).
 
 ## Run it
 

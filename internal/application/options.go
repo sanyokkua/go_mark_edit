@@ -23,6 +23,7 @@ type Options struct {
 	OnStartup      func(context.Context)
 	OnShutdown     func(context.Context)
 	OnBeforeClose  func(context.Context) bool
+	OnFileOpen     func(string)
 	Bind           []interface{}
 	EnumBind       []interface{}
 }
@@ -38,7 +39,7 @@ func NewOptions(config Options) *wailsoptions.App {
 		Frameless:     false,
 		DisableResize: false,
 		StartHidden:   true,
-		Mac:           &mac.Options{DisableZoom: false},
+		Mac:           &mac.Options{DisableZoom: false, OnFileOpen: config.OnFileOpen},
 		DragAndDrop:   &wailsoptions.DragAndDrop{EnableFileDrop: true, DisableWebViewDrop: true},
 		Menu:          config.Menu,
 		AssetServer: &assetserver.Options{

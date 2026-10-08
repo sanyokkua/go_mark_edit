@@ -1,6 +1,7 @@
 import type { DocumentMetadata } from '../../../src/logic/store/appModelTypes';
 import {
     escapeUnsafeText,
+    fileStemOf,
     tabLabelFor,
     truncateTabLabel,
     truncatedTabLabelParts,
@@ -95,4 +96,21 @@ it('leaves an unambiguous label as a single part with no suffix', () => {
 
     expect(parts.suffix).toBe('');
     expect(parts.basename).toBe('⁨notes.md⁩');
+});
+
+describe('fileStemOf', () => {
+    it.each([
+        ['/docs/guide.md', 'guide'],
+        ['/docs/notes.markdown', 'notes'],
+        ['/docs/a.b.md', 'a.b'],
+        ['C:\\Users\\me\\guide.md', 'guide'],
+        ['/docs/README', 'README'],
+        ['/docs/.hidden', '.hidden'],
+    ])('returns the file name of %s without its last extension', (path, stem) => {
+        expect(fileStemOf(path)).toBe(stem);
+    });
+
+    it('returns undefined for an empty path', () => {
+        expect(fileStemOf('')).toBeUndefined();
+    });
 });

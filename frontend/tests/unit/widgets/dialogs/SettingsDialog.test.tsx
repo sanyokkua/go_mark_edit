@@ -148,3 +148,35 @@ it('shows the stored Reading width and sends page or full when a choice is selec
     fireEvent.click(within(group).getByRole('radio', { name: 'Page' }));
     expect(onReadingWidthChange).toHaveBeenCalledWith('page');
 });
+
+it('shows the stored PDF appearance with its description and sends styled or clean when a choice is selected', () => {
+    const onPdfAppearanceChange = jest.fn();
+    render(
+        <SettingsDialog
+            mode="auto"
+            onModeChange={jest.fn()}
+            onOpenChange={jest.fn()}
+            onPdfAppearanceChange={onPdfAppearanceChange}
+            onReset={jest.fn()}
+            onThemeChange={jest.fn()}
+            open
+            pdfAppearance="clean"
+            theme="material"
+        />,
+    );
+
+    const group = screen.getByRole('radiogroup', { name: 'PDF appearance' });
+    expect(group).toHaveAccessibleDescription(/black text on white/u);
+    expect(within(group).getByRole('radio', { name: 'Clean' })).toBeChecked();
+    fireEvent.click(within(group).getByRole('radio', { name: 'Styled' }));
+    expect(onPdfAppearanceChange).toHaveBeenCalledWith('styled');
+});
+
+it('disables the PDF appearance group when no change handler is supplied', () => {
+    renderDialog();
+
+    const group = screen.getByRole('radiogroup', { name: 'PDF appearance' });
+    for (const radio of within(group).getAllByRole('radio')) {
+        expect(radio).toBeDisabled();
+    }
+});

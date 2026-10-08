@@ -63,7 +63,7 @@ export interface E2EAppHarness {
     writeDocument(relativePath: string, contents: string): Promise<string>;
     seedRecents(items: readonly (string | { path: string; kind: 'file' | 'folder' })[]): Promise<void>;
     openWorkspace(folderPath: string): Promise<'opened' | 'unchanged'>;
-    launch(): Promise<void>;
+    launch(args?: readonly string[]): Promise<void>;
     relaunch(): Promise<void>;
     expectNoForeignRequests(): void;
     waitForAppExit(timeoutMilliseconds?: number): Promise<void>;
@@ -82,6 +82,7 @@ class PlaywrightE2EAppHarness implements E2EAppHarness {
     private devOutput = '';
     private port: number | undefined;
     private hasLaunched = false;
+    private launchArgs: readonly string[] = [];
     private disposed = false;
     private readonly frontendURL: string;
     private readonly frontendOrigin: string;
@@ -178,8 +179,9 @@ class PlaywrightE2EAppHarness implements E2EAppHarness {
         return result.status;
     }
 
-    async launch(): Promise<void> {
+    async launch(args: readonly string[] = []): Promise<void> {
         const started = performance.now();
+        this.launchArgs = args;
         if (this.disposed) throw new Error('cannot launch a disposed E2E harness');
         if (this.devProcess !== null) {
             throw new Error('the E2E harness is already running');
@@ -188,7 +190,7 @@ class PlaywrightE2EAppHarness implements E2EAppHarness {
             if (this.port === undefined) this.port = await availableLocalPort();
             const origin = `http://127.0.0.1:${this.port}`;
             this.backendOrigin = origin;
-            const child = spawn(preparedPaths().executable, [], {
+            const child = spawn(preparedPaths().executable, [...this.launchArgs], {
                 cwd: this.repositoryDirectory,
                 detached: process.platform !== 'win32',
                 env: childEnvironment(this.tempDirectory, this.frontendURL, this.port),
@@ -235,7 +237,7 @@ class PlaywrightE2EAppHarness implements E2EAppHarness {
     async relaunch(): Promise<void> {
         const started = performance.now();
         await this.stopDevProcess();
-        await this.launch();
+        await this.launch(this.launchArgs);
         console.log(`[e2e] relaunchMs=${Math.round(performance.now() - started)}`);
     }
 

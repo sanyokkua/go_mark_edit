@@ -58,6 +58,7 @@ export type ActionId =
     | 'editor-settings'
     | 'default-open-mode'
     | 'reading-width'
+    | 'pdf-appearance'
     | 'markdown-standard'
     | 'autosave'
     | 'format-on-save'
@@ -204,7 +205,6 @@ function entry(
     };
 }
 
-const fileDeferred = deferred('file-lifecycle-deferred');
 const assistantDeferred = deferred('assistant-deferred');
 const laterDeferred = deferred('later-slice');
 
@@ -236,9 +236,9 @@ export const actionRegistry: readonly ActionEntry[] = Object.freeze([
         shortcut: 'Mod+Shift+S',
         surfaceLabelKeys: { 'file-menu': 'action.save-as.file-menu.label' },
     }),
-    entry('export-pdf', 'document', ['file-menu'], {
+    entry('export-pdf', 'document', ['file-menu', 'shortcuts'], {
+        shortcut: 'Mod+P',
         surfaceLabelKeys: { 'file-menu': 'action.export-pdf.file-menu.label' },
-        availability: fileDeferred,
     }),
     entry('close-tab', 'document', ['file-menu', 'tab-context'], {
         shortcut: 'Mod+W',
@@ -278,6 +278,7 @@ export const actionRegistry: readonly ActionEntry[] = Object.freeze([
     entry('editor-settings', 'application', ['settings-menu']),
     entry('default-open-mode', 'application', ['settings-menu']),
     entry('reading-width', 'application', ['settings-menu']),
+    entry('pdf-appearance', 'application', ['settings-menu']),
     entry('markdown-standard', 'application', ['settings-menu']),
     entry('autosave', 'application', ['settings-menu'], {
         availability: available(),
@@ -554,6 +555,10 @@ export function getActionAvailability(
         if (projected?.canReopenLastFile === false) {
             return { kind: 'unavailable', reason: 'no-recent' };
         }
+    }
+
+    if (id === 'export-pdf' && hasProjectedDocument === false) {
+        return { kind: 'unavailable', reason: 'no-document' };
     }
 
     if (id === 'save' || id === 'save-as') {

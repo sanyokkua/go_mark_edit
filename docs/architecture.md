@@ -416,15 +416,34 @@ dev and setup. Hooks and CI call the scripts directly. A developer may use the f
   and E2E prints the frontend/browser count. A failed run marks later stages as NOT RUN.
 - `scripts/format --check` checks the repository formatter set. `scripts/baseline` captures a full
   stage record, and `scripts/baseline --compare` fails closed when findings remain or a new finding
-  appears. Verification run artifacts live under `.local_tmp_files/runs/`; the explicit baseline
+  appears. Verification run artifacts live under `.local_tmp_files/runs/`, of which only the 10 newest folders are kept
+  (each new run prunes older ones, and stale `e2e-run-*` and `verification-test-*` folders over 24 hours old); the explicit baseline
   record lives under `.local_tmp_files/baseline/` and is created or compared only by
   `scripts/baseline`. The record is named after the checked-out branch (slashes become dashes), or after the short
   commit on a detached HEAD. Required reports that are missing or malformed are UNAVAILABLE or UNRELIABLE,
   never zero; warning counts do not fail a stage.
+- CI (`.github/workflows/`): `push.yml` runs the stages as parallel `ubuntu-24.04` jobs so the wall time
+  is that of the slowest one: `static` (Lint, Format, Build), `tests` (Unit, Integration) and `e2e`, a
+  matrix run under `xvfb-run`: the parallel `chromium` project in four shards (`E2E_SHARD=<n>/4`) and a
+  `serial` job for the timing-bound and clipboard projects. `E2E_PROJECTS` and `E2E_SHARD` are read by
+  `frontend/playwright.config.ts`, which keeps a project dependency only when both projects are selected,
+  because Playwright runs a selected project's dependencies in full on every shard. They
+  share the `.github/actions/setup` composite action (Linux Wails toolchain plus `lsof`, `xvfb` and `xclip`,
+  Go, Node, tool and browser caches, `scripts/build setup`). The stages are independent because the Wails
+  bindings and generated themes are tracked. `cross-platform-go` keeps the Windows and macOS Go tests. Caches: Go modules and build cache
+  (`setup-go`), the Go tool binaries in `~/go/bin` (keyed by the pinned Wails, golangci-lint and shfmt
+  versions; `scripts/build setup` skips `go install` when the installed module version already matches),
+  Playwright browsers (keyed by the Playwright version in `package-lock.json`) and the ESLint cache
+  `.local_tmp_files/cache/eslint` (`--cache-strategy content`, restored by prefix). Each job appends a stage
+  timing table from `tools/verify/stage-timings.mjs` to `$GITHUB_STEP_SUMMARY`.
+  `release.yml` does not repeat verification: it first requires a successful `push.yml` run for
+  `GITHUB_SHA` (queried with `gh run list`) and fails otherwise, including for a commit whose push run was
+  skipped by `paths-ignore`; a manual dispatch with `full_verify` runs the complete `scripts/verify` on
+  macOS instead. Otherwise it runs only the macOS E2E subset, then builds and packages the application.
 - CI failure uploads allowlist stage JSON records, logs, stderr captures, normalized and raw reports,
   Jest/Playwright/Go test reports and E2E failure screenshots, error contexts and traces from
   `.local_tmp_files/runs/`; compiler, linter, Jest,
-  Playwright and TypeScript build-info caches are not uploaded.
+  Playwright and TypeScript build-info caches (kept in `.local_tmp_files/cache/`) are not uploaded.
 
 The E2E stage builds the standard Wails development executable and seed helper once, then starts two
 owned frontend listeners for the run: Vite development assets for functional cases by default and
@@ -445,17 +464,24 @@ removes per-case state. `lsof` is required on Linux test hosts as well as macOS.
 both owned frontend processes and removes temporary state; `KEEP_E2E_ARTEFACTS=1` retains the
 case and preparation files for diagnosis.
 
-The OS clipboard writer cases run through the serial
-`chromium-native` Playwright project; the other cases run through `chromium`. Playwright retries are
-zero. Local workers are capped at four and the CPU capacity available to Node. CI uses one worker
-to avoid concurrent application/browser contention and allows 15 seconds for UI assertions rather
-than the local five seconds. Explicit assertion timeouts and product performance bounds remain
-unchanged. Automatic failure screenshots, error contexts and app output are retained, while traces
+Playwright runs four kinds of cases through projects. `chromium` holds every case that is not timing-bound
+and runs in parallel (CI: three workers; local: at most four and the available CPU capacity). Cases tagged
+`@perf` (latency bounds, deadline-based rendering, large-document and cancellation timing) run in
+`chromium-serial` with one worker, after `chromium`, so concurrent work never inflates a measurement;
+a case that proves flaky under parallel load is moved there rather than loosened. The OS clipboard
+writer cases (`@native-clipboard`) run in `chromium-native`, also serial and after `chromium-serial`.
+Setting `E2E_SUBSET=macos` replaces these with a macOS subset (`pdf-export`, `launch-target` and `menus`
+files, then the clipboard cases), which the release workflow runs on macOS. Playwright retries are zero.
+CI allows 15 seconds for UI assertions rather than the local five seconds. Product performance bounds and
+explicit assertion timeouts remain unchanged. Automatic failure screenshots, error contexts and app output are retained, while traces
 require explicit `--trace` to avoid recording overhead in timing-sensitive tests.
 The paced-typing performance check measures keydown-to-input latency against its existing 100 ms
 guard, alongside the 300 ms input-to-preview bound. Inter-input gaps
 remain diagnostic: Playwright's requested pacing also includes controller scheduling and browser
 protocol round trips, so subtracting that pacing does not measure application responsiveness.
+When `GOMARKEDIT_E2E_REUSE_DIST=1` and the bundle in `frontend/dist` is newer than every input of
+`vite build` (checked before the generators run), preparation reuses the bundle the Build stage left
+instead of building it again; otherwise it builds. The E2E binary and seed helper are never shipped.
 The E2E summary reports preparation, wall, app launch/relaunch and teardown times; these totals can
 overlap and must not be added to derive wall time.
 
@@ -489,6 +515,12 @@ in Editor mode. With the Reading (Viewer) default the backend sets `readingMode`
 on `focused`, `refused`, `cancelled`, `folder-target` or a new document), and the frontend open commands
 enter Reading mode when the open is still the current activation. A false flag never leaves Reading mode, and
 the workspace tree's New File ignores the flag and leaves Reading mode.
+
+Launch targets are the one non-interactive entry to that flow. A path from the command line or the
+operating system reaches `ApplicationContextHolder.AcceptOpenRequest`; a window that is still starting
+keeps the first one, and after bootstrap the frontend takes it once through `TakeLaunchTarget` and opens
+a folder with the workspace command or a file with the recent-file command (D18). Every other external
+path starts a new process.
 
 `frontend/src/logic/adapter/` carries the request identity and `internal/file/` resolves canonical
 paths and filesystem identity. A hard link focuses the existing document identity instead of creating
@@ -763,6 +795,18 @@ interaction, so use a feature-specific manual walkthrough when changes affect th
 19. Drop a folder into a window with a folder already open; exercise Replace and New window, then
     close a folder through the sidebar and File menu, including Cancel and Keep tabs open.
 
+### macOS association checklist
+
+On an installed `.app` (copy to Applications, `lsregister -f` it, relaunch Finder if needed):
+
+1. Open With for a `.md` file lists GoMarkEdit while the previous default application is unchanged.
+2. Get Info > Open with GoMarkEdit > Change All makes double-clicking any `.md` file open it.
+3. With GoMarkEdit not running, double-clicking a file shows it in the single window.
+4. With a window showing `a.md`, double-clicking `b.md` opens a new window that shows only `b.md`.
+5. Opening three selected files opens three windows, one file each.
+6. Dropping a folder on the Dock icon opens a new window with that folder as workspace.
+7. With the Viewer default, a double-clicked file starts in Reading mode and a dropped folder does not.
+
 ## Durable decisions
 
 These decisions are carried forward from the accepted decision records and are restated here as current
@@ -771,7 +815,7 @@ part of the current product.
 
 | Record   | Current decision                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
 | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| ADR-0001 | Use stable Wails v2 with a CGO-free Go backend and pure-Go SQLite. Native webviews and file association remain the platform boundary.                                                                                                                                                                                                                                                                                                                                                                                                   |
+| ADR-0001 | Use stable Wails v2 with a CGO-free Go backend and pure-Go SQLite. Native webviews and file association remain the platform boundary; D19 covers the macOS declarations.                                                                                                                                                                                                                                                                                                                                                                |
 | ADR-0002 | Use Monaco for v1 source editing; keep CodeMirror 6 as a future contained alternative. Bundle editor workers locally.                                                                                                                                                                                                                                                                                                                                                                                                                   |
 | ADR-0004 | Keep documents file-first and use a small SQLite KV store for settings, recents, layout and view state. Launch clean with no session restore or swap files.                                                                                                                                                                                                                                                                                                                                                                             |
 | ADR-0005 | Use one token-driven layout with three built-in themes and light/dark modes; keep editor and preview appearance unified and do not support user-authored themes.                                                                                                                                                                                                                                                                                                                                                                        |
@@ -790,7 +834,7 @@ part of the current product.
 | ADR-0031 | Format and Compact use remark-stringify with the maximal parse plugin set; Prettier remains a repository development tool, not a runtime formatter. Superseded by ADR-0038; only the rule that Prettier is not a runtime formatter survives, and ADR-0038 restates it.                                                                                                                                                                                                                                                                  |
 | ADR-0032 | Use one cancellable run registry and one deterministic shutdown order; a run has one terminal outcome and background panics are contained and logged. Refined by ADR-0039 for Format, Compact and Lint: the frontend operation slot is used and the run registry described here is not built; the single terminal outcome per run and contained background panics still apply.                                                                                                                                                          |
 | ADR-0033 | Workspace file operations are additive only: create, reveal and copy path are allowed; rename, move, delete and tree reorder are refused.                                                                                                                                                                                                                                                                                                                                                                                               |
-| ADR-0035 | `internal/workspace/` builds a bounded tree while `internal/appmodel/` owns each window's workspace session. New windows are independent processes; an explicit startup folder argument opens a workspace without session restore. Trees change on open, create or manual refresh, with no watcher. Workspace operations remain additive only as in ADR-0033. The hidden-folders setting is app-wide.                                                                                                                                   |
+| ADR-0035 | `internal/workspace/` builds a bounded tree while `internal/appmodel/` owns each window's workspace session. New windows are independent processes; an explicit startup folder argument opens a workspace without session restore (D18 refines this: the argument is a file or a folder, taken by the frontend after startup). Trees change on open, create or manual refresh, with no watcher. Workspace operations remain additive only as in ADR-0033. The hidden-folders setting is app-wide.                                       |
 | ADR-0036 | One raw-HTML policy applies at every Markdown standard: a bounded allowlist of raw HTML elements and Markdown-equivalent elements, removal together with their contents of executing, embedding, foreign-content and form elements, unwrapping of every other element, and no author-supplied style attribute, event handler, `javascript:` or `data:` address. Mermaid security stays strict and KaTeX trust stays off. Supersedes ADR-0030.                                                                                           |
 | ADR-0037 | Preview links open supported Markdown documents anywhere on the local disk through the one shared link handler and the normal open flow. Network and device paths are refused on every platform. An existing local file with an unsupported suffix is refused with an offer to reveal it in the file manager and is never launched. The backend resolver decides containment, symbolic links and folder-tree rows. Replaces the document-folder link limit of the earlier link rule; D11's single classifier and normal open flow stay. |
 | ADR-0038 | Format and Compact compute minimal source edits over the preview's parser with the Full syntax set, whatever standard is selected, apply them as one undo step and are refused when the result would render differently at the Full standard; Prettier stays a repository tool, not a runtime formatter. Lint shares the same parser and predicates. Supersedes ADR-0031.                                                                                                                                                               |
@@ -884,6 +928,85 @@ The owner decisions that shaped this refactor are recorded here so they are not 
   exception to this transience: it is a persisted appearance setting owned by the Go settings
   service, projected into `settingsSlice` and applied as `data-reading-width` on the Reading stage,
   while Reading mode itself stays unpersisted.
+
+- **D18 — One backend entry for paths from argv and the operating system:** `AcceptOpenRequest(path)` on
+  `ApplicationContextHolder` is the only place such a path is routed. The holder keeps `startupOpen`
+  (true from construction until `FrontendReady` runs), `targetAccepted` and the accepted `launchTarget`
+  under `holder.mu`. A path is accepted while `startupOpen` and nothing was accepted yet; no model state
+  is inspected, so an already-shown window never takes a later path. Every other path goes to
+  `NewWindowLauncher.Launch(targetPath)` after the mutex is released, and a launch failure is published
+  as a classified `state:error` ("A new window could not be opened.", Retry) through
+  `ApplicationContextOptions.EmitEvent` (production: `runtime.EventsEmit`), or only logged before the
+  lifecycle context exists. The constructor parses `StartupArgs` and passes the first argument that is
+  not empty and does not start with `-` (macOS adds `-psn_...`), made absolute, to `AcceptOpenRequest`.
+  The frontend hook `app/useLaunchTarget.ts` calls `TakeLaunchTarget` once when bootstrap is `ready`
+  (bootstrap has already called `windowReady`, which closes `startupOpen`) and opens the result with
+  `onOpenWorkspacePath` for a folder or `onOpenRecentFile` for a file, so the `OpenPath` checks, refusal
+  notices, Untitled replacement and Reading-on-open of D17 apply unchanged. `TakeLaunchTarget` returns
+  the target once and then an empty result; `Kind` is `folder` when the path is a directory at take
+  time and `file` otherwise. `OnStartup` and `RetryStartup` open nothing, so a target accepted before an
+  `Init` failure stays takeable after a successful retry. This supersedes the startup-folder open in
+  `OnStartup` of ADR-0035. Rejected: single-instance forwarding (ADR-0006) and putting the target in the
+  `GetState` snapshot, which races the projection's subscription.
+- **D19 — macOS declares document types and receives Finder opens as events (macOS part):** the bundle plists
+  `build/darwin/Info.plist` and `Info.dev.plist` carry a static `CFBundleDocumentTypes` (Markdown through
+  `net.daringfireball.markdown`, Plain text `txt`, Folder `public.folder` as Viewer), all with `LSHandlerRank`
+  Alternate, and a `UTImportedTypeDeclarations` entry for `net.daringfireball.markdown` (`md`, `markdown`,
+  `mdown`). The entries sit outside the unused Wails `FileAssociations` template block. Alternate rank lists the
+  app under Open With without taking any default; the user chooses with Get Info > Change All. Finder has no
+  Open With for folders, so a folder is opened by dropping it on the Dock or application icon.
+  `LSMinimumSystemVersion` is 11.0. Finder opens arrive as Apple Events, not argv: `application.Options.OnFileOpen`
+  is set into `Mac.OnFileOpen` and `main.go` passes `applicationContext.AcceptOpenRequest`, so D18 routes them
+  (first path into a starting window, every other path to a new window). The packaging test
+  `tests/go/integration/packaging/associations_test.go` walks both plists and compares the declared suffixes with
+  `file.SupportedDocumentSuffixes()`.
+  The same event is delivered for a path in a spawned window's argv, so D19 adds three safeguards in
+  `AcceptOpenRequest`: a window never opens another window for its own target, a path that a live window was opened
+  for or that was launched in the last 10 seconds opens nothing, and no window opens while `MaxWindows` (50) are open
+  (a classified error without Retry: "Too many GoMarkEdit windows are open."). Live windows are the pid files of
+  `WindowRegistry` under `os.UserCacheDir()/GoMarkEdit/windows/`; entries of ended processes are ignored and removed.
+  The registry holds launch targets, not documents opened later inside a window. Rejected: a spawn-depth counter, which
+  also blocks legitimate chains of windows.
+  **Windows part:** `build/windows/installer/project.nsi` replaces the Wails `associateFiles` macros, which write the
+  default value of `Software\Classes\.<ext>` and so take over the default. Local macros register the
+  `GoMarkEdit.Document` ProgID, add it under `.<ext>\OpenWithProgids` for the four suffixes, add
+  `Applications\<exe>` with `SupportedTypes`, and add "Open with GoMarkEdit" verbs on `Directory\shell` (`"%1"`) and
+  `Directory\Background\shell` (`"%V"`), all under `SHCTX\Software\Classes`; the uninstaller deletes exactly those
+  keys and values and both sections notify the shell with `SHChangeNotify`. Windows 11 shows the folder verbs under
+  "Show more options". `scripts/build` adds `-nsis` on Windows when `makensis` is on `PATH`. The packaging test scans
+  the NSI lines. Explorer behaviour is not verified at runtime.
+  **Linux part:** `build/linux/` holds `gomarkedit.desktop` (`MimeType` text/markdown, text/x-markdown, text/plain,
+  inode/directory; `Exec=… %f`), `gomarkedit-mime.xml` (Markdown globs) and the POSIX `install.sh [--uninstall]`, which
+  installs per user, rewrites `Exec=` and `Icon=` to absolute paths, refreshes the desktop and MIME databases and never
+  runs `xdg-mime default` or edits `mimeapps.list`. `scripts/build` copies them and `build/appicon.png` next to the
+  Linux binary. Declaring `text/plain` lists the app for every text file; unsupported ones are refused by D18. Linux
+  desktop behaviour is not verified at runtime; `linux_install_test.go` runs the script with `/bin/sh` against a
+  temporary `HOME`.
+- **D20 — PDF export prints a hidden print copy through the native print dialog:** File, Export to PDF… and
+  Ctrl/Cmd+P flush the active editor session and read the backend's copy of the text (`app/usePdfExport.ts`), so unsaved
+  and Untitled text is exported. `ui/widgets/PrintDocument.tsx` renders that fixed text with the preview renderer, which
+  is shared through `ui/widgets/LazyMarkdownView.ts` and `ui/widgets/previewImageSource.ts`, so limits, placeholders and
+  the local-image resolver are the preview's and nothing depends on the arrangement, scroll position or a paused preview.
+  The copy is portaled into `document.body` outside `#root` (so `PrintDocument.tsx` has a file-scoped ESLint portal
+  override: the copy must be a child of `body`); `@media print` hides every other body child and the copy
+  paints its own padding and background with `print-color-adjust: exact`. There is no `@page` rule: the spike showed it
+  neither changes the macOS landscape page nor paints its margins. The hook polls every 100 ms until the copy has no
+  `[data-print-pending]` element, no `[data-mermaid-state='pending']` diagram (`MermaidBlock` reports `pending`, `drawn`,
+  `error` or `limit`; the last two count as settled) and every `img` is `complete`, or until 10 seconds have passed, ignores a second request while waiting, and then
+  calls `ApplicationHandler.PrintWindow`, which reaches `runtime.WindowPrint` through `NativeWindowAPI.Print` (a no-op in E2E
+  headless mode). The copy stays mounted, hidden on screen, until the next export or an active-document change.
+  While the copy of a saved document is mounted, `PrintDocument` sets `document.title` to the file name without its last
+  extension (`fileStemOf` in `ui/widgets/tabLabel.ts`) and restores the previous title when the copy goes away, because
+  the print dialog suggests that title as the PDF name; Untitled documents keep the default title.
+  `runtime.WindowPrint` is the only print path that works on macOS (`window.print()` does nothing there) and needs
+  macOS 11, which becomes the minimum (`LSMinimumSystemVersion` 11.0). Known limitation: Wails hard-codes the macOS
+  print dialog to landscape with zero margins and CSS cannot override it; the user switches to portrait in the dialog.
+  `useShellShortcuts` calls `preventDefault` for a matched `export-pdf` before its availability checks so the webview's
+  own print never runs on WebView2 or WebKitGTK (unverified there). Rejected: `window.print()`, printing the live
+  preview pane, seeding the copy from `useLivePreview`, and a Go-side or bundled PDF renderer. D8 stays as written; it
+  names no control. The PDF appearance setting (`export.pdfAppearance`, `styled` default or `clean`, carried in the
+  appearance group) sets `data-print-appearance` on the copy; Clean redefines the colour tokens with the Material Light
+  values in `tokens.css`, and `resolveMermaidTheme(element)` probes inside the element so diagrams are drawn light.
 
 ## Planning decisions retained
 

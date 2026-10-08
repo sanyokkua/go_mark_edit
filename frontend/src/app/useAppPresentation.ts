@@ -12,6 +12,7 @@ interface AppPresentationOptions {
     commands: UseCommandsResult;
     writes: DocumentWrites;
     close: CloseWorkflow;
+    exportPdf: () => Promise<void>;
     requestQuit: () => void;
     workflowModalOpen: boolean;
 }
@@ -22,6 +23,7 @@ export function useAppPresentation({
     commands,
     writes,
     close,
+    exportPdf,
     requestQuit,
     workflowModalOpen,
 }: AppPresentationOptions) {
@@ -36,6 +38,7 @@ export function useAppPresentation({
             onSave: writes.onSave,
             onSaveAs: writes.onSaveAs,
             onCloseDocument: close.onCloseDocument,
+            onExportPdf: exportPdf,
             onQuit: requestQuit,
             modalOpen,
             documentId: session.activeDocument?.documentId,
@@ -52,6 +55,7 @@ export function useAppPresentation({
         [
             close.onCloseDocument,
             commands,
+            exportPdf,
             modalOpen,
             requestQuit,
             requestedMenu,

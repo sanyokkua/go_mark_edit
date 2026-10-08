@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, readFileSync, readdirSync, rmSync, utimesSync, writeFileSync } from 'node:fs';
 import test from 'node:test';
 import { join, resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -926,5 +926,81 @@ void test('does not require a migration baseline and allowlists CI diagnostics',
             assert.match(artifactPath, new RegExp(escapedPattern, 'u'));
         }
         assert.doesNotMatch(artifactPath, /(?:cache|tsconfig\.node\.tsbuildinfo)/);
+    }
+});
+
+function pruneLocalTmp(root) {
+    const script = [`source ${shellQuote(commonScript)}`, `prune_local_tmp ${shellQuote(root)}`].join('\n');
+    return spawnSync('bash', ['-c', script], { cwd: repoRoot, encoding: 'utf8' });
+}
+
+function makeFolder(path, ageHours) {
+    mkdirSync(path, { recursive: true });
+    const when = new Date(Date.now() - ageHours * 3600 * 1000);
+    utimesSync(path, when, when);
+}
+
+void test('keeps only the 10 newest run folders', () => {
+    const root = fixtureDirectory();
+    try {
+        for (let index = 0; index < 11; index += 1) {
+            makeFolder(join(root, 'runs', `run-${index}`), index + 1);
+        }
+        const result = pruneLocalTmp(root);
+
+        assert.equal(result.status, 0, result.stderr);
+        const remaining = readdirSync(join(root, 'runs')).sort();
+        assert.equal(remaining.length, 10);
+        assert.equal(remaining.includes('run-10'), false);
+        assert.equal(remaining.includes('run-0'), true);
+    } finally {
+        rmSync(root, { recursive: true, force: true });
+    }
+});
+
+void test('removes stale end-to-end and tooling test folders and keeps fresh ones', () => {
+    const root = fixtureDirectory();
+    try {
+        makeFolder(join(root, 'e2e-run-old'), 25);
+        makeFolder(join(root, 'e2e-run-new'), 1);
+        makeFolder(join(root, 'verification-test-old'), 25);
+        makeFolder(join(root, 'verification-test-new'), 1);
+        const result = pruneLocalTmp(root);
+
+        assert.equal(result.status, 0, result.stderr);
+        assert.deepEqual(readdirSync(root).sort(), ['e2e-run-new', 'verification-test-new']);
+    } finally {
+        rmSync(root, { recursive: true, force: true });
+    }
+});
+
+void test('leaves baselines, specification, caches and loose files untouched', () => {
+    const root = fixtureDirectory();
+    try {
+        makeFolder(join(root, 'baseline'), 100);
+        writeFileSync(join(root, 'baseline', 'main.json'), '{}');
+        makeFolder(join(root, 'specification'), 100);
+        makeFolder(join(root, 'cache'), 100);
+        writeFileSync(join(root, 'verify31.out'), 'log');
+        const old = new Date(Date.now() - 100 * 3600 * 1000);
+        utimesSync(join(root, 'verify31.out'), old, old);
+        const result = pruneLocalTmp(root);
+
+        assert.equal(result.status, 0, result.stderr);
+        assert.deepEqual(readdirSync(root).sort(), ['baseline', 'cache', 'specification', 'verify31.out']);
+        assert.equal(readFileSync(join(root, 'baseline', 'main.json'), 'utf8'), '{}');
+    } finally {
+        rmSync(root, { recursive: true, force: true });
+    }
+});
+
+void test('pruning without a runs folder succeeds', () => {
+    const root = fixtureDirectory();
+    try {
+        const result = pruneLocalTmp(root);
+
+        assert.equal(result.status, 0, result.stderr);
+    } finally {
+        rmSync(root, { recursive: true, force: true });
     }
 });

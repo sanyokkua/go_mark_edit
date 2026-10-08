@@ -104,7 +104,9 @@ func main() {
 	applicationContext := application.NewApplicationContextHolderWithOptions(fileUtils, appLogger, application.ApplicationContextOptions{
 		AppModelOptions:   []appmodel.AppModelOption{appmodel.WithDialogs(dialogs, dialogs)},
 		NewWindowLauncher: application.NewOSNewWindowLauncher(appLogger),
-		StartupFolderArgs: os.Args[1:],
+		StartupArgs:       os.Args[1:],
+		WindowRegistry:    application.NewDefaultWindowRegistry(),
+		EmitEvent:         runtime.EventsEmit,
 	}, outcomes)
 	if err := wails.Run(newAppOptionsWithLogger(applicationContext, appLogger)); err != nil {
 		bootstrapLogger.Error().Err(err).Msg("run application")
@@ -216,6 +218,7 @@ func newAppOptionsWithLogger(applicationContext *application.ApplicationContextH
 		Assets:         assets,
 		PreviewHandler: application.NewPreviewImageHandler(applicationContext.AppModelService),
 		Menu:           nativeMenuForPlatform(goruntime.GOOS),
+		OnFileOpen:     applicationContext.AcceptOpenRequest,
 		OnStartup: func(ctx context.Context) {
 			applicationContext.SetContext(ctx)
 			if err := applicationContext.Init(ctx); err != nil {
@@ -225,7 +228,6 @@ func newAppOptionsWithLogger(applicationContext *application.ApplicationContextH
 				ports.showStartupRecoveryWindow(ctx)
 				return
 			}
-			applicationContext.OpenPendingStartupFolder(ctx)
 			if err := applicationContext.RestoreNativeWindow(ctx); err != nil {
 				if appLogger != nil {
 					appLogger.Error(err.Error())
@@ -271,6 +273,8 @@ func (wailsNativeWindow) SetSize(ctx context.Context, width, height int) {
 func (wailsNativeWindow) Maximise(ctx context.Context) { runtime.WindowMaximise(ctx) }
 
 func (wailsNativeWindow) Show(ctx context.Context) { runtime.WindowShow(ctx) }
+
+func (wailsNativeWindow) Print(ctx context.Context) { runtime.WindowPrint(ctx) }
 
 // nativeMenuForPlatform preserves the platform editing role without creating a
 // second About entry. The working About action belongs only to the application

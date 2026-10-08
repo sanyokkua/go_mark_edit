@@ -12,6 +12,7 @@ type AppearanceSettings struct {
 	Mode            string `json:"mode"`
 	DefaultOpenMode string `json:"defaultOpenMode"`
 	ReadingWidth    string `json:"readingWidth"`
+	PdfAppearance   string `json:"pdfAppearance"`
 }
 
 // MarkdownSettings contains the persisted Markdown and canonical-style settings.
@@ -54,6 +55,16 @@ type Settings struct {
 // VoidResult is the envelope for a successful operation with no payload.
 type VoidResult struct {
 	Failure
+	Error *WireError `json:"error,omitempty"`
+}
+
+// LaunchTargetResult is the path a starting window accepted from its command
+// line or the operating system. Kind is "file" or "folder"; a result without a
+// Path means the window accepted nothing.
+type LaunchTargetResult struct {
+	Failure
+	Path  string     `json:"path,omitempty"`
+	Kind  string     `json:"kind,omitempty"`
 	Error *WireError `json:"error,omitempty"`
 }
 

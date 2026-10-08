@@ -91,6 +91,9 @@ it('resolves platform labels without changing the binding', () => {
     expect(formatShortcut('Mod+Shift+F', 'darwin')).toBe('⌘⇧F');
     expect(formatShortcut('Alt+Shift+F', 'win32')).toBe('Alt+Shift+F');
     expect(formatShortcut('Mod+Shift+F', 'linux')).toBe('Ctrl+Shift+F');
+    expect(formatShortcut('Mod+P', 'darwin')).toBe('⌘P');
+    expect(formatShortcut('Mod+P', 'win32')).toBe('Ctrl+P');
+    expect(formatShortcut('Mod+P', 'linux')).toBe('Ctrl+P');
 });
 
 it('prints Enter as the return glyph on macOS and as a word elsewhere', () => {

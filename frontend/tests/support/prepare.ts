@@ -108,6 +108,38 @@ async function run(
     }
 }
 
+const REUSE_DIST_ENV = 'GOMARKEDIT_E2E_REUSE_DIST';
+const GENERATED_SOURCES = new Set(['generatedEditorThemes.ts', 'generatedHighlight.css']);
+
+function newestModification(path: string): number {
+    const stats = statSync(path);
+    if (!stats.isDirectory()) return stats.mtimeMs;
+    let newest = stats.mtimeMs;
+    for (const entry of readdirSync(path, { withFileTypes: true })) {
+        if (GENERATED_SOURCES.has(entry.name)) continue;
+        newest = Math.max(newest, newestModification(join(path, entry.name)));
+    }
+    return newest;
+}
+
+/**
+ * True when GOMARKEDIT_E2E_REUSE_DIST=1 and the production bundle left by the Build stage is newer
+ * than every input of `vite build`. Checked before the generators run, because they rewrite their
+ * outputs with fresh timestamps.
+ */
+function distIsCurrent(repository: string): boolean {
+    if (process.env[REUSE_DIST_ENV] !== '1') return false;
+    const frontend = join(repository, 'frontend');
+    const bundle = join(frontend, 'dist', 'index.html');
+    if (!existsSync(bundle)) return false;
+    const built = statSync(bundle).mtimeMs;
+    const inputs = ['src', 'public', 'wailsjs', 'index.html', 'vite.config.ts', 'tsconfig.json', 'package-lock.json'];
+    return inputs.every((input) => {
+        const path = join(frontend, input);
+        return !existsSync(path) || newestModification(path) <= built;
+    });
+}
+
 function generatedStateRestorer(repository: string): () => void {
     const placeholderPath = join(repository, 'frontend', 'dist', '.gitkeep');
     const placeholder = existsSync(placeholderPath) ? readFileSync(placeholderPath) : null;
@@ -178,6 +210,7 @@ export default async function prepare(): Promise<() => Promise<void>> {
             executable: join(runDirectory, 'GoMarkEdit'),
             seedExecutable: join(runDirectory, 'e2e-seed'),
         };
+        const reuseDist = distIsCurrent(repository);
         await run(process.env.WAILS_BIN ?? 'wails', ['generate', 'module'], repository, interruption.signal);
         await run(
             process.execPath,
@@ -185,7 +218,15 @@ export default async function prepare(): Promise<() => Promise<void>> {
             join(repository, 'frontend'),
             interruption.signal,
         );
-        await run(process.env.NPM_BIN ?? 'npm', ['run', 'build'], join(repository, 'frontend'), interruption.signal);
+        if (reuseDist) console.log('[e2e] reusing the frontend bundle left by the Build stage');
+        else {
+            await run(
+                process.env.NPM_BIN ?? 'npm',
+                ['run', 'build'],
+                join(repository, 'frontend'),
+                interruption.signal,
+            );
+        }
         restoreGeneratedState();
 
         const goEnvironment: NodeJS.ProcessEnv = { ...process.env, CGO_ENABLED: '1' };

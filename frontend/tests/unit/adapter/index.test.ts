@@ -77,6 +77,7 @@ it('guards and unwraps every settings call', async () => {
             mode: 'dark',
             defaultOpenMode: 'view',
             readingWidth: 'page',
+            pdfAppearance: 'styled',
         }),
     ).resolves.toBeUndefined();
     await expect(adapter.updateContentPrivacy({ remotePolicy: 'block' })).resolves.toBeUndefined();

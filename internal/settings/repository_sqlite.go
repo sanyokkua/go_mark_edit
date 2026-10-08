@@ -15,6 +15,7 @@ const (
 	appearanceModeKey      = "appearance.mode"
 	defaultOpenModeKey     = "view.defaultOpenMode"
 	readingWidthKey        = "view.readingWidth"
+	pdfAppearanceKey       = "export.pdfAppearance"
 	markdownStandardKey    = "markdown.standard"
 	formatOnSaveKey        = "format.onSave"
 	lintOnSaveKey          = "lint.onSave"
@@ -65,7 +66,11 @@ func (repository *SqliteSettingsRepository) GetAppearance(ctx context.Context) (
 	if err != nil {
 		return apperr.AppearanceSettings{}, err
 	}
-	return apperr.AppearanceSettings{Theme: theme, Mode: mode, DefaultOpenMode: defaultOpenMode, ReadingWidth: readingWidth}, nil
+	pdfAppearance, err := repository.getString(ctx, pdfAppearanceKey, defaults.PdfAppearance)
+	if err != nil {
+		return apperr.AppearanceSettings{}, err
+	}
+	return apperr.AppearanceSettings{Theme: theme, Mode: mode, DefaultOpenMode: defaultOpenMode, ReadingWidth: readingWidth, PdfAppearance: pdfAppearance}, nil
 }
 
 // GetMarkdown reads the persisted Markdown group with scalar defaults.
@@ -153,6 +158,7 @@ func (repository *SqliteSettingsRepository) UpdateAppearance(ctx context.Context
 		{Key: appearanceModeKey, Value: appearance.Mode, Type: settingTypeString},
 		{Key: defaultOpenModeKey, Value: appearance.DefaultOpenMode, Type: settingTypeString},
 		{Key: readingWidthKey, Value: appearance.ReadingWidth, Type: settingTypeString},
+		{Key: pdfAppearanceKey, Value: appearance.PdfAppearance, Type: settingTypeString},
 	})
 }
 
@@ -165,6 +171,7 @@ func (repository *SqliteSettingsRepository) ResetAppearance(ctx context.Context)
 		{Key: appearanceModeKey, Value: defaults.Mode, Type: settingTypeString},
 		{Key: defaultOpenModeKey, Value: defaults.DefaultOpenMode, Type: settingTypeString},
 		{Key: readingWidthKey, Value: defaults.ReadingWidth, Type: settingTypeString},
+		{Key: pdfAppearanceKey, Value: defaults.PdfAppearance, Type: settingTypeString},
 	})
 }
 
