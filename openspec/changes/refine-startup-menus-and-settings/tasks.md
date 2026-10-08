@@ -79,7 +79,7 @@ and squash-merge it back.
 
 ## 2. Sidebar visibility follows the folder
 
-- [ ] 2.1 Make sidebar visibility a backend-derived, unsaved window state:
+- [x] 2.1 Make sidebar visibility a backend-derived, unsaved window state:
     - hidden at start;
     - shown by every folder open;
     - hidden by Close Folder;

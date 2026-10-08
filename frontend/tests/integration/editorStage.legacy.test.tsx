@@ -195,7 +195,8 @@ it('applies the responsive split layout contract', () => {
         </Provider>,
     );
 
-    expect(screen.getByRole('complementary', { name: 'Sidebar' })).toBeInTheDocument();
+    expect(screen.queryByRole('complementary', { name: 'Sidebar' })).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Sidebar')).toHaveAttribute('hidden');
     expect(screen.getByRole('main', { name: 'Document area' })).toBeEmptyDOMElement();
     expect(screen.queryByLabelText('Assistant')).not.toBeInTheDocument();
 });

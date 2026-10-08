@@ -30,7 +30,7 @@ const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
     const reading = useAppSelector((state) => state.reading.active);
     const readingSidebarShown = useAppSelector((state) => state.reading.sidebarShown);
     const workspaceOpen = useAppSelector((state) => state.workspace.snapshot !== null);
-    const workspaceVisible = useAppSelector((state) => state.ui.layout.sidebarVisible ?? true);
+    const workspaceVisible = useAppSelector((state) => state.ui.layout.sidebarVisible ?? false);
     const acknowledgedWidth = useAppSelector((state) => state.ui.layout.sidebarWidth ?? WORKSPACE_BINDING_WIDTH);
     const [pendingWidth, setPendingWidth] = useState<PendingWidth | undefined>();
     const pendingWidthRef = useRef<number | undefined>(undefined);

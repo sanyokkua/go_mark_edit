@@ -18,7 +18,7 @@ async function openDocument(page: Page, name: string): Promise<void> {
 
 test('table words stay intact in narrow Split and wide Preview under Full and GFM', async ({ app }) => {
     const longCode = 'unbroken' + 'x'.repeat(220);
-    const prose = 'outside' + 'y'.repeat(150);
+    const prose = 'outside' + 'y'.repeat(600);
     const markdown = [
         prose,
         '',

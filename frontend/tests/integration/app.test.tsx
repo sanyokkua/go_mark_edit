@@ -220,7 +220,7 @@ it('routes the Launcher Open Folder action to the native folder picker', async (
     expect(appModelAdapter.openWorkspace).not.toHaveBeenCalled();
 });
 
-it('reveals the sidebar when startup hydration already includes a folder', async () => {
+it('leaves sidebar visibility to the backend when startup hydration includes a folder', async () => {
     mockedUseBootstrap.mockReturnValue(readyBootstrap());
     store.dispatch(
         hydrateProjection({
@@ -247,10 +247,11 @@ it('reveals the sidebar when startup hydration already includes a folder', async
     render(<App />);
     await waitForAppearanceHydration();
 
-    await waitFor(() => expect(appModelAdapter.setUILayout).toHaveBeenCalledWith({ sidebarVisible: true }));
+    expect(screen.getByTestId('application-shell')).toHaveAttribute('data-workspace-visible', 'false');
+    expect(appModelAdapter.setUILayout).not.toHaveBeenCalled();
 });
 
-it('reveals the sidebar when a folder open publishes a new root', async () => {
+it('leaves sidebar visibility to the backend when a folder open publishes a new root', async () => {
     mockedUseBootstrap.mockReturnValue(readyBootstrap());
     store.dispatch(
         hydrateProjection({
@@ -287,5 +288,6 @@ it('reveals the sidebar when a folder open publishes a new root', async () => {
     await waitForAppearanceHydration();
     fireEvent.click(screen.getByRole('button', { name: 'Open Folder' }));
 
-    await waitFor(() => expect(appModelAdapter.setUILayout).toHaveBeenCalledWith({ sidebarVisible: true }));
+    await waitFor(() => expect(appModelAdapter.chooseWorkspaceFolder).toHaveBeenCalled());
+    expect(appModelAdapter.setUILayout).not.toHaveBeenCalled();
 });

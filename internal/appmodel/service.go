@@ -93,7 +93,7 @@ func newAppModelService(options ...AppModelOption) *AppModelService {
 		ui: apperr.UILayout{
 			WindowWidth:    pointerTo(1024),
 			WindowHeight:   pointerTo(768),
-			SidebarVisible: pointerTo(true),
+			SidebarVisible: pointerTo(false),
 		},
 	}}
 	for _, option := range options {
@@ -336,7 +336,6 @@ func (service *AppModelService) RestoreUILayout(ctx context.Context) error {
 		LayoutWindowWidth,
 		LayoutWindowHeight,
 		LayoutWindowMaximized,
-		LayoutWorkspaceVisible,
 		LayoutWorkspaceWidth,
 		LayoutArrangementBackup,
 	} {
@@ -362,10 +361,6 @@ func (service *AppModelService) RestoreUILayout(ctx context.Context) error {
 		case LayoutWindowMaximized:
 			if maximized, ok := value.Value.(bool); ok {
 				restored.WindowMaximized = pointerTo(maximized)
-			}
-		case LayoutWorkspaceVisible:
-			if visible, ok := value.Value.(bool); ok {
-				restored.SidebarVisible = pointerTo(visible)
 			}
 		case LayoutWorkspaceWidth:
 			if width, ok := value.Value.(int); ok && width >= 0 {
@@ -587,7 +582,6 @@ func (service *AppModelService) persistLayout(ctx context.Context, layout apperr
 		{LayoutWindowWidth, layout.WindowWidth, layout.WindowWidth != nil},
 		{LayoutWindowHeight, layout.WindowHeight, layout.WindowHeight != nil},
 		{LayoutWindowMaximized, layout.WindowMaximized, layout.WindowMaximized != nil},
-		{LayoutWorkspaceVisible, layout.SidebarVisible, layout.SidebarVisible != nil},
 		{LayoutWorkspaceWidth, layout.SidebarWidth, layout.SidebarWidth != nil},
 		{LayoutArrangementBackup, layout.ViewArrangement, layout.ViewArrangement != nil},
 	} {
@@ -623,12 +617,6 @@ func (service *AppModelService) persistLayout(ctx context.Context, layout apperr
 					return apperr.UILayout{}, fmt.Errorf("invalid stored native window maximized state")
 				}
 				acknowledged.WindowMaximized = pointerTo(winner)
-			case LayoutWorkspaceVisible:
-				winner, ok := result.Value.Value.(bool)
-				if !ok {
-					return apperr.UILayout{}, fmt.Errorf("invalid stored workspace visibility")
-				}
-				acknowledged.SidebarVisible = pointerTo(winner)
 			case LayoutWorkspaceWidth:
 				winner, ok := result.Value.Value.(int)
 				if !ok {

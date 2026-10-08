@@ -928,7 +928,7 @@ const Menubar: React.FC<MenubarProps> = ({
                                     data-action-id={sidebarAction.id}
                                     icon="sidebar"
                                     label={t(sidebarAction.accessibilityKey)}
-                                    pressed={viewMenuProps.workspaceVisible ?? true}
+                                    pressed={viewMenuProps.workspaceVisible ?? false}
                                     variant="icon"
                                     onActivate={(): void => dispatch(action('toggle-sidebar'))}
                                 />

@@ -1,8 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Provider } from 'react-redux';
 
-import { store, useAppDispatch, useAppSelector } from '../logic/store';
-import { setWorkspaceVisible } from '../logic/store/uiLayoutCommands';
+import { store } from '../logic/store';
 import { ApplicationMenuRequestContext } from '../ui/widgets/applicationMenuRequest';
 import { EditorSessionProvider } from '../ui/widgets/editorSession';
 import { ModalStateProvider } from '../ui/widgets/modalState';
@@ -37,13 +36,6 @@ const AppWorkflows = ({
     shutdown: ReturnType<typeof useShutdown>;
 }): React.JSX.Element => {
     const [problemsOpen, setProblemsOpen] = useState(false);
-    const dispatch = useAppDispatch();
-    const workspaceRootPath = useAppSelector((state) => state.workspace.snapshot?.rootPath);
-    useEffect(() => {
-        if (workspaceRootPath !== undefined && workspaceRootPath !== null) {
-            void dispatch(setWorkspaceVisible(true));
-        }
-    }, [dispatch, workspaceRootPath]);
     const conflicts = useConflictCommands(session.activation);
     const writes = useDocumentWrites(session, conflicts);
     const close = useCloseWorkflow({ session, shutdown, conflicts, recoverySurface: writes.recoverySurface, writes });

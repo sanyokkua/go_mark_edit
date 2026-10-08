@@ -62,7 +62,7 @@ export default function ApplicationMenubar({
     const activeDocument = useAppSelector((state) =>
         state.documents.activeDocumentId === null ? undefined : state.documents.byId[state.documents.activeDocumentId],
     );
-    const workspaceVisible = useAppSelector((state) => state.ui.layout.sidebarVisible ?? true);
+    const workspaceVisible = useAppSelector((state) => state.ui.layout.sidebarVisible ?? false);
     const workspaceOpen = useAppSelector((state) => state.workspace.snapshot !== null);
     const reading = useAppSelector((state) => state.reading.active);
     const minimumWindow = useMinimumWindow();

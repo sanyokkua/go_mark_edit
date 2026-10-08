@@ -628,8 +628,9 @@ it('validates a same-root Reopen Last folder target before treating it as unchan
     expect(store.getState().notifications.items).toHaveLength(1);
 });
 
-it('does nothing when the chosen canonical folder is already open', async () => {
+it('sends a same-root open to the backend without the Replace prompt', async () => {
     hydrate('/notes');
+    (appModelAdapter.openWorkspace as jest.Mock).mockResolvedValue({ status: 'unchanged' });
     const closeAll = jest.fn(async () => 'closed' as const);
     const owner = renderHook(() => useCommands(session, closeAll), { wrapper });
 
@@ -637,7 +638,8 @@ it('does nothing when the chosen canonical folder is already open', async () => 
 
     expect(owner.result.current.replaceFolderPath).toBeNull();
     expect(closeAll).not.toHaveBeenCalled();
-    expect(appModelAdapter.openWorkspace).not.toHaveBeenCalled();
+    expect(appModelAdapter.openWorkspace).toHaveBeenCalledTimes(1);
+    expect(appModelAdapter.openWorkspace).toHaveBeenCalledWith('/notes');
 });
 
 it('opens only the folder chosen by the native picker and holds reading while it loads', async () => {

@@ -228,6 +228,9 @@ test('when a folder opens, the tree filters and orders rows and refreshes stale 
     const root = await fixture(app);
     await app.launch();
     const page = app.page;
+    await expect(page.getByText('No folder open')).toBeHidden();
+    await expect(page.getByTestId('document-launcher')).toBeVisible();
+    await page.keyboard.press('ControlOrMeta+\\');
     await expect(page.getByText('No folder open')).toBeVisible();
     await expect(
         page.getByLabel('Sidebar', { exact: true }).getByRole('button', { name: 'Open Folder' }),
@@ -519,7 +522,7 @@ test('when a folder is empty or closed, the sidebar explains its state and honor
     expect(await readFile(file, 'utf8')).toBe('# One\n');
     await app.page.getByRole('button', { name: 'Close Folder' }).click();
     await app.page.getByRole('button', { name: 'Keep them open' }).click();
-    await expect(app.page.getByText('No folder open')).toBeVisible();
+    await expect(app.page.getByText('No folder open')).toBeHidden();
     await expect(app.page.getByRole('tab', { name: 'one.md' })).toBeVisible();
     await expect(app.page.locator('[aria-label="Document identity"]')).toContainText('Unsaved changes');
     await app.openWorkspace(root);
@@ -528,7 +531,7 @@ test('when a folder is empty or closed, the sidebar explains its state and honor
     const savePrompt = app.page.getByRole('dialog', { name: 'Save changes before closing?' });
     await expect(savePrompt).toBeVisible();
     await savePrompt.getByRole('button', { name: 'Save all', exact: true }).click();
-    await expect(app.page.getByText('No folder open')).toBeVisible();
+    await expect(app.page.getByText('No folder open')).toBeHidden();
     await expect(app.page.getByRole('tab', { name: 'one.md' })).toHaveCount(0);
     expect(await readFile(file, 'utf8')).toContain('Edited before closing');
     await app.openWorkspace(root);

@@ -212,7 +212,11 @@ func (service *AppModelService) OpenWorkspace(ctx context.Context, path string) 
 	service.mu.RLock()
 	if current := service.state.workspace; current != nil && current.RootPath == canonicalRoot {
 		result := apperr.WorkspaceResult{Status: apperr.WorkspaceStatusUnchanged, Workspace: cloneWorkspaceSnapshot(current)}
+		hidden := service.state.ui.SidebarVisible == nil || !*service.state.ui.SidebarVisible
 		service.mu.RUnlock()
+		if hidden {
+			return service.showSidebarForOpenWorkspace(ctx, result)
+		}
 		return result
 	}
 	layoutRepository := service.layout
@@ -241,6 +245,7 @@ func (service *AppModelService) OpenWorkspace(ctx context.Context, path string) 
 	service.mu.Lock()
 	before := service.snapshotLocked()
 	service.state.workspace = &next
+	service.state.ui.SidebarVisible = pointerTo(true)
 	if recentItems == nil {
 		service.state.recentItems = promoteRecentItem(service.state.recentItems, canonicalRoot, "folder")
 	} else if promotionWarning == nil {
@@ -251,6 +256,7 @@ func (service *AppModelService) OpenWorkspace(ctx context.Context, path string) 
 	patch := apperr.AppStatePatch{
 		Revision:          service.state.revision,
 		Workspace:         &apperr.WorkspacePatch{Snapshot: cloneWorkspaceSnapshot(service.state.workspace)},
+		UI:                &apperr.UILayout{SidebarVisible: pointerTo(true)},
 		RecentItems:       append([]apperr.RecentItem(nil), service.state.recentItems...),
 		CanReopenLastFile: pointerTo(service.state.canReopenLastFile),
 	}
@@ -316,6 +322,24 @@ func (service *AppModelService) RefreshWorkspace(ctx context.Context) apperr.Wor
 	return result
 }
 
+// showSidebarForOpenWorkspace publishes a sidebar-only patch when opening the
+// already-open folder finds the sidebar hidden.
+func (service *AppModelService) showSidebarForOpenWorkspace(ctx context.Context, result apperr.WorkspaceResult) apperr.WorkspaceResult {
+	service.mu.Lock()
+	defer service.mu.Unlock()
+	if service.state.ui.SidebarVisible != nil && *service.state.ui.SidebarVisible {
+		return result
+	}
+	before := service.snapshotLocked()
+	service.state.ui.SidebarVisible = pointerTo(true)
+	service.state.revision++
+	patch := apperr.AppStatePatch{Revision: service.state.revision, UI: &apperr.UILayout{SidebarVisible: pointerTo(true)}}
+	if err := service.publishLocked(ctx, before, patch); err != nil {
+		return workspacePublicationRefusal("The folder is open, but its sidebar state could not be published.")
+	}
+	return result
+}
+
 // CloseWorkspace clears the session-only tree and sends an explicit null patch.
 func (service *AppModelService) CloseWorkspace(ctx context.Context) apperr.ClassifiedVoidResult {
 	service.workspaceMu.Lock()
@@ -328,10 +352,12 @@ func (service *AppModelService) CloseWorkspace(ctx context.Context) apperr.Class
 	}
 	before := service.snapshotLocked()
 	service.state.workspace = nil
+	service.state.ui.SidebarVisible = pointerTo(false)
 	service.state.revision++
 	patch := apperr.AppStatePatch{
 		Revision:  service.state.revision,
 		Workspace: &apperr.WorkspacePatch{Snapshot: nil},
+		UI:        &apperr.UILayout{SidebarVisible: pointerTo(false)},
 	}
 	if err := service.publishLocked(ctx, before, patch); err != nil {
 		service.mu.Unlock()

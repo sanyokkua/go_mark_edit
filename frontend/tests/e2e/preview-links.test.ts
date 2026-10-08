@@ -594,6 +594,7 @@ test('local preview links open tabs when no folder is open', async ({ app }) => 
     const { page } = app;
     await page.getByTestId('document-launcher').getByRole('button', { name: 'a.md' }).click();
     await page.getByRole('radiogroup', { name: 'View arrangement' }).getByRole('radio', { name: 'Split' }).click();
+    await page.keyboard.press('ControlOrMeta+\\');
     await expect(page.getByText('No folder open')).toBeVisible();
     await clickWithoutNavigation(page, page.getByRole('link', { name: 'sibling' }), page.url());
     await expectActiveDocument(page, 'b.md', 'Sibling document');

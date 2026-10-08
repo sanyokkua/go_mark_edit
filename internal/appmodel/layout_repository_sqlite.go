@@ -134,7 +134,7 @@ func validateVersionedLayoutValue(field string, value VersionedLayoutValue) erro
 		if !ok || integer < 480 {
 			return fmt.Errorf("invalid native window height")
 		}
-	case LayoutWindowMaximized, LayoutWorkspaceVisible, LayoutWorkspaceHiddenFolders:
+	case LayoutWindowMaximized, LayoutWorkspaceHiddenFolders:
 		if _, ok := value.Value.(bool); !ok {
 			return fmt.Errorf("invalid boolean layout value")
 		}

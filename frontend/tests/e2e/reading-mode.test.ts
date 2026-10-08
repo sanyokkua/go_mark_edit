@@ -444,6 +444,32 @@ test('closes the overlay with Escape before leaving Reading mode and keeps the s
     expect((await page.getByRole('complementary', { name: 'Sidebar' }).boundingBox())!.width).toBe(widthBefore);
 });
 
+test('Hidden sidebar stays hidden after the overlay is shown and hidden and Reading mode is left', async ({ app }) => {
+    const root = join(app.documentDirectory, 'reading-hidden');
+    const source = await app.writeDocument('reading-hidden/doc.md', '# Doc\n\nBody.\n');
+    await app.seedRecents([source]);
+    await app.launch();
+    await app.openWorkspace(root);
+    const { page } = app;
+    await page.setViewportSize({ width: 1280, height: 720 });
+    await openRecentFromLauncher(page, 'doc.md');
+    await page.keyboard.press('ControlOrMeta+\\');
+    await expect(page.locator(SHELL)).toHaveAttribute('data-workspace-visible', 'false');
+    await page.locator('[data-editor-surface] .view-lines').first().click();
+    await page.keyboard.press('ControlOrMeta+Enter');
+    await expectReading(page);
+
+    await page.keyboard.press('ControlOrMeta+\\');
+    const overlay = page.getByRole('complementary', { name: 'Sidebar' });
+    await expect(overlay).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(overlay).toBeHidden();
+
+    await page.keyboard.press('Escape');
+    await expectNormal(page);
+    await expect(page.locator(SHELL)).toHaveAttribute('data-workspace-visible', 'false');
+});
+
 test('restores the first document scroll offset after switching to another tab and back in Reading mode', async ({
     app,
 }) => {

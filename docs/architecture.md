@@ -720,7 +720,8 @@ rewrite existing data.
 Settings, layout, recents and file metadata use `internal/kv/` and leave keys they do not own alone.
 The `recent.files` key stores versioned v2 Recent Items with file and folder kinds; older file-only
 values migrate into that list. `workspace.showHiddenFolders` stores the app-wide hidden-folders
-preference. The workspace root and tree are session state and are not restored.
+preference. The workspace root and tree are session state and are not restored. Sidebar visibility is
+unsaved window state (D22): `layout.workspace.visible` is neither written nor read, and an old row is ignored.
 Layout changes write through immediately; continuous window resize is debounced and flushed during
 shutdown. Shared state follows last-writer-wins by change time. Missing or invalid values fall back to
 defaults. The Markdown group uses the six existing keys `markdown.standard`, `format.bulletMarker`,
@@ -920,8 +921,8 @@ The owner decisions that shaped this refactor are recorded here so they are not 
 - **D17 — Reading mode is transient frontend window state:** it refines ADR-0014. Whether the window
   is in Reading mode lives in the frontend-owned
   `frontend/src/logic/store/readingSlice.ts`. The state is never persisted: it is not stored per
-  document or across restarts, and it never changes a document's saved arrangement or the stored
-  sidebar visibility and width. With the Reading (Viewer) default open mode the backend signals
+  document or across restarts, and it never changes a document's saved arrangement or the
+  sidebar's visibility and width. With the Reading (Viewer) default open mode the backend signals
   Reading-on-open to the frontend through `OpenResult.readingMode`, as described in the open-document
   flow above.
   The Reading width (Page or Full width, stored as `view.readingWidth`, `page` by default) is the
@@ -1019,6 +1020,17 @@ The owner decisions that shaped this refactor are recorded here so they are not 
   is taken after `windowReady`, so a file argument shows one frame of the launcher. Rejected: keeping `WithEmptySession`
   with the default flipped (a dead option), an "initial Untitled" option used only by tests, and closing the tab in the
   frontend at bootstrap (the frontend would own the session, and it flashes).
+
+- **D22 — Sidebar visibility is derived, unsaved window state:** it refines D17's "stored sidebar visibility". The Go
+  service owns it in `state.ui.SidebarVisible`, which starts `false`. `OpenWorkspace` sets it `true` in the same patch as
+  the workspace snapshot, and the already-open branch publishes a sidebar-only patch when the sidebar is hidden.
+  `CloseWorkspace` sets it `false` in its patch. `SetUILayout` keeps a visibility change in memory and publishes it
+  (Ctrl/Cmd+\, dragging the width to 0) but never persists it; `LayoutWorkspaceVisible` is removed from `persistLayout`,
+  `RestoreUILayout` and the layout repository, so an old `layout.workspace.visible` row is ignored. Document opens,
+  creations and closes leave it unchanged. The frontend no longer reacts to a folder appearing: the effect in `App.tsx`
+  is gone, `onOpenWorkspacePath` sends a same-root open to the backend `OpenWorkspace` without the Replace prompt, and
+  the `sidebarVisible` fallbacks are `false`. Rejected: keeping the frontend effect (a second owner racing the backend
+  patch) and persisting visibility per folder.
 
 ## Planning decisions retained
 
