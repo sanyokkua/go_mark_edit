@@ -99,13 +99,19 @@ jobs:
               if: failure()
               uses: actions/upload-artifact@v7
               with:
-                  name: verification-static-${{ github.run_id }}
+                  name: verification-runs-static-${{ github.run_id }}
                   path: |
                       .local_tmp_files/runs/**/summary.json
-                      .local_tmp_files/runs/**/*.json
+                      .local_tmp_files/runs/**/lint.json
+                      .local_tmp_files/runs/**/format.json
+                      .local_tmp_files/runs/**/build.json
+                      .local_tmp_files/runs/**/unit.json
+                      .local_tmp_files/runs/**/integration.json
+                      .local_tmp_files/runs/**/e2e.json
                       .local_tmp_files/runs/**/reports/**
                       .local_tmp_files/runs/**/*.log
                       .local_tmp_files/runs/**/*.stderr
+                      .local_tmp_files/runs/**/frontend-*.json
                       .local_tmp_files/runs/**/frontend-e2e-results/**
                   include-hidden-files: true
                   if-no-files-found: ignore
@@ -126,13 +132,19 @@ jobs:
               if: failure()
               uses: actions/upload-artifact@v7
               with:
-                  name: verification-tests-${{ github.run_id }}
+                  name: verification-runs-tests-${{ github.run_id }}
                   path: |
                       .local_tmp_files/runs/**/summary.json
-                      .local_tmp_files/runs/**/*.json
+                      .local_tmp_files/runs/**/lint.json
+                      .local_tmp_files/runs/**/format.json
+                      .local_tmp_files/runs/**/build.json
+                      .local_tmp_files/runs/**/unit.json
+                      .local_tmp_files/runs/**/integration.json
+                      .local_tmp_files/runs/**/e2e.json
                       .local_tmp_files/runs/**/reports/**
                       .local_tmp_files/runs/**/*.log
                       .local_tmp_files/runs/**/*.stderr
+                      .local_tmp_files/runs/**/frontend-*.json
                       .local_tmp_files/runs/**/frontend-e2e-results/**
                   include-hidden-files: true
                   if-no-files-found: ignore
@@ -159,13 +171,19 @@ jobs:
               if: failure()
               uses: actions/upload-artifact@v7
               with:
-                  name: verification-e2e-${{ strategy.job-index }}-${{ github.run_id }}
+                  name: verification-runs-e2e-${{ strategy.job-index }}-${{ github.run_id }}
                   path: |
                       .local_tmp_files/runs/**/summary.json
-                      .local_tmp_files/runs/**/*.json
+                      .local_tmp_files/runs/**/lint.json
+                      .local_tmp_files/runs/**/format.json
+                      .local_tmp_files/runs/**/build.json
+                      .local_tmp_files/runs/**/unit.json
+                      .local_tmp_files/runs/**/integration.json
+                      .local_tmp_files/runs/**/e2e.json
                       .local_tmp_files/runs/**/reports/**
                       .local_tmp_files/runs/**/*.log
                       .local_tmp_files/runs/**/*.stderr
+                      .local_tmp_files/runs/**/frontend-*.json
                       .local_tmp_files/runs/**/frontend-e2e-results/**
                   include-hidden-files: true
                   if-no-files-found: ignore
