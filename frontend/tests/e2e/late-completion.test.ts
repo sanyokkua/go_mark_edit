@@ -1,5 +1,4 @@
 import { spawn, type ChildProcess } from 'node:child_process';
-import type { Page } from '@playwright/test';
 
 import { expect, test } from '../support/harness';
 import { preparedPaths } from '../support/prepare';
@@ -82,15 +81,6 @@ async function stopHeldLock(child: ChildProcess): Promise<void> {
     }
 }
 
-async function closeUntitledDocument(page: Page): Promise<void> {
-    const untitled = page.getByRole('tab', { name: 'Untitled' });
-    await expect(untitled).toBeVisible();
-    await untitled
-        .locator('..')
-        .getByRole('button', { name: /^Close /u })
-        .click();
-}
-
 test(
     'a late recent-file completion remains single and respects retry and cancel',
     { tag: '@perf' },
@@ -101,7 +91,6 @@ test(
         await app.launch();
 
         const runVariant = async (remediation: 'retry' | 'cancel'): Promise<void> => {
-            await closeUntitledDocument(app.page);
             const launcher = app.page.getByTestId('document-launcher');
             await expect(launcher).toBeVisible();
 

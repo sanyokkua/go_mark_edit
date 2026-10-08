@@ -27,15 +27,9 @@ type AppModelOption struct {
 	ClipboardWriter        file.ClipboardWriter
 	RevealPort             file.RevealPort
 	WriteCommitObserver    WriteCommitObserver
-	StartEmpty             bool
 }
 
 func (option AppModelOption) apply(service *AppModelService) {
-	if option.StartEmpty {
-		service.state.orderedDocumentIDs = nil
-		service.state.documents = make(map[string]*openDocument)
-		service.state.activeDocumentID = ""
-	}
 	if option.Clock != nil {
 		service.timer = option.Clock
 	}
@@ -85,11 +79,6 @@ func (option AppModelOption) apply(service *AppModelService) {
 	if option.WriteCommitObserver != nil {
 		service.writeCommitObserver = option.WriteCommitObserver
 	}
-}
-
-// WithEmptySession starts a new process without a preloaded document.
-func WithEmptySession() AppModelOption {
-	return AppModelOption{StartEmpty: true}
 }
 
 // WithDialogs supplies the open and save dialog ports.

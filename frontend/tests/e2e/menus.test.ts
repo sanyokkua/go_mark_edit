@@ -1,6 +1,6 @@
 import type { Locator, Page } from '@playwright/test';
 
-import { expect, test } from '../support/harness';
+import { expect, newUntitledDocument, test } from '../support/harness';
 import { expectCompactMenuRows } from '../support/menuRows';
 
 const palettes = [
@@ -215,6 +215,7 @@ test('case 8 keeps every Popup family framed across palettes and input modes', a
     await app.seedRecents([recent]);
     await app.launch();
     const { page } = app;
+    await newUntitledDocument(page);
     await page.setViewportSize({ width: 1280, height: 720 });
     await expect(page.getByRole('navigation', { name: 'Application actions' })).toBeVisible();
 

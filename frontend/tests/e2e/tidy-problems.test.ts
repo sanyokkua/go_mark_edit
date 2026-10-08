@@ -38,14 +38,11 @@ async function openDocument(app: E2EAppHarness, filename: string, contents: stri
     await app.seedRecents([source]);
     await app.launch();
     const { page } = app;
-    await page
-        .getByRole('tab', { name: /Untitled/u })
-        .locator('..')
-        .getByRole('button', { name: /^Close /u })
-        .click();
     await page.getByTestId('document-launcher').getByRole('button', { name: filename, exact: true }).click();
     await expect(page.getByRole('tab', { name: filename })).toBeVisible();
-    await expect(page.locator('[data-editor-surface] .view-lines')).toContainText(contents.split(/[\r\n]/u)[0]);
+    await expect(page.locator('[data-editor-surface] .view-lines')).toContainText(contents.split(/[\r\n]/u)[0], {
+        timeout: 30_000,
+    });
     return page;
 }
 
@@ -142,11 +139,6 @@ test('clears the prior document summary on activation and publishes fresh clean 
     await app.seedRecents([first, second]);
     await app.launch();
     const { page } = app;
-    await page
-        .getByRole('tab', { name: /Untitled/u })
-        .locator('..')
-        .getByRole('button', { name: /^Close /u })
-        .click();
     await page.getByTestId('document-launcher').getByRole('button', { name: 'first-lint.md' }).click();
     await expect(page.locator('[data-editor-surface] .view-lines')).toContainText('First');
     await lint(page).click();

@@ -22,9 +22,23 @@ func (retentionEmitter) EmitStatePatch(context.Context, apperr.AppStatePatch) er
 
 func (retentionEmitter) EmitAsyncError(context.Context, apperr.WireError) error { return nil }
 
+// newRetentionDocument creates the document a new service no longer starts with.
+func newRetentionDocument(t *testing.T, service *AppModelService) string {
+	t.Helper()
+	state, err := service.GetState(context.Background())
+	if err != nil {
+		t.Fatalf("GetState: %v", err)
+	}
+	created := service.NewDocument(context.Background(), state.Snapshot.TabSetRevision)
+	if created.Data == nil {
+		t.Fatalf("NewDocument = %+v", created)
+	}
+	return created.Data.DocumentID
+}
+
 func TestDisposeReleasesDocumentOwnedResources(t *testing.T) {
 	service := NewAppModelServiceForHost(WithEmitter(&retentionEmitter{}))
-	documentID := service.state.activeDocumentID
+	documentID := newRetentionDocument(t, service)
 	service.mu.Lock()
 	document := service.state.documents[documentID]
 	document.writeQueue = NewDocumentWriteCoordinator(func(WriteSnapshot) (file.DiskVersion, error) {
@@ -38,7 +52,11 @@ func TestDisposeReleasesDocumentOwnedResources(t *testing.T) {
 	document.keepMine = map[string]*keepMineAuthorization{"keep": {token: "keep", documentID: documentID}}
 	service.mu.Unlock()
 
-	closed := service.CloseDocument(context.Background(), documentID, 0)
+	state, err := service.GetState(context.Background())
+	if err != nil {
+		t.Fatalf("GetState: %v", err)
+	}
+	closed := service.CloseDocument(context.Background(), documentID, state.Snapshot.TabSetRevision)
 	if closed.Error != nil {
 		t.Fatalf("CloseDocument: %v", closed.Error)
 	}
@@ -161,7 +179,7 @@ func TestClosingDocumentRejectsAWriteThatHasNotStarted(t *testing.T) {
 
 func TestCloseDocumentsSealsTheRecordBeforeWaitingForWrites(t *testing.T) {
 	service := NewAppModelServiceForHost(WithEmitter(&retentionEmitter{}))
-	documentID := service.state.activeDocumentID
+	documentID := newRetentionDocument(t, service)
 	service.mu.Lock()
 	service.state.documents[documentID].writeInFlight = true
 	service.mu.Unlock()

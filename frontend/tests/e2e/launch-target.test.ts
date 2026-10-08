@@ -44,13 +44,13 @@ test('a flag before the file argument is skipped', async ({ app }) => {
     await expect(app.page.getByRole('tab', { name: 'after-flag.md' })).toBeVisible();
 });
 
-test('a missing file argument reports the missing file and keeps the Untitled tab', async ({ app }) => {
+test('a missing file argument reports the missing file and shows the launcher with no tab', async ({ app }) => {
     await app.launch([join(app.documentDirectory, 'missing.md')]);
     const { page } = app;
 
     await expect(page.getByText('The file no longer exists.').first()).toBeVisible();
-    await expect(page.getByRole('tab', { name: 'Untitled' })).toBeVisible();
-    await expect(page.getByRole('tab')).toHaveCount(1);
+    await expect(page.getByTestId('document-launcher')).toBeVisible();
+    await expect(page.getByRole('tab')).toHaveCount(0);
 });
 
 test('an unsupported file argument reports the file type and opens no tab for it', async ({ app }) => {

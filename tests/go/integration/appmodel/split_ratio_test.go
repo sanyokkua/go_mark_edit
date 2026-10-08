@@ -18,11 +18,11 @@ import (
 func TestSplitRatioDefaultsAndPartialViewUpdatesPreserveIt(t *testing.T) {
 	ctx := context.Background()
 	service := appmodel.NewAppModelServiceForHost(appmodel.WithEmitter(&recordingEmitter{}))
+	id := newUntitledID(t, service)
 	state, err := service.GetState(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
-	id := state.Snapshot.ActiveDocumentID
 	if got := state.Snapshot.Documents[id].View.SplitRatio; got != 0.5 {
 		t.Fatalf("initial ratio = %v", got)
 	}
@@ -46,11 +46,11 @@ func TestSplitRatioDefaultsAndPartialViewUpdatesPreserveIt(t *testing.T) {
 func TestSplitRatioRejectsInvalidValuesWithoutChangingState(t *testing.T) {
 	ctx := context.Background()
 	service := appmodel.NewAppModelServiceForHost(appmodel.WithEmitter(&recordingEmitter{}))
+	id := newUntitledID(t, service)
 	state, err := service.GetState(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
-	id := state.Snapshot.ActiveDocumentID
 	for _, value := range []float64{0.19, 0.81, math.NaN(), math.Inf(1), math.Inf(-1)} {
 		view := validDocView(true, true)
 		view.SplitRatio = ratio(value)
@@ -306,11 +306,11 @@ func TestSplitRatioSaveAsWritesDestinationMetadata(t *testing.T) {
 	repository := appmodel.NewSqliteFileMetadataRepository(database)
 	target := filepath.Join(directory, "saved.md")
 	service := appmodel.NewAppModelServiceForHost(appmodel.AppModelOption{FileMetadataRepository: repository}, appmodel.WithDialogs(nil, saveDialog{path: target}), appmodel.WithEmitter(&recordingEmitter{}))
+	id := newUntitledID(t, service)
 	state, err := service.GetState(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
-	id := state.Snapshot.ActiveDocumentID
 	view := validDocView(true, true)
 	view.SplitRatio = ratio(0.62)
 	if err := service.SetDocView(ctx, id, view); err != nil {

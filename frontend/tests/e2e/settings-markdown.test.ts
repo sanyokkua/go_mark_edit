@@ -60,11 +60,6 @@ async function openDocument(app: E2EAppHarness, filename: string, contents: stri
     await app.seedRecents([path]);
     await app.launch();
     const { page } = app;
-    const untitled = page.getByRole('tab', { name: /Untitled/u });
-    await untitled
-        .locator('..')
-        .getByRole('button', { name: /^Close /u })
-        .click();
     await page.getByTestId('document-launcher').getByRole('button', { name: filename, exact: true }).click();
     await expect(page.getByRole('tab', { name: filename })).toBeVisible();
     await expect.poll(() => activeText(page)).toBe(contents);
@@ -226,11 +221,6 @@ test(
         await app.seedRecents([first, second]);
         await app.launch();
         const { page } = app;
-        await page
-            .getByRole('tab', { name: /Untitled/u })
-            .locator('..')
-            .getByRole('button', { name: /^Close /u })
-            .click();
         await page.getByTestId('document-launcher').getByRole('button', { name: 'first.md' }).click();
         await page.getByRole('button', { name: 'File', exact: true }).click();
         await page.getByRole('menu', { name: 'File' }).getByRole('menuitem', { name: 'second.md' }).click();
@@ -388,11 +378,6 @@ test('closing a dirty background tab saves its original bytes and explains why F
     await app.seedRecents([first, second]);
     await app.launch();
     const { page } = app;
-    await page
-        .getByRole('tab', { name: /Untitled/u })
-        .locator('..')
-        .getByRole('button', { name: /^Close /u })
-        .click();
     await page.getByTestId('document-launcher').getByRole('button', { name: 'background.md' }).click();
     await disableAutosave(page);
     await openSettings(page);

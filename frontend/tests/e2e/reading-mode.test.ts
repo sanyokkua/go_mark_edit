@@ -10,13 +10,6 @@ const PREVIEW = 'section[aria-label="Preview pane"]';
 
 async function openRecentFromLauncher(page: Page, filename: string): Promise<void> {
     const launcher = page.getByTestId('document-launcher');
-    if (!(await launcher.isVisible())) {
-        await page
-            .getByRole('tab', { name: /Untitled/u })
-            .locator('..')
-            .getByRole('button', { name: /^Close /u })
-            .click();
-    }
     await expect(launcher).toBeVisible();
     await launcher.getByRole('button', { name: filename, exact: true }).click();
     await expect(page.getByRole('tab', { name: filename })).toBeVisible();
@@ -609,11 +602,6 @@ test('opening a file from the launcher with Reading (Viewer) shows Reading mode 
     const { page } = app;
     await page.setViewportSize({ width: 1280, height: 720 });
     await chooseDefaultOpenMode(page, 'Reading (Viewer)');
-    await page
-        .getByRole('tab', { name: /Untitled/u })
-        .locator('..')
-        .getByRole('button', { name: /^Close /u })
-        .click();
     await page.getByTestId('document-launcher').getByRole('button', { name: 'on-open.md', exact: true }).click();
     await expectReading(page);
     await expect(page.locator(PREVIEW)).toContainText('Open body.');

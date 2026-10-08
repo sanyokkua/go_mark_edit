@@ -11,11 +11,11 @@ import (
 
 func TestActivatingAndReorderingTabsReturnsTheAuthoritativeAcknowledgement(t *testing.T) {
 	service := NewAppModelServiceForHost(WithEmitter(&recordingEmitter{}))
+	firstID := newUntitledID(t, service)
 	state, err := service.GetState(context.Background())
 	if err != nil {
-		t.Fatalf("initial GetState: %v", err)
+		t.Fatalf("GetState after first New: %v", err)
 	}
-	firstID := state.Snapshot.ActiveDocumentID
 	created := service.NewDocument(context.Background(), state.Snapshot.TabSetRevision)
 	if created.Data == nil {
 		t.Fatalf("NewDocument: %+v", created)
@@ -67,6 +67,7 @@ func TestClosingAFileWithPendingAutosaveFlushesItBeforeRemoval(t *testing.T) {
 
 func TestClosingTheFinalCleanTabLeavesAnExplicitlyEmptyState(t *testing.T) {
 	service := NewAppModelServiceForHost(WithEmitter(&recordingEmitter{}))
+	newUntitledID(t, service)
 	state, err := service.GetState(context.Background())
 	if err != nil {
 		t.Fatalf("GetState: %v", err)

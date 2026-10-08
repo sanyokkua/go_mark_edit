@@ -59,19 +59,16 @@ func TestOpenPreviewLinkResolvesLocalTargetsThroughOpen(t *testing.T) {
 	}
 
 	service := appmodel.NewAppModelServiceForHost(appmodel.WithEmitter(previewLinkEmitter{}))
-	initial, err := service.GetState(context.Background())
-	if err != nil {
-		t.Fatalf("initial state: %v", err)
-	}
+	untitledID := newUntitledID(t, service)
 	untitled := service.OpenPreviewLink(
 		context.Background(),
-		initial.Snapshot.ActiveDocumentID,
+		untitledID,
 		"./My Notes.markdown",
 	)
 	if untitled.Status != appmodel.OpenStatusRefused || untitled.Error == nil {
 		t.Fatalf("untitled preview link = %+v, want refusal", untitled)
 	}
-	absolute := service.OpenPreviewLink(context.Background(), initial.Snapshot.ActiveDocumentID, child)
+	absolute := service.OpenPreviewLink(context.Background(), untitledID, child)
 	if absolute.Status != appmodel.OpenStatusOpened {
 		t.Fatalf("absolute link from untitled = %+v, want opened", absolute)
 	}

@@ -9,9 +9,9 @@ See `proposal.md` (Why) for the motivation. This section covers only the current
 - `newAppModelService` (`internal/appmodel/service.go:90-126`) always creates one Untitled document and makes it
   active.
 - Only a New Window child process starts empty:
-  - `WithEmptySession()` (`internal/appmodel/options.go:30-38,90-93`) does this;
-  - it is applied only when `GOMARKEDIT_NEW_WINDOW_CHILD=1` (`internal/application/application_context_holder.go:100-102`,
-    set and stripped in `new_window.go:27,45-50`).
+    - `WithEmptySession()` (`internal/appmodel/options.go:30-38,90-93`) does this;
+    - it is applied only when `GOMARKEDIT_NEW_WINDOW_CHILD=1` (`internal/application/application_context_holder.go:100-102`,
+      set and stripped in `new_window.go:27,45-50`).
 - Opening a file replaces an untouched, empty Untitled document (`internal/appmodel/file_lifecycle.go:247-260`).
 - The launcher (`ui/widgets/Launcher.tsx`, rendered by `ui/widgets/AppShell.tsx:187-204`) already appears whenever no
   document is active.
@@ -20,9 +20,9 @@ See `proposal.md` (Why) for the motivation. This section covers only the current
 
 - `state.ui.SidebarVisible` lives in the backend and defaults to `true` (`service.go:124`).
 - It is persisted as `layout.workspace.visible`:
-  - key at `layout_repository.go:9`;
-  - restored at `service.go:394-396`;
-  - written at `service.go:618`.
+    - key at `layout_repository.go:9`;
+    - restored at `service.go:394-396`;
+    - written at `service.go:618`.
 - The frontend effect in `app/App.tsx:41-46` calls `setWorkspaceVisible(true)` whenever a folder root appears. That call
   is persisted too.
 - `OpenWorkspace` and `CloseWorkspace` (`internal/appmodel/workspace.go:200-269, 320-343`) never touch visibility.
@@ -30,9 +30,9 @@ See `proposal.md` (Why) for the motivation. This section covers only the current
 ### Menus and toolbar
 
 - The in-app menus are React popups:
-  - the Format menu is `ui/widgets/Menubar/FormatMenu.tsx`, fed by `actionsForSurface('format-menu')`
-    (`logic/actions/actionRegistry.ts:659-675`);
-  - on macOS the native menu holds only the App and Edit menus (`internal/application/native_menu.go`).
+    - the Format menu is `ui/widgets/Menubar/FormatMenu.tsx`, fed by `actionsForSurface('format-menu')`
+      (`logic/actions/actionRegistry.ts:659-675`);
+    - on macOS the native menu holds only the App and Edit menus (`internal/application/native_menu.go`).
 - The toolbar (`ui/widgets/FormattingToolbar/FormattingToolbar.tsx:36-47`) hard-codes five groups. The last group is
   Format, Compact and Lint as text buttons; it is marked `neverOverflows` (`:260-266`). The registry's `overflow`
   surface is declared but never read by the toolbar.
@@ -43,9 +43,9 @@ See `proposal.md` (Why) for the motivation. This section covers only the current
 ### Formatting transforms
 
 - The pure transforms are in `logic/format/formatting.ts`:
-  - numbered lists always write `1.` (`:548`);
-  - headings stop at 3 (`FormatActionId`, `:5-18`);
-  - the table is a fixed two-column string (`:625`).
+    - numbered lists always write `1.` (`:548`);
+    - headings stop at 3 (`FormatActionId`, `:5-18`);
+    - the table is a fixed two-column string (`:625`).
 - `CodeEditor` (`ui/components/CodeEditor.tsx`) applies edits through `applyEdit` (`:165-183`, bracketed by
   `pushUndoStop`), so each edit is one undo step.
 
@@ -64,10 +64,10 @@ See `proposal.md` (Why) for the motivation. This section covers only the current
 ### Glass tokens
 
 - The Glass theme in `ui/styles/tokens.css:336-400` sets:
-  - `--floating-surface` to 0.88 (light) / 0.90 (dark);
-  - `--floating-backdrop-filter` to `blur(48px) saturate(180%)`.
+    - `--floating-surface` to 0.88 (light) / 0.90 (dark);
+    - `--floating-backdrop-filter` to `blur(48px) saturate(180%)`.
 - The same block already defines the mockup values as `--elevated` (0.80 / 0.82) and `--blur` (`blur(28px)
-  saturate(150%|160%)`).
+saturate(150%|160%)`).
 - The scrim is `--overlay: rgba(0,0,0,0.4)` (`:60`).
 
 ## Goals / Non-Goals
@@ -75,8 +75,8 @@ See `proposal.md` (Why) for the motivation. This section covers only the current
 **Goals:**
 
 - One owner per state:
-  - the backend owns the empty session and the sidebar visibility;
-  - the action registry owns the Markdown menu's contents, order and groups.
+    - the backend owns the empty session and the sidebar visibility;
+    - the action registry owns the Markdown menu's contents, order and groups.
 - Reuse what already exists: `ModalShell`, `Segmented`, `Popup`/`MenuItem`, the `CreateEntryPrompt` dialog pattern,
   `useEditorSettings`, `settingsCommands`, and the existing tokens.
 - New primitives only where nothing fits: `Switch` and `Select`.
@@ -141,11 +141,11 @@ today; no fix is planned.
 - `LayoutWorkspaceVisible` is removed from `persistLayout`, from `RestoreUILayout` and from the repository's key list and
   validation.
 - The other places that read or write visibility keep their meaning but must be checked against the new rule:
-  - `service.go:501`: a visibility change bypasses the sidebar-width debounce, and still does;
-  - `service.go:543`: the layout patch that is applied and acknowledged without a width;
-  - `service.go:979`: the patch merge copies `SidebarVisible` into the state;
-  - `frontend/src/logic/store/uiLayoutCommands.ts:50`: dragging the width to 0 writes `sidebarVisible=false`, which now
-    stays in memory only.
+    - `service.go:501`: a visibility change bypasses the sidebar-width debounce, and still does;
+    - `service.go:543`: the layout patch that is applied and acknowledged without a width;
+    - `service.go:979`: the patch merge copies `SidebarVisible` into the state;
+    - `frontend/src/logic/store/uiLayoutCommands.ts:50`: dragging the width to 0 writes `sidebarVisible=false`, which now
+      stays in memory only.
 - The existing database row is never read or written again. The key-value store is additive, and migrations do not
   rewrite data.
 
@@ -166,10 +166,10 @@ today; no fix is planned.
 **Choice:**
 
 - Renames:
-  - surface `format-menu` → `markdown-menu`;
-  - `FormatMenu.tsx` → `MarkdownMenu.tsx`;
-  - label key `shell.format` → `shell.markdown`;
-  - the overflow target and label in `Menubar.tsx:542` and `FormattingToolbar.tsx:49-55`.
+    - surface `format-menu` → `markdown-menu`;
+    - `FormatMenu.tsx` → `MarkdownMenu.tsx`;
+    - label key `shell.format` → `shell.markdown`;
+    - the overflow target and label in `Menubar.tsx:542` and `FormattingToolbar.tsx:49-55`.
 - `ActionEntry` gets `surfaceGroupKeys?: Partial<Record<ActionSurface, string>>`, which holds a group heading i18n key.
 - `groupedActionsForSurface(surface)` groups consecutive results of `actionsForSurface` by that key.
 - The order is the registry order, with no `surfaceOrder` set (`actionsForSurface` falls back to the registry index):
@@ -191,23 +191,23 @@ today; no fix is planned.
   arrangement, Reading mode), with the localized reason "Show the editor to use formatting." (the label key `action.noEditorShown`,
   next to `action.noDocument` and `action.settingsLoading`, mapped in `actionUnavailableLabelKey`,
   `actionRegistry.ts:677`).
-  - The registry's availability context (`logic/actions/actionRegistry.ts:145-164`) gains an optional `editorShown`.
-    Only `editorShown === false` makes the editor-scoped formatting actions (Bold through Table) unavailable, with a
-    new reason `editor-hidden` mapped to `action.noEditorShown` in `actionUnavailableLabelKey`. An absent field changes
-    nothing.
-  - The existing `no-editor` reason (`:20`) is not unused: `actionDispatcher.ts:200-201` returns it for an
-    editor-scoped action when the editor is not focused (mapped at `:84-90`). It stays the dispatcher's focus guard
-    and is a separate reason.
-  - `editorShown` is true when the active document's arrangement is not Preview and Reading mode is not active, both
-    read from the store (the document view's arrangement and `logic/store/readingSlice.ts`).
-  - It is passed by every caller that checks availability for these actions: the toolbar (`FormattingToolbar.tsx`),
-    the Markdown menu (today `FormatMenu.tsx:87`) and the `createEditorActionExecutor` dispatch context
-    (`editorActionExecutor.ts:219-251`), because `dispatchAction` calls `getActionAvailability`
-    (`actionDispatcher.ts:226`). The last one covers the keyboard shortcuts. The editor context menu
-    (`EditorContextMenu.tsx:56`) needs no change, because it only exists over a shown editor.
-  - With no document the existing `no-document` rule already applies.
-  - Document-scoped Format, Compact and Lint keep their current rules. The toolbar's formatting buttons and the
-    shortcuts use the same availability, so they are disabled in Preview as well.
+    - The registry's availability context (`logic/actions/actionRegistry.ts:145-164`) gains an optional `editorShown`.
+      Only `editorShown === false` makes the editor-scoped formatting actions (Bold through Table) unavailable, with a
+      new reason `editor-hidden` mapped to `action.noEditorShown` in `actionUnavailableLabelKey`. An absent field changes
+      nothing.
+    - The existing `no-editor` reason (`:20`) is not unused: `actionDispatcher.ts:200-201` returns it for an
+      editor-scoped action when the editor is not focused (mapped at `:84-90`). It stays the dispatcher's focus guard
+      and is a separate reason.
+    - `editorShown` is true when the active document's arrangement is not Preview and Reading mode is not active, both
+      read from the store (the document view's arrangement and `logic/store/readingSlice.ts`).
+    - It is passed by every caller that checks availability for these actions: the toolbar (`FormattingToolbar.tsx`),
+      the Markdown menu (today `FormatMenu.tsx:87`) and the `createEditorActionExecutor` dispatch context
+      (`editorActionExecutor.ts:219-251`), because `dispatchAction` calls `getActionAvailability`
+      (`actionDispatcher.ts:226`). The last one covers the keyboard shortcuts. The editor context menu
+      (`EditorContextMenu.tsx:56`) needs no change, because it only exists over a shown editor.
+    - With no document the existing `no-document` rule already applies.
+    - Document-scoped Format, Compact and Lint keep their current rules. The toolbar's formatting buttons and the
+      shortcuts use the same availability, so they are disabled in Preview as well.
 
 **Rejected alternative:** a hand-written menu layout. It breaks "menus … derive from one action registry" and would
 drift from the shortcuts dialog.
@@ -222,9 +222,9 @@ drift from the shortcuts dialog.
 - Cancel already replaces the running tidy button in place (`FormattingToolbar.tsx:122-136`), but only for the button
   whose action id equals `slot.kind`. With Compact and Lint gone from the toolbar, a run of either would show nothing.
   The change makes the Format button render that in-place progress and Cancel for any `slot.kind`:
-  - while `slot.kind` is `format`, `compact` or `lint` and progress is visible, it shows that run's progress and
-    Cancel;
-  - otherwise it is the Format button.
+    - while `slot.kind` is `format`, `compact` or `lint` and progress is visible, it shows that run's progress and
+      Cancel;
+    - otherwise it is the Format button.
 - Dropping the `toolbar` and `overflow` surfaces from `compact` and `lint` is catalogue cleanup: the toolbar is
   hard-coded and never reads them.
 - This keeps the requirement "show progress with a Cancel control" reachable without a menu open.
@@ -253,8 +253,8 @@ drift from the shortcuts dialog.
 
 - Strong is always `**`; emphasis uses the emphasis-marker setting.
 - In the inline wrapper-stack logic (`formatting.ts`, `inlineStackEdit` and its resolver `:304-391`):
-  - if the stack holds both bold and italic, remove both;
-  - otherwise add whichever is missing, with bold outside and italic inside.
+    - if the stack holds both bold and italic, remove both;
+    - otherwise add whichever is missing, with bold outside and italic inside.
 - Results: `**_x_**` with `_`, `***x***` with `*`. The resolver already reads `***x***` as bold plus italic.
 - The multi-line fallback (`formatInlineLine`, `inlineContentBounds`) takes separate open and close strings.
 
@@ -266,10 +266,10 @@ drift from the shortcuts dialog.
 
 - If every non-blank selected line is numbered, remove the markers. This is today's toggle.
 - Otherwise:
-  - number the non-blank lines from 1, with one counter per indentation (and quote prefix); a shallower line resets the
-    counters of deeper levels, so nested runs restart at 1;
-  - the first line's level continues from n+1 with the same `.` or `)` delimiter when the line above the selection is a
-    numbered item with the same quote prefix and indent.
+    - number the non-blank lines from 1, with one counter per indentation (and quote prefix); a shallower line resets the
+      counters of deeper levels, so nested runs restart at 1;
+    - the first line's level continues from n+1 with the same `.` or `)` delimiter when the line above the selection is a
+      numbered item with the same quote prefix and indent.
 - Existing bullet, task and number markers and heading markers are replaced. Each line keeps its own indent.
 - A blank line in a multi-line selection stays blank. A single blank caret line still becomes `1. `.
 - Items below the selection are not renumbered.
@@ -296,7 +296,7 @@ drift from the shortcuts dialog.
   component never imports `logic/`.
 - In `handleMount`, `CodeEditor` registers a per-editor `editor.addAction` bound to `KeyCode.Enter`, with the
   precondition `editorTextFocus && !editorReadonly && !suggestWidgetVisible && !inSnippetMode && !editorHasSelection &&
-  !editorHasMultipleSelections`.
+!editorHasMultipleSelections`.
 - The action's run applies the edit through `applyEdit` (one undo step). When the result is `null`, it falls back to
   `trigger('keyboard', 'type', { text: '\n' })`, which keeps Monaco's auto-indent.
 - Monaco does not dispatch keybindings during IME composition. Shift+Enter is not bound.
@@ -320,9 +320,9 @@ drift from the shortcuts dialog.
   `useAppPresentation`. The open request counts in `modalOpen`.
 - `AppDialogs` mounts `ui/widgets/dialogs/InsertTableDialog.tsx`. It is `ModalShell` plus the `CreateEntryPrompt`
   pattern:
-  - two labelled `input type="number"` fields;
-  - inline `role="alert"` messages;
-  - Enter submits, Escape cancels.
+    - two labelled `input type="number"` fields;
+    - inline `role="alert"` messages;
+    - Enter submits, Escape cancels.
 - On Insert it calls `runFormatAction` with `table: { columns, rows }`. `FormatRequest` gains that optional field, and
   `tableSkeleton` becomes a builder. A request without `table` means 3 columns and 3 rows, the dialog's defaults.
 - Bounds: columns 1–20 and rows 1–100, both defaulting to 3. Defaults are not remembered.
@@ -339,23 +339,23 @@ drift from the shortcuts dialog.
 **Choice:**
 
 - `ModalShell` gets two optional props:
-  - `closeLabel`: renders a header row with the title and a `×` icon button carrying that accessible name;
-  - `className`: used for the dialog surface.
+    - `closeLabel`: renders a header row with the title and a `×` icon button carrying that accessible name;
+    - `className`: used for the dialog surface.
 - Existing dialogs are unaffected.
 - New primitives:
-  - `ui/primitives/Switch`: a `button` with `role="switch"` and `aria-checked`. It reuses the existing switch look by
-    extracting the `.toggle` styling of `ui/components/MenuItem/MenuItem.module.css:82-112`, so the popup rows and the
-    dialog switches look the same (the mockup's `.tgl`, 34 by 19 px);
-  - `ui/primitives/Select`: a styled native `<select>`, so the native keyboard and accessibility behaviour comes for
-    free.
+    - `ui/primitives/Switch`: a `button` with `role="switch"` and `aria-checked`. It reuses the existing switch look by
+      extracting the `.toggle` styling of `ui/components/MenuItem/MenuItem.module.css:82-112`, so the popup rows and the
+      dialog switches look the same (the mockup's `.tgl`, 34 by 19 px);
+    - `ui/primitives/Select`: a styled native `<select>`, so the native keyboard and accessibility behaviour comes for
+      free.
 - Two- and three-value choices reuse `Segmented`.
 - `SettingsDialog.tsx` is split by responsibility:
-  - the dialog shell;
-  - `SettingsSectionNav`: a vertical `tablist` with roving `tabindex`, where Up, Down, Home and End move and activate the
-    section;
-  - `SettingsRow`: a label and optional description on the left, the control on the right;
-  - section components: Appearance, Editor, Markdown, Workspace and Export. The Workspace section component sits between
-    Markdown and Export (Decision 12 supplies its data).
+    - the dialog shell;
+    - `SettingsSectionNav`: a vertical `tablist` with roving `tabindex`, where Up, Down, Home and End move and activate the
+      section;
+    - `SettingsRow`: a label and optional description on the left, the control on the right;
+    - section components: Appearance, Editor, Markdown, Workspace and Export. The Workspace section component sits between
+      Markdown and Export (Decision 12 supplies its data).
 - The dialog always opens on Appearance.
 - Size: `min(760px, 94%)` wide and `max-height: 88%`. Only the pane scrolls.
 - At 376 px or narrower, the nav sits above the pane as a horizontal row. Both layouts accept Up/Left and Down/Right,
@@ -363,17 +363,17 @@ drift from the shortcuts dialog.
 - Where the data comes from, and the one writer per key. Today there are two ordered queues, the module-level one in
   `logic/settings/editorSettings.ts:9` and the per-provider one in `AppearanceControls.tsx:76`. Each setting keeps its
   one existing writer, and the popup and the dialog call the same writer for a given key:
-  - the `AppearanceSettingsProvider` writes theme, mode, default open mode, reading width, PDF appearance and Reset
-    appearance;
-  - `useEditorSettings` writes editor, autosave and Markdown settings (`update`: line numbers, word wrap, scroll sync,
-    font size; `updateFile`: autosave; `updateMarkdown`);
-  - `onSetWorkspaceHiddenFolders` (`app/useCommands.ts:495`) writes Show hidden folders.
+    - the `AppearanceSettingsProvider` writes theme, mode, default open mode, reading width, PDF appearance and Reset
+      appearance;
+    - `useEditorSettings` writes editor, autosave and Markdown settings (`update`: line numbers, word wrap, scroll sync,
+      font size; `updateFile`: autosave; `updateMarkdown`);
+    - `onSetWorkspaceHiddenFolders` (`app/useCommands.ts:495`) writes Show hidden folders.
 - Mod+, routes to the dialog: the shell action's `openSettings` opens the dialog. The Settings menu button still opens
   the popup.
 - Popup:
-  - the Default open mode, Reading width and PDF appearance rows are removed from `SettingsMenu.tsx`;
-  - the unused registry ids `default-open-mode`, `reading-width` and `pdf-appearance` are removed;
-  - Autosave is shown with the same switch presentation as Format on save and Lint on save.
+    - the Default open mode, Reading width and PDF appearance rows are removed from `SettingsMenu.tsx`;
+    - the unused registry ids `default-open-mode`, `reading-width` and `pdf-appearance` are removed;
+    - Autosave is shown with the same switch presentation as Format on save and Lint on save.
 
 **Rejected alternatives:**
 
@@ -386,19 +386,19 @@ drift from the shortcuts dialog.
 **Choice:**
 
 - In both Glass blocks of `tokens.css`:
-  - `--floating-surface: var(--elevated)`;
-  - `--floating-backdrop-filter: var(--blur)`.
+    - `--floating-surface: var(--elevated)`;
+    - `--floating-backdrop-filter: var(--blur)`.
 - In `:root`:
-  - `--overlay: rgba(6, 8, 16, 0.42)`;
-  - a new `--overlay-backdrop-filter: blur(3px)`, used by `ModalShell.module.css .overlay` (with the `-webkit-` prefix
-    for WKWebView).
+    - `--overlay: rgba(6, 8, 16, 0.42)`;
+    - a new `--overlay-backdrop-filter: blur(3px)`, used by `ModalShell.module.css .overlay` (with the `-webkit-` prefix
+      for WKWebView).
 - Material and Minimal keep opaque floating surfaces with no blur.
 - No component CSS changes beyond the overlay rule. The two tokens have more consumers than the menus and dialogs, and
   all of them change in Glass:
-  - the Reading mode tab-bar overlay (`ui/widgets/EditorView.module.css:15-16`);
-  - the reading sidebar overlay (`ui/widgets/AppShell.module.css:32-33`);
-  - the reading controls (`ReadingControls.module.css:20`).
-  They follow the same material by design. Task 3 checks their legibility in the real app.
+    - the Reading mode tab-bar overlay (`ui/widgets/EditorView.module.css:15-16`);
+    - the reading sidebar overlay (`ui/widgets/AppShell.module.css:32-33`);
+    - the reading controls (`ReadingControls.module.css:20`).
+      They follow the same material by design. Task 3 checks their legibility in the real app.
 
 **Rejected alternative:** new Glass-only literal values. `--elevated` and `--blur` already hold the mockup values, and a
 second copy would drift.
@@ -455,41 +455,41 @@ It becomes `docs/architecture.md` decision D23, because it changes what a persis
 ### Verification approach
 
 - **Unit (Jest):**
-  - the transforms: Bold Italic, H4–H6, numbering, the table builder;
-  - list continuation, including fences, quotes and empty items;
-  - the registry: groups, surfaces, shortcuts;
-  - the `Switch` and `Select` primitives.
+    - the transforms: Bold Italic, H4–H6, numbering, the table builder;
+    - list continuation, including fences, quotes and empty items;
+    - the registry: groups, surfaces, shortcuts;
+    - the `Switch` and `Select` primitives.
 - **Integration (Jest + Testing Library):**
-  - the Markdown menu groups and their accessibility roles;
-  - the toolbar tidy slot showing Cancel for Compact;
-  - the Insert table dialog: bounds, Enter, Escape, focus;
-  - the Settings dialog: sections, tablist keyboard, popup ↔ dialog sync;
-  - the dialog's Show hidden folders switch and the tree toggle stay in sync;
-  - the Markdown menu and the toolbar in Preview and with no document;
-  - the trimmed popup.
+    - the Markdown menu groups and their accessibility roles;
+    - the toolbar tidy slot showing Cancel for Compact;
+    - the Insert table dialog: bounds, Enter, Escape, focus;
+    - the Settings dialog: sections, tablist keyboard, popup ↔ dialog sync;
+    - the dialog's Show hidden folders switch and the tree toggle stay in sync;
+    - the Markdown menu and the toolbar in Preview and with no document;
+    - the trimmed popup.
 - **Go integration:**
-  - setting Show hidden folders with no folder succeeds, is persisted, is published and is restored at the next start;
-  - the empty session at start;
-  - visibility on open and close;
-  - restore ignores the old key and persist no longer writes it;
-  - New Window and missing-path startup.
+    - setting Show hidden folders with no folder succeeds, is persisted, is published and is restored at the next start;
+    - the empty session at start;
+    - visibility on open and close;
+    - restore ignores the old key and persist no longer writes it;
+    - New Window and missing-path startup.
 - **E2E (real backend):**
-  - launch → launcher;
-  - folder open → sidebar; Close Folder → hidden;
-  - the new shortcuts;
-  - Enter continuation with undo;
-  - table insertion;
-  - the Settings dialog;
-  - Show hidden folders turned on in the dialog with no folder, then a folder with `.notes/` opened;
-  - Mod+B in the Preview arrangement leaves the text unchanged and the toolbar's formatting buttons are disabled;
-  - the Glass computed styles (`floating-surfaces.test.ts`: `blur(28px)`, the scrim, content still obscured), with the
-    Settings popup and the Settings dialog added next to About.
+    - launch → launcher;
+    - folder open → sidebar; Close Folder → hidden;
+    - the new shortcuts;
+    - Enter continuation with undo;
+    - table insertion;
+    - the Settings dialog;
+    - Show hidden folders turned on in the dialog with no folder, then a folder with `.notes/` opened;
+    - Mod+B in the Preview arrangement leaves the text unchanged and the toolbar's formatting buttons are disabled;
+    - the Glass computed styles (`floating-surfaces.test.ts`: `blur(28px)`, the scrim, content still obscured), with the
+      Settings popup and the Settings dialog added next to About.
 - **Real application** (Wails dev on macOS), for what tests cannot fully show:
-  - the startup transient;
-  - Enter with the Japanese IME and with the suggest widget open;
-  - focus return after the table dialog;
-  - Cmd+Shift+B, Cmd+4/5/6 and Cmd+, in WKWebView;
-  - the glass look against the mockup screenshots.
+    - the startup transient;
+    - Enter with the Japanese IME and with the suggest widget open;
+    - focus return after the table dialog;
+    - Cmd+Shift+B, Cmd+4/5/6 and Cmd+, in WKWebView;
+    - the glass look against the mockup screenshots.
 - Windows and Linux WebView shortcut behaviour cannot be exercised here. The e2e shortcut tests stand in for it.
 
 ## Risks / Trade-offs

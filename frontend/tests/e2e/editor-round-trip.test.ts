@@ -36,17 +36,7 @@ async function editorModifier(page: Page): Promise<'Control' | 'Meta'> {
     return page.evaluate(() => (navigator.userAgent.includes('Macintosh') ? 'Meta' : 'Control'));
 }
 
-async function closeUntitled(page: Page): Promise<void> {
-    const tab = page.getByRole('tab', { name: /Untitled/u });
-    await expect(tab).toBeVisible();
-    await tab
-        .locator('..')
-        .getByRole('button', { name: /^Close /u })
-        .click();
-}
-
 async function openRecent(page: Page, filename: string): Promise<void> {
-    await closeUntitled(page);
     const launcher = page.getByTestId('document-launcher');
     await expect(launcher).toBeVisible();
     await launcher.getByRole('button', { name: filename, exact: true }).click();

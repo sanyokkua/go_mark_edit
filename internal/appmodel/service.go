@@ -88,36 +88,8 @@ func NewAppModelServiceForHost(options ...AppModelOption) *AppModelService {
 }
 
 func newAppModelService(options ...AppModelOption) *AppModelService {
-	documentID := mintDocumentID()
-	initialDocument := &openDocument{
-		metadata: apperr.DocumentMetadata{
-			DocumentID: documentID,
-			Title:      "Untitled",
-			Path:       "",
-			Capability: "writable",
-			Encoding:   "utf-8",
-			LineEnding: "lf",
-			View: apperr.DocView{
-				Arrangement:    ArrangementSplit,
-				SplitRatio:     defaultSplitRatio,
-				EditorVisible:  true,
-				PreviewVisible: true,
-				Cursor:         apperr.CursorPosition{Line: 1, Column: 1},
-				Selection: apperr.SelectionRange{
-					Start: apperr.CursorPosition{Line: 1, Column: 1},
-					End:   apperr.CursorPosition{Line: 1, Column: 1},
-				},
-			},
-		},
-	}
-
-	initialDocument.id = documentID
-	initialDocument.canonicalPath = ""
-	initialDocument.setBufferRevision(initialDocument.metadata.ContentRevision)
 	service := &AppModelService{timer: systemLayoutTimer{}, autosaveTimer: systemAutosaveTimerFactory{}, autosaveEnabled: true, writerID: newLayoutWriterID(), reservations: make(map[string]*openReservation), closePlans: make(map[string]*closePlan), conflictQueue: newConflictQueue(), stableRead: file.ReadClassifiedStable, diskVersion: file.CurrentDiskVersion, defaultOpenMode: OpenModeEditor, applicationVersion: "dev", logger: zerolog.Nop(), state: applicationState{
-		orderedDocumentIDs: []string{documentID},
-		documents:          map[string]*openDocument{documentID: initialDocument},
-		activeDocumentID:   documentID,
+		documents: make(map[string]*openDocument),
 		ui: apperr.UILayout{
 			WindowWidth:    pointerTo(1024),
 			WindowHeight:   pointerTo(768),

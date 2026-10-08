@@ -19,11 +19,6 @@ for (const scenario of [
 
                 const { page } = app;
                 await page.setViewportSize({ width: 1280, height: 720 });
-                await page
-                    .getByRole('tab', { name: /Untitled/u })
-                    .locator('..')
-                    .getByRole('button', { name: /^Close /u })
-                    .click();
                 await page.getByTestId('document-launcher').getByRole('button', { name: 'lint-hover.md' }).click();
 
                 await page.getByRole('button', { name: 'Settings' }).click();

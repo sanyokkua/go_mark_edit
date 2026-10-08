@@ -1,6 +1,6 @@
 import type { Page } from '@playwright/test';
 
-import { expect, test } from '../support/harness';
+import { expect, newUntitledDocument, test } from '../support/harness';
 import { expectCompactMenuRows } from '../support/menuRows';
 
 interface ActiveState {
@@ -33,6 +33,7 @@ test('keeps toolbar overflow and tab scrolling reachable at narrow widths', asyn
     await app.launch();
 
     const { page } = app;
+    await newUntitledDocument(page);
     await page.setViewportSize({ width: 1280, height: 720 });
     for (let index = 0; index < 7; index += 1) {
         await page.getByRole('button', { name: 'New tab' }).click();
@@ -136,6 +137,7 @@ test('formats the selected text once from the toolbar overflow', async ({ app })
     await app.launch();
 
     const { page } = app;
+    await newUntitledDocument(page);
     const editor = page.locator('[data-editor-surface] textarea').first();
     await expect(editor).toBeVisible();
     await editor.focus();

@@ -1008,6 +1008,18 @@ The owner decisions that shaped this refactor are recorded here so they are not 
   appearance group) sets `data-print-appearance` on the copy; Clean redefines the colour tokens with the Material Light
   values in `tokens.css`, and `resolveMermaidTheme(element)` probes inside the element so diagrams are drawn light.
 
+- **D21 — Empty-session startup:** it refines D18. `newAppModelService` starts every window with no document, an empty
+  `orderedDocumentIDs` and an empty `activeDocumentID`, so a window without a launch target shows the launcher
+  (`ui/widgets/Launcher.tsx`), whether it was started from the icon, from New Window or with an unsupported or missing
+  path argument. The `StartEmpty` option, `WithEmptySession` and the `GOMARKEDIT_NEW_WINDOW_CHILD` marker no longer exist:
+  a New Window child inherits the parent's environment unchanged. The Untitled replacement of D18 is unchanged: an
+  untouched, empty Untitled document that the user created with New File is still replaced when a file opens. Tests that
+  need a document create one through the public `NewDocument` path (`newUntitledID` in `tests/go/`, and
+  `newUntitledDocument` in `frontend/tests/support/harness.ts`, which presses Mod+N). Known transient: the launch target
+  is taken after `windowReady`, so a file argument shows one frame of the launcher. Rejected: keeping `WithEmptySession`
+  with the default flipped (a dead option), an "initial Untitled" option used only by tests, and closing the tab in the
+  frontend at bootstrap (the frontend would own the session, and it flashes).
+
 ## Planning decisions retained
 
 The seven planning decisions are part of the implementation record:

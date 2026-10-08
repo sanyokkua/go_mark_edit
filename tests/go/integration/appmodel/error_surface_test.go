@@ -65,14 +65,11 @@ func TestLayoutRestoreReadFailureReturnsAStatedOperation(t *testing.T) {
 func TestPublicationRollbackLogsAStatedReason(t *testing.T) {
 	var logs bytes.Buffer
 	service := appmodel.NewAppModelServiceForHost(
-		appmodel.WithEmitter(rejectingStateEmitter{err: errors.New("event transport unavailable")}),
+		appmodel.WithEmitter(&failOnceAtPatchEmitter{failAt: 2}),
 		appmodel.WithLogger(zerolog.New(&logs)),
 	)
-	state, err := service.GetState(context.Background())
-	if err != nil {
-		t.Fatalf("initial state: %v", err)
-	}
-	if err := service.UpdateBuffer(context.Background(), state.Snapshot.ActiveDocumentID, "must roll back"); err == nil {
+	documentID := newUntitledID(t, service)
+	if err := service.UpdateBuffer(context.Background(), documentID, "must roll back"); err == nil {
 		t.Fatal("UpdateBuffer succeeded despite a rejected state publication")
 	}
 	if !strings.Contains(logs.String(), "state publication rolled back") {
@@ -200,12 +197,6 @@ func (layoutReadFailureRepository) Write(context.Context, string, appmodel.Versi
 
 func (layoutReadFailureRepository) Read(context.Context, string) (appmodel.VersionedLayoutValue, bool, error) {
 	return appmodel.VersionedLayoutValue{}, false, errors.New("layout database read unavailable")
-}
-
-type rejectingStateEmitter struct{ err error }
-
-func (emitter rejectingStateEmitter) EmitStatePatch(context.Context, apperr.AppStatePatch) error {
-	return emitter.err
 }
 
 type failOnceAtPatchEmitter struct {

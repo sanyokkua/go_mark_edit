@@ -10,6 +10,7 @@ import (
 func TestStatePublicationsRemainStrictlyRevisionOrdered(t *testing.T) {
 	emitter := &recordingEmitter{}
 	service := NewAppModelServiceForHost(WithEmitter(emitter))
+	newUntitledID(t, service)
 	state, err := service.GetState(context.Background())
 	if err != nil {
 		t.Fatalf("initial GetState: %v", err)
@@ -30,8 +31,8 @@ func TestStatePublicationsRemainStrictlyRevisionOrdered(t *testing.T) {
 	}
 
 	patches := emitter.Patches()
-	if len(patches) != 3 {
-		t.Fatalf("published patches = %d, want New, UpdateBuffer and reorder", len(patches))
+	if len(patches) != 4 {
+		t.Fatalf("published patches = %d, want two New, UpdateBuffer and reorder", len(patches))
 	}
 	for index, patch := range patches {
 		if patch.Revision == 0 || (index > 0 && patch.Revision <= patches[index-1].Revision) {

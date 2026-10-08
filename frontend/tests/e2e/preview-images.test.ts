@@ -55,11 +55,6 @@ test('case 7 serves bounded in-folder images and keeps every other source inert'
     await app.launch();
 
     const { page } = app;
-    const initialTab = page.getByRole('tab', { name: 'Untitled' });
-    await initialTab
-        .locator('..')
-        .getByRole('button', { name: /^Close /u })
-        .click();
     await page.getByTestId('document-launcher').getByRole('button', { name: 'a.md' }).click();
     await expect(page.getByRole('tab', { name: 'a.md' })).toBeVisible();
 

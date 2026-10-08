@@ -152,7 +152,7 @@ WHEN the caret ends a non-empty list item in a writable editor with no selection
 #### Scenario: Numbered item
 
 - **WHEN** the caret is at the end of `  3. three` and the user presses Enter
-- **THEN** a new line `  4. ` follows
+- **THEN** a new line ` 4.` follows
 
 #### Scenario: Task item
 
@@ -171,7 +171,7 @@ WHEN the caret ends a non-empty list item in a writable editor with no selection
 
 #### Scenario: End a nested or quoted list
 
-- **WHEN** the caret is at the end of `  - ` and the user presses Enter, and later at the end of `> - `
+- **WHEN** the caret is at the end of ` -` and the user presses Enter, and later at the end of `> - `
 - **THEN** the first line becomes empty and the second becomes `> `
 
 #### Scenario: Inside a fenced code block

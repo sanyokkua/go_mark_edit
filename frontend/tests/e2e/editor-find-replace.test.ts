@@ -4,11 +4,6 @@ import type { Page } from '@playwright/test';
 import { expect, test } from '../support/harness';
 
 async function openRecent(page: Page, filename: string): Promise<void> {
-    const untitled = page.getByRole('tab', { name: /Untitled/u });
-    await untitled
-        .locator('..')
-        .getByRole('button', { name: /^Close /u })
-        .click();
     await page.getByTestId('document-launcher').getByRole('button', { name: filename, exact: true }).click();
     await expect(page.getByRole('tab', { name: filename })).toBeVisible();
 }

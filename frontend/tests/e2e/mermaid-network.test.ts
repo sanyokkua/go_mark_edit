@@ -46,11 +46,6 @@ test(
             await route.continue();
         });
         await app.launch();
-        await page
-            .getByRole('tab', { name: 'Untitled' })
-            .locator('..')
-            .getByRole('button', { name: /^Close /u })
-            .click();
         await page.getByTestId('document-launcher').getByRole('button', { name: 'mermaid-network.md' }).click();
         await page
             .getByRole('radiogroup', { name: 'View arrangement' })

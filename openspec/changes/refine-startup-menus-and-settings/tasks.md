@@ -21,7 +21,7 @@ and squash-merge it back.
 
 ## 1. Start without a document
 
-- [ ] 1.1 Start every window with no document, so that a window without a launch target shows the launcher. Verify that
+- [x] 1.1 Start every window with no document, so that a window without a launch target shows the launcher. Verify that
       the named Go and e2e tests pass, `scripts/verify` is green, and in the real app:
     - starting from the icon shows the launcher with no tab;
     - New Window shows the launcher;
@@ -67,8 +67,8 @@ and squash-merge it back.
             - add the tests that expect an editor or a tab count right after launch;
             - the implicit cases to name are `menus.test.ts:221`, `narrow-width.test.ts:33-36,139` and
               `theme-surfaces.test.ts:64,121,299`.
-          `launcher.test.ts`, `launch-target.test.ts`, `tidy.test.ts` and `settings-markdown.test.ts` are among them.
-          `launch-target.test.ts:47-52` expects the launcher plus the missing-file notice.
+              `launcher.test.ts`, `launch-target.test.ts`, `tidy.test.ts` and `settings-markdown.test.ts` are among them.
+              `launch-target.test.ts:47-52` expects the launcher plus the missing-file notice.
     - Adds tests:
         - Go: a new service has no documents and no active document; a New Window child process starts with no
           document; the unsupported and missing startup paths leave no document and report the message.
@@ -85,7 +85,7 @@ and squash-merge it back.
     - hidden by Close Folder;
     - toggled by Ctrl/Cmd+\ for the session.
 
-  Verify that the named tests pass, `scripts/verify` is green, and in the real app:
+    Verify that the named tests pass, `scripts/verify` is green, and in the real app:
     - starting from the icon, New Window and a file argument each show no sidebar;
     - Open Folder shows the tree, and Open Folder on the already shown folder with a hidden sidebar shows it again with
       no prompt;
@@ -353,7 +353,7 @@ and squash-merge it back.
       green, and in the real app:
     - typing a bullet, numbered, task and quoted list continues each;
     - Enter on an empty item ends the list;
-    - Enter inside a ```` ``` ```` block inserts a plain line;
+    - Enter inside a ` ``` ` block inserts a plain line;
     - Japanese IME input confirmed with Enter adds no marker.
     - Requirements: editor "List continuation on Enter".
     - Depends on: 6 (shares the list parsing and numbering helpers).
@@ -369,7 +369,7 @@ and squash-merge it back.
         - Enter is handled by that Monaco `addAction`, outside the window shortcut listener of
           `ui/widgets/useEditorActionExecutor.ts:79-97`. It is not a registry shortcut, so nothing handles it twice.
     - Adds tests:
-        - unit (`frontend/tests/unit/format/listContinuation.test.ts`): bullet, `  3. three` → `  4. `, `3)` → `4)`,
+        - unit (`frontend/tests/unit/format/listContinuation.test.ts`): bullet, `  3. three` → ` 4.`, `3)` → `4)`,
           task `* [x] done` → `* [ ] `, a quoted item, an empty item ends the list, the caret mid-item → `null`, inside a
           backtick fence and inside a tilde fence → `null`, after a closed fence → continues, a non-list line → `null`;
         - e2e (real editor):
@@ -398,7 +398,7 @@ and squash-merge it back.
         - `logic/format/formatting.ts`: `FormatRequest.table?: { columns, rows }`; `tableSkeleton` (`:625`) becomes a
           builder used by `tableEdit` (`:627-655`). A request without `table` means 3 columns and 3 rows.
         - `logic/actions/actionRegistry.ts`: the `table` entry gets `surfaceLabelKeys: { 'markdown-menu':
-          'action.table.markdown-menu.label' }`, the existing per-surface label mechanism (as the File menu uses
+'action.table.markdown-menu.label' }`, the existing per-surface label mechanism (as the File menu uses
           `'file-menu'` keys); `MarkdownMenu.tsx` reads `item.surfaceLabelKeys?.['markdown-menu'] ?? item.labelKey`, as
           `Menubar.tsx:429` does for the File menu. `en.json` keeps `action.table.label` ("Table", `:339`, used by the
           toolbar) and adds `action.table.markdown-menu.label` ("Table…").
@@ -435,7 +435,7 @@ and squash-merge it back.
       switches and a Font size drop-down;
     - immediate apply.
 
-  Make Ctrl/Cmd+, open it. Verify that the named tests pass, `scripts/verify` is green, and in the real app:
+    Make Ctrl/Cmd+, open it. Verify that the named tests pass, `scripts/verify` is green, and in the real app:
     - Cmd+, opens the dialog on Appearance;
     - Up, Down, Home and End switch sections;
     - Font size 16 resizes every editor;

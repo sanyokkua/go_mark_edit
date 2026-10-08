@@ -11,26 +11,39 @@ import (
 	. "github.com/sanyokkua/go_mark_edit/internal/appmodel"
 )
 
-func TestInitialStateContainsOneCleanUntitledDocument(t *testing.T) {
+func TestInitialStateContainsNoDocument(t *testing.T) {
 	service := NewAppModelServiceForHost(WithVersion("integration-version"))
 	state, err := service.GetState(context.Background())
 	if err != nil {
 		t.Fatalf("GetState: %v", err)
 	}
-	if state.Snapshot.ApplicationVersion != "integration-version" || len(state.Snapshot.OrderedDocumentIDs) != 1 || state.ActiveBuffer == nil {
-		t.Fatalf("initial state = %+v, want version, one tab and active buffer", state)
+	if state.Snapshot.ApplicationVersion != "integration-version" || len(state.Snapshot.OrderedDocumentIDs) != 0 || len(state.Snapshot.Documents) != 0 || state.Snapshot.ActiveDocumentID != "" || state.ActiveBuffer != nil {
+		t.Fatalf("initial state = %+v, want version, no tab, no active document and no buffer", state)
 	}
-	document := state.Snapshot.Documents[state.Snapshot.ActiveDocumentID]
+}
+
+func TestNewDocumentFromTheEmptyStartIsACleanUntitledDocument(t *testing.T) {
+	service := NewAppModelServiceForHost(WithEmitter(&recordingEmitter{}))
+	documentID := newUntitledID(t, service)
+	state, err := service.GetState(context.Background())
+	if err != nil {
+		t.Fatalf("GetState: %v", err)
+	}
+	document := state.Snapshot.Documents[documentID]
+	if state.Snapshot.ActiveDocumentID != documentID || len(state.Snapshot.OrderedDocumentIDs) != 1 || state.ActiveBuffer == nil {
+		t.Fatalf("state = %+v, want one tab and an active buffer", state)
+	}
 	if document.Title != "Untitled" || document.Path != "" || document.Dirty || document.Status != string(SaveStatusNotSaved) {
-		t.Fatalf("initial document = %+v, want clean untitled metadata", document)
+		t.Fatalf("document = %+v, want clean untitled metadata", document)
 	}
-	if state.ActiveBuffer.Content != "" || state.ActiveBuffer.DocumentID != document.DocumentID {
-		t.Fatalf("initial buffer = %+v, want empty active document", state.ActiveBuffer)
+	if state.ActiveBuffer.Content != "" || state.ActiveBuffer.DocumentID != documentID {
+		t.Fatalf("buffer = %+v, want empty active document", state.ActiveBuffer)
 	}
 }
 
 func TestDocumentCommandAndContentSeamsShareOneCoherentSnapshot(t *testing.T) {
 	service := NewAppModelServiceForHost(WithEmitter(&recordingEmitter{}))
+	newUntitledID(t, service)
 	accessor := service.ContentAccessor()
 	commands := service.DocumentCommands()
 	before, err := accessor.SnapshotActive(context.Background())
@@ -52,19 +65,17 @@ func TestDocumentCommandAndContentSeamsShareOneCoherentSnapshot(t *testing.T) {
 func TestStatePatchesAreRevisionedAndContainMetadataOnly(t *testing.T) {
 	emitter := &recordingEmitter{}
 	service := NewAppModelServiceForHost(WithEmitter(emitter))
-	state, err := service.GetState(context.Background())
-	if err != nil {
-		t.Fatalf("GetState: %v", err)
-	}
-	if err := service.UpdateBuffer(context.Background(), state.Snapshot.ActiveDocumentID, "metadata patch\n"); err != nil {
+	documentID := newUntitledID(t, service)
+	published := len(emitter.Patches())
+	if err := service.UpdateBuffer(context.Background(), documentID, "metadata patch\n"); err != nil {
 		t.Fatalf("UpdateBuffer: %v", err)
 	}
-	patches := emitter.Patches()
+	patches := emitter.Patches()[published:]
 	if len(patches) != 1 {
 		t.Fatalf("emitted patches = %d, want one", len(patches))
 	}
 	patch := patches[0]
-	if patch.Revision == 0 || patch.Documents == nil || patch.Documents.Upsert[state.Snapshot.ActiveDocumentID].Dirty == false {
+	if patch.Revision == 0 || patch.Documents == nil || patch.Documents.Upsert[documentID].Dirty == false {
 		t.Fatalf("state patch = %+v, want revisioned dirty metadata", patch)
 	}
 	encoded, err := json.Marshal(patch)

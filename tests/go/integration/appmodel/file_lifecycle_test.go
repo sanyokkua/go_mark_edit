@@ -13,6 +13,8 @@ import (
 func TestNewDocumentDefaultsAndNoWrite(t *testing.T) {
 	emitter := &recordingEmitter{}
 	service := NewAppModelServiceForHost(WithEmitter(emitter))
+	newUntitledID(t, service)
+	published := len(emitter.patches)
 	before, err := service.GetState(context.Background())
 	if err != nil {
 		t.Fatalf("GetState before New: %v", err)
@@ -30,7 +32,7 @@ func TestNewDocumentDefaultsAndNoWrite(t *testing.T) {
 		t.Fatalf("GetState after New: %v", err)
 	}
 	if len(after.Snapshot.Documents) != 2 || len(after.Snapshot.OrderedDocumentIDs) != 2 {
-		t.Fatalf("New state = %+v, want the initial placeholder plus one new tab", after.Snapshot)
+		t.Fatalf("New state = %+v, want the earlier tab plus one new tab", after.Snapshot)
 	}
 	documentID := outcome.Data.DocumentID
 	if after.Snapshot.ActiveDocumentID != documentID {
@@ -52,10 +54,10 @@ func TestNewDocumentDefaultsAndNoWrite(t *testing.T) {
 	if outcome.Data.Content != "" || outcome.Data.DocumentRevision != metadata.ContentRevision || outcome.Data.ProjectionRevision != after.Snapshot.Revision {
 		t.Fatalf("New acknowledgement = %+v, state revision=%d metadata revision=%d", outcome.Data, after.Snapshot.Revision, metadata.ContentRevision)
 	}
-	if len(emitter.patches) != 1 {
-		t.Fatalf("New emitted %d patches, want one", len(emitter.patches))
+	if len(emitter.patches)-published != 1 {
+		t.Fatalf("New emitted %d patches, want one", len(emitter.patches)-published)
 	}
-	patch := emitter.patches[0]
+	patch := emitter.patches[published]
 	if patch.Documents == nil || patch.Documents.Upsert[documentID].Path != "" || patch.ActiveDocument == nil || !patch.ActiveDocument.Present {
 		t.Fatalf("New patch = %+v, want metadata/order/active transition", patch)
 	}
@@ -120,7 +122,7 @@ func TestNewDocumentRefusesStaleOrFortyFirst(t *testing.T) {
 
 	emitter := &recordingEmitter{}
 	service := NewAppModelServiceForHost(WithEmitter(emitter))
-	for count := 0; count < 40-1; count++ {
+	for count := 0; count < 40; count++ {
 		state, stateErr := service.GetState(context.Background())
 		if stateErr != nil {
 			t.Fatalf("GetState at document %d: %v", count, stateErr)

@@ -26,10 +26,10 @@ The command and settings surfaces have also grown by accretion:
 - **BREAKING (behaviour):** a window started without a path shows the launcher with no tab. This covers the app icon,
   New Window, an unsupported path and a missing path. An Untitled tab exists only after New File.
 - The sidebar follows the folder:
-  - hidden when a window starts;
-  - shown whenever a folder opens, by any route;
-  - hidden when the folder closes;
-  - unchanged by opening or closing files.
+    - hidden when a window starts;
+    - shown whenever a folder opens, by any route;
+    - hidden when the folder closes;
+    - unchanged by opening or closing files.
 - Ctrl/Cmd+\ still shows or hides the sidebar for the running window.
 - **BREAKING (persistence):** sidebar visibility is no longer stored or restored. Sidebar width and Show hidden folders
   still persist.
@@ -39,14 +39,14 @@ The command and settings surfaces have also grown by accretion:
 - The in-app "Format" menu is renamed "Markdown", including in the narrow-window overflow. The name avoids a clash with
   the macOS native Edit menu.
 - It lists every formatting command in five headed groups:
-  - Text: Bold, Italic, Bold Italic, Strikethrough, Inline code.
-  - Headings: Heading 1–6.
-  - Lists & quotes: Bullet list, Numbered list, Task list, Quote.
-  - Links, images & tables: Link, Image (still disabled), Table….
-  - Formatting & verification: Format, Compact, Lint.
+    - Text: Bold, Italic, Bold Italic, Strikethrough, Inline code.
+    - Headings: Heading 1–6.
+    - Lists & quotes: Bullet list, Numbered list, Task list, Quote.
+    - Links, images & tables: Link, Image (still disabled), Table….
+    - Formatting & verification: Format, Compact, Lint.
 - New commands:
-  - Bold Italic (Mod+Shift+B);
-  - Heading 4, 5 and 6 (Mod+4, Mod+5, Mod+6).
+    - Bold Italic (Mod+Shift+B);
+    - Heading 4, 5 and 6 (Mod+4, Mod+5, Mod+6).
 - Editor formatting commands (Bold through Table) become unavailable while the active document's editor is not shown:
   with no document, in the Preview arrangement, and in Reading mode. This is a change to the action availability rules
   (`actions-shortcuts`), so the Markdown menu, the toolbar buttons and the keyboard shortcuts all follow it, with the
@@ -65,17 +65,17 @@ The command and settings surfaces have also grown by accretion:
 - The Settings popup keeps only Theme, Appearance, Markdown standard, the Autosave, Format on save and Lint on save
   toggles, and All settings…. Default open mode, Reading width and PDF appearance move to the dialog only.
 - The Settings dialog is rebuilt after the mockup:
-  - a header with a close button;
-  - a vertical section list on the left;
-  - rows with a label (and optional description) on the left and the control on the right;
-  - changes apply immediately.
+    - a header with a close button;
+    - a vertical section list on the left;
+    - rows with a label (and optional description) on the left and the control on the right;
+    - changes apply immediately.
 - The dialog has five sections that cover every user-facing setting that exists today:
-  - Appearance: Theme, Color mode, Default open mode, Reading width, Reset appearance.
-  - Editor: Autosave, Line numbers, Word wrap, Scroll sync, Font size 13/14/16.
-  - Markdown: Standard, Format on save, Lint on save, Bullet marker, Emphasis, Heading style.
-  - Workspace: Show hidden folders. This is the same application-wide preference as the folder tree's toggle, and it
-    can now be changed while no folder is open.
-  - Export: PDF appearance.
+    - Appearance: Theme, Color mode, Default open mode, Reading width, Reset appearance.
+    - Editor: Autosave, Line numbers, Word wrap, Scroll sync, Font size 13/14/16.
+    - Markdown: Standard, Format on save, Lint on save, Bullet marker, Emphasis, Heading style.
+    - Workspace: Show hidden folders. This is the same application-wide preference as the folder tree's toggle, and it
+      can now be changed while no folder is open.
+    - Export: PDF appearance.
 - Editor font size gains its first control.
 - Ctrl/Cmd+, opens the Settings dialog. The settings spec and the "All settings… ⌘," hint already say this, but today
   the shortcut opens the Settings popup.
@@ -83,8 +83,8 @@ The command and settings surfaces have also grown by accretion:
 **Liquid Glass surfaces**
 
 - Menus, popups and dialogs use the mockup's translucency and blur:
-  - Light: `rgba(255, 255, 255, 0.80)` with `blur(28px) saturate(150%)`.
-  - Dark: `rgba(28, 30, 54, 0.82)` with `blur(28px) saturate(160%)`.
+    - Light: `rgba(255, 255, 255, 0.80)` with `blur(28px) saturate(150%)`.
+    - Dark: `rgba(28, 30, 54, 0.82)` with `blur(28px) saturate(160%)`.
 - In every theme, the dialog backdrop is a `rgba(6, 8, 16, 0.42)` scrim with a 3 px blur.
 
 **Out of scope**
@@ -128,29 +128,29 @@ None.
 ## Impact
 
 - **Backend (`internal/`):**
-  - `appmodel` starts with no document and owns the derived sidebar visibility (`service.go`, `workspace.go`,
-    `options.go`, layout repository).
-  - `appmodel` stores and publishes the Show hidden folders preference without an open folder (`workspace.go`, the UI
-    layout state).
-  - The `application` new-window launcher drops its empty-session marker.
-  - The `settings` package is unchanged.
+    - `appmodel` starts with no document and owns the derived sidebar visibility (`service.go`, `workspace.go`,
+      `options.go`, layout repository).
+    - `appmodel` stores and publishes the Show hidden folders preference without an open folder (`workspace.go`, the UI
+      layout state).
+    - The `application` new-window launcher drops its empty-session marker.
+    - The `settings` package is unchanged.
 - **Frontend (`frontend/src/`):**
-  - action registry (new actions, menu groups, the renamed surface, the editor-shown availability);
-  - `app/useCommands.ts`: opening the already shown folder reaches the backend;
-  - menubar and the new Markdown menu;
-  - formatting toolbar;
-  - formatting transforms, and a new list continuation module;
-  - `CodeEditor` Enter handling;
-  - new Insert table dialog;
-  - `ModalShell` header close button;
-  - new `Switch` and `Select` primitives;
-  - Settings dialog split into sections, including a Workspace section, and a trimmed Settings popup;
-  - Glass tokens and the scrim token;
-  - `en.json` strings.
+    - action registry (new actions, menu groups, the renamed surface, the editor-shown availability);
+    - `app/useCommands.ts`: opening the already shown folder reaches the backend;
+    - menubar and the new Markdown menu;
+    - formatting toolbar;
+    - formatting transforms, and a new list continuation module;
+    - `CodeEditor` Enter handling;
+    - new Insert table dialog;
+    - `ModalShell` header close button;
+    - new `Switch` and `Select` primitives;
+    - Settings dialog split into sections, including a Workspace section, and a trimmed Settings popup;
+    - Glass tokens and the scrim token;
+    - `en.json` strings.
 - **Tests:**
-  - Go tests and e2e tests that relied on the initial Untitled tab create a document explicitly.
-  - Tests that pin the "Format" menu, the five toolbar groups, `1.` numbering, the two-column table, the old dialog
-    layout, the popup list or the 48 px blur change with their requirements.
+    - Go tests and e2e tests that relied on the initial Untitled tab create a document explicitly.
+    - Tests that pin the "Format" menu, the five toolbar groups, `1.` numbering, the two-column table, the old dialog
+      layout, the popup list or the 48 px blur change with their requirements.
 - **Docs:** `docs/architecture.md` gains decisions for empty-session startup, derived sidebar visibility and Show hidden
   folders outside a workspace, and its persistence, action registry and shared UI owners sections are updated. The settings and configuration rows of
   `docs/index.md` are updated.

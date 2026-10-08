@@ -1,4 +1,4 @@
-import { expect, test } from '../support/harness';
+import { expect, newUntitledDocument, test } from '../support/harness';
 import { mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 
@@ -10,12 +10,7 @@ test('shows the launcher frame, actions, type scale, and recent files', async ({
     await app.launch();
 
     const { page } = app;
-    const initialTab = page.getByRole('tab', { name: 'Untitled' });
-    await expect(initialTab).toBeVisible();
-    await initialTab
-        .locator('..')
-        .getByRole('button', { name: /^Close /u })
-        .click();
+    await expect(page.getByRole('tab')).toHaveCount(0);
 
     const frame = page.locator('.application-frame');
     await expect(frame).toBeVisible();
@@ -40,11 +35,6 @@ test('opens seeded file and folder recent items from the launcher', async ({ app
     ]);
     await app.launch();
     const { page } = app;
-    await page
-        .getByRole('tab', { name: 'Untitled' })
-        .locator('..')
-        .getByRole('button', { name: /^Close /u })
-        .click();
     const launcher = page.getByTestId('document-launcher');
     const entries = launcher.getByRole('listitem');
     await expect(entries).toHaveCount(2);
@@ -55,4 +45,26 @@ test('opens seeded file and folder recent items from the launcher', async ({ app
     await page.getByRole('button', { name: 'Close Folder' }).click();
     await launcher.getByRole('button', { name: 'recent-file.md' }).click();
     await expect(page.getByRole('tab', { name: 'recent-file.md' })).toBeVisible();
+});
+
+test('a fresh launch shows the launcher with no tab, and New File opens one Untitled tab', async ({ app }) => {
+    await app.launch();
+    const { page } = app;
+    const launcher = page.getByTestId('document-launcher');
+    await expect(launcher.getByRole('heading', { level: 1, name: 'Start a document' })).toBeVisible();
+    await expect(page.getByRole('tab')).toHaveCount(0);
+
+    await launcher.getByRole('button', { name: 'New File' }).click();
+    await expect(page.getByRole('tab', { name: 'Untitled' })).toHaveCount(1);
+    await expect(launcher).toBeHidden();
+
+    await page
+        .getByRole('tab', { name: 'Untitled' })
+        .locator('..')
+        .getByRole('button', { name: /^Close /u })
+        .click();
+    await expect(page.getByRole('tab')).toHaveCount(0);
+    await expect(launcher).toBeVisible();
+    await newUntitledDocument(page);
+    await expect(page.getByRole('tab', { name: 'Untitled' })).toHaveCount(1);
 });

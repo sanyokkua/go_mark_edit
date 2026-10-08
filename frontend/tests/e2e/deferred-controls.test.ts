@@ -11,11 +11,6 @@ test('runs tidy from the active document and enables Export and Distraction-free
     await page.setViewportSize({ width: 1280, height: 720 });
     await expect(page.getByTestId('application-shell')).toBeVisible();
 
-    await page
-        .getByRole('tab', { name: /Untitled/u })
-        .locator('..')
-        .getByRole('button', { name: /^Close /u })
-        .click();
     await page.getByTestId('document-launcher').getByRole('button', { name: 'tidy-surface.md' }).click();
     await expect(page.getByRole('tab', { name: 'tidy-surface.md' })).toBeVisible();
     await expect(page.getByRole('textbox', { name: 'Editor content' })).toBeVisible();

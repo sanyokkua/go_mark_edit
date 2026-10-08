@@ -3,7 +3,7 @@ import { writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { inflateSync } from 'node:zlib';
 
-import { expect, test } from '../support/harness';
+import { expect, newUntitledDocument, test } from '../support/harness';
 import { createCommandRecorder, type CommandRecorder } from '../support/commandRecorder';
 
 const PARAGRAPH_COUNT = 400;
@@ -156,6 +156,7 @@ test('the print copy holds the drawn diagram and the loaded image when the print
 test('text typed into Untitled and not saved appears in the print copy', async ({ app }) => {
     await app.launch();
     const { page } = app;
+    await newUntitledDocument(page);
     const recorder = await recordPrintWindow(page);
 
     const editor = page.locator('[data-editor-surface] textarea').first();
@@ -173,6 +174,7 @@ test('text typed into Untitled and not saved appears in the print copy', async (
 test('Material in Dark mode prints on a dark page', async ({ app }) => {
     await app.launch();
     const { page } = app;
+    await newUntitledDocument(page);
     await page.getByRole('button', { name: 'Settings', exact: true }).click();
     const menu = page.getByRole('menu', { name: 'Settings menu' });
     await menu.getByRole('radio', { name: 'Material', exact: true }).click();
@@ -237,6 +239,7 @@ test('Clean prints a white page from Dark mode, keeps the screen dark and surviv
 
     await app.relaunch();
     const restarted = app.page;
+    await newUntitledDocument(restarted);
     await restarted.getByRole('button', { name: 'Settings', exact: true }).click();
     await expect(
         restarted
@@ -266,11 +269,6 @@ test('Clean prints a white page from Dark mode, keeps the screen dark and surviv
 test('with no document open Export is disabled and Ctrl+P opens nothing', async ({ app }) => {
     await app.launch();
     const { page } = app;
-    await page
-        .getByRole('tab', { name: /Untitled/u })
-        .locator('..')
-        .getByRole('button', { name: /^Close /u })
-        .click();
     await expect(page.getByTestId('document-launcher')).toBeVisible();
     const recorder = await recordPrintWindow(page);
 
@@ -312,6 +310,7 @@ test('a saved document suggests its file name as the page title under print, and
 test('an Untitled document keeps the default page title when exported', async ({ app }) => {
     await app.launch();
     const { page } = app;
+    await newUntitledDocument(page);
     const recorder = await recordPrintWindow(page);
     const defaultTitle = await page.title();
 

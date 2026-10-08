@@ -132,15 +132,12 @@ async function openDocument(app: E2EAppHarness, filename: string, contents: stri
     await app.seedRecents([source]);
     await app.launch();
     const { page } = app;
-    await page
-        .getByRole('tab', { name: /Untitled/u })
-        .locator('..')
-        .getByRole('button', { name: /^Close /u })
-        .click();
     await page.getByTestId('document-launcher').getByRole('button', { name: filename, exact: true }).click();
     await expect(page.getByRole('tab', { name: filename })).toBeVisible({ timeout: 30_000 });
     await expect.poll(() => activeText(page), { timeout: 30_000 }).toBe(contents);
-    await expect(page.locator('[data-editor-surface] .view-lines')).toContainText(contents.split('\n')[0]);
+    await expect(page.locator('[data-editor-surface] .view-lines')).toContainText(contents.split('\n')[0], {
+        timeout: 30_000,
+    });
 }
 
 async function fixture(app: E2EAppHarness, filename: string): Promise<string> {
@@ -349,11 +346,6 @@ test('blocks typing during close Save Format while progress and Cancel remain us
     await app.seedRecents([path]);
     await app.launch();
     const { page } = app;
-    await page
-        .getByRole('tab', { name: /Untitled/u })
-        .locator('..')
-        .getByRole('button', { name: /^Close /u })
-        .click();
     await page.getByTestId('document-launcher').getByRole('button', { name: 'close-save-format.md' }).click();
     await expect(page.getByRole('tab', { name: 'close-save-format.md' })).toBeVisible();
     await disableAutosave(page);

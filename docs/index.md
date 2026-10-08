@@ -90,7 +90,7 @@ Detailed document lifecycle, conflict, close and shutdown flows are in [architec
 
 #### Open and edit a document
 
-1. The user chooses a file through the native Open dialog, a folder tree, Recent Items, a startup path or a file drop.
+1. The user chooses a file through the native Open dialog, a folder tree, Recent Items, a startup path or a file drop. A window starts with no document and shows the launcher until one of these opens a document or the user chooses New File.
 2. `internal/appmodel/` canonicalizes the path, detects an already-open identity, reads bytes and decodes supported UTF-8/BOM/line-ending forms through `internal/file/`.
 3. The backend creates or activates a document and publishes content-free metadata plus the active buffer through the frontend adapter.
 4. The editor changes a document revision. Autosave, when enabled, writes existing files through the normal revision and external-change protections. Untitled documents use Save As.

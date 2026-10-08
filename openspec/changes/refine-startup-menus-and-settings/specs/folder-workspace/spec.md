@@ -49,12 +49,12 @@ WHEN the user chooses Open Folder (menu or the tree's empty state), the system S
 
 #### Scenario: Re-open the shown folder
 
-- **WHEN** "~/notes" is open, the user has hidden the sidebar with Ctrl+\ and opens "~/notes" again from Recent Items
+- **WHEN** "~~/notes" is open, the user has hidden the sidebar with Ctrl+\ and opens "~~/notes" again from Recent Items
 - **THEN** the sidebar is shown with the same tree, its expanded folders unchanged and no prompt appears
 
 #### Scenario: Open Folder on the shown folder
 
-- **WHEN** "~/notes" is open, the sidebar is hidden with Ctrl+\ and the user picks "~/notes" again in the Open Folder
+- **WHEN** "~~/notes" is open, the sidebar is hidden with Ctrl+\ and the user picks "~~/notes" again in the Open Folder
   dialog
 - **THEN** the sidebar is shown with the same tree, no "Open another folder?" prompt appears, and the tabs are
   unchanged

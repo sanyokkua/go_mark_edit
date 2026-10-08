@@ -1,6 +1,6 @@
 import type { Page } from '@playwright/test';
 
-import { expect, test } from '../support/harness';
+import { expect, newUntitledDocument, test } from '../support/harness';
 
 const transparent = 'rgba(0, 0, 0, 0)';
 const palettes = [
@@ -130,6 +130,7 @@ for (const palette of palettes) {
         async ({ app }) => {
             await app.launch();
             const { page } = app;
+            await newUntitledDocument(page);
             await chooseAppearance(page, palette.label, palette.mode === 'dark' ? 'Dark' : 'Light');
             await expect(page.locator('html')).toHaveAttribute('data-theme', palette.theme);
             await expect(page.locator('html')).toHaveAttribute('data-mode', palette.mode);
@@ -283,6 +284,7 @@ for (const palette of palettes) {
 test('keeps surface ownership through Auto transitions and tab drag reorder', async ({ app }) => {
     await app.launch();
     const { page } = app;
+    await newUntitledDocument(page);
     for (const label of ['Liquid Glass', 'Material', 'Minimal']) {
         await chooseAppearance(page, label, 'Auto (system)');
         for (const mode of ['dark', 'light'] as const) {

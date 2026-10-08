@@ -229,7 +229,9 @@ test('when a folder opens, the tree filters and orders rows and refreshes stale 
     await app.launch();
     const page = app.page;
     await expect(page.getByText('No folder open')).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Open Folder' })).toBeVisible();
+    await expect(
+        page.getByLabel('Sidebar', { exact: true }).getByRole('button', { name: 'Open Folder' }),
+    ).toBeVisible();
     await app.openWorkspace(root);
     await page.screenshot({ path: testInfo.outputPath('populated-tree.png'), fullPage: true });
 

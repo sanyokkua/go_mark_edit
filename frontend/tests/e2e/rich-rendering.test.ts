@@ -2,7 +2,7 @@ import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { Page } from '@playwright/test';
 
-import { expect, test } from '../support/harness';
+import { expect, newUntitledDocument, test } from '../support/harness';
 import { invokeEditorContextAction, nativeClipboardText, setNativeClipboard } from '../support/nativeClipboard';
 
 const strippedElements = [
@@ -144,11 +144,6 @@ test(
         await app.launch();
 
         const { page } = app;
-        await page
-            .getByRole('tab', { name: 'Untitled' })
-            .locator('..')
-            .getByRole('button', { name: /^Close /u })
-            .click();
         await expect(page.getByTestId('document-launcher')).toBeVisible();
         await page.getByTestId('document-launcher').getByRole('button', { name: 'reference-document.md' }).click();
         await expect(page.getByRole('tab', { name: 'reference-document.md' })).toBeVisible();
@@ -424,11 +419,6 @@ test('a standalone plaintext element removes its content and the source that fol
     await app.seedRecents([path]);
     await app.launch();
     const { page } = app;
-    await page
-        .getByRole('tab', { name: 'Untitled' })
-        .locator('..')
-        .getByRole('button', { name: /^Close /u })
-        .click();
     await page.getByTestId('document-launcher').getByRole('button', { name: 'plaintext.md' }).click();
     await page.getByRole('radiogroup', { name: 'View arrangement' }).getByRole('radio', { name: 'Preview' }).click();
     const preview = page.locator('section[aria-label="Preview pane"] article.gme-preview');
@@ -445,11 +435,6 @@ test('all supported Mermaid diagram types render safe SVG', { tag: '@perf' }, as
     await app.seedRecents([path]);
     await app.launch();
     const { page } = app;
-    await page
-        .getByRole('tab', { name: 'Untitled' })
-        .locator('..')
-        .getByRole('button', { name: /^Close /u })
-        .click();
     await page.getByTestId('document-launcher').getByRole('button', { name: 'mermaid-diagrams.md' }).click();
     await page.getByRole('radiogroup', { name: 'View arrangement' }).getByRole('radio', { name: 'Preview' }).click();
     const preview = page.locator('article.gme-preview');
@@ -495,11 +480,6 @@ test('Mermaid and formula limits replace only the excess or oversized blocks', a
     await app.seedRecents([path, oversizedPath]);
     await app.launch();
     const { page } = app;
-    await page
-        .getByRole('tab', { name: 'Untitled' })
-        .locator('..')
-        .getByRole('button', { name: /^Close /u })
-        .click();
     await page.getByTestId('document-launcher').getByRole('button', { name: 'diagram-limits.md' }).click();
     await page.getByRole('radiogroup', { name: 'View arrangement' }).getByRole('radio', { name: 'Preview' }).click();
     const preview = page.locator('article.gme-preview');
@@ -547,11 +527,6 @@ test(
         await app.seedRecents([path]);
         await app.launch();
         const { page } = app;
-        await page
-            .getByRole('tab', { name: 'Untitled' })
-            .locator('..')
-            .getByRole('button', { name: /^Close /u })
-            .click();
         await page.getByTestId('document-launcher').getByRole('button', { name: 'mermaid-palettes.md' }).click();
         await page
             .getByRole('radiogroup', { name: 'View arrangement' })
@@ -718,6 +693,7 @@ test.describe('shipping-assets performance', { tag: '@perf' }, () => {
         await app.seedRecents([path]);
         await app.launch();
         const { page } = app;
+        await newUntitledDocument(page);
         await page.getByRole('radiogroup', { name: 'View arrangement' }).getByRole('radio', { name: 'Split' }).click();
         await page
             .getByRole('tab', { name: 'Untitled' })
@@ -929,11 +905,6 @@ test(
         await app.seedRecents([path]);
         await app.launch();
         const { page } = app;
-        await page
-            .getByRole('tab', { name: 'Untitled' })
-            .locator('..')
-            .getByRole('button', { name: /^Close /u })
-            .click();
         await page.getByTestId('document-launcher').getByRole('button', { name: 'rapid-diagram-edits.md' }).click();
         await page.getByRole('radiogroup', { name: 'View arrangement' }).getByRole('radio', { name: 'Split' }).click();
         const preview = page.locator('article.gme-preview');

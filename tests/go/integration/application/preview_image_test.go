@@ -134,7 +134,7 @@ func TestPreviewImageHandlerServesOnlyBoundedInFolderImages(t *testing.T) {
 		})
 	}
 
-	untitledID := initial.Snapshot.ActiveDocumentID
+	untitledID := newUntitledID(t, service)
 	untitled := servePreviewImage(handler, untitledID, "./inside.png")
 	if untitled.Code != http.StatusNotFound {
 		t.Fatalf("untitled status = %d, want %d", untitled.Code, http.StatusNotFound)
