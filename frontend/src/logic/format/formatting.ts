@@ -563,7 +563,7 @@ interface QuotedLine {
     content: string;
 }
 
-function parseQuoteLine(line: string): QuotedLine {
+export function parseQuoteLine(line: string): QuotedLine {
     const match = line.match(/^(\s*)(>\s?)?(.*)$/);
     return {
         indent: match?.[1] ?? '',
@@ -577,7 +577,7 @@ function removeHeading(line: string): string {
     return match === null ? line : (match[1] ?? '') + (match[2] ?? '');
 }
 
-function parseListLine(line: string): ParsedLine {
+export function parseListLine(line: string): ParsedLine {
     const indent = line.match(/^\s*/)?.[0] ?? '';
     const rest = line.slice(indent.length);
     const task = rest.match(/^[-+*]\s+\[[ xX]\]\s*(.*)$/);

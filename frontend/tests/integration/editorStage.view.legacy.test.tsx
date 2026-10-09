@@ -115,6 +115,7 @@ function resetMockMonaco(): void {
                 positionColumn: selection.endColumn,
             } as ISelection;
         }),
+        addAction: jest.fn(() => ({ dispose: jest.fn() })),
         onDidBlurEditorText: jest.fn(() => ({ dispose: jest.fn() })),
         onDidChangeCursorPosition: jest.fn((listener: (event: editor.ICursorPositionChangedEvent) => void) => {
             mockRuntime.cursorPositionListener = listener;
@@ -164,9 +165,10 @@ jest.mock('@monaco-editor/react', () => {
         React.useEffect((): void => {
             mockRuntime.props = props;
             const finishMount = (): void =>
-                props.onMount?.(editorInstance, { editor: { ScrollType: { Immediate: 1 } } } as unknown as Parameters<
-                    NonNullable<EditorProps['onMount']>
-                >[1]);
+                props.onMount?.(editorInstance, {
+                    editor: { ScrollType: { Immediate: 1 } },
+                    KeyCode: { Enter: 3 },
+                } as unknown as Parameters<NonNullable<EditorProps['onMount']>>[1]);
             if (mockRuntime.deferMount) mockRuntime.finishMount = finishMount;
             else finishMount();
         }, [editorInstance, props]);

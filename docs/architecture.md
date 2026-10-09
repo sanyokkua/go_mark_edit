@@ -74,6 +74,7 @@ receive commands through props and contexts.
 | `frontend/src/logic/actions/actionRegistry.ts`       | The action catalogue and availability decisions used by every command surface, including Markdown hydration, document and tidy-operation state.   |
 | `frontend/src/logic/actions/editorActionExecutor.ts` | The sole editor-action owner for dispatch, clipboard, formatting, selection snapshots and focus restoration.                                      |
 | `frontend/src/logic/format/formatting.ts`            | The inline wrapper-stack resolver and formatting runner called by the editor-action executor.                                                     |
+| `frontend/src/logic/format/listContinuation.ts`      | The pure Enter-key list continuation: next marker, or end of list on an empty item; `null` inside fences or mid-item.                             |
 | `frontend/src/logic/markdown/`                       | Markdown standards, rendering pipeline, sanitization, code highlighting, math, diagrams, headings and shared link classification.                 |
 | `frontend/src/logic/markdown/mermaid/`               | Serialized Mermaid theme/render queue, isolated realm, SVG scrubbing and bounded cache.                                                           |
 | `frontend/src/logic/tidy/`                           | Pure Format, Compact and Lint engine plus its cancellable module worker.                                                                          |
@@ -309,6 +310,8 @@ completed worker, and terminates a cancelled worker. Vite builds the client as a
 so the production client and worker are available independently of interface integration. The dev
 optimizer prebundles the worker's direct width and character-classification dependencies so its first
 lazy run cannot reload the active editor.
+
+`CodeEditor` owns the Enter keybinding, a per-editor Monaco action gated on a writable, collapsed caret with no suggest widget or snippet; it applies the edit from the `enterEdit` prop (fed by `logic/format/listContinuation.ts`) as one undo step, or inserts a plain line. IME composition is never dispatched to it.
 
 `frontend/src/ui/components/CodeEditor.tsx` owns the visible Monaco working copy and publishes its scroll
 port for synchronized scrolling. Its handle applies LF-indexed tidy edits as one undo group, retains the

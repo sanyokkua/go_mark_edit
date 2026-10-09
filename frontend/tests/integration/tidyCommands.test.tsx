@@ -117,6 +117,7 @@ function createRuntime(initial: string): Runtime {
             }
             runtime.onChange(runtime.content);
         },
+        addAction: jest.fn(() => ({ dispose: jest.fn() })),
         onDidBlurEditorText: noEvent,
         onDidChangeCursorPosition: noEvent,
         onDidChangeCursorSelection: noEvent,
@@ -160,6 +161,7 @@ jest.mock('@monaco-editor/react', () => {
                         runtime.markers = markers;
                     },
                 },
+                KeyCode: { Enter: 3 },
                 MarkerSeverity: { Error: 8, Warning: 4 },
             } as never);
         }, [runtime]);

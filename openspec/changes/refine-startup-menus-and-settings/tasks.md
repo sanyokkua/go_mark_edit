@@ -348,7 +348,7 @@ and squash-merge it back.
 
 ## 7. List continuation on Enter
 
-- [ ] 7.1 Continue Markdown lists when Enter is pressed at the end of an item, and end the list on an empty item, without
+- [x] 7.1 Continue Markdown lists when Enter is pressed at the end of an item, and end the list on an empty item, without
       affecting fenced code, suggestions or IME composition. Verify that the named tests pass, `scripts/verify` is
       green, and in the real app:
     - typing a bullet, numbered, task and quoted list continues each;

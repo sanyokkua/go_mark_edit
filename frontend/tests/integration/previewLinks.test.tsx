@@ -41,6 +41,7 @@ jest.mock('@monaco-editor/react', () => {
                 getTopForLineNumber: () => 0,
                 getBottomForLineNumber: () => 0,
                 layout: jest.fn(),
+                addAction: jest.fn(() => ({ dispose: jest.fn() })),
                 onDidBlurEditorText: idle,
                 onDidChangeCursorPosition: idle,
                 onDidChangeCursorSelection: idle,
@@ -60,7 +61,7 @@ jest.mock('@monaco-editor/react', () => {
             const mount = (): void =>
                 onMountRef.current?.(
                     instance as unknown as editor.IStandaloneCodeEditor,
-                    { editor: { ScrollType: { Immediate: 1 } } } as unknown as Parameters<
+                    { editor: { ScrollType: { Immediate: 1 } }, KeyCode: { Enter: 3 } } as unknown as Parameters<
                         NonNullable<EditorProps['onMount']>
                     >[1],
                 );
