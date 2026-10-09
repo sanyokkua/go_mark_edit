@@ -1,250 +1,74 @@
+import { useRef, useState } from 'react';
+
 import { t } from '../../../i18n';
-import type { MarkdownSettings, PdfAppearance, ReadingWidth } from '../../../logic/adapter/settingsTypes';
-import type { AppearanceChoice, Theme } from '../../../logic/theme/theme';
-import type { DefaultOpenMode } from '../appearanceSettingsContext';
 import ModalShell from '../../components/ModalShell';
-import Button from '../../primitives/Button';
-import Segmented, { type SegmentedOption } from '../../primitives/Segmented';
+import AppearanceSection from './AppearanceSection';
+import EditorSection from './EditorSection';
+import ExportSection from './ExportSection';
+import MarkdownSection from './MarkdownSection';
+import SettingsSectionNav, { panelId, tabId } from './SettingsSectionNav';
+import type { SettingsDialogProps } from './settingsDialogTypes';
 import styles from './SettingsDialog.module.css';
 
-export interface SettingsDialogProps {
-    defaultOpenMode?: DefaultOpenMode;
-    markdownSettings?: MarkdownSettings;
-    mode: AppearanceChoice;
-    onDefaultOpenModeChange?: (defaultOpenMode: DefaultOpenMode) => void;
-    onModeChange: (mode: AppearanceChoice) => void;
-    onMarkdownSettingsChange?: (patch: Partial<MarkdownSettings>) => void;
-    onOpenChange: (open: boolean) => void;
-    onPdfAppearanceChange?: (pdfAppearance: PdfAppearance) => void;
-    onReadingWidthChange?: (readingWidth: ReadingWidth) => void;
-    onReset: () => void;
-    onThemeChange: (theme: Theme) => void;
-    open: boolean;
-    pdfAppearance?: PdfAppearance;
-    readingWidth?: ReadingWidth;
-    returnFocusTo?: HTMLElement | null;
-    theme: Theme;
+export type { SettingsDialogProps } from './settingsDialogTypes';
+
+interface SettingsSection {
+    readonly Section: React.FC<SettingsDialogProps>;
+    readonly id: string;
+    readonly label: string;
 }
 
-const themeOptions: readonly SegmentedOption<Theme>[] = [
-    { label: t('appearance.theme.glass'), value: 'glass' },
-    { label: t('appearance.theme.material'), value: 'material' },
-    { label: t('appearance.theme.minimal'), value: 'minimal' },
+/** The dialog's sections in display order; each owns its rows. */
+const sections: readonly SettingsSection[] = [
+    { Section: AppearanceSection, id: 'appearance', label: t('appearance.title') },
+    { Section: EditorSection, id: 'editor', label: t('settings.menu.editor') },
+    { Section: MarkdownSection, id: 'markdown', label: t('settings.markdown.title') },
+    { Section: ExportSection, id: 'export', label: t('settings.section.export') },
 ];
 
-const modeOptions: readonly SegmentedOption<AppearanceChoice>[] = [
-    { label: t('appearance.mode.auto'), value: 'auto' },
-    { label: t('appearance.mode.light'), value: 'light' },
-    { label: t('appearance.mode.dark'), value: 'dark' },
-];
-
-const openModeOptions: readonly SegmentedOption<DefaultOpenMode>[] = [
-    { label: t('settings.openMode.reading'), value: 'viewer' },
-    { label: t('settings.openMode.editor'), value: 'editor' },
-];
-
-const readingWidthOptions: readonly SegmentedOption<ReadingWidth>[] = [
-    { label: t('settings.readingWidth.page'), value: 'page' },
-    { label: t('settings.readingWidth.full'), value: 'full' },
-];
-
-const pdfAppearanceOptions: readonly SegmentedOption<PdfAppearance>[] = [
-    { label: t('settings.pdfAppearance.styled'), value: 'styled' },
-    { label: t('settings.pdfAppearance.clean'), value: 'clean' },
-];
-
-const standardOptions = [
-    { label: t('settings.markdown.minimal'), value: 'minimal' },
-    { label: t('settings.markdown.gfm'), value: 'gfm' },
-    { label: t('settings.markdown.full'), value: 'full' },
-] as const;
-const bulletOptions = [
-    { label: t('settings.markdown.bullet.dash'), value: '-' },
-    { label: t('settings.markdown.bullet.asterisk'), value: '*' },
-    { label: t('settings.markdown.bullet.plus'), value: '+' },
-] as const;
-const emphasisOptions = [
-    { label: t('settings.markdown.emphasis.underscore'), value: '_' },
-    { label: t('settings.markdown.emphasis.asterisk'), value: '*' },
-] as const;
-const headingOptions = [
-    { label: t('settings.markdown.atx.parity'), value: 'atx' },
-    { label: t('settings.markdown.setext'), value: 'setext' },
-] as const;
-
-const SettingsDialog: React.FC<SettingsDialogProps> = ({
-    defaultOpenMode,
-    markdownSettings,
-    mode,
-    onDefaultOpenModeChange,
-    onModeChange,
-    onMarkdownSettingsChange,
-    onOpenChange,
-    onPdfAppearanceChange,
-    onReadingWidthChange,
-    onReset,
-    onThemeChange,
-    open,
-    pdfAppearance,
-    readingWidth,
-    returnFocusTo,
-    theme,
-}: SettingsDialogProps): React.JSX.Element | null => {
-    if (!open) {
-        return null;
-    }
-    const markdownDisabled = markdownSettings === undefined || onMarkdownSettingsChange === undefined;
+/** Mounted only while open, so every opening starts on the first section. */
+const OpenSettingsDialog: React.FC<SettingsDialogProps> = (props: SettingsDialogProps): React.JSX.Element | null => {
+    const { onOpenChange, returnFocusTo } = props;
+    const [selectedId, setSelectedId] = useState(sections[0]?.id ?? '');
+    const selectedTabRef = useRef<HTMLButtonElement | null>(null);
+    const selected = sections.find((section) => section.id === selectedId) ?? sections[0];
+    if (selected === undefined) return null;
 
     return (
         <ModalShell
+            className={styles.dialog}
+            closeLabel={t('appearance.close')}
             dismiss="backdrop"
+            initialFocus={selectedTabRef}
             onRequestClose={(): void => onOpenChange(false)}
             open
             returnFocusTo={returnFocusTo}
             title={t('shell.settings')}
-            width="32rem"
+            width="min(760px, 94vw)"
         >
-            <header>
-                <p>{t('appearance.help')}</p>
-            </header>
-            <section aria-labelledby="settings-appearance-title">
-                <h2 id="settings-appearance-title">{t('appearance.title')}</h2>
-                <div className={styles.label}>
-                    <span>{t('appearance.theme.label')}</span>
-                    <Segmented
-                        ariaLabel={t('appearance.theme.label')}
-                        options={themeOptions}
-                        value={theme}
-                        onChange={onThemeChange}
-                    />
+            <div className={styles.body}>
+                <SettingsSectionNav
+                    ariaLabel={t('settings.section.list')}
+                    sections={sections}
+                    selectedId={selected.id}
+                    selectedTabRef={selectedTabRef}
+                    onSelect={setSelectedId}
+                />
+                <div
+                    aria-labelledby={tabId(selected.id)}
+                    className={styles.pane}
+                    id={panelId(selected.id)}
+                    role="tabpanel"
+                >
+                    <h2 className={styles.heading}>{selected.label}</h2>
+                    <selected.Section {...props} />
                 </div>
-                <div className={styles.label}>
-                    <span>{t('appearance.mode.label')}</span>
-                    <Segmented
-                        ariaLabel={t('appearance.mode.label')}
-                        options={modeOptions}
-                        value={mode}
-                        onChange={onModeChange}
-                    />
-                </div>
-                <div className={styles.label}>
-                    <span>{t('settings.openMode')}</span>
-                    <Segmented
-                        ariaLabel={t('settings.openMode')}
-                        disabled={onDefaultOpenModeChange === undefined}
-                        options={openModeOptions}
-                        value={defaultOpenMode}
-                        onChange={(next): void => onDefaultOpenModeChange?.(next)}
-                    />
-                </div>
-                <div className={styles.label}>
-                    <span>{t('settings.readingWidth')}</span>
-                    <Segmented
-                        ariaLabel={t('settings.readingWidth')}
-                        disabled={onReadingWidthChange === undefined}
-                        options={readingWidthOptions}
-                        value={readingWidth}
-                        onChange={(next): void => onReadingWidthChange?.(next)}
-                    />
-                </div>
-                <div className={styles.label}>
-                    <span>{t('settings.pdfAppearance')}</span>
-                    <p id="settings-pdf-appearance-description">{t('settings.pdfAppearance.description')}</p>
-                    <Segmented
-                        ariaLabel={t('settings.pdfAppearance')}
-                        ariaDescribedBy="settings-pdf-appearance-description"
-                        disabled={onPdfAppearanceChange === undefined}
-                        options={pdfAppearanceOptions}
-                        value={pdfAppearance}
-                        onChange={(next): void => onPdfAppearanceChange?.(next)}
-                    />
-                </div>
-            </section>
-            <section aria-labelledby="settings-markdown-title">
-                <h2 id="settings-markdown-title">{t('settings.markdown.title')}</h2>
-                <div className={styles.label}>
-                    <span>{t('settings.markdown.standard')}</span>
-                    <p id="settings-markdown-standard-description">{t('settings.markdown.standard.description')}</p>
-                    <Segmented
-                        ariaLabel={t('settings.markdown.standard')}
-                        ariaDescribedBy="settings-markdown-standard-description"
-                        disabled={markdownDisabled}
-                        options={standardOptions}
-                        value={markdownSettings?.standard}
-                        onChange={(standard): void => onMarkdownSettingsChange?.({ standard })}
-                    />
-                </div>
-                <div className={styles.label}>
-                    <span>{t('settings.markdown.bullet')}</span>
-                    <p id="settings-markdown-bullet-description">{t('settings.markdown.bullet.description')}</p>
-                    <Segmented
-                        ariaLabel={t('settings.markdown.bullet')}
-                        ariaDescribedBy="settings-markdown-bullet-description"
-                        disabled={markdownDisabled}
-                        options={bulletOptions}
-                        value={markdownSettings?.bulletMarker}
-                        onChange={(bulletMarker): void => onMarkdownSettingsChange?.({ bulletMarker })}
-                    />
-                </div>
-                <div className={styles.label}>
-                    <span>{t('settings.markdown.emphasis')}</span>
-                    <p id="settings-markdown-emphasis-description">{t('settings.markdown.emphasis.description')}</p>
-                    <Segmented
-                        ariaLabel={t('settings.markdown.emphasis')}
-                        ariaDescribedBy="settings-markdown-emphasis-description"
-                        disabled={markdownDisabled}
-                        options={emphasisOptions}
-                        value={markdownSettings?.emphasisMarker}
-                        onChange={(emphasisMarker): void => onMarkdownSettingsChange?.({ emphasisMarker })}
-                    />
-                </div>
-                <div className={styles.label}>
-                    <span>{t('settings.markdown.heading')}</span>
-                    <p id="settings-markdown-heading-description">{t('settings.markdown.heading.description')}</p>
-                    <Segmented
-                        ariaLabel={t('settings.markdown.heading')}
-                        ariaDescribedBy="settings-markdown-heading-description"
-                        disabled={markdownDisabled}
-                        options={headingOptions}
-                        value={markdownSettings?.headingStyle}
-                        onChange={(headingStyle): void => onMarkdownSettingsChange?.({ headingStyle })}
-                    />
-                </div>
-                <label className={styles.label}>
-                    <span>{t('settings.formatOnSave')}</span>
-                    <span id="settings-format-on-save-description">{t('settings.formatOnSave.description')}</span>
-                    <input
-                        aria-label={t('settings.formatOnSave')}
-                        aria-describedby="settings-format-on-save-description"
-                        checked={markdownSettings?.formatOnSave === true}
-                        disabled={markdownDisabled}
-                        type="checkbox"
-                        onChange={(event): void => onMarkdownSettingsChange?.({ formatOnSave: event.target.checked })}
-                    />
-                </label>
-                <label className={styles.label}>
-                    <span>{t('settings.lintOnSave')}</span>
-                    <span id="settings-lint-on-save-description">{t('settings.lintOnSave.description')}</span>
-                    <input
-                        aria-label={t('settings.lintOnSave')}
-                        aria-describedby="settings-lint-on-save-description"
-                        checked={markdownSettings?.lintOnSave === true}
-                        disabled={markdownDisabled}
-                        type="checkbox"
-                        onChange={(event): void => onMarkdownSettingsChange?.({ lintOnSave: event.target.checked })}
-                    />
-                </label>
-            </section>
-            <footer className={styles.actions}>
-                <Button className={styles.secondary} variant="secondary" onClick={onReset}>
-                    {t('appearance.reset')}
-                </Button>
-                <Button className={styles.primary} variant="primary" onClick={(): void => onOpenChange(false)}>
-                    {t('appearance.close')}
-                </Button>
-            </footer>
+            </div>
         </ModalShell>
     );
 };
+
+const SettingsDialog: React.FC<SettingsDialogProps> = (props: SettingsDialogProps): React.JSX.Element | null =>
+    props.open ? <OpenSettingsDialog {...props} /> : null;
 
 export default SettingsDialog;

@@ -90,7 +90,7 @@ test('Ctrl+Tab still switches documents while Reading mode is active', async ({ 
     await expect(page.locator(PREVIEW)).not.toContainText('Second document text.');
 });
 
-test('Ctrl+, in Reading mode opens the Settings menu and Escape closes it while Reading mode stays active', async ({
+test('Ctrl+, in Reading mode opens the Settings dialog and Escape closes it while Reading mode stays active', async ({
     app,
 }) => {
     const source = await app.writeDocument('reading-settings.md', '# Settings\n\nText.\n');
@@ -103,12 +103,12 @@ test('Ctrl+, in Reading mode opens the Settings menu and Escape closes it while 
     await expectReading(page);
 
     await page.keyboard.press('ControlOrMeta+,');
-    const menu = page.getByRole('menu', { name: 'Settings menu' });
-    await expect(menu).toBeVisible();
-    await expect(page.getByRole('dialog')).toHaveCount(0);
+    const dialog = page.getByRole('dialog', { name: 'Settings' });
+    await expect(dialog).toBeVisible();
+    await expect(page.getByRole('menu', { name: 'Settings menu' })).toHaveCount(0);
 
     await page.keyboard.press('Escape');
-    await expect(menu).toBeHidden();
+    await expect(dialog).toBeHidden();
     await expect(page.locator(SHELL)).toHaveAttribute('data-reading', 'true');
 });
 
@@ -573,7 +573,7 @@ test('closes a mouse-opened preview menu with Escape and keeps Reading mode on t
     await expect(page.locator('[data-reading-document]')).toBeFocused();
 });
 
-test('Full width through the Ctrl+, Settings menu widens the document in Reading mode and persists after restart', async ({
+test('Full width through the Ctrl+, Settings dialog widens the document in Reading mode and persists after restart', async ({
     app,
 }) => {
     const source = await app.writeDocument('reading-width.md', '# Width\n\nWidth text.\n');
@@ -588,13 +588,13 @@ test('Full width through the Ctrl+, Settings menu widens the document in Reading
     expect(pageBox.width).toBeLessThanOrEqual(700);
 
     await page.keyboard.press('ControlOrMeta+,');
-    const menu = page.getByRole('menu', { name: 'Settings menu' });
-    await menu.getByRole('menuitemradio', { name: 'Full width', exact: true }).click();
-    await expect(menu.getByRole('menuitemradio', { name: 'Full width', exact: true })).toHaveAttribute(
-        'aria-checked',
-        'true',
-    );
+    const dialog = page.getByRole('dialog', { name: 'Settings' });
+    await dialog.getByRole('radiogroup', { name: 'Reading width' }).getByRole('radio', { name: 'Full width' }).click();
+    await expect(
+        dialog.getByRole('radiogroup', { name: 'Reading width' }).getByRole('radio', { name: 'Full width' }),
+    ).toHaveAttribute('aria-checked', 'true');
     await page.keyboard.press('Escape');
+    await expect(dialog).toBeHidden();
 
     await expect(page.locator(SHELL)).toHaveAttribute('data-reading', 'true');
     await expect(async () => {

@@ -159,13 +159,14 @@ it('shows six Markdown preferences from hydration and applies each dialog change
     render(<AppearanceHarness />);
     fireEvent.click(await screen.findByRole('button', { name: 'Settings' }));
     fireEvent.click(screen.getByRole('menuitem', { name: /All settings/u }));
+    fireEvent.click(screen.getByRole('tab', { name: 'Markdown' }));
     const dialog = screen.getByRole('dialog', { name: 'Settings' });
     expect(within(dialog).getByRole('radio', { name: 'Full' })).toBeChecked();
     expect(within(dialog).getByRole('radio', { name: '-' })).toBeChecked();
     expect(within(dialog).getByRole('radio', { name: '_ _' })).toBeChecked();
     expect(within(dialog).getByRole('radio', { name: 'ATX (#)' })).toBeChecked();
-    expect(within(dialog).getByRole('checkbox', { name: 'Format on save' })).not.toBeChecked();
-    expect(within(dialog).getByRole('checkbox', { name: 'Lint on save' })).toBeChecked();
+    expect(within(dialog).getByRole('switch', { name: 'Format on save' })).not.toBeChecked();
+    expect(within(dialog).getByRole('switch', { name: 'Lint on save' })).toBeChecked();
     const change = async (control: HTMLElement, field: string, value: unknown): Promise<void> => {
         const previous = updateMarkdown.mock.calls.length;
         fireEvent.click(control);
@@ -176,8 +177,8 @@ it('shows six Markdown preferences from hydration and applies each dialog change
     await change(within(dialog).getByRole('radio', { name: /^\*$/u }), 'bulletMarker', '*');
     await change(within(dialog).getByRole('radio', { name: '* *' }), 'emphasisMarker', '*');
     await change(within(dialog).getByRole('radio', { name: 'Setext' }), 'headingStyle', 'setext');
-    await change(within(dialog).getByRole('checkbox', { name: 'Format on save' }), 'formatOnSave', true);
-    await change(within(dialog).getByRole('checkbox', { name: 'Lint on save' }), 'lintOnSave', false);
+    await change(within(dialog).getByRole('switch', { name: 'Format on save' }), 'formatOnSave', true);
+    await change(within(dialog).getByRole('switch', { name: 'Lint on save' }), 'lintOnSave', false);
     expect(store.getState().settings.markdown).toEqual({
         standard: 'gfm',
         bulletMarker: '*',
@@ -192,13 +193,14 @@ it('keeps the Markdown group unavailable before hydration and issues no write', 
     render(<AppearanceHarness />);
     fireEvent.click(await screen.findByRole('button', { name: 'Settings' }));
     fireEvent.click(screen.getByRole('menuitem', { name: /All settings/u }));
-    const markdown = screen.getByRole('region', { name: 'Markdown' });
+    fireEvent.click(screen.getByRole('tab', { name: 'Markdown' }));
+    const markdown = screen.getByRole('tabpanel', { name: 'Markdown' });
     for (const radio of within(markdown).getAllByRole('radio')) {
         expect(radio).toBeDisabled();
         expect(radio).toHaveAttribute('aria-checked', 'false');
         fireEvent.click(radio);
     }
-    for (const toggle of within(markdown).getAllByRole('checkbox')) {
+    for (const toggle of within(markdown).getAllByRole('switch')) {
         expect(toggle).toBeDisabled();
         expect(toggle).not.toBeChecked();
         fireEvent.click(toggle);
@@ -231,7 +233,8 @@ it('keeps acknowledged Markdown values on rejection and reports one error', asyn
     render(<AppearanceHarness />);
     fireEvent.click(await screen.findByRole('button', { name: 'Settings' }));
     fireEvent.click(screen.getByRole('menuitem', { name: /All settings/u }));
-    const markdown = screen.getByRole('region', { name: 'Markdown' });
+    fireEvent.click(screen.getByRole('tab', { name: 'Markdown' }));
+    const markdown = screen.getByRole('tabpanel', { name: 'Markdown' });
     fireEvent.click(within(markdown).getByRole('radio', { name: '+' }));
     await waitFor(() => expect(store.getState().notifications.items).toHaveLength(1));
     expect(within(markdown).getByRole('radio', { name: '-' })).toBeChecked();
@@ -263,14 +266,15 @@ it('uses arrows and Space to change described Markdown controls', async () => {
     render(<AppearanceHarness />);
     fireEvent.click(await screen.findByRole('button', { name: 'Settings' }));
     fireEvent.click(screen.getByRole('menuitem', { name: /All settings/u }));
-    const markdown = screen.getByRole('region', { name: 'Markdown' });
+    fireEvent.click(screen.getByRole('tab', { name: 'Markdown' }));
+    const markdown = screen.getByRole('tabpanel', { name: 'Markdown' });
     const bullet = within(markdown).getByRole('radiogroup', { name: 'Bullet marker' });
     expect(bullet).toHaveAccessibleDescription();
     const dash = within(bullet).getByRole('radio', { name: '-' });
     dash.focus();
     fireEvent.keyDown(dash, { key: 'ArrowRight' });
     await waitFor(() => expect(within(bullet).getByRole('radio', { name: '*' })).toBeChecked());
-    const format = within(markdown).getByRole('checkbox', { name: 'Format on save' });
+    const format = within(markdown).getByRole('switch', { name: 'Format on save' });
     expect(format).toHaveAccessibleDescription();
     format.focus();
     fireEvent.keyDown(format, { key: ' ' });
@@ -312,7 +316,8 @@ it('merges a dialog change with a pending popup change and keeps both surfaces s
     fireEvent.click(within(popup).getByRole('menuitemcheckbox', { name: 'Format on save' }));
     await waitFor(() => expect(updateMarkdown).toHaveBeenCalledTimes(1));
     fireEvent.click(within(popup).getByRole('menuitem', { name: /All settings/u }));
-    const markdown = screen.getByRole('region', { name: 'Markdown' });
+    fireEvent.click(screen.getByRole('tab', { name: 'Markdown' }));
+    const markdown = screen.getByRole('tabpanel', { name: 'Markdown' });
     fireEvent.click(within(markdown).getByRole('radio', { name: '+' }));
     expect(store.getState().settings.markdown).toMatchObject({ formatOnSave: false, bulletMarker: '-' });
     releaseFirst?.();
@@ -537,15 +542,14 @@ it('updates synchronized quick and modal Appearance only after reset is acknowle
     fireEvent.click(screen.getByRole('menuitem', { name: /All settings/u }));
     fireEvent.click(screen.getByRole('button', { name: 'Reset appearance' }));
     expect(
-        within(screen.getByRole('region', { name: 'Appearance' })).getByRole('radio', { name: 'Minimal' }),
+        within(screen.getByRole('tabpanel', { name: 'Appearance' })).getByRole('radio', { name: 'Minimal' }),
     ).toBeChecked();
 
     acknowledgeReset?.();
     await waitFor((): void => {
         expect(screen.getByRole('radio', { name: 'Material' })).toBeChecked();
-        // The full Settings dialog is now the visible surface; it keeps its own
-        // catalogue wording for the same acknowledged Auto choice.
-        expect(screen.getByRole('radio', { name: 'Follows system' })).toBeChecked();
+        // The full Settings dialog is now the visible surface; it words the same acknowledged choice "Auto".
+        expect(screen.getByRole('radio', { name: 'Auto' })).toBeChecked();
     });
     expect(document.documentElement).toHaveAttribute('data-theme', 'material');
     expect(resetAppearance).toHaveBeenCalledTimes(1);
@@ -579,7 +583,7 @@ it('retains acknowledged Appearance when the transactional reset is rejected', a
 
     await waitFor((): void => expect(resetAppearance).toHaveBeenCalledTimes(1));
     expect(
-        within(screen.getByRole('region', { name: 'Appearance' })).getByRole('radio', { name: 'Minimal' }),
+        within(screen.getByRole('tabpanel', { name: 'Appearance' })).getByRole('radio', { name: 'Minimal' }),
     ).toBeChecked();
     expect(screen.getByRole('radio', { name: 'Dark' })).toBeChecked();
     expect(document.body).not.toHaveTextContent('private database path');

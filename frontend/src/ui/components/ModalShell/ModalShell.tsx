@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, type CSSProperties, type RefObject } from 'react';
 import { createPortal } from 'react-dom';
 
+import Icon from '../../primitives/Icon';
 import styles from './ModalShell.module.css';
 
 const focusableSelector = [
@@ -16,6 +17,10 @@ export type ModalFocusTarget = HTMLElement | null | RefObject<HTMLElement | null
 
 export interface ModalShellProps {
     readonly children: React.ReactNode;
+    /** Extra class on the dialog surface. */
+    readonly className?: string;
+    /** When set, the title row shows a Close icon button with this accessible name. */
+    readonly closeLabel?: string;
     readonly dismiss: 'backdrop' | 'escape' | 'none';
     readonly initialFocus?: ModalFocusTarget;
     readonly onRequestClose: () => void;
@@ -36,6 +41,8 @@ function resolveFocusTarget(target: ModalFocusTarget): HTMLElement | null {
 
 const ModalShell: React.FC<ModalShellProps> = ({
     children,
+    className,
+    closeLabel,
     dismiss,
     initialFocus,
     onRequestClose,
@@ -173,15 +180,31 @@ const ModalShell: React.FC<ModalShellProps> = ({
                 ref={dialogRef}
                 aria-labelledby="modal-shell-title"
                 aria-modal="true"
-                className={styles.content}
+                className={className === undefined ? styles.content : `${styles.content} ${className}`}
                 data-modal-shell
                 role="dialog"
                 style={width === undefined ? undefined : { width }}
                 tabIndex={-1}
             >
-                <h1 className={styles.title} id="modal-shell-title">
-                    {title}
-                </h1>
+                {closeLabel === undefined ? (
+                    <h1 className={styles.title} id="modal-shell-title">
+                        {title}
+                    </h1>
+                ) : (
+                    <header className={styles.header}>
+                        <h1 className={styles.title} id="modal-shell-title">
+                            {title}
+                        </h1>
+                        <button
+                            aria-label={closeLabel}
+                            className={styles.close}
+                            type="button"
+                            onClick={(): void => closeRef.current()}
+                        >
+                            <Icon name="close" />
+                        </button>
+                    </header>
+                )}
                 {children}
             </section>
         </>,

@@ -127,9 +127,9 @@ it('shows the stored Clean choice in the menu and the dialog after startup', asy
         expect(within(menu).getByRole('menuitemradio', { name: 'Clean' })).toHaveAttribute('aria-checked', 'true'),
     );
     fireEvent.click(within(menu).getByRole('menuitem', { name: /All settings/u }));
-    const group = within(screen.getByRole('dialog', { name: 'Settings' })).getByRole('radiogroup', {
-        name: 'PDF appearance',
-    });
+    const stored = screen.getByRole('dialog', { name: 'Settings' });
+    fireEvent.click(within(stored).getByRole('tab', { name: 'Export' }));
+    const group = within(stored).getByRole('radiogroup', { name: 'PDF appearance' });
     expect(within(group).getByRole('radio', { name: 'Clean' })).toBeChecked();
 });
 
@@ -138,6 +138,10 @@ it('keeps the dialog row and the menu in sync, is reachable by keyboard and rest
     const menu = await openMenu();
     fireEvent.click(within(menu).getByRole('menuitem', { name: /All settings/u }));
     const dialog = screen.getByRole('dialog', { name: 'Settings' });
+    const sections = within(dialog).getByRole('tab', { name: 'Appearance' });
+    sections.focus();
+    fireEvent.keyDown(sections, { key: 'End' });
+    expect(within(dialog).getByRole('tab', { name: 'Export' })).toHaveAttribute('aria-selected', 'true');
     const group = within(dialog).getByRole('radiogroup', { name: 'PDF appearance' });
     const styled = within(group).getByRole('radio', { name: 'Styled' });
     expect(styled).toBeChecked();
@@ -159,8 +163,9 @@ it('keeps the dialog row and the menu in sync, is reachable by keyboard and rest
     fireEvent.click(within(reopened).getByRole('menuitem', { name: /All settings/u }));
 
     const dialogAgain = screen.getByRole('dialog', { name: 'Settings' });
-    const groupAgain = within(dialogAgain).getByRole('radiogroup', { name: 'PDF appearance' });
     fireEvent.click(within(dialogAgain).getByRole('button', { name: 'Reset appearance' }));
+    fireEvent.click(within(dialogAgain).getByRole('tab', { name: 'Export' }));
+    const groupAgain = within(dialogAgain).getByRole('radiogroup', { name: 'PDF appearance' });
     await waitFor(() => expect(within(groupAgain).getByRole('radio', { name: 'Styled' })).toBeChecked());
     fireEvent.click(within(dialogAgain).getByRole('button', { name: 'Close' }));
     const afterReset = await openMenu();

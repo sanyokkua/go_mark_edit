@@ -216,14 +216,16 @@ export const AppearanceControlsContent: React.FC<AppearanceControlsContentProps>
     visible = true,
 }: AppearanceControlsContentProps) => {
     const controller = useAppearanceSettings();
-    const markdown = useEditorSettings();
+    const editor = useEditorSettings();
     if (!visible) return null;
     return (
         <>
             {children}
             <SettingsDialog
                 defaultOpenMode={controller.appearance.defaultOpenMode as DefaultOpenMode}
-                markdownSettings={markdown.markdownSettings}
+                editorSettings={editor.settings}
+                fileSettings={editor.fileSettings}
+                markdownSettings={editor.markdownSettings}
                 mode={controller.appearance.mode}
                 open={controller.open}
                 pdfAppearance={controller.appearance.pdfAppearance}
@@ -234,8 +236,14 @@ export const AppearanceControlsContent: React.FC<AppearanceControlsContentProps>
                 onModeChange={controller.onModeChange}
                 onPdfAppearanceChange={controller.onPdfAppearanceChange}
                 onReadingWidthChange={controller.onReadingWidthChange}
+                onEditorSettingsChange={(patch): void => {
+                    void editor.update(patch).catch((): void => undefined);
+                }}
+                onFileSettingsChange={(patch): void => {
+                    void editor.updateFile(patch).catch((): void => undefined);
+                }}
                 onMarkdownSettingsChange={(patch): void => {
-                    void markdown.updateMarkdown(patch).catch((): void => undefined);
+                    void editor.updateMarkdown(patch).catch((): void => undefined);
                 }}
                 onReset={controller.onReset}
                 onOpenChange={controller.onOpenChange}

@@ -202,6 +202,29 @@ The committed `DocView.splitRatio` belongs to the backend and survives arrangeme
 ModalShell owns modal portal, backdrop, focus trap, Tab/Shift+Tab, Escape, opener restoration and
 dismissal policy. Its consumers are Settings, About, Shortcuts, Normalization, Close, External change,
 Recovery, Create workspace entry, Replace workspace, Multi-folder drop, Close folder and Insert table dialogs.
+An optional `closeLabel` adds a title row with a Close icon button (accessible name = the label) and an
+optional `className` styles the surface; only the Settings dialog uses them so far.
+
+### Switch and Select — `frontend/src/ui/primitives/Switch/`, `.../Select/`
+
+`Switch` owns the on/off control (a `role="switch"` button with `aria-checked`, Space and Enter, the 34 by
+19 px track and thumb, also exported as `switchTrackClassName` for the display-only switches in the Settings
+and View popup rows) and `Select` wraps the native
+drop-down with the shared field look. Their consumers are the Settings dialog's Editor and Markdown sections
+(Autosave, Line numbers, Word wrap, Scroll sync, Format on save and Lint on save; Font size).
+
+### Settings dialog — `frontend/src/ui/widgets/dialogs/`
+
+`SettingsDialog` owns the dialog shell and a section array (Appearance, Editor, Markdown, Export); it mounts
+only while open so every opening starts on Appearance. `SettingsSectionNav` is the vertical `tablist` (one
+tab stop, roving `tabindex`, Up/Left/Down/Right/Home/End move and show a section at once), the pane is its
+`tabpanel` (an ESLint exemption lets this one file own the tab roles and its buttons, as TabBar does), and `SettingsRow` lays out label, description and control. Each section component receives the
+dialog props and calls the existing writers: `AppearanceSettingsProvider` for theme, mode, default open mode,
+reading width and PDF appearance, and `useEditorSettings` (`update`, `updateFile`, `updateMarkdown`) for the
+editor, autosave and Markdown settings, wired in `AppearanceControls.tsx`. Ctrl/Cmd+, (the `settings` action)
+opens the dialog through `onOpenAppearance`; the Settings button and the narrow overflow row still open the
+Settings popup, whose All settings… row opens the dialog. At 40rem or narrower the section list sits above the
+rows.
 
 ### Banner — `frontend/src/ui/primitives/Banner.tsx`
 

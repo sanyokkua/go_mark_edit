@@ -25,7 +25,13 @@ function toolbarAction(page: Page, id: string): Locator {
 }
 
 function markdownGroup(page: Page): Locator {
-    return page.getByRole('dialog', { name: 'Settings' }).getByRole('region', { name: 'Markdown' });
+    return page.getByRole('dialog', { name: 'Settings' }).getByRole('tabpanel', { name: 'Markdown' });
+}
+
+async function showSection(page: Page, name: string): Promise<void> {
+    const tab = page.getByRole('dialog', { name: 'Settings' }).getByRole('tab', { name, exact: true });
+    await tab.click();
+    await expect(tab).toHaveAttribute('aria-selected', 'true');
 }
 
 async function openSettings(page: Page): Promise<Locator> {
@@ -50,7 +56,7 @@ async function setSegment(page: Page, group: string, option: string): Promise<vo
 }
 
 async function setSwitch(page: Page, label: string, on: boolean): Promise<void> {
-    const toggle = markdownGroup(page).getByRole('checkbox', { name: label, exact: true });
+    const toggle = markdownGroup(page).getByRole('switch', { name: label, exact: true });
     if ((await toggle.isChecked()) !== on) await toggle.click();
     if (on) await expect(toggle).toBeChecked();
     else await expect(toggle).not.toBeChecked();
@@ -130,10 +136,10 @@ async function expectDefaults(page: Page): Promise<void> {
         );
         expect(await control.getAttribute('aria-describedby')).toBeTruthy();
     }
-    await expect(group.getByRole('checkbox', { name: 'Format on save' })).not.toBeChecked();
-    await expect(group.getByRole('checkbox', { name: 'Lint on save' })).toBeChecked();
+    await expect(group.getByRole('switch', { name: 'Format on save' })).not.toBeChecked();
+    await expect(group.getByRole('switch', { name: 'Lint on save' })).toBeChecked();
     for (const name of ['Format on save', 'Lint on save']) {
-        expect(await group.getByRole('checkbox', { name }).getAttribute('aria-describedby')).toBeTruthy();
+        expect(await group.getByRole('switch', { name }).getAttribute('aria-describedby')).toBeTruthy();
     }
 }
 
@@ -141,6 +147,7 @@ test('fresh Markdown preferences are named and persist after keyboard changes an
     await app.launch();
     const { page } = app;
     await openSettings(page);
+    await showSection(page, 'Markdown');
     await expectDefaults(page);
     const standard = markdownGroup(page).getByRole('radiogroup', { name: 'Markdown standard' });
     await standard.getByRole('radio', { name: 'Full' }).focus();
@@ -150,7 +157,7 @@ test('fresh Markdown preferences are named and persist after keyboard changes an
     await setSegment(page, 'Bullet marker', '*');
     await setSegment(page, 'Emphasis marker', '* *');
     await setSegment(page, 'Heading style', 'Setext');
-    const formatSwitch = markdownGroup(page).getByRole('checkbox', { name: 'Format on save' });
+    const formatSwitch = markdownGroup(page).getByRole('switch', { name: 'Format on save' });
     await formatSwitch.focus();
     await formatSwitch.press('Space');
     await expect(formatSwitch).toBeChecked();
@@ -175,6 +182,7 @@ test('fresh Markdown preferences are named and persist after keyboard changes an
 
     await app.relaunch();
     await openSettings(page);
+    await showSection(page, 'Markdown');
     for (const [name, selected] of [
         ['Markdown standard', 'GFM'],
         ['Bullet marker', '*'],
@@ -185,8 +193,8 @@ test('fresh Markdown preferences are named and persist after keyboard changes an
             markdownGroup(page).getByRole('radiogroup', { name }).getByRole('radio', { name: selected, exact: true }),
         ).toHaveAttribute('aria-checked', 'true');
     }
-    await expect(markdownGroup(page).getByRole('checkbox', { name: 'Format on save' })).toBeChecked();
-    await expect(markdownGroup(page).getByRole('checkbox', { name: 'Lint on save' })).not.toBeChecked();
+    await expect(markdownGroup(page).getByRole('switch', { name: 'Format on save' })).toBeChecked();
+    await expect(markdownGroup(page).getByRole('switch', { name: 'Lint on save' })).not.toBeChecked();
     app.expectNoForeignRequests();
 });
 
@@ -295,6 +303,7 @@ test('Format and Lint use stored markers while toolbar headings stay ATX', async
     const { page } = app;
     await disableAutosave(page);
     await openSettings(page);
+    await showSection(page, 'Markdown');
     await setSegment(page, 'Bullet marker', '*');
     await setSegment(page, 'Emphasis marker', '* *');
     await setSegment(page, 'Heading style', 'Setext');
@@ -332,6 +341,7 @@ test('explicit Save persists formatted bytes and then reports the saved document
     const { page } = app;
     await disableAutosave(page);
     await openSettings(page);
+    await showSection(page, 'Markdown');
     await setSegment(page, 'Bullet marker', '*');
     await setSwitch(page, 'Format on save', true);
     await setSwitch(page, 'Lint on save', true);
@@ -358,6 +368,7 @@ test('backend autosave writes raw text without running Format or Lint', async ({
     const path = await openDocument(app, 'autosave.md', '# Autosave\n\n- original\n');
     const { page } = app;
     await openSettings(page);
+    await showSection(page, 'Markdown');
     await setSegment(page, 'Bullet marker', '*');
     await setSwitch(page, 'Format on save', true);
     await setSwitch(page, 'Lint on save', true);
@@ -382,6 +393,7 @@ test('closing a dirty background tab saves its original bytes and explains why F
     await page.getByTestId('document-launcher').getByRole('button', { name: 'background.md' }).click();
     await disableAutosave(page);
     await openSettings(page);
+    await showSection(page, 'Markdown');
     await setSegment(page, 'Bullet marker', '*');
     await setSwitch(page, 'Format on save', true);
     await closeSettings(page);
@@ -411,14 +423,15 @@ test('the Markdown controls remain visible and keyboard usable in all six palett
     await page.setViewportSize({ width: 1280, height: 800 });
     const dialog = await openSettings(page);
     const appearanceTheme = dialog.getByRole('radiogroup', { name: 'Theme' });
-    const appearanceMode = dialog.getByRole('radiogroup', { name: 'Appearance', exact: true });
+    const appearanceMode = dialog.getByRole('radiogroup', { name: 'Color mode', exact: true });
     for (const [themeLabel, modeLabel, theme, mode] of palettes) {
+        await showSection(page, 'Appearance');
         await appearanceTheme.getByRole('radio', { name: themeLabel, exact: true }).click();
         await appearanceMode.getByRole('radio', { name: modeLabel, exact: true }).click();
         await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
         await expect(page.locator('html')).toHaveAttribute('data-mode', mode);
-        // Start at the dialog boundary, then reach the Markdown controls through Tab order.
-        await dialog.focus();
+        // Start at the section list, then reach the Appearance rows through Tab order.
+        await dialog.getByRole('tab', { name: 'Appearance', exact: true }).focus();
         await page.keyboard.press('Tab');
         await expect(appearanceTheme.getByRole('radio', { checked: true })).toBeFocused();
         await page.keyboard.press('Tab');
@@ -431,17 +444,47 @@ test('the Markdown controls remain visible and keyboard usable in all six palett
         await expect(
             dialog.getByRole('radiogroup', { name: 'Reading width' }).getByRole('radio', { checked: true }),
         ).toBeFocused();
-        await page.keyboard.press('Tab');
-        await expect(
-            dialog.getByRole('radiogroup', { name: 'PDF appearance' }).getByRole('radio', { checked: true }),
-        ).toBeFocused();
-        for (const [name, selected, nextLabel] of markdownGroups) {
+
+        // The Markdown section: Tab from its section-list entry reaches each row in turn.
+        await dialog.getByRole('tab', { name: 'Appearance', exact: true }).focus();
+        await page.keyboard.press('ArrowDown');
+        await page.keyboard.press('ArrowDown');
+        await expect(dialog.getByRole('tab', { name: 'Markdown', exact: true })).toBeFocused();
+        await expect(markdownGroup(page)).toBeVisible();
+        const rowOrder = [
+            'Markdown standard',
+            'Format on save',
+            'Lint on save',
+            'Bullet marker',
+            'Emphasis marker',
+            'Heading style',
+        ];
+        for (const name of rowOrder) {
+            const group = markdownGroups.find(([groupName]) => groupName === name);
+            const unfocusedOffset =
+                group === undefined
+                    ? 0
+                    : await markdownGroup(page)
+                          .getByRole('radiogroup', { name })
+                          .getByRole('radio', { name: group[1], exact: true })
+                          .evaluate((element) => Number.parseFloat(getComputedStyle(element).outlineOffset));
+            await page.keyboard.press('Tab');
+            if (group === undefined) {
+                const toggle = markdownGroup(page).getByRole('switch', { name });
+                await expect(toggle).toBeFocused();
+                await expect(toggle).toBeInViewport();
+                const before = await toggle.isChecked();
+                await page.keyboard.press('Space');
+                if (before) await expect(toggle).not.toBeChecked();
+                else await expect(toggle).toBeChecked();
+                await page.keyboard.press('Space');
+                if (before) await expect(toggle).toBeChecked();
+                else await expect(toggle).not.toBeChecked();
+                continue;
+            }
+            const [, selected, nextLabel] = group;
             const control = markdownGroup(page).getByRole('radiogroup', { name });
             const radio = control.getByRole('radio', { name: selected, exact: true });
-            const unfocusedOffset = await radio.evaluate((element) =>
-                Number.parseFloat(getComputedStyle(element).outlineOffset),
-            );
-            await page.keyboard.press('Tab');
             await expect(radio).toBeFocused();
             await expect(radio).toBeInViewport();
             await expect
@@ -455,19 +498,6 @@ test('the Markdown controls remain visible and keyboard usable in all six palett
             await page.keyboard.press('ArrowLeft');
             await expect(radio).toHaveAttribute('aria-checked', 'true');
             await expect(radio).toBeFocused();
-        }
-        for (const name of ['Format on save', 'Lint on save']) {
-            const toggle = markdownGroup(page).getByRole('checkbox', { name });
-            await page.keyboard.press('Tab');
-            await expect(toggle).toBeFocused();
-            await expect(toggle).toBeInViewport();
-            const before = await toggle.isChecked();
-            await page.keyboard.press('Space');
-            if (before) await expect(toggle).not.toBeChecked();
-            else await expect(toggle).toBeChecked();
-            await page.keyboard.press('Space');
-            if (before) await expect(toggle).toBeChecked();
-            else await expect(toggle).not.toBeChecked();
         }
     }
     app.expectNoForeignRequests();

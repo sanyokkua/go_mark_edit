@@ -7,7 +7,7 @@ import { currentPlatform, formatShortcut } from '../../../logic/actions/shortcut
 import type { EditorSettings, FileSettings, MarkdownSettings } from '../../../logic/adapter';
 import type { AppearanceChoice, Theme } from '../../../logic/theme/theme';
 import MenuItem, { MenuItemIndicator } from '../../components/MenuItem';
-import menuItemStyles from '../../components/MenuItem/MenuItem.module.css';
+import { switchTrackClassName } from '../../primitives/Switch';
 import Popup, { PopupGroupLabel, PopupSeparator, PopupTrigger } from '../../components/Popup';
 import Segmented, { type SegmentedOption } from '../../primitives/Segmented';
 import type { PdfAppearance, ReadingWidth } from '../../../logic/adapter/settingsTypes';
@@ -178,7 +178,7 @@ const CompactSettingsContent: React.FC<CompactSettingsContentProps> = ({
                     trailing={
                         <span
                             aria-hidden="true"
-                            className={menuItemStyles.toggle}
+                            className={switchTrackClassName}
                             data-checked={checked}
                             data-settings-toggle={label}
                         />
@@ -194,7 +194,7 @@ const CompactSettingsContent: React.FC<CompactSettingsContentProps> = ({
                 disabled={disabled}
                 label={label}
                 trailing={
-                    <label className={menuItemStyles.toggle} data-checked={checked} data-settings-toggle={label}>
+                    <label className={switchTrackClassName} data-checked={checked} data-settings-toggle={label}>
                         <input
                             aria-label={label}
                             checked={checked}

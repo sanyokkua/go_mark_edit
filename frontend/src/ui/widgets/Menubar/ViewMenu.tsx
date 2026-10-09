@@ -7,7 +7,7 @@ import { currentPlatform, formatShortcut } from '../../../logic/actions/shortcut
 import type { ViewArrangement } from '../../../logic/store/appModelTypes';
 import MenuItem from '../../components/MenuItem';
 import Popup, { PopupSeparator, PopupTrigger } from '../../components/Popup';
-import menuItemStyles from '../../components/MenuItem/MenuItem.module.css';
+import { switchTrackClassName } from '../../primitives/Switch';
 
 export interface ViewMenuProps {
     editorVisible: boolean;
@@ -108,7 +108,7 @@ const ViewMenu: React.FC<ViewMenuProps> = ({
     };
 
     const toggle = (checked: boolean): React.JSX.Element => (
-        <span aria-hidden="true" className={menuItemStyles.toggle} data-checked={checked} />
+        <span aria-hidden="true" className={switchTrackClassName} data-checked={checked} />
     );
 
     const popupAnchor = {

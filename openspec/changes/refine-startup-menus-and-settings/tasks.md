@@ -427,7 +427,7 @@ and squash-merge it back.
 
 ## 9. Settings dialog with sections
 
-- [ ] 9.1 Rebuild the Settings dialog after the mockup:
+- [x] 9.1 Rebuild the Settings dialog after the mockup:
     - a header with Close;
     - a vertical section list for Appearance, Editor, Markdown and Export (task 10 adds Workspace between Markdown and
       Export);

@@ -187,6 +187,7 @@ const Menubar: React.FC<MenubarProps> = ({
         aboutTriggerRef.current = element;
         setAboutTrigger(element);
     }, []);
+    const { onOpenAppearance } = settingsMenuProps;
     const settingsOpen = activeMenu === 'settings';
     const markdownOpen = activeMenu === 'markdown';
     const viewOpen = activeMenu === 'view';
@@ -337,7 +338,8 @@ const Menubar: React.FC<MenubarProps> = ({
                 viewAvailable: viewMenuProps !== undefined,
                 openSettings: (): void => {
                     setViewOpen(false);
-                    setSettingsOpen(true);
+                    setSettingsOpen(false);
+                    onOpenAppearance();
                 },
                 openView: (): void => {
                     setSettingsOpen(false);
@@ -361,7 +363,7 @@ const Menubar: React.FC<MenubarProps> = ({
                 documentOpen: documentId !== undefined,
                 toggleFullscreen,
             }),
-        [documentId, modalOpen, onAbout, onShortcuts, toggleFullscreen, viewMenuProps],
+        [documentId, modalOpen, onAbout, onOpenAppearance, onShortcuts, toggleFullscreen, viewMenuProps],
     );
     /*
      * Every File row that both declares a registry shortcut and has a handler
@@ -555,7 +557,12 @@ const Menubar: React.FC<MenubarProps> = ({
                                             onSelect={(): void => {
                                                 setOverflowOpen(false);
                                                 if (item.id === 'view') requestViewOpen(true);
-                                                dispatch(item);
+                                                /* The overflow row opens the Settings popup; only Mod+, opens the dialog. */
+                                                dispatch(
+                                                    item.id === 'settings'
+                                                        ? { ...item, invoke: (): void => setSettingsOpen(true) }
+                                                        : item,
+                                                );
                                             }}
                                         />
                                     ))}

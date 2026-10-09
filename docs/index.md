@@ -125,6 +125,8 @@ Reading width (Page by default, or Full width, stored as `page` or `full`) is al
 
 PDF appearance (Styled by default, or Clean, stored as `styled` or `clean` under `export.pdfAppearance`) is selectable in both the Settings menu and the Settings dialog. Styled exports in the theme and mode shown on screen; Clean prints the copy in the Material Light palette (black text on white, light Mermaid diagrams) whatever the theme or mode, and the screen keeps its theme. Reset appearance restores Styled, and the choice survives restart.
 
+The Settings dialog (Ctrl+, / Cmd+, or Settings, All settings…) has a header with Close and a section list: Appearance (Theme, Color mode, Default open mode, Reading width, Reset appearance), Editor (Autosave, Line numbers, Word wrap, Scroll sync as switches; Font size 13, 14 or 16 px as a drop-down), Markdown (Standard, Format on save, Lint on save, Bullet marker, Emphasis, Heading style) and Export (PDF appearance). Every change applies at once. The section list is one keyboard stop: Up/Left and Down/Right move to the previous and next section, Home and End to the first and last, and Tab enters the rows. At 375 px the list sits above the rows. Reset appearance also restores Styled PDF appearance.
+
 **State model:** document tabs and folder workspace are process state. There is no session/tab restore or crash-recovery file. Recent Items and window/application layout persist across launches, except sidebar visibility, which starts hidden in every window.
 
 In Split mode, drag the editor/preview divider to change the editor's share from 20 to 80 percent.

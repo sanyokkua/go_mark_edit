@@ -1,56 +1,96 @@
-.normalizationBody {
-    display: grid;
-    gap: 16px;
-    padding: 16px;
+.dialog[data-modal-shell] {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    max-block-size: 88vh;
+    overflow: hidden;
+    padding: 0;
 }
 
-.normalizationBody header {
-    min-width: 0;
+.dialog > header {
+    border-block-end: var(--control-border-width) solid var(--stroke-soft);
+    padding: 0.875rem 1.125rem;
 }
 
-.normalizationBody p {
-    color: var(--text-muted);
-    line-height: 1.6;
-    overflow-wrap: anywhere;
+.body {
+    display: flex;
+    flex: 1;
+    min-block-size: 0;
 }
 
-.normalizationBody .actions {
-    gap: 8px;
+.nav {
+    border-inline-end: var(--control-border-width) solid var(--stroke-soft);
+    display: flex;
+    flex: none;
+    flex-direction: column;
+    gap: 2px;
+    inline-size: 172px;
+    overflow: auto;
+    padding: 0.625rem 0.5rem;
 }
 
-.normalizationBody .primary,
-.normalizationBody .secondary {
-    border-radius: 9px;
-    padding: 8px 14px;
+.tab,
+.tabSelected {
+    background: transparent;
+    border: 0;
+    border-radius: var(--control-radius);
+    color: var(--muted);
+    cursor: pointer;
+    font: inherit;
+    padding: 0.5rem 0.625rem;
+    text-align: start;
 }
 
-.label {
-    display: grid;
-    gap: var(--control-gap);
-    margin-top: var(--app-gap);
+.tab:hover {
+    background: var(--hover);
+}
+
+.tabSelected {
+    background: var(--accent-soft);
+    color: var(--accent-ink);
+    font-weight: 600;
+}
+
+.tab:focus-visible,
+.tabSelected:focus-visible {
+    box-shadow: var(--focus-ring);
+    outline: 0;
+}
+
+.pane {
+    flex: 1;
+    min-inline-size: 0;
+    overflow: auto;
+    padding: 0.875rem 1.125rem;
+}
+
+.heading {
+    font-size: 0.9375rem;
+    margin: 0 0 0.25rem;
+}
+
+.notice {
+    color: var(--faint);
+    font-size: 0.71875rem;
+    margin: 0;
 }
 
 .actions {
     display: flex;
-    flex-wrap: wrap;
-    gap: var(--control-gap);
-    justify-content: flex-end;
+    justify-content: flex-start;
+    padding-block-start: 0.875rem;
 }
 
-.primary,
-.secondary {
-    border: var(--control-border-width) solid var(--border);
-    border-radius: var(--control-radius);
-    font: inherit;
-    padding: var(--control-padding);
-}
+@media (max-width: 40rem) {
+    .body {
+        flex-direction: column;
+    }
 
-.primary {
-    background: var(--accent);
-    color: var(--accent-contrast);
-}
-
-.secondary {
-    background: var(--surface);
-    color: var(--text);
+    .nav {
+        border-block-end: var(--control-border-width) solid var(--stroke-soft);
+        border-inline-end: 0;
+        flex-direction: row;
+        flex-wrap: wrap;
+        inline-size: auto;
+    }
 }

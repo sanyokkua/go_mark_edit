@@ -253,9 +253,15 @@ export default tseslint.config(
         files: [
             'frontend/src/ui/primitives/Button/**/*.{ts,tsx}',
             'frontend/src/ui/primitives/ToolButton/**/*.{ts,tsx}',
+            'frontend/src/ui/primitives/Switch/**/*.{ts,tsx}',
             'frontend/src/ui/components/MenuItem/**/*.{ts,tsx}',
             'frontend/src/ui/components/TabBar/**/*.{ts,tsx}',
         ],
+        rules: { 'no-restricted-syntax': 'off' },
+    },
+    {
+        // The Settings dialog's section list is a vertical tablist of its own, not a document tab strip.
+        files: ['frontend/src/ui/widgets/dialogs/SettingsSectionNav.tsx'],
         rules: { 'no-restricted-syntax': 'off' },
     },
     {

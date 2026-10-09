@@ -302,3 +302,22 @@ describe('Markdown menu without a shown editor', () => {
         }
     });
 });
+
+it('opens the Settings dialog, not the popup, for Ctrl+, while the Settings button still opens the popup', () => {
+    const onOpenAppearance = jest.fn();
+    render(
+        <Menubar
+            modalOpen={false}
+            onAbout={jest.fn()}
+            settingsMenuProps={{ ...settingsMenuProps, onOpenAppearance }}
+        />,
+    );
+
+    fireEvent.keyDown(window, { key: ',', ctrlKey: true });
+    expect(onOpenAppearance).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole('menu', { name: 'Settings menu' })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Settings' }));
+    expect(screen.getByRole('menu', { name: 'Settings menu' })).toBeVisible();
+    expect(onOpenAppearance).toHaveBeenCalledTimes(1);
+});
