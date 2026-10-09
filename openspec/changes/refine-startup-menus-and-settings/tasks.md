@@ -173,15 +173,15 @@ and squash-merge it back.
     - Independent of tasks 1 and 2.
     - Design: Decision 11.
     - Work:
-        - `ui/styles/tokens.css` Glass light and dark blocks (`:336-400`): `--floating-surface: var(--elevated)` and
-          `--floating-backdrop-filter: var(--blur)`.
+        - `ui/styles/tokens.css` Glass light and dark blocks (`:336-400`): `--floating-surface` (white / `rgb(28, 30, 54)` at 0.5
+          alpha) and `--floating-backdrop-filter: var(--blur)`.
         - `:root` (`:60`): `--overlay: rgba(6, 8, 16, 0.42)` and a new `--overlay-backdrop-filter: blur(3px)`.
         - `ui/components/ModalShell/ModalShell.module.css`: the `.overlay` rule uses `backdrop-filter` and
           `-webkit-backdrop-filter` with that token.
     - Real-app check also covers the Reading mode overlays that share the tokens (tab bar, sidebar overlay, reading
       controls): their labels stay legible over dense text in Glass Light and Glass Dark.
     - Changes existing tests: `frontend/tests/e2e/floating-surfaces.test.ts:34-38,103` asserts the Glass values
-      (`rgba(255, 255, 255, 0.8)` / `rgba(28, 30, 54, 0.82)`, `blur(28px) saturate(1.5|1.6)`) and keeps its obscurity
+      (`rgba(255, 255, 255, 0.5)` / `rgba(28, 30, 54, 0.5)`, `blur(28px) saturate(1.5|1.6)`) and keeps its obscurity
       check (mean difference below 12).
     - Adds tests (e2e, `floating-surfaces.test.ts`):
         - the Settings popup and the Settings dialog in Glass Light and Glass Dark get the same translucency and

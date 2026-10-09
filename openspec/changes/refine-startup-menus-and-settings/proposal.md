@@ -17,7 +17,7 @@ The command and settings surfaces have also grown by accretion:
 - The Settings dialog is one long column that does not match the reference mockup
   (`.local_tmp_files/specification/mockups/gomarkedit-mockup.html`).
 - In Liquid Glass, menus and dialogs are close to opaque (0.88–0.90 alpha) where the mockup shows clearly translucent
-  surfaces (0.80–0.82 alpha, 28 px blur).
+  surfaces (0.50 alpha, 28 px blur).
 
 ## What Changes
 
@@ -83,8 +83,8 @@ The command and settings surfaces have also grown by accretion:
 **Liquid Glass surfaces**
 
 - Menus, popups and dialogs use the mockup's translucency and blur:
-    - Light: `rgba(255, 255, 255, 0.80)` with `blur(28px) saturate(150%)`.
-    - Dark: `rgba(28, 30, 54, 0.82)` with `blur(28px) saturate(160%)`.
+    - Light: `rgba(255, 255, 255, 0.50)` with `blur(28px) saturate(150%)`.
+    - Dark: `rgba(28, 30, 54, 0.50)` with `blur(28px) saturate(160%)`.
 - In every theme, the dialog backdrop is a `rgba(6, 8, 16, 0.42)` scrim with a 3 px blur.
 
 **Out of scope**

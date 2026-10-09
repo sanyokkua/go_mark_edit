@@ -4,18 +4,18 @@
 
 ### Requirement: Floating surface material
 
-The Liquid Glass theme SHALL render menus, popups and dialogs as translucent surfaces: in Light a background of white at 80% opacity with a 28-pixel backdrop blur and 150% saturation, and in Dark a background of `rgb(28, 30, 54)` at 82% opacity with a 28-pixel blur and 160% saturation. The Material and Minimal themes SHALL render them as opaque surfaces with no blur. Behind a dialog, every theme SHALL show a backdrop of `rgb(6, 8, 16)` at 42% opacity with a 3-pixel blur.
+The Liquid Glass theme SHALL render menus, popups and dialogs as translucent surfaces: in Light a background of white at 50% opacity with a 28-pixel backdrop blur and 150% saturation, and in Dark a background of `rgb(28, 30, 54)` at 50% opacity with a 28-pixel blur and 160% saturation. The Material and Minimal themes SHALL render them as opaque surfaces with no blur. Behind a dialog, every theme SHALL show a backdrop of `rgb(6, 8, 16)` at 42% opacity with a 3-pixel blur.
 
 #### Scenario: Glass popup
 
 - **WHEN** a menu is open in Liquid Glass Light
-- **THEN** its background is `rgba(255, 255, 255, 0.8)` and content behind the menu is blurred by 28 pixels and
+- **THEN** its background is `rgba(255, 255, 255, 0.5)` and content behind the menu is blurred by 28 pixels and
   visible through it
 
 #### Scenario: Glass dialog in Dark
 
 - **WHEN** the Settings dialog is open in Liquid Glass Dark
-- **THEN** its background is `rgba(28, 30, 54, 0.82)` with a 28-pixel backdrop blur and 160% saturation
+- **THEN** its background is `rgba(28, 30, 54, 0.5)` with a 28-pixel backdrop blur and 160% saturation
 
 #### Scenario: Material popup
 

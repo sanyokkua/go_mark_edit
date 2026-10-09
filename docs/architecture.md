@@ -389,7 +389,7 @@ All appearance values come from `frontend/src/ui/styles/tokens.css`. The three t
 values are selected on the document root. Widget stylesheets do not select themes and portalled
 surfaces inherit the root attributes.
 Popup and ModalShell share dedicated floating-surface background and backdrop-filter tokens.
-Liquid Glass floating surfaces reuse `--elevated` and `--blur` (white at 80% / `rgb(28, 30, 54)` at 82%, a
+Liquid Glass floating surfaces use a dedicated `--floating-surface` (white / `rgb(28, 30, 54)` at 50%) over `--blur` (a
 28-pixel blur with 150% / 160% saturation); these tokens do not change the application-wide blur or the solid
 Material and Minimal surfaces. Behind every dialog `ModalShell` paints the `--overlay` scrim
 (`rgb(6, 8, 16)` at 42%) with `--overlay-backdrop-filter` (a 3-pixel blur) in every theme.

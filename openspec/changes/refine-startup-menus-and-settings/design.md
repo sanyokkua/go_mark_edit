@@ -66,7 +66,7 @@ See `proposal.md` (Why) for the motivation. This section covers only the current
 - The Glass theme in `ui/styles/tokens.css:336-400` sets:
     - `--floating-surface` to 0.88 (light) / 0.90 (dark);
     - `--floating-backdrop-filter` to `blur(48px) saturate(180%)`.
-- The same block already defines the mockup values as `--elevated` (0.80 / 0.82) and `--blur` (`blur(28px)
+- The same block already defines `--elevated` (0.80 / 0.82) and `--blur` (`blur(28px)
 saturate(150%|160%)`).
 - The scrim is `--overlay: rgba(0,0,0,0.4)` (`:60`).
 
@@ -386,7 +386,9 @@ drift from the shortcuts dialog.
 **Choice:**
 
 - In both Glass blocks of `tokens.css`:
-    - `--floating-surface: var(--elevated)`;
+    - `--floating-surface`: white at 0.5 alpha (light) / `rgb(28, 30, 54)` at 0.5 alpha (dark), a dedicated value
+      because `--elevated` (0.80 / 0.82) is also the opaque-ish raised surface elsewhere and looked nearly opaque
+      over a dialog (user feedback on the built app);
     - `--floating-backdrop-filter: var(--blur)`.
 - In `:root`:
     - `--overlay: rgba(6, 8, 16, 0.42)`;
@@ -400,8 +402,8 @@ drift from the shortcuts dialog.
     - the reading controls (`ReadingControls.module.css:20`).
       They follow the same material by design. Task 3 checks their legibility in the real app.
 
-**Rejected alternative:** new Glass-only literal values. `--elevated` and `--blur` already hold the mockup values, and a
-second copy would drift.
+**Rejected alternative:** reusing `--elevated` (0.80 / 0.82). Verified in the real app, it reads as opaque over a
+dialog, so floating surfaces carry their own, more transparent alpha.
 
 ### 12. Show hidden folders outside a workspace (D23)
 
@@ -507,7 +509,7 @@ It becomes `docs/architecture.md` decision D23, because it changes what a persis
   Verify in WKWebView; WebView2 and WebKitGTK are covered by e2e only.
 - **[Behaviour change for existing users]** A user who relied on the sidebar staying hidden across restarts gets a
   visible sidebar when a folder opens. → This is the intended rule; Ctrl/Cmd+\ hides it for the session.
-- **[Translucency vs. legibility]** The 28 px blur at 80% opacity is lighter than today's 48 px at 88%, and it also
+- **[Translucency vs. legibility]** The 28 px blur at 50% opacity is lighter than today's 48 px at 88%, and it also
   reaches the Reading mode overlays. → The e2e obscurity check (mean difference below 12) stays as the guard, plus a
   real-app comparison with the mockup and a Reading mode check.
 - **[Formatting disabled in Preview]** Making editor-scoped actions unavailable without a visible editor also disables

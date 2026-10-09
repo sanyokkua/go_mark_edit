@@ -21,7 +21,7 @@ async function selectPalette(page: Page, themeLabel: string, modeLabel: string, 
     await page.keyboard.press('Escape');
 }
 
-const glassBackground = { light: 'rgba(255, 255, 255, 0.8)', dark: 'rgba(28, 30, 54, 0.82)' } as const;
+const glassBackground = { light: 'rgba(255, 255, 255, 0.5)', dark: 'rgba(28, 30, 54, 0.5)' } as const;
 const glassSaturation = { light: 'saturate(1.5)', dark: 'saturate(1.6)' } as const;
 
 async function expectFloatingSurface(target: Locator, glass: boolean, mode: 'light' | 'dark'): Promise<void> {

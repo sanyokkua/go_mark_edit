@@ -345,7 +345,7 @@
     --surface-3: rgba(255, 255, 255, 0.58);
     --elevated: rgba(255, 255, 255, 0.8);
     --floating-backdrop-filter: var(--blur);
-    --floating-surface: var(--elevated);
+    --floating-surface: rgba(255, 255, 255, 0.5);
     --stroke: rgba(70, 84, 140, 0.24);
     --stroke-soft: rgba(70, 84, 140, 0.15);
     --text: #1c2338;
@@ -378,7 +378,7 @@
     --surface-3: rgba(255, 255, 255, 0.16);
     --elevated: rgba(28, 30, 54, 0.82);
     --floating-backdrop-filter: var(--blur);
-    --floating-surface: var(--elevated);
+    --floating-surface: rgba(28, 30, 54, 0.5);
     --stroke: rgba(255, 255, 255, 0.18);
     --stroke-soft: rgba(255, 255, 255, 0.11);
     --text: #eaf0ff;
