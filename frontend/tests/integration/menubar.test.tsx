@@ -262,3 +262,43 @@ it.each([
         expect(trigger).toHaveFocus();
     },
 );
+
+describe('Markdown menu without a shown editor', () => {
+    const renderMenu = (props: { editorShown: boolean; withDocument: boolean }) => {
+        render(
+            <Menubar
+                modalOpen={false}
+                onAbout={jest.fn()}
+                settingsMenuProps={settingsMenuProps}
+                markdownMenuProps={{
+                    markdownSettingsLoaded: true,
+                    editorShown: props.editorShown,
+                    projectedState: props.withDocument
+                        ? { activeDocumentId: 'doc', documents: { doc: { capability: 'writable' } } }
+                        : undefined,
+                    slot: { state: 'idle' },
+                    onExecute: jest.fn(),
+                }}
+            />,
+        );
+        fireEvent.click(screen.getByRole('button', { name: 'Markdown' }));
+        return screen.getByRole('menu', { name: 'Markdown' });
+    };
+
+    it('disables every item when no document is open', () => {
+        const menu = renderMenu({ editorShown: false, withDocument: false });
+        const items = Array.from(menu.querySelectorAll<HTMLElement>('[data-action-id]'));
+        expect(items.length).toBeGreaterThan(0);
+        for (const item of items) expect(item).toBeDisabled();
+    });
+
+    it('disables the formatting items but keeps Format, Compact and Lint in the Preview arrangement', () => {
+        const menu = renderMenu({ editorShown: false, withDocument: true });
+        for (const id of ['bold', 'italic', 'heading-1', 'bullet-list', 'quote', 'link', 'table']) {
+            expect(menu.querySelector(`[data-action-id="${id}"]`)).toBeDisabled();
+        }
+        for (const id of ['format', 'compact', 'lint']) {
+            expect(menu.querySelector(`[data-action-id="${id}"]`)).toBeEnabled();
+        }
+    });
+});

@@ -274,7 +274,11 @@ any remaining count without truncating the status total.
 
 The action registry exposes Format, Compact and Lint on the Markdown menu, the editor context menu and
 editor-scoped shortcuts; the toolbar shows only Format. Its availability check distinguishes loading settings,
-no document, read-only Format/Compact and a busy operation slot; read-only Lint remains available.
+no document, read-only Format/Compact and a busy operation slot; read-only Lint remains available. The editor
+formatting commands (Bold through Table) are also unavailable (`editor-hidden`, "Show the editor to use
+formatting.") while the active document's editor is not shown: callers pass `editorShown` from
+`useEditorShown` (a document is open, its editor pane is visible and Reading mode is off) to the Markdown
+menu, the toolbar and the shortcut executor, so all three follow the one registry rule.
 `editorActionExecutor.ts` invokes the single tidy command owner and maps its terminal outcomes
 into dispatcher results. The Markdown menu (`MarkdownMenu.tsx`) is built from the registry's
 `markdown-menu` surface: `groupedActionsForSurface` groups consecutive actions by their

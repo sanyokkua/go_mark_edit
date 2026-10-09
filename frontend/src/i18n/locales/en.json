@@ -416,6 +416,7 @@
     "action.unavailable": "This action is not available in this slice.",
     "action.settingsLoading": "Markdown settings are loading.",
     "action.noDocument": "No document is open.",
+    "action.noEditorShown": "Show the editor to use formatting.",
     "action.readOnly": "This document is read-only.",
     "action.slotBusy": "Another operation is in progress.",
     "preview.loading": "Loading Markdown settings…",

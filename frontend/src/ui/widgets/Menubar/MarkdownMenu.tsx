@@ -18,6 +18,7 @@ import Popup, { PopupGroupLabel, PopupSeparator, PopupTrigger } from '../../comp
 export interface MarkdownMenuProps {
     groups: readonly ActionGroup[];
     markdownSettingsLoaded: boolean;
+    editorShown?: boolean;
     projectedState?: ProjectedActionState;
     slot: OperationSlotState;
     onExecute?: (id: ActionId, snapshot: EditorActionSnapshot | undefined) => Promise<ActionResult> | void;
@@ -33,6 +34,7 @@ export interface MarkdownMenuProps {
 export default function MarkdownMenu({
     groups,
     markdownSettingsLoaded,
+    editorShown,
     projectedState,
     slot,
     onExecute,
@@ -91,6 +93,7 @@ export default function MarkdownMenu({
                             {group.actions.map((item) => {
                                 const availability = getActionAvailability(item.id, {
                                     markdownSettingsLoaded,
+                                    editorShown,
                                     projectedState,
                                     slotBusy: slot.state === 'running',
                                 });

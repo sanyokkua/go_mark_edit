@@ -1,8 +1,11 @@
 import { act, createEvent, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { Provider } from 'react-redux';
+import { showEditor } from '../support/showEditor';
 import { loadedMarkdownSettings } from '../support/loadedMarkdownSettings';
 import { hydrateSettings, resetSettingsProjection } from '../../src/logic/store/settingsSlice';
 
+import { documentFixture } from '../support/appFixtures';
+import { applyStatePatch } from '../../src/logic/store/appModelProjectionActions';
 import { store } from '../../src/logic/store';
 import { currentPlatform } from '../../src/logic/actions/shortcutRegistry';
 import EditorContextMenu from '../../src/ui/widgets/EditorContextMenu';
@@ -32,6 +35,10 @@ function rect(width: number, height = 30): DOMRect {
         toJSON: () => ({}),
     } as DOMRect;
 }
+
+beforeEach(() => {
+    showEditor();
+});
 
 it('gates marker controls across toolbar and context menu until settings load', () => {
     store.dispatch(resetSettingsProjection());
@@ -351,4 +358,32 @@ it('keeps action identity stable across every theme and mode', () => {
     }
 
     expect(new Set(signature.map((items) => items.join('\n'))).size).toBe(1);
+});
+
+it('disables the formatting buttons with the reason when the editor is not shown, keeping Format enabled', () => {
+    showEditor('preview-doc');
+    store.dispatch(
+        applyStatePatch({
+            revision: 2,
+            documents: {
+                upsert: {
+                    'preview-doc': {
+                        ...documentFixture('preview-doc'),
+                        view: { ...documentFixture('preview-doc').view, editorVisible: false, previewVisible: true },
+                    },
+                },
+            },
+        }),
+    );
+    renderToolbar(
+        <EditorSessionContext.Provider value={{ documentId: 'preview-doc', content: 'word' }}>
+            <FormattingToolbar arrangement="preview" onArrangementChange={jest.fn()} />
+        </EditorSessionContext.Provider>,
+    );
+    for (const name of ['Bold', 'Italic', 'Heading 1', 'Table']) {
+        const button = screen.getByRole('button', { name });
+        expect(button).toBeDisabled();
+        expect(button).toHaveAttribute('title', 'Show the editor to use formatting.');
+    }
+    expect(screen.getByRole('button', { name: 'Format' })).toBeEnabled();
 });

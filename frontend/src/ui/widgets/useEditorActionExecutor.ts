@@ -10,6 +10,7 @@ import { actionsForSurface, type ActionId } from '../../logic/actions/actionRegi
 import { currentPlatform, shortcutForKeyEvent } from '../../logic/actions/shortcutRegistry';
 import { formatActionIds } from '../../logic/format/formatting';
 import { useEditingProjection } from '../../logic/hooks/useEditingProjection';
+import { useEditorShown } from '../../logic/hooks/useEditorShown';
 import { useEditorSettings } from '../../logic/settings/editorSettings';
 import { useOperationSlot } from '../../logic/operations/useOperationSlot';
 
@@ -46,6 +47,7 @@ export function useEditorActionExecutor(
     const clipboard = useContext(EditorClipboardPortContext);
     const projectedState = useEditingProjection(activeBuffer?.documentId);
     const modalOpen = useModalState();
+    const editorShown = useEditorShown();
     const { markdownSettings } = useEditorSettings();
     const tidyCommands = useContext(TidyCommandsContext);
     const slot = useOperationSlot();
@@ -55,6 +57,7 @@ export function useEditorActionExecutor(
                 clipboard,
                 commands,
                 documentId: activeBuffer?.documentId ?? null,
+                editorShown,
                 markdownSettings,
                 modalOpen,
                 projectedState,
@@ -69,7 +72,17 @@ export function useEditorActionExecutor(
                               }),
                 writable: activeBuffer !== null,
             }),
-        [activeBuffer, clipboard, commands, markdownSettings, modalOpen, projectedState, slot.state, tidyCommands],
+        [
+            activeBuffer,
+            clipboard,
+            commands,
+            editorShown,
+            markdownSettings,
+            modalOpen,
+            projectedState,
+            slot.state,
+            tidyCommands,
+        ],
     );
     const execute = useCallback(
         (actionId: ActionId, snapshot?: EditorActionSnapshot) => executor.execute(actionId, snapshot),

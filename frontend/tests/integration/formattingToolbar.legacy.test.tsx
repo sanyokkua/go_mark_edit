@@ -3,6 +3,7 @@ import { resolve } from 'node:path';
 
 import { act, createEvent, fireEvent, render as rtlRender, screen, within } from '@testing-library/react';
 import { Provider } from 'react-redux';
+import { showEditor } from '../support/showEditor';
 import { loadedMarkdownSettings } from '../support/loadedMarkdownSettings';
 import { hydrateSettings } from '../../src/logic/store/settingsSlice';
 
@@ -30,6 +31,10 @@ const render = (ui: Parameters<typeof rtlRender>[0]) => {
     store.dispatch(hydrateSettings(loadedMarkdownSettings));
     return rtlRender(<Provider store={store}>{ui}</Provider>);
 };
+
+beforeEach(() => {
+    showEditor();
+});
 
 it('renders the complete formatting groups without owning the tab surface', () => {
     render(<FormattingToolbar arrangement="split" onArrangementChange={jest.fn()} />);

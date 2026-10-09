@@ -2,6 +2,7 @@ import { createContext, Fragment, useCallback, useContext } from 'react';
 
 import { t } from '../../../i18n';
 import { useEditingProjection } from '../../../logic/hooks/useEditingProjection';
+import { useEditorShown } from '../../../logic/hooks/useEditorShown';
 import {
     getAction,
     getActionAvailability,
@@ -73,6 +74,7 @@ function action(id: ActionEntry['id']): ActionEntry {
 const ToolbarProjectionContext = createContext<{
     projectedState?: ProjectedActionState;
     markdownSettingsLoaded: boolean;
+    editorShown?: boolean;
     slot: OperationSlotState;
     cancel?: () => void;
 }>({ markdownSettingsLoaded: true, slot: { state: 'idle' } });
@@ -83,11 +85,12 @@ interface ActionButtonProps {
 }
 
 const ActionButton: React.FC<ActionButtonProps> = ({ entry, onActivate }: ActionButtonProps): React.JSX.Element => {
-    const { projectedState, markdownSettingsLoaded, slot, cancel } = useContext(ToolbarProjectionContext);
+    const { projectedState, markdownSettingsLoaded, editorShown, slot, cancel } = useContext(ToolbarProjectionContext);
     const overflowMenu = useContext(OverflowMenuContext);
     const availability = getActionAvailability(entry.id, {
         projectedState,
         markdownSettingsLoaded,
+        editorShown,
         slotBusy: slot.state === 'running',
     });
     const unavailable = availability.kind === 'unavailable';
@@ -209,6 +212,7 @@ const FormattingToolbar: React.FC<FormattingToolbarProps> = ({
 }: FormattingToolbarProps): React.JSX.Element => {
     const activeBuffer = useContext(EditorSessionContext);
     const toolbarProjection = useEditingProjection(activeBuffer?.documentId);
+    const editorShown = useEditorShown();
     const { markdownSettings } = useEditorSettings();
     const slot = useOperationSlot();
     const tidyCommands = useContext(TidyCommandsContext);
@@ -226,6 +230,7 @@ const FormattingToolbar: React.FC<FormattingToolbarProps> = ({
             value={{
                 projectedState: toolbarProjection,
                 markdownSettingsLoaded: markdownSettings !== undefined,
+                editorShown,
                 slot,
                 cancel: tidyCommands === null ? undefined : () => tidyCommands.cancel(),
             }}

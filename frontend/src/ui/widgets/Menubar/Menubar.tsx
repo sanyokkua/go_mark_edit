@@ -107,7 +107,7 @@ export interface MenubarProps {
     settingsMenuProps: SettingsMenuProps;
     markdownMenuProps?: Pick<
         MarkdownMenuProps,
-        'markdownSettingsLoaded' | 'projectedState' | 'slot' | 'onExecute' | 'capture' | 'onCancel'
+        'markdownSettingsLoaded' | 'editorShown' | 'projectedState' | 'slot' | 'onExecute' | 'capture' | 'onCancel'
     >;
     toggleFullscreen?: () => Promise<boolean>;
     viewMenuProps?: ViewMenuProps;
@@ -684,6 +684,7 @@ const Menubar: React.FC<MenubarProps> = ({
                                 <MarkdownMenu
                                     groups={markdownGroups}
                                     markdownSettingsLoaded={markdownMenuProps?.markdownSettingsLoaded ?? false}
+                                    editorShown={markdownMenuProps?.editorShown}
                                     projectedState={markdownMenuProps?.projectedState ?? projectedState}
                                     slot={markdownMenuProps?.slot ?? { state: 'idle' }}
                                     capture={markdownMenuProps?.capture}
@@ -818,6 +819,7 @@ const Menubar: React.FC<MenubarProps> = ({
                                 <MarkdownMenu
                                     groups={markdownGroups}
                                     markdownSettingsLoaded={markdownMenuProps?.markdownSettingsLoaded ?? false}
+                                    editorShown={markdownMenuProps?.editorShown}
                                     projectedState={markdownMenuProps?.projectedState ?? projectedState}
                                     slot={markdownMenuProps?.slot ?? { state: 'idle' }}
                                     capture={markdownMenuProps?.capture}

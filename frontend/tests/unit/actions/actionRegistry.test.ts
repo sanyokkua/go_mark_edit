@@ -5,6 +5,7 @@ import {
     groupedActionsForSurface,
     getActionAvailability,
     getAction,
+    actionUnavailableLabelKey,
     type ActionId,
 } from '../../../src/logic/actions/actionRegistry';
 
@@ -444,4 +445,76 @@ it('groups the Markdown menu actions under their heading keys in registry order'
         ['menu.markdown.group.tidy', ['format', 'compact', 'lint']],
     ]);
     expect(getAction('table').surfaceLabelKeys?.['markdown-menu']).toBe('action.table.markdown-menu.label');
+});
+
+describe('editor formatting availability', () => {
+    const formattingIds = [
+        'bold',
+        'italic',
+        'strike',
+        'inline-code',
+        'heading-1',
+        'heading-2',
+        'heading-3',
+        'bullet-list',
+        'numbered-list',
+        'task-list',
+        'quote',
+        'link',
+        'table',
+    ] as const;
+    const writable = {
+        activeDocumentId: 'doc',
+        documents: { doc: { capability: 'writable' as const } },
+    };
+
+    it('is unavailable with the editor-hidden reason when the editor is not shown', () => {
+        for (const id of formattingIds) {
+            expect(
+                getActionAvailability(id, {
+                    markdownSettingsLoaded: true,
+                    projectedState: writable,
+                    editorShown: false,
+                }),
+            ).toEqual({
+                kind: 'unavailable',
+                reason: 'editor-hidden',
+            });
+            expect(getActionAvailability(id, { markdownSettingsLoaded: true, editorShown: false })).toEqual({
+                kind: 'unavailable',
+                reason: 'editor-hidden',
+            });
+        }
+    });
+
+    it('is unchanged when the editor is shown or the field is absent', () => {
+        for (const id of formattingIds) {
+            expect(
+                getActionAvailability(id, {
+                    markdownSettingsLoaded: true,
+                    projectedState: writable,
+                    editorShown: true,
+                }),
+            ).toEqual({ kind: 'available' });
+            expect(getActionAvailability(id, { markdownSettingsLoaded: true, projectedState: writable })).toEqual({
+                kind: 'available',
+            });
+        }
+    });
+
+    it('leaves Format, Compact, Lint, Find and Copy to their own rules', () => {
+        for (const id of ['format', 'compact', 'lint', 'find', 'copy'] as const) {
+            expect(
+                getActionAvailability(id, {
+                    markdownSettingsLoaded: true,
+                    projectedState: writable,
+                    editorShown: false,
+                }),
+            ).toEqual({ kind: 'available' });
+        }
+    });
+
+    it('states the reason "Show the editor to use formatting."', () => {
+        expect(t(actionUnavailableLabelKey('editor-hidden'))).toBe('Show the editor to use formatting.');
+    });
 });

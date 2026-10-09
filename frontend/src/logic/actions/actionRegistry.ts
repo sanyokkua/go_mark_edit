@@ -1,3 +1,5 @@
+import { formatActionIds } from '../format/formatting';
+
 export type ActionScope = 'editor' | 'document' | 'window' | 'application';
 export type ActionSurface =
     | 'file-menu'
@@ -18,6 +20,7 @@ export type NativeActionRole = 'clipboard' | 'none';
 export type ActionUnavailableReason =
     | 'no-document'
     | 'no-editor'
+    | 'editor-hidden'
     | 'deferred'
     | 'modal'
     | 'unsupported'
@@ -148,6 +151,8 @@ export interface ActionAvailabilityContext {
     readonly barrierBlocked?: boolean;
     readonly commandBarrier?: boolean;
     readonly documentId?: string;
+    /** Only `false` matters: the editor-scoped formatting commands need a shown editor. */
+    readonly editorShown?: boolean;
     readonly limitReached?: boolean;
     readonly modalOpen?: boolean;
     readonly slotBusy?: boolean;
@@ -582,6 +587,10 @@ export function getActionAvailability(
         return { kind: 'unavailable', reason: 'no-document' };
     }
 
+    if (context.editorShown === false && formatActionIds[id] !== undefined) {
+        return { kind: 'unavailable', reason: 'editor-hidden' };
+    }
+
     if (id === 'save' || id === 'save-as') {
         if (context.writable === false) {
             return { kind: 'unavailable', reason: 'no-document' };
@@ -718,6 +727,8 @@ export function actionUnavailableLabelKey(reason: ActionUnavailableReason): stri
             return 'action.settingsLoading';
         case 'no-document':
             return 'action.noDocument';
+        case 'editor-hidden':
+            return 'action.noEditorShown';
         case 'read-only':
             return 'action.readOnly';
         case 'slot-busy':

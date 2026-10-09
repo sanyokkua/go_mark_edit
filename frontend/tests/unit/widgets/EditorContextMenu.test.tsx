@@ -1,5 +1,6 @@
 import { fireEvent, render as rtlRender, screen, waitFor } from '@testing-library/react';
 import { Provider } from 'react-redux';
+import { showEditor } from '../../support/showEditor';
 
 import { getAction } from '../../../src/logic/actions/actionRegistry';
 import { currentPlatform, formatShortcut } from '../../../src/logic/actions/shortcutRegistry';
@@ -12,6 +13,10 @@ import { EditorClipboardPortContext } from '../../../src/ui/widgets/useEditorAct
 import type { ClipboardPort } from '../../../src/logic/adapter';
 
 const render = (ui: Parameters<typeof rtlRender>[0]) => rtlRender(<Provider store={store}>{ui}</Provider>);
+
+beforeEach(() => {
+    showEditor();
+});
 
 it('derives the exact context-menu order and surface-specific inventory', () => {
     render(

@@ -252,7 +252,7 @@ and squash-merge it back.
 
 ## 5. Formatting unavailable without a shown editor
 
-- [ ] 5.1 Make the editor formatting commands (Bold through Table) unavailable, with the reason "Show the editor to use
+- [x] 5.1 Make the editor formatting commands (Bold through Table) unavailable, with the reason "Show the editor to use
       formatting.", while the active document's editor is not shown, so that the Markdown menu, the toolbar buttons and
       the keyboard shortcuts all follow the same rule. Verify that the named tests pass, `scripts/verify` is green, and
       in the real app:

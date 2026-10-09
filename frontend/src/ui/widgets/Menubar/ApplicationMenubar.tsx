@@ -3,6 +3,7 @@ import { useContext, useMemo } from 'react';
 import { t } from '../../../i18n';
 import { setEditorPaneVisible, setPreviewPaneVisible, setViewArrangement } from '../../../logic/store/docViewCommands';
 import { useAppDispatch, useAppSelector } from '../../../logic/store';
+import { useEditorShown } from '../../../logic/hooks/useEditorShown';
 import { toggleReading, toggleReadingSidebar } from '../../../logic/store/readingSlice';
 import { notifyError } from '../../../logic/store/notificationsSlice';
 import { reportClassifiedError } from '../../../logic/store/classifiedNotification';
@@ -65,6 +66,7 @@ export default function ApplicationMenubar({
     const workspaceVisible = useAppSelector((state) => state.ui.layout.sidebarVisible ?? false);
     const workspaceOpen = useAppSelector((state) => state.workspace.snapshot !== null);
     const reading = useAppSelector((state) => state.reading.active);
+    const editorShown = useEditorShown();
     const minimumWindow = useMinimumWindow();
     const readingSidebarAvailable = workspaceOpen && !minimumWindow;
     const tabSetRevision = useAppSelector((state) => state.documents.tabSetRevision);
@@ -111,6 +113,7 @@ export default function ApplicationMenubar({
             documentId={menuState.documentId}
             markdownMenuProps={{
                 markdownSettingsLoaded: editorSettings.markdownSettings !== undefined,
+                editorShown,
                 slot,
                 capture: editorActions.capture,
                 onExecute: editorActions.execute,

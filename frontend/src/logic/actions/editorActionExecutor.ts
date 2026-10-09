@@ -18,6 +18,7 @@ export interface EditorActionExecutorContext {
         headingStyle: string;
     };
     modalOpen: boolean;
+    editorShown?: boolean;
     projectedState?: ProjectedActionState;
     writable: boolean;
     slotBusy?: boolean;
@@ -240,6 +241,7 @@ export function createEditorActionExecutor(context: EditorActionExecutorContext)
                               selection: snapshot.selection,
                           }),
             modalOpen: context.modalOpen,
+            editorShown: context.editorShown,
             markdownSettingsLoaded: context.markdownSettings !== undefined,
             projectedState: context.projectedState,
             slotBusy: context.slotBusy,
