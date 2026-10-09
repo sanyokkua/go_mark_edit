@@ -297,3 +297,36 @@ it('keeps the document unchanged when the native clipboard rejects Cut or Paste'
     expect(pasteCommand.replaceRange).not.toHaveBeenCalled();
     expect(pasteCommand.focus).not.toHaveBeenCalled();
 });
+
+it('hands the table action to the Insert table dialog instead of editing or refocusing', async () => {
+    const command = documentCommands({ start: { lineNumber: 1, column: 1 }, end: { lineNumber: 1, column: 1 } });
+    const requestTable = jest.fn();
+    const base = executorContext(command.commands, { readText: async () => '', writeText: async () => true });
+    const executor = createEditorActionExecutor({
+        ...base,
+        projectedState: { activeDocumentId: 'doc-1', documents: { 'doc-1': { capability: 'writable' } } },
+        requestTable,
+    });
+
+    await expect(executor.execute('table')).resolves.toMatchObject({ status: 'committed' });
+    expect(requestTable).toHaveBeenCalledWith(expect.objectContaining({ commands: command.commands }));
+    expect(command.replaceRange).not.toHaveBeenCalled();
+    expect(command.focus).not.toHaveBeenCalled();
+
+    requestTable.mockClear();
+    const readOnly = createEditorActionExecutor({
+        ...base,
+        writable: false,
+        projectedState: { activeDocumentId: 'doc-1', documents: { 'doc-1': { capability: 'unsafe-read-only' } } },
+        requestTable,
+    });
+    await expect(readOnly.execute('table')).resolves.toMatchObject({ status: 'unavailable' });
+    const modal = createEditorActionExecutor({
+        ...base,
+        modalOpen: true,
+        projectedState: { activeDocumentId: 'doc-1', documents: { 'doc-1': { capability: 'writable' } } },
+        requestTable,
+    });
+    await expect(modal.execute('table')).resolves.toMatchObject({ status: 'unavailable' });
+    expect(requestTable).not.toHaveBeenCalled();
+});

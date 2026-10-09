@@ -384,7 +384,7 @@ and squash-merge it back.
 
 ## 8. Insert table dialog
 
-- [ ] 8.1 Make the table action open an "Insert table" dialog (Columns 1–20, Rows 1–100, both defaulting to 3) that
+- [x] 8.1 Make the table action open an "Insert table" dialog (Columns 1–20, Rows 1–100, both defaulting to 3) that
       inserts a table of the chosen size and returns focus to the editor. Verify that the named tests pass,
       `scripts/verify` is green, and in the real app Cmd+Shift+T, the toolbar Table button and the Markdown menu item
       each open the dialog, insert a 4 by 2 table and leave "Header 1" selected in a focused editor.

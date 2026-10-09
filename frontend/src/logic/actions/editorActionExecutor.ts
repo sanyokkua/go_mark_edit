@@ -23,6 +23,8 @@ export interface EditorActionExecutorContext {
     writable: boolean;
     slotBusy?: boolean;
     invokeTidy?: (op: TidyOp, snapshot: EditorActionSnapshot) => Promise<TidyCommandOutcome>;
+    /** Opens the Insert table dialog; the dialog itself runs the edit. */
+    requestTable?: (snapshot: EditorActionSnapshot) => void;
 }
 
 /** A popup snapshot remains tied to the Monaco session that opened it. */
@@ -167,7 +169,7 @@ async function runClipboardAction(
     }
 }
 
-function capturedSelectionCommands(
+export function capturedSelectionCommands(
     commands: DocumentCommandAPI | null,
     selection: EditorSelection | null,
 ): DocumentCommandAPI | null {
@@ -183,6 +185,15 @@ function capturedSelectionCommands(
 
 function focusAfterSuccess(commands: DocumentCommandAPI | null): void {
     commands?.focus();
+}
+
+function runTableRequest(
+    request: EditorActionExecutorContext['requestTable'],
+    snapshot: EditorActionSnapshot,
+): EditorActionInvocation {
+    if (request === undefined || snapshot.commands === null) return unavailableClipboard();
+    request(snapshot);
+    return { status: 'committed' };
 }
 
 function tidyInvocation(outcome: TidyCommandOutcome): EditorActionInvocation {
@@ -227,19 +238,21 @@ export function createEditorActionExecutor(context: EditorActionExecutorContext)
                     ? context.invokeTidy === undefined || snapshot.commands === null || snapshot.documentId === null
                         ? Promise.resolve(unavailableClipboard())
                         : context.invokeTidy(actionId as TidyOp, snapshot).then(tidyInvocation)
-                    : actionId === 'find' || actionId === 'replace'
-                      ? runSearchAction(actionId, snapshot.commands)
-                      : clipboardActionIds.has(actionId)
-                        ? runClipboardAction(actionId, snapshot.commands, snapshot.selection, context.clipboard)
-                        : runFormatAction({
-                              actionId,
-                              commands: capturedSelectionCommands(snapshot.commands, snapshot.selection),
-                              markers:
-                                  context.markdownSettings === undefined
-                                      ? undefined
-                                      : formatMarkers(context.markdownSettings),
-                              selection: snapshot.selection,
-                          }),
+                    : actionId === 'table'
+                      ? runTableRequest(context.requestTable, snapshot)
+                      : actionId === 'find' || actionId === 'replace'
+                        ? runSearchAction(actionId, snapshot.commands)
+                        : clipboardActionIds.has(actionId)
+                          ? runClipboardAction(actionId, snapshot.commands, snapshot.selection, context.clipboard)
+                          : runFormatAction({
+                                actionId,
+                                commands: capturedSelectionCommands(snapshot.commands, snapshot.selection),
+                                markers:
+                                    context.markdownSettings === undefined
+                                        ? undefined
+                                        : formatMarkers(context.markdownSettings),
+                                selection: snapshot.selection,
+                            }),
             modalOpen: context.modalOpen,
             editorShown: context.editorShown,
             markdownSettingsLoaded: context.markdownSettings !== undefined,

@@ -64,6 +64,12 @@ export interface FormatRequest {
     source: string;
     selection: EditorSelection;
     markers?: MarkdownMarkerPreferences;
+    table?: TableSize;
+}
+
+export interface TableSize {
+    columns: number;
+    rows: number;
 }
 
 export interface FormatEdit {
@@ -77,6 +83,7 @@ export interface FormatRunnerRequest {
     commands: DocumentCommandAPI | null;
     markers?: MarkdownMarkerPreferences;
     selection?: EditorSelection | null;
+    table?: TableSize;
 }
 
 const emptySelection: EditorSelection = {
@@ -112,6 +119,7 @@ export function runFormatAction(request: FormatRunnerRequest): DocumentCommandRe
         markers: request.markers,
         selection: request.selection ?? emptySelection,
         source: '',
+        table: request.table,
     });
 }
 
@@ -750,9 +758,18 @@ function linkEdit(request: FormatRequest): FormatEdit {
     });
 }
 
-const tableSkeleton = '| Header 1 | Header 2 |\n| --- | --- |\n|  |  |';
+const defaultTableSize: TableSize = { columns: 3, rows: 3 };
+
+function buildTable({ columns, rows }: TableSize): string {
+    const row = (cell: (column: number) => string): string =>
+        `|${Array.from({ length: columns }, (_, column) => ` ${cell(column)} |`).join('')}`;
+    const lines = [row((column) => `Header ${column + 1}`), row(() => '---')];
+    for (let index = 0; index < rows; index += 1) lines.push(row(() => ''));
+    return lines.join('\n');
+}
 
 function tableEdit(request: FormatRequest): FormatEdit {
+    const table = buildTable(request.table ?? defaultTableSize);
     const { start } = selectedText(request);
     const source = request.source;
     const lineStart = (start === 0 ? -1 : source.lastIndexOf('\n', start - 1)) + 1;
@@ -773,7 +790,7 @@ function tableEdit(request: FormatRequest): FormatEdit {
                   lineNumber: insertionPosition.lineNumber + 2,
                   column: 3,
               };
-    return editForOffsets(source, insertion, insertion, prefix + tableSkeleton, {
+    return editForOffsets(source, insertion, insertion, prefix + table, {
         start: firstHeaderStart,
         end: {
             ...firstHeaderStart,

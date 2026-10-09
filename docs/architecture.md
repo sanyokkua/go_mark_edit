@@ -93,7 +93,7 @@ receive commands through props and contexts.
 | `frontend/src/ui/widgets/PreviewContextMenu.tsx`     | Preview and Reading mode context menu (Copy, Select all) built from the action registry.                                                          |
 | `frontend/src/ui/widgets/useReadingPresentation.ts`  | Reading mode Escape and focus handling: closes an open overlay first, then leaves Reading mode.                                                   |
 | `frontend/src/ui/widgets/ProblemsPanel/`             | Accessible presentation of active-document lint findings; activation returns through the guarded editor command seam.                             |
-| `frontend/src/ui/widgets/dialogs/`                   | Settings, About, Shortcuts, close, conflict and normalization dialogs.                                                                            |
+| `frontend/src/ui/widgets/dialogs/`                   | Settings, About, Shortcuts, Insert table, close, conflict and normalization dialogs.                                                              |
 | `frontend/src/ui/widgets/StartupFailure/`            | Per-step startup failure, Retry and Quit.                                                                                                         |
 
 ## Shared UI owners and consumer inventory
@@ -201,7 +201,7 @@ The committed `DocView.splitRatio` belongs to the backend and survives arrangeme
 
 ModalShell owns modal portal, backdrop, focus trap, Tab/Shift+Tab, Escape, opener restoration and
 dismissal policy. Its consumers are Settings, About, Shortcuts, Normalization, Close, External change,
-Recovery, Create workspace entry, Replace workspace, Multi-folder drop and Close folder dialogs.
+Recovery, Create workspace entry, Replace workspace, Multi-folder drop, Close folder and Insert table dialogs.
 
 ### Banner — `frontend/src/ui/primitives/Banner.tsx`
 
@@ -280,6 +280,11 @@ formatting commands (Bold through Table) are also unavailable (`editor-hidden`, 
 formatting.") while the active document's editor is not shown: callers pass `editorShown` from
 `useEditorShown` (a document is open, its editor pane is visible and Reading mode is off) to the Markdown
 menu, the toolbar and the shortcut executor, so all three follow the one registry rule.
+The `table` action does not edit directly: `editorActionExecutor.ts` hands its captured session snapshot to
+`requestTable` (`InsertTableRequestContext`, held by `useAppPresentation` and counted in `modalOpen`), which opens
+`InsertTableDialog`. The dialog validates Columns 1-20 and Rows 1-100, inserts through `runFormatAction` with the
+snapshot's selection as one edit, and then returns focus to the editor.
+
 `editorActionExecutor.ts` invokes the single tidy command owner and maps its terminal outcomes
 into dispatcher results. The Markdown menu (`MarkdownMenu.tsx`) is built from the registry's
 `markdown-menu` surface: `groupedActionsForSurface` groups consecutive actions by their

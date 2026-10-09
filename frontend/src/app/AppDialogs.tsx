@@ -5,6 +5,7 @@ import Button from '../ui/primitives/Button';
 import LiveRegion from '../ui/primitives/LiveRegion';
 import ModalShell from '../ui/components/ModalShell';
 import AboutDialog from '../ui/widgets/dialogs/AboutDialog';
+import InsertTableDialog from '../ui/widgets/dialogs/InsertTableDialog';
 import ShortcutsDialog from '../ui/widgets/dialogs/ShortcutsDialog';
 import NormalizationPrompt from '../ui/widgets/dialogs/NormalizationPrompt';
 import ExternalChangePrompt from '../ui/widgets/dialogs/ExternalChangePrompt';
@@ -12,6 +13,7 @@ import ClosePrompt from '../ui/widgets/dialogs/ClosePrompt';
 import CloseFolderPrompt from '../ui/widgets/dialogs/CloseFolderPrompt';
 import WorkspaceReplacePrompt from '../ui/widgets/dialogs/WorkspaceReplacePrompt';
 import FolderDropPrompt from '../ui/widgets/dialogs/FolderDropPrompt';
+import type { EditorActionSnapshot } from '../logic/actions/editorActionExecutor';
 import type { WorkflowPrompts } from './useWorkflowPrompts';
 import type { UseCommandsResult } from './useCommands';
 import type { DropHandler } from './useDropHandler';
@@ -25,6 +27,7 @@ export interface AppDialogsProps {
     version: string;
     about: DialogVisibility;
     shortcuts: DialogVisibility;
+    table: { readonly snapshot: EditorActionSnapshot | null; readonly close: () => void };
     prompts: WorkflowPrompts;
     folderCommands: Pick<
         UseCommandsResult,
@@ -40,6 +43,7 @@ export function AppDialogs({
     version,
     about,
     shortcuts,
+    table,
     prompts,
     folderCommands,
     drops,
@@ -52,6 +56,7 @@ export function AppDialogs({
         <>
             <AboutDialog open={ready && about.open} onOpenChange={about.onOpenChange} version={version} />
             <ShortcutsDialog open={ready && shortcuts.open} onOpenChange={shortcuts.onOpenChange} />
+            <InsertTableDialog open={ready} snapshot={table.snapshot} onClose={table.close} />
             {prompts.normalization !== null ? (
                 <NormalizationPrompt
                     key={prompts.normalization.id}

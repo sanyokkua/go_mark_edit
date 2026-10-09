@@ -16,6 +16,7 @@ import { useOperationSlot } from '../../logic/operations/useOperationSlot';
 
 import { useModalState } from './modalStateContext';
 import { DocumentCommandContext, EditorSessionContext } from './editorSession';
+import { InsertTableRequestContext } from './insertTableRequest';
 import { TidyCommandsContext } from './tidyCommandsContext';
 
 export const EditorClipboardPortContext = createContext<ClipboardPort>(clipboardPort);
@@ -51,6 +52,7 @@ export function useEditorActionExecutor(
     const { markdownSettings } = useEditorSettings();
     const tidyCommands = useContext(TidyCommandsContext);
     const slot = useOperationSlot();
+    const requestTable = useContext(InsertTableRequestContext);
     const executor = useMemo(
         (): EditorActionExecutor =>
             createEditorActionExecutor({
@@ -61,6 +63,7 @@ export function useEditorActionExecutor(
                 markdownSettings,
                 modalOpen,
                 projectedState,
+                requestTable,
                 slotBusy: slot.state === 'running',
                 invokeTidy:
                     tidyCommands === null
@@ -80,6 +83,7 @@ export function useEditorActionExecutor(
             markdownSettings,
             modalOpen,
             projectedState,
+            requestTable,
             slot.state,
             tidyCommands,
         ],

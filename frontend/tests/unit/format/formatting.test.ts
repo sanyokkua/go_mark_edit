@@ -268,16 +268,17 @@ it('edits an existing link instead of nesting and selects the empty-link URL', (
     });
 });
 
-it('inserts a two-column table at a block boundary without consuming source text', () => {
+it('inserts a default 3 by 3 table at a block boundary without consuming source text', () => {
+    const skeleton = '| Header 1 | Header 2 | Header 3 |\n| --- | --- | --- |\n|  |  |  |\n|  |  |  |\n|  |  |  |';
     const inline = formatMarkdown(request('table', 'A sentence continues here.', selection(1, 12)));
     expect(inline.range).toEqual({
         start: { lineNumber: 1, column: 27 },
         end: { lineNumber: 1, column: 27 },
     });
-    expect(inline.text).toBe('\n\n| Header 1 | Header 2 |\n| --- | --- |\n|  |  |');
+    expect(inline.text).toBe(`\n\n${skeleton}`);
 
     const blank = formatMarkdown(request('table', '\n', selection(1, 1)));
-    expect(blank.text).toBe('| Header 1 | Header 2 |\n| --- | --- |\n|  |  |');
+    expect(blank.text).toBe(skeleton);
     expect(blank.selection).toEqual({
         start: { lineNumber: 1, column: 3 },
         end: { lineNumber: 1, column: 11 },
@@ -343,8 +344,28 @@ it('applies quote, source-only link, and the empty GFM table skeleton', () => {
     expect(formatMarkdown(request('quote', 'alpha\nbeta', selection(1, 1, 2, 5))).text).toBe('> alpha\n> beta');
     expect(formatMarkdown(request('link', 'docs', selection(1, 1, 1, 5))).text).toBe('[docs](url)');
     expect(formatMarkdown(request('table', '', selection(1, 1))).text).toBe(
-        '| Header 1 | Header 2 |\n| --- | --- |\n|  |  |',
+        '| Header 1 | Header 2 | Header 3 |\n| --- | --- | --- |\n|  |  |  |\n|  |  |  |\n|  |  |  |',
     );
+});
+
+it('builds a table of the requested size and selects Header 1', () => {
+    const result = formatMarkdown(request('table', '', selection(1, 1), { table: { columns: 4, rows: 2 } }));
+    expect(result.text).toBe(
+        '| Header 1 | Header 2 | Header 3 | Header 4 |\n| --- | --- | --- | --- |\n|  |  |  |  |\n|  |  |  |  |',
+    );
+    expect(result.selection).toEqual({
+        start: { lineNumber: 1, column: 3 },
+        end: { lineNumber: 1, column: 11 },
+    });
+});
+
+it('separates a table from a non-blank line by exactly one blank line', () => {
+    const result = formatMarkdown(request('table', 'Intro', selection(1, 6), { table: { columns: 2, rows: 1 } }));
+    expect(result.text).toBe('\n\n| Header 1 | Header 2 |\n| --- | --- |\n|  |  |');
+    expect(result.selection).toEqual({
+        start: { lineNumber: 3, column: 3 },
+        end: { lineNumber: 3, column: 11 },
+    });
 });
 
 it('routes a bounded result through the existing document-command seam', () => {
