@@ -301,7 +301,7 @@ and squash-merge it back.
 
 ## 6. Bold Italic, Headings 4–6 and sequential numbering
 
-- [ ] 6.1 Add Bold Italic (Mod+Shift+B) and Heading 4–6 (Mod+4/5/6) to the registry, the Markdown menu, the shortcuts
+- [x] 6.1 Add Bold Italic (Mod+Shift+B) and Heading 4–6 (Mod+4/5/6) to the registry, the Markdown menu, the shortcuts
       dialog and the editor's shortcut handling. Make Numbered list number the selection 1..n, continuing a numbered item
       above it. Verify that the named tests pass, `scripts/verify` is green, and in the real app (WKWebView) Cmd+Shift+B,
       Cmd+4, Cmd+5, Cmd+6 and Cmd+Shift+7 produce the scenario outputs.

@@ -90,11 +90,15 @@ export type ActionId =
     | 'replace'
     | 'bold'
     | 'italic'
+    | 'bold-italic'
     | 'strike'
     | 'inline-code'
     | 'heading-1'
     | 'heading-2'
     | 'heading-3'
+    | 'heading-4'
+    | 'heading-5'
+    | 'heading-6'
     | 'bullet-list'
     | 'numbered-list'
     | 'task-list'
@@ -346,6 +350,10 @@ export const actionRegistry: readonly ActionEntry[] = Object.freeze([
         shortcut: 'Mod+I',
         surfaceOrder: { context: 5 },
     }),
+    entry('bold-italic', 'editor', ['markdown-menu', 'shortcuts'], {
+        surfaceGroupKeys: { 'markdown-menu': 'menu.markdown.group.text' },
+        shortcut: 'Mod+Shift+B',
+    }),
     entry('strike', 'editor', ['toolbar', 'markdown-menu', 'shortcuts'], {
         surfaceGroupKeys: { 'markdown-menu': 'menu.markdown.group.text' },
         shortcut: 'Mod+Shift+X',
@@ -365,6 +373,18 @@ export const actionRegistry: readonly ActionEntry[] = Object.freeze([
     entry('heading-3', 'editor', ['toolbar', 'overflow', 'markdown-menu', 'shortcuts'], {
         surfaceGroupKeys: { 'markdown-menu': 'menu.markdown.group.headings' },
         shortcut: 'Mod+3',
+    }),
+    entry('heading-4', 'editor', ['markdown-menu', 'shortcuts'], {
+        surfaceGroupKeys: { 'markdown-menu': 'menu.markdown.group.headings' },
+        shortcut: 'Mod+4',
+    }),
+    entry('heading-5', 'editor', ['markdown-menu', 'shortcuts'], {
+        surfaceGroupKeys: { 'markdown-menu': 'menu.markdown.group.headings' },
+        shortcut: 'Mod+5',
+    }),
+    entry('heading-6', 'editor', ['markdown-menu', 'shortcuts'], {
+        surfaceGroupKeys: { 'markdown-menu': 'menu.markdown.group.headings' },
+        shortcut: 'Mod+6',
     }),
     entry('bullet-list', 'editor', ['toolbar', 'overflow', 'markdown-menu', 'shortcuts'], {
         surfaceGroupKeys: { 'markdown-menu': 'menu.markdown.group.lists' },
@@ -505,6 +525,7 @@ const MARKDOWN_SETTINGS_ACTIONS: ReadonlySet<ActionId> = new Set([
     'compact',
     'lint',
     'italic',
+    'bold-italic',
     'bullet-list',
     'task-list',
 ]);

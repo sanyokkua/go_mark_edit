@@ -9,6 +9,8 @@ it('renders the complete registry-derived shortcuts catalogue', () => {
     expect(dialog).toHaveAttribute('aria-modal', 'true');
     expect(dialog).toHaveTextContent('Bold');
     expect(dialog).toHaveTextContent('Heading 1');
+    expect(dialog).toHaveTextContent('Bold italic');
+    expect(dialog).toHaveTextContent('Heading 6');
     expect(dialog).toHaveTextContent('Format');
     expect(dialog).toHaveTextContent(/⌘|Ctrl/);
     expect(dialog.querySelectorAll('kbd').length).toBeGreaterThan(5);
