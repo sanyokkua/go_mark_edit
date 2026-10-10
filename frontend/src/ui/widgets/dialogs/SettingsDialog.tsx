@@ -6,6 +6,7 @@ import AppearanceSection from './AppearanceSection';
 import EditorSection from './EditorSection';
 import ExportSection from './ExportSection';
 import MarkdownSection from './MarkdownSection';
+import WorkspaceSection from './WorkspaceSection';
 import SettingsSectionNav, { panelId, tabId } from './SettingsSectionNav';
 import type { SettingsDialogProps } from './settingsDialogTypes';
 import styles from './SettingsDialog.module.css';
@@ -23,6 +24,7 @@ const sections: readonly SettingsSection[] = [
     { Section: AppearanceSection, id: 'appearance', label: t('appearance.title') },
     { Section: EditorSection, id: 'editor', label: t('settings.menu.editor') },
     { Section: MarkdownSection, id: 'markdown', label: t('settings.markdown.title') },
+    { Section: WorkspaceSection, id: 'workspace', label: t('settings.section.workspace') },
     { Section: ExportSection, id: 'export', label: t('settings.section.export') },
 ];
 

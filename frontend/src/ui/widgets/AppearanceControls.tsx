@@ -1,8 +1,8 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 
 import { settingsAdapter } from '../../logic/adapter';
 import type { PdfAppearance, ReadingWidth } from '../../logic/adapter/settingsTypes';
-import { useAppDispatch } from '../../logic/store';
+import { useAppDispatch, useAppSelector } from '../../logic/store';
 import { readingWidthAcknowledged } from '../../logic/store/settingsSlice';
 import {
     applyThemeToRoot,
@@ -15,6 +15,7 @@ import { writeStartupThemeMirror } from '../../logic/theme/startupThemeMirror';
 import { createSettingsCommandOwner, defaultAppearanceSettings } from '../../logic/settings/settingsCommands';
 import { useEditorSettings } from '../../logic/settings/editorSettings';
 import SettingsDialog from './dialogs/SettingsDialog';
+import { WorkspaceTreeCommandsContext } from './WorkspaceTree/workspaceTreeCommands';
 import {
     AppearanceSettingsContext,
     useAppearanceSettings,
@@ -217,6 +218,8 @@ export const AppearanceControlsContent: React.FC<AppearanceControlsContentProps>
 }: AppearanceControlsContentProps) => {
     const controller = useAppearanceSettings();
     const editor = useEditorSettings();
+    const workspaceCommands = useContext(WorkspaceTreeCommandsContext);
+    const showHiddenFolders = useAppSelector((state) => state.ui.layout.showHiddenFolders);
     if (!visible) return null;
     return (
         <>
@@ -231,6 +234,7 @@ export const AppearanceControlsContent: React.FC<AppearanceControlsContentProps>
                 pdfAppearance={controller.appearance.pdfAppearance}
                 readingWidth={controller.appearance.readingWidth}
                 returnFocusTo={controller.returnFocusTo}
+                showHiddenFolders={showHiddenFolders}
                 theme={controller.appearance.theme}
                 onDefaultOpenModeChange={controller.onDefaultOpenModeChange}
                 onModeChange={controller.onModeChange}
@@ -246,6 +250,11 @@ export const AppearanceControlsContent: React.FC<AppearanceControlsContentProps>
                     void editor.updateMarkdown(patch).catch((): void => undefined);
                 }}
                 onReset={controller.onReset}
+                onShowHiddenFoldersChange={
+                    workspaceCommands === null
+                        ? undefined
+                        : (show): void => void workspaceCommands.onSetWorkspaceHiddenFolders(show)
+                }
                 onOpenChange={controller.onOpenChange}
                 onThemeChange={controller.onThemeChange}
             />

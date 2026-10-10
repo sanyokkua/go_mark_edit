@@ -338,6 +338,7 @@ func (service *AppModelService) RestoreUILayout(ctx context.Context) error {
 		LayoutWindowMaximized,
 		LayoutWorkspaceWidth,
 		LayoutArrangementBackup,
+		LayoutWorkspaceHiddenFolders,
 	} {
 		value, found, err := repository.Read(ctx, field)
 		if err != nil {
@@ -369,6 +370,10 @@ func (service *AppModelService) RestoreUILayout(ctx context.Context) error {
 		case LayoutArrangementBackup:
 			if arrangement, ok := value.Value.(string); ok && validArrangement(arrangement) {
 				restored.ViewArrangement = pointerTo(arrangement)
+			}
+		case LayoutWorkspaceHiddenFolders:
+			if show, ok := value.Value.(bool); ok {
+				restored.ShowHiddenFolders = pointerTo(show)
 			}
 		}
 	}
@@ -456,6 +461,8 @@ func (service *AppModelService) SetUILayout(ctx context.Context, layout apperr.U
 	if err := validateUILayout(layout); err != nil {
 		return err
 	}
+	// SetWorkspaceHiddenFolders is the only writer of the hidden folders preference.
+	layout.ShowHiddenFolders = nil
 	continuous := apperr.UILayout{
 		WindowWidth:  layout.WindowWidth,
 		WindowHeight: layout.WindowHeight,
@@ -956,6 +963,9 @@ func mergeUILayout(destination *apperr.UILayout, patch apperr.UILayout) {
 	}
 	if patch.AssistantWidth != nil {
 		destination.AssistantWidth = pointerTo(*patch.AssistantWidth)
+	}
+	if patch.ShowHiddenFolders != nil {
+		destination.ShowHiddenFolders = pointerTo(*patch.ShowHiddenFolders)
 	}
 }
 

@@ -231,6 +231,20 @@ it('hydrates backend-acknowledged native geometry without a browser-owned substi
     });
 });
 
+it('projects the hydrated and patched showHiddenFolders preference with no workspace open', async () => {
+    const state = appState(3);
+    state.snapshot.ui = { showHiddenFolders: false };
+    const adapter = createAdapter(async (): Promise<AppModelState> => state);
+
+    await expect(bootstrapAppModelProjection(adapter)).resolves.toMatchObject({ status: 'ready' });
+    expect(store.getState().ui.layout.showHiddenFolders).toBe(false);
+
+    adapter.emitPatch({ revision: 4, orderedDocumentIds: [], ui: { showHiddenFolders: true } });
+
+    expect(store.getState().ui.layout).toEqual({ showHiddenFolders: true });
+    expect(store.getState().workspace.snapshot).toBeNull();
+});
+
 it('routes async appmodel layout failures into one safe notification without changing projection', async () => {
     const state = appState(3);
     state.snapshot.ui = {

@@ -49,12 +49,13 @@ it('closes from the header Close button', () => {
     expect(onOpenChange).toHaveBeenCalledWith(false);
 });
 
-it('lists exactly Appearance, Editor, Markdown and Export in order', () => {
+it('lists exactly Appearance, Editor, Markdown, Workspace and Export in order', () => {
     renderDialog();
     expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual([
         'Appearance',
         'Editor',
         'Markdown',
+        'Workspace',
         'Export',
     ]);
 });
@@ -90,6 +91,8 @@ it('moves between sections with the arrow, Home and End keys and shows the secti
     fireEvent.keyDown(screen.getByRole('tab', { name: 'Markdown' }), { key: 'End' });
     expect(screen.getByRole('tab', { name: 'Export' })).toHaveFocus();
     fireEvent.keyDown(screen.getByRole('tab', { name: 'Export' }), { key: 'ArrowUp' });
+    expect(screen.getByRole('tab', { name: 'Workspace' })).toHaveFocus();
+    fireEvent.keyDown(screen.getByRole('tab', { name: 'Workspace' }), { key: 'ArrowLeft' });
     expect(screen.getByRole('tab', { name: 'Markdown' })).toHaveFocus();
     fireEvent.keyDown(screen.getByRole('tab', { name: 'Markdown' }), { key: 'ArrowLeft' });
     fireEvent.keyDown(screen.getByRole('tab', { name: 'Editor' }), { key: 'Home' });
@@ -99,7 +102,7 @@ it('moves between sections with the arrow, Home and End keys and shows the secti
 it('keeps the section list as one tab stop', () => {
     renderDialog();
     const tabs = screen.getAllByRole('tab');
-    expect(tabs.map((tab) => tab.getAttribute('tabindex'))).toEqual(['0', '-1', '-1', '-1']);
+    expect(tabs.map((tab) => tab.getAttribute('tabindex'))).toEqual(['0', '-1', '-1', '-1', '-1']);
 });
 
 it('shows the Editor switches and Font size drop-down with the stored values and writes changes', () => {
@@ -295,4 +298,38 @@ it('disables the PDF appearance group when no change handler is supplied', () =>
     for (const radio of within(group).getAllByRole('radio')) {
         expect(radio).toBeDisabled();
     }
+});
+
+it('shows the Show hidden folders switch in the Workspace section and writes its change', () => {
+    const onShowHiddenFoldersChange = jest.fn();
+    render(
+        <SettingsDialog
+            mode="auto"
+            onModeChange={jest.fn()}
+            onOpenChange={jest.fn()}
+            onReset={jest.fn()}
+            onShowHiddenFoldersChange={onShowHiddenFoldersChange}
+            onThemeChange={jest.fn()}
+            open
+            showHiddenFolders
+            theme="material"
+        />,
+    );
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Workspace' }));
+    const panel = screen.getByRole('tabpanel', { name: 'Workspace' });
+    const toggle = within(panel).getByRole('switch', { name: 'Show hidden folders' });
+    expect(toggle).toBeChecked();
+    expect(toggle).toHaveAccessibleDescription(/folders whose names start with a dot/iu);
+    fireEvent.click(toggle);
+    expect(onShowHiddenFoldersChange).toHaveBeenCalledWith(false);
+});
+
+it('shows Show hidden folders off and disabled when no value or handler is supplied', () => {
+    renderDialog();
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Workspace' }));
+    const toggle = screen.getByRole('switch', { name: 'Show hidden folders' });
+    expect(toggle).not.toBeChecked();
+    expect(toggle).toBeDisabled();
 });

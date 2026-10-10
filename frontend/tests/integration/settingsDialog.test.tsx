@@ -2,9 +2,15 @@ import { act, fireEvent, render as rtlRender, screen, waitFor, within } from '@t
 import { Provider } from 'react-redux';
 
 import { settingsAdapter } from '../../src/logic/adapter';
-import { store } from '../../src/logic/store';
+import { store, useAppSelector } from '../../src/logic/store';
 import { hydrateSettings, resetSettingsProjection } from '../../src/logic/store/settingsSlice';
 import { resetNotifications } from '../../src/logic/store/notificationsSlice';
+import { applyStatePatch } from '../../src/logic/store/appModelProjectionActions';
+import {
+    WorkspaceTreeCommandsContext,
+    type WorkspaceTreeCommands,
+} from '../../src/ui/widgets/WorkspaceTree/workspaceTreeCommands';
+import HiddenFoldersToggle from '../../src/ui/widgets/WorkspaceTree/HiddenFoldersToggle';
 import AppearanceControls from '../../src/ui/widgets/AppearanceControls';
 import { useAppearanceSettings } from '../../src/ui/widgets/appearanceSettingsContext';
 import { loadedMarkdownSettings } from '../support/loadedMarkdownSettings';
@@ -61,7 +67,7 @@ afterEach((): void => {
     Object.defineProperty(window, 'innerWidth', { configurable: true, value: originalWidth });
 });
 
-it('opens on Appearance with exactly the four sections in order', () => {
+it('opens on Appearance with exactly the five sections in order', () => {
     renderHarness();
     const dialog = openDialog();
 
@@ -69,7 +75,7 @@ it('opens on Appearance with exactly the four sections in order', () => {
         within(dialog)
             .getAllByRole('tab')
             .map((tab) => tab.textContent),
-    ).toEqual(['Appearance', 'Editor', 'Markdown', 'Export']);
+    ).toEqual(['Appearance', 'Editor', 'Markdown', 'Workspace', 'Export']);
     expect(within(dialog).getByRole('tab', { name: 'Appearance' })).toHaveAttribute('aria-selected', 'true');
     expect(within(dialog).getByRole('tabpanel', { name: 'Appearance' })).toBeVisible();
 });
@@ -189,4 +195,104 @@ it.each([
 
     await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Settings' })).not.toBeInTheDocument());
     expect(opener).toHaveFocus();
+});
+
+describe('Show hidden folders shared with the folder tree toggle', () => {
+    let revision = 100;
+
+    // Stands in for the backend: it publishes the preference in the UI layout and, when a folder is open, in the workspace.
+    const commands: WorkspaceTreeCommands = {
+        onOpenFolder: (): void => undefined,
+        onCloseFolder: (): void => undefined,
+        onRefreshWorkspace: (): void => undefined,
+        onOpenTreeFile: async (): Promise<undefined> => undefined,
+        onSetWorkspaceHiddenFolders: (show: boolean): void => {
+            revision += 1;
+            const snapshot = store.getState().workspace.snapshot;
+            store.dispatch(
+                applyStatePatch({
+                    revision,
+                    orderedDocumentIds: [],
+                    ui: { showHiddenFolders: show },
+                    ...(snapshot === null ? {} : { workspace: { ...snapshot, showHiddenFolders: show } }),
+                }),
+            );
+        },
+    };
+
+    function TreeToggle(): React.JSX.Element {
+        const pressed = useAppSelector((state) => state.workspace.snapshot?.showHiddenFolders ?? false);
+        return <HiddenFoldersToggle pressed={pressed} onChange={commands.onSetWorkspaceHiddenFolders} />;
+    }
+
+    function renderShared(): void {
+        rtlRender(
+            <Provider store={store}>
+                <WorkspaceTreeCommandsContext.Provider value={commands}>
+                    <AppearanceControls>
+                        <Opener />
+                        <TreeToggle />
+                    </AppearanceControls>
+                </WorkspaceTreeCommandsContext.Provider>
+            </Provider>,
+        );
+    }
+
+    function openWorkspaceSection(): HTMLElement {
+        const dialog = openDialog();
+        fireEvent.click(within(dialog).getByRole('tab', { name: 'Workspace' }));
+        return within(dialog).getByRole('tabpanel', { name: 'Workspace' });
+    }
+
+    it('turns the preference on with no folder open and reflects a patch published elsewhere', async () => {
+        revision += 1;
+        store.dispatch(applyStatePatch({ revision, orderedDocumentIds: [], ui: { showHiddenFolders: false } }));
+        renderShared();
+        const toggle = within(openWorkspaceSection()).getByRole('switch', { name: 'Show hidden folders' });
+        expect(toggle).toBeEnabled();
+        expect(toggle).toHaveAttribute('aria-checked', 'false');
+
+        fireEvent.click(toggle);
+        await waitFor(() => expect(toggle).toHaveAttribute('aria-checked', 'true'));
+        expect(store.getState().ui.layout.showHiddenFolders).toBe(true);
+
+        act((): void => {
+            revision += 1;
+            store.dispatch(applyStatePatch({ revision, orderedDocumentIds: [], ui: { showHiddenFolders: false } }));
+        });
+        expect(toggle).toHaveAttribute('aria-checked', 'false');
+    });
+
+    it('keeps the tree toggle and the dialog switch in step in both directions', async () => {
+        revision += 1;
+        store.dispatch(
+            applyStatePatch({
+                revision,
+                orderedDocumentIds: [],
+                ui: { showHiddenFolders: false },
+                workspace: {
+                    rootPath: '/notes',
+                    rootName: 'notes',
+                    root: { path: '/notes', name: 'notes', isDir: true, unreadable: false },
+                    totalEntries: 1,
+                    truncated: false,
+                    unavailable: false,
+                    filterSuffixes: [],
+                    showHiddenFolders: false,
+                },
+            }),
+        );
+        renderShared();
+        const treeToggle = screen.getByRole('button', { name: 'Show hidden folders' });
+        expect(treeToggle).toHaveAttribute('aria-pressed', 'false');
+        const dialogSwitch = within(openWorkspaceSection()).getByRole('switch', { name: 'Show hidden folders' });
+
+        fireEvent.click(dialogSwitch);
+        await waitFor(() => expect(treeToggle).toHaveAttribute('aria-pressed', 'true'));
+        expect(dialogSwitch).toHaveAttribute('aria-checked', 'true');
+
+        fireEvent.click(treeToggle);
+        await waitFor(() => expect(dialogSwitch).toHaveAttribute('aria-checked', 'false'));
+        expect(treeToggle).toHaveAttribute('aria-pressed', 'false');
+    });
 });

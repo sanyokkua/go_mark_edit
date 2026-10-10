@@ -504,7 +504,7 @@ and squash-merge it back.
 
 ## 10. Show hidden folders in the Settings dialog
 
-- [ ] 10.1 Add a Workspace section with a Show hidden folders switch to the Settings dialog, sharing the folder tree
+- [x] 10.1 Add a Workspace section with a Show hidden folders switch to the Settings dialog, sharing the folder tree
       toggle's preference, and let the preference be changed while no folder is open. Verify that the named tests pass,
       `scripts/verify` is green, and in the real app:
     - with no folder open, turning Show hidden folders on in the dialog and then opening a folder containing `.notes/`

@@ -24,10 +24,12 @@ export interface SettingsDialogProps {
     onPdfAppearanceChange?: (pdfAppearance: PdfAppearance) => void;
     onReadingWidthChange?: (readingWidth: ReadingWidth) => void;
     onReset: () => void;
+    onShowHiddenFoldersChange?: (show: boolean) => void;
     onThemeChange: (theme: Theme) => void;
     open: boolean;
     pdfAppearance?: PdfAppearance;
     readingWidth?: ReadingWidth;
     returnFocusTo?: HTMLElement | null;
+    showHiddenFolders?: boolean;
     theme: Theme;
 }

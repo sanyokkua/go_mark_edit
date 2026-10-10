@@ -177,6 +177,8 @@
     "settings.editor.scrollSync": "Scroll sync",
     "settings.section.list": "Settings sections",
     "settings.section.export": "Export",
+    "settings.section.workspace": "Workspace",
+    "settings.workspace.showHiddenFolders.description": "Show folders whose names start with a dot in the folder tree.",
     "appearance.title": "Appearance",
     "appearance.theme.label": "Theme",
     "appearance.theme.glass": "Liquid Glass",

@@ -215,13 +215,15 @@ drop-down with the shared field look. Their consumers are the Settings dialog's 
 
 ### Settings dialog — `frontend/src/ui/widgets/dialogs/`
 
-`SettingsDialog` owns the dialog shell and a section array (Appearance, Editor, Markdown, Export); it mounts
+`SettingsDialog` owns the dialog shell and a section array (Appearance, Editor, Markdown, Workspace, Export); it mounts
 only while open so every opening starts on Appearance. `SettingsSectionNav` is the vertical `tablist` (one
 tab stop, roving `tabindex`, Up/Left/Down/Right/Home/End move and show a section at once), the pane is its
 `tabpanel` (an ESLint exemption lets this one file own the tab roles and its buttons, as TabBar does), and `SettingsRow` lays out label, description and control. Each section component receives the
 dialog props and calls the existing writers: `AppearanceSettingsProvider` for theme, mode, default open mode,
 reading width and PDF appearance, and `useEditorSettings` (`update`, `updateFile`, `updateMarkdown`) for the
-editor, autosave and Markdown settings, wired in `AppearanceControls.tsx`. Ctrl/Cmd+, (the `settings` action)
+editor, autosave and Markdown settings, and `onSetWorkspaceHiddenFolders` from `WorkspaceTreeCommandsContext`
+(the tree toggle's writer) for Show hidden folders, read from `state.ui.layout.showHiddenFolders`; all wired in
+`AppearanceControls.tsx`. Ctrl/Cmd+, (the `settings` action)
 opens the dialog through `onOpenAppearance`; the Settings button and the narrow overflow row still open the
 Settings popup, whose All settings… row opens the dialog. At 40rem or narrower the section list sits above the
 rows.
@@ -761,7 +763,8 @@ rewrite existing data.
 Settings, layout, recents and file metadata use `internal/kv/` and leave keys they do not own alone.
 The `recent.files` key stores versioned v2 Recent Items with file and folder kinds; older file-only
 values migrate into that list. `workspace.showHiddenFolders` stores the app-wide hidden-folders
-preference. The workspace root and tree are session state and are not restored. Sidebar visibility is
+preference; it is stored whether or not a folder is open and is also published in the UI layout
+state (D23). The workspace root and tree are session state and are not restored. Sidebar visibility is
 unsaved window state (D22): `layout.workspace.visible` is neither written nor read, and an old row is ignored.
 Layout changes write through immediately; continuous window resize is debounced and flushed during
 shutdown. Shared state follows last-writer-wins by change time. Missing or invalid values fall back to
@@ -1072,6 +1075,17 @@ The owner decisions that shaped this refactor are recorded here so they are not 
   is gone, `onOpenWorkspacePath` sends a same-root open to the backend `OpenWorkspace` without the Replace prompt, and
   the `sidebarVisible` fallbacks are `false`. Rejected: keeping the frontend effect (a second owner racing the backend
   patch) and persisting visibility per folder.
+
+- **D23 — Show hidden folders outside a workspace:** the preference `layout.workspace.showHiddenFolders` is stored
+  and published whether or not a folder is open. `SetWorkspaceHiddenFolders` no longer refuses without a folder: it
+  writes the value, merges it into `state.ui.ShowHiddenFolders` and publishes one patch carrying `ui.showHiddenFolders`,
+  plus the rebuilt `workspace` when a folder is open (a refused rebuild still publishes the UI value together with the
+  unavailable state). `RestoreUILayout` seeds the field at start, `SetUILayout` ignores an incoming value so the setter
+  stays the only writer, and the `UILayout` wire type, `mergeUILayout` and `cloneUILayout` carry the new field. The
+  Settings dialog's Workspace section and the tree toggle write through the same `onSetWorkspaceHiddenFolders` and
+  the dialog reads the store projection `ui.layout.showHiddenFolders`; the tree keeps reading the workspace snapshot,
+  which the same patch updates. Rejected: moving the preference into `internal/settings` (two owners) and disabling the
+  row while no folder is open.
 
 ## Planning decisions retained
 

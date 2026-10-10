@@ -155,10 +155,6 @@ func (service *AppModelService) SetWorkspaceHiddenFolders(ctx context.Context, s
 
 	service.mu.Lock()
 	current := cloneWorkspaceSnapshot(service.state.workspace)
-	if current == nil {
-		service.mu.Unlock()
-		return workspaceClassifiedRefusal(apperr.ClassifiedNotFound, "folder", "There is no open folder to update.", "")
-	}
 	service.sequence++
 	candidate := VersionedLayoutValue{Version: 1, Value: show, ChangedAtUnixNano: time.Now().UnixNano(), WriterID: service.writerID, Sequence: service.sequence}
 	layoutRepository := service.layout
@@ -173,10 +169,14 @@ func (service *AppModelService) SetWorkspaceHiddenFolders(ctx context.Context, s
 	if err != nil {
 		return workspacePersistenceRefusal("The folder visibility setting could not be read.")
 	}
+	if current == nil {
+		return service.publishHiddenFoldersWithoutFolder(ctx, showHiddenFolders)
+	}
 	built, err := workspace.Build(current.RootPath, maxWorkspaceEntries, showHiddenFolders)
 	if err != nil {
 		classified := classifyWorkspacePathError(current.RootPath, err)
-		if publishErr := service.markWorkspaceUnavailable(ctx); publishErr != nil {
+		// The preference is stored even though the tree cannot be rebuilt.
+		if publishErr := service.markWorkspaceUnavailable(ctx, &showHiddenFolders); publishErr != nil {
 			return workspacePublicationRefusal("The unavailable folder state could not be published.")
 		}
 		return workspaceRefused(classified)
@@ -185,8 +185,13 @@ func (service *AppModelService) SetWorkspaceHiddenFolders(ctx context.Context, s
 	service.mu.Lock()
 	before := service.snapshotLocked()
 	service.state.workspace = &next
+	mergeUILayout(&service.state.ui, apperr.UILayout{ShowHiddenFolders: &showHiddenFolders})
 	service.state.revision++
-	patch := apperr.AppStatePatch{Revision: service.state.revision, Workspace: &apperr.WorkspacePatch{Snapshot: cloneWorkspaceSnapshot(service.state.workspace)}}
+	patch := apperr.AppStatePatch{
+		Revision:  service.state.revision,
+		Workspace: &apperr.WorkspacePatch{Snapshot: cloneWorkspaceSnapshot(service.state.workspace)},
+		UI:        &apperr.UILayout{ShowHiddenFolders: &showHiddenFolders},
+	}
 	if err := service.publishLocked(ctx, before, patch); err != nil {
 		service.mu.Unlock()
 		return workspacePublicationRefusal("The updated folder state could not be published.")
@@ -194,6 +199,22 @@ func (service *AppModelService) SetWorkspaceHiddenFolders(ctx context.Context, s
 	result := apperr.WorkspaceResult{Status: apperr.WorkspaceStatusOpened, Workspace: cloneWorkspaceSnapshot(service.state.workspace)}
 	service.mu.Unlock()
 	return result
+}
+
+// publishHiddenFoldersWithoutFolder records the stored preference in the UI
+// layout when no folder is open; there is no tree to rebuild.
+func (service *AppModelService) publishHiddenFoldersWithoutFolder(ctx context.Context, show bool) apperr.WorkspaceOutcome {
+	service.mu.Lock()
+	before := service.snapshotLocked()
+	mergeUILayout(&service.state.ui, apperr.UILayout{ShowHiddenFolders: &show})
+	service.state.revision++
+	patch := apperr.AppStatePatch{Revision: service.state.revision, UI: &apperr.UILayout{ShowHiddenFolders: &show}}
+	if err := service.publishLocked(ctx, before, patch); err != nil {
+		service.mu.Unlock()
+		return workspacePublicationRefusal("The updated folder visibility setting could not be published.")
+	}
+	service.mu.Unlock()
+	return apperr.WorkspaceResult{Status: apperr.WorkspaceStatusUnchanged}
 }
 
 // OpenWorkspace canonicalizes and reads one folder into the session-only tree.
@@ -291,7 +312,7 @@ func (service *AppModelService) RefreshWorkspace(ctx context.Context) apperr.Wor
 	showHiddenFolders, err := readShowHiddenFolders(ctx, layoutRepository)
 	if err != nil {
 		classified := workspacePersistenceError("The folder could not be refreshed because its visibility setting could not be read.")
-		if publishErr := service.markWorkspaceUnavailable(ctx); publishErr != nil {
+		if publishErr := service.markWorkspaceUnavailable(ctx, nil); publishErr != nil {
 			return workspacePublicationRefusal("The unavailable folder state could not be published.")
 		}
 		return workspaceRefused(classified)
@@ -299,7 +320,7 @@ func (service *AppModelService) RefreshWorkspace(ctx context.Context) apperr.Wor
 	built, err := workspace.Build(current.RootPath, maxWorkspaceEntries, showHiddenFolders)
 	if err != nil {
 		classified := classifyWorkspacePathError(current.RootPath, err)
-		if publishErr := service.markWorkspaceUnavailable(ctx); publishErr != nil {
+		if publishErr := service.markWorkspaceUnavailable(ctx, nil); publishErr != nil {
 			return workspacePublicationRefusal("The unavailable folder state could not be published.")
 		}
 		return workspaceRefused(classified)
@@ -368,10 +389,10 @@ func (service *AppModelService) CloseWorkspace(ctx context.Context) apperr.Class
 	return apperr.ClassifiedVoidResult{}
 }
 
-func (service *AppModelService) markWorkspaceUnavailable(ctx context.Context) error {
+func (service *AppModelService) markWorkspaceUnavailable(ctx context.Context, showHiddenFolders *bool) error {
 	service.mu.Lock()
 	defer service.mu.Unlock()
-	if service.state.workspace == nil || service.state.workspace.Unavailable {
+	if service.state.workspace == nil || (service.state.workspace.Unavailable && showHiddenFolders == nil) {
 		return nil
 	}
 	before := service.snapshotLocked()
@@ -382,6 +403,11 @@ func (service *AppModelService) markWorkspaceUnavailable(ctx context.Context) er
 	patch := apperr.AppStatePatch{
 		Revision:  service.state.revision,
 		Workspace: &apperr.WorkspacePatch{Snapshot: cloneWorkspaceSnapshot(service.state.workspace)},
+	}
+	if showHiddenFolders != nil {
+		// A refused rebuild still stored the preference; keep the UI projection in step.
+		mergeUILayout(&service.state.ui, apperr.UILayout{ShowHiddenFolders: showHiddenFolders})
+		patch.UI = &apperr.UILayout{ShowHiddenFolders: showHiddenFolders}
 	}
 	if err := service.publishLocked(ctx, before, patch); err != nil {
 		service.logger.Error().Err(err).Msg("could not publish unavailable workspace state")

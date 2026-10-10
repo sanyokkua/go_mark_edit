@@ -141,6 +141,9 @@ type UILayout struct {
 	PreviewPaneVisible *bool   `json:"previewPaneVisible,omitempty"`
 	AssistantVisible   *bool   `json:"assistantVisible,omitempty"`
 	AssistantWidth     *int    `json:"assistantWidth,omitempty"`
+	// ShowHiddenFolders mirrors the app-wide hidden folders preference so it is
+	// readable with no folder open. SetWorkspaceHiddenFolders is its only writer.
+	ShowHiddenFolders *bool `json:"showHiddenFolders,omitempty"`
 }
 
 // DocumentMetadata is the content-free projection of one open document.
