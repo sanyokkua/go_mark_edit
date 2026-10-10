@@ -39,6 +39,7 @@ function mockCreateEditor(content: string): MockEditor & { instance: editor.ISta
         getSelection: (): null => null,
         getTopForLineNumber: (lineNumber: number): number => 12 + (lineNumber - 1) * 20,
         layout: jest.fn(),
+        addAction: jest.fn(() => ({ dispose: jest.fn() })),
         onDidBlurEditorText: idle,
         onDidChangeConfiguration: idle,
         onDidChangeCursorPosition: idle,
@@ -85,9 +86,10 @@ jest.mock('@monaco-editor/react', () => {
 
         React.useEffect((): void => {
             mockMonaco.instances.push(mounted);
-            onMount?.(mounted.instance, { editor: { ScrollType: { Immediate: 1 } } } as unknown as Parameters<
-                NonNullable<EditorProps['onMount']>
-            >[1]);
+            onMount?.(mounted.instance, {
+                editor: { ScrollType: { Immediate: 1 } },
+                KeyCode: { Enter: 3 },
+            } as unknown as Parameters<NonNullable<EditorProps['onMount']>>[1]);
         }, [mounted]);
 
         return React.createElement('textarea', { 'aria-label': 'Markdown source', defaultValue });

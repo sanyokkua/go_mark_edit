@@ -193,6 +193,7 @@ function installMockEditor(): void {
         revealLineInCenter: jest.fn(),
         deltaDecorations: jest.fn(() => []),
         createDecorationsCollection: jest.fn(() => ({ set: setLintDecorations, clear: clearLintDecorations })),
+        addAction: jest.fn(() => ({ dispose: jest.fn() })),
         onDidBlurEditorText: jest.fn((listener: () => void) => {
             mockRuntime.blurListener = listener;
 
@@ -261,6 +262,7 @@ jest.mock('@monaco-editor/react', () => {
             mockRuntime.mountCount += 1;
             onMount?.(editorInstance, {
                 editor: { setModelMarkers, ScrollType: { Immediate: 1 } },
+                KeyCode: { Enter: 3 },
                 MarkerSeverity: { Error: 8, Warning: 4 },
             } as unknown as Parameters<NonNullable<EditorProps['onMount']>>[1]);
         }, [editorInstance, onMount]);

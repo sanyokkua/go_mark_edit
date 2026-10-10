@@ -91,11 +91,6 @@ test('case 1 keeps preview link activation in the app session', async ({ app }) 
     const { page } = app;
     const originalUrl = page.url();
     const recorder = await recordLinkBridge(page);
-    const initialTab = page.getByRole('tab', { name: 'Untitled' });
-    await initialTab
-        .locator('..')
-        .getByRole('button', { name: /^Close /u })
-        .click();
 
     const launcher = page.getByTestId('document-launcher');
     await expect(launcher).toBeVisible();
@@ -281,7 +276,7 @@ async function expectRowInTreeViewport(page: Page, name: string): Promise<void> 
 async function disableAutosave(page: Page): Promise<void> {
     await page.getByRole('button', { name: 'Settings', exact: true }).click();
     const menu = page.getByRole('menu', { name: 'Settings menu' });
-    const autosave = menu.getByRole('checkbox', { name: 'Autosave' });
+    const autosave = menu.getByRole('menuitemcheckbox', { name: 'Autosave' });
     if (await autosave.isChecked()) await menu.locator('[data-settings-toggle="Autosave"]').click();
     await page.keyboard.press('Escape');
     await expect(menu).not.toBeVisible();
@@ -366,11 +361,6 @@ test('editor links follow the preview path only when clicked with the platform m
     await app.launch();
     const { page } = app;
     const recorder = await recordLinkBridge(page);
-    await page
-        .getByRole('tab', { name: 'Untitled' })
-        .locator('..')
-        .getByRole('button', { name: /^Close /u })
-        .click();
     await page.getByTestId('document-launcher').getByRole('button', { name: 'a.md' }).click();
     await page.getByRole('radiogroup', { name: 'View arrangement' }).getByRole('radio', { name: 'Editor' }).click();
 
@@ -478,11 +468,6 @@ test('preview links activate and reveal documents in and outside the folder', as
     const originalUrl = page.url();
     const recorder = await recordLinkBridge(page);
     await disableAutosave(page);
-    await page
-        .getByRole('tab', { name: 'Untitled' })
-        .locator('..')
-        .getByRole('button', { name: /^Close /u })
-        .click();
     await page.getByTestId('document-launcher').getByRole('button', { name: 'a.md' }).click();
     await app.openWorkspace(root);
     await page.getByRole('treeitem', { name: 'docs', exact: true }).click({ position: { x: 4, y: 10 } });
@@ -607,13 +592,9 @@ test('local preview links open tabs when no folder is open', async ({ app }) => 
     await app.seedRecents([join(root, 'docs/a.md')]);
     await app.launch();
     const { page } = app;
-    await page
-        .getByRole('tab', { name: 'Untitled' })
-        .locator('..')
-        .getByRole('button', { name: /^Close /u })
-        .click();
     await page.getByTestId('document-launcher').getByRole('button', { name: 'a.md' }).click();
     await page.getByRole('radiogroup', { name: 'View arrangement' }).getByRole('radio', { name: 'Split' }).click();
+    await page.keyboard.press('ControlOrMeta+\\');
     await expect(page.getByText('No folder open')).toBeVisible();
     await clickWithoutNavigation(page, page.getByRole('link', { name: 'sibling' }), page.url());
     await expectActiveDocument(page, 'b.md', 'Sibling document');
@@ -633,11 +614,6 @@ test('a preview link to a forty-first document shows the open-capacity notice', 
     await app.seedRecents([source]);
     await app.launch();
     const { page } = app;
-    await page
-        .getByRole('tab', { name: 'Untitled' })
-        .locator('..')
-        .getByRole('button', { name: /^Close /u })
-        .click();
     await page.getByTestId('document-launcher').getByRole('button', { name: 'source.md' }).click();
     await app.openWorkspace(dirname(source));
     for (let index = 1; index < 40; index += 1) {

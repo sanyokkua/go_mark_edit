@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 
 import Menubar from '../../src/ui/widgets/Menubar/Menubar';
 
@@ -17,7 +17,7 @@ const viewMenuProps = {
     previewVisible: true,
 };
 
-it.each([1024, 375])('opens the registry Format menu and its tidy rows at width %i', async (width) => {
+it.each([1024, 375])('opens the registry Markdown menu and its tidy rows at width %i', async (width) => {
     Object.defineProperty(window, 'innerWidth', { configurable: true, value: width });
     const onExecute = jest.fn();
     render(
@@ -25,7 +25,7 @@ it.each([1024, 375])('opens the registry Format menu and its tidy rows at width 
             modalOpen={false}
             onAbout={jest.fn()}
             settingsMenuProps={settingsMenuProps}
-            formatMenuProps={{
+            markdownMenuProps={{
                 markdownSettingsLoaded: true,
                 projectedState: { activeDocumentId: 'doc', documents: { doc: { capability: 'writable' } } },
                 slot: { state: 'idle' },
@@ -34,8 +34,8 @@ it.each([1024, 375])('opens the registry Format menu and its tidy rows at width 
         />,
     );
     if (width < 500) fireEvent.click(screen.getByRole('button', { name: 'More actions' }));
-    fireEvent.click(screen.getByRole(width < 500 ? 'menuitem' : 'button', { name: 'Format' }));
-    const menu = screen.getByRole('menu', { name: 'Format' });
+    fireEvent.click(screen.getByRole(width < 500 ? 'menuitem' : 'button', { name: 'Markdown' }));
+    const menu = screen.getByRole('menu', { name: 'Markdown' });
     for (const name of ['Format', 'Compact', 'Lint']) {
         expect(menu.querySelector(`[data-action-id="${name.toLowerCase()}"]`)).toBeEnabled();
     }
@@ -43,14 +43,43 @@ it.each([1024, 375])('opens the registry Format menu and its tidy rows at width 
     expect(onExecute).toHaveBeenCalledWith('lint', undefined);
 });
 
-it('replaces only the running Format menu row with Cancel and progress', () => {
+it('lists the Markdown menu in five labelled groups and skips headings and the disabled Image on ArrowDown', () => {
+    render(
+        <Menubar
+            modalOpen={false}
+            onAbout={jest.fn()}
+            settingsMenuProps={settingsMenuProps}
+            markdownMenuProps={{
+                markdownSettingsLoaded: true,
+                projectedState: { activeDocumentId: 'doc', documents: { doc: { capability: 'writable' } } },
+                slot: { state: 'idle' },
+                onExecute: jest.fn(),
+            }}
+        />,
+    );
+    const trigger = screen.getByRole('button', { name: 'Markdown' });
+    fireEvent.click(trigger);
+    const menu = screen.getByRole('menu', { name: 'Markdown' });
+    expect(
+        within(menu)
+            .getAllByRole('group')
+            .map((group) => group.getAttribute('aria-label')),
+    ).toEqual(['Text', 'Headings', 'Lists & quotes', 'Links, images & tables', 'Formatting & verification']);
+    expect(within(menu).getByRole('menuitem', { name: /^Table…/ })).toBeInTheDocument();
+    expect(enabledMenuItems(menu).map((item) => item.getAttribute('data-action-id'))).not.toContain('image');
+    expect(menu.querySelector('[data-action-id="image"]')).toBeDisabled();
+    fireEvent.keyDown(menu, { key: 'Escape' });
+    expect(trigger).toHaveFocus();
+});
+
+it('replaces only the running Markdown menu row with Cancel and progress', () => {
     const onCancel = jest.fn();
     render(
         <Menubar
             modalOpen={false}
             onAbout={jest.fn()}
             settingsMenuProps={settingsMenuProps}
-            formatMenuProps={{
+            markdownMenuProps={{
                 markdownSettingsLoaded: true,
                 projectedState: { activeDocumentId: 'doc', documents: { doc: { capability: 'writable' } } },
                 slot: { state: 'running', kind: 'format', documentId: 'doc', progress: { done: 2, total: 3 } },
@@ -59,8 +88,8 @@ it('replaces only the running Format menu row with Cancel and progress', () => {
             }}
         />,
     );
-    fireEvent.click(screen.getByRole('button', { name: 'Format' }));
-    const menu = screen.getByRole('menu', { name: 'Format' });
+    fireEvent.click(screen.getByRole('button', { name: 'Markdown' }));
+    const menu = screen.getByRole('menu', { name: 'Markdown' });
     const cancel = menu.querySelector('[data-action-id="format"]') as HTMLElement;
     expect(cancel).toHaveTextContent('Cancel');
     expect(cancel).toHaveTextContent('2/3');
@@ -70,7 +99,7 @@ it('replaces only the running Format menu row with Cancel and progress', () => {
     expect(onCancel).toHaveBeenCalledTimes(1);
 });
 
-it('keeps the editor snapshot captured when the Format menu opened', () => {
+it('keeps the editor snapshot captured when the Markdown menu opened', () => {
     const onExecute = jest.fn();
     const original = { commands: null, documentId: 'original', selection: null };
     const replacement = { commands: null, documentId: 'replacement', selection: null };
@@ -82,7 +111,7 @@ it('keeps the editor snapshot captured when the Format menu opened', () => {
     const { rerender } = render(
         <Menubar
             {...props}
-            formatMenuProps={{
+            markdownMenuProps={{
                 markdownSettingsLoaded: true,
                 projectedState: { activeDocumentId: 'doc', documents: { doc: { capability: 'writable' } } },
                 slot: { state: 'idle' },
@@ -91,11 +120,11 @@ it('keeps the editor snapshot captured when the Format menu opened', () => {
             }}
         />,
     );
-    fireEvent.click(screen.getByRole('button', { name: 'Format' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Markdown' }));
     rerender(
         <Menubar
             {...props}
-            formatMenuProps={{
+            markdownMenuProps={{
                 markdownSettingsLoaded: true,
                 projectedState: { activeDocumentId: 'doc', documents: { doc: { capability: 'writable' } } },
                 slot: { state: 'idle' },
@@ -105,7 +134,7 @@ it('keeps the editor snapshot captured when the Format menu opened', () => {
         />,
     );
     fireEvent.click(
-        screen.getByRole('menu', { name: 'Format' }).querySelector('[data-action-id="format"]') as HTMLElement,
+        screen.getByRole('menu', { name: 'Markdown' }).querySelector('[data-action-id="format"]') as HTMLElement,
     );
     expect(onExecute).toHaveBeenCalledWith('format', original);
 });
@@ -233,3 +262,62 @@ it.each([
         expect(trigger).toHaveFocus();
     },
 );
+
+describe('Markdown menu without a shown editor', () => {
+    const renderMenu = (props: { editorShown: boolean; withDocument: boolean }) => {
+        render(
+            <Menubar
+                modalOpen={false}
+                onAbout={jest.fn()}
+                settingsMenuProps={settingsMenuProps}
+                markdownMenuProps={{
+                    markdownSettingsLoaded: true,
+                    editorShown: props.editorShown,
+                    projectedState: props.withDocument
+                        ? { activeDocumentId: 'doc', documents: { doc: { capability: 'writable' } } }
+                        : undefined,
+                    slot: { state: 'idle' },
+                    onExecute: jest.fn(),
+                }}
+            />,
+        );
+        fireEvent.click(screen.getByRole('button', { name: 'Markdown' }));
+        return screen.getByRole('menu', { name: 'Markdown' });
+    };
+
+    it('disables every item when no document is open', () => {
+        const menu = renderMenu({ editorShown: false, withDocument: false });
+        const items = Array.from(menu.querySelectorAll<HTMLElement>('[data-action-id]'));
+        expect(items.length).toBeGreaterThan(0);
+        for (const item of items) expect(item).toBeDisabled();
+    });
+
+    it('disables the formatting items but keeps Format, Compact and Lint in the Preview arrangement', () => {
+        const menu = renderMenu({ editorShown: false, withDocument: true });
+        for (const id of ['bold', 'italic', 'heading-1', 'bullet-list', 'quote', 'link', 'table']) {
+            expect(menu.querySelector(`[data-action-id="${id}"]`)).toBeDisabled();
+        }
+        for (const id of ['format', 'compact', 'lint']) {
+            expect(menu.querySelector(`[data-action-id="${id}"]`)).toBeEnabled();
+        }
+    });
+});
+
+it('opens the Settings dialog, not the popup, for Ctrl+, while the Settings button still opens the popup', () => {
+    const onOpenAppearance = jest.fn();
+    render(
+        <Menubar
+            modalOpen={false}
+            onAbout={jest.fn()}
+            settingsMenuProps={{ ...settingsMenuProps, onOpenAppearance }}
+        />,
+    );
+
+    fireEvent.keyDown(window, { key: ',', ctrlKey: true });
+    expect(onOpenAppearance).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole('menu', { name: 'Settings menu' })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Settings' }));
+    expect(screen.getByRole('menu', { name: 'Settings menu' })).toBeVisible();
+    expect(onOpenAppearance).toHaveBeenCalledTimes(1);
+});

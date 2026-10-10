@@ -12,7 +12,6 @@ async function closeTab(page: Page, name: string): Promise<void> {
 }
 
 async function openFirst(page: Page, name: string): Promise<void> {
-    await closeTab(page, 'Untitled');
     await page.getByTestId('document-launcher').getByRole('button', { name, exact: true }).click();
     await expect(page.getByRole('tab', { name })).toBeVisible();
 }

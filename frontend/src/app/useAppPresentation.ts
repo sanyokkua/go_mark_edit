@@ -1,5 +1,6 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 
+import type { EditorActionSnapshot } from '../logic/actions/editorActionExecutor';
 import type { ApplicationMenuState } from '../ui/widgets/Menubar/ApplicationMenubar';
 import type { ApplicationMenuTarget } from '../ui/widgets/applicationMenuRequest';
 import type { DocumentSession } from './useDocumentSession';
@@ -31,7 +32,9 @@ export function useAppPresentation({
     const [aboutOpen, setAboutOpen] = useState(false);
     const [shortcutsOpen, setShortcutsOpen] = useState(false);
     const [requestedMenu, requestMenu] = useState<ApplicationMenuTarget | null>(null);
-    const modalOpen = settingsOpen || aboutOpen || shortcutsOpen || workflowModalOpen;
+    const [tableRequest, setTableRequest] = useState<EditorActionSnapshot | null>(null);
+    const closeTable = useCallback((): void => setTableRequest(null), []);
+    const modalOpen = settingsOpen || aboutOpen || shortcutsOpen || tableRequest !== null || workflowModalOpen;
     const menuState = useMemo<ApplicationMenuState>(
         () => ({
             ...commands,
@@ -69,9 +72,11 @@ export function useAppPresentation({
         modalOpen,
         menuState,
         requestMenu,
+        requestTable: setTableRequest,
         settingsOpen,
         setSettingsOpen,
         about: { open: aboutOpen, onOpenChange: setAboutOpen },
         shortcuts: { open: shortcutsOpen, onOpenChange: setShortcutsOpen },
+        table: { snapshot: tableRequest, close: closeTable },
     } as const;
 }

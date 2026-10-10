@@ -304,8 +304,7 @@ export function useCommands(
                 return undefined;
             }
             const currentRootPath = store.getState().workspace.snapshot?.rootPath;
-            if (path === currentRootPath) return undefined;
-            if (currentRootPath !== undefined && currentRootPath !== null) {
+            if (currentRootPath !== undefined && currentRootPath !== null && path !== currentRootPath) {
                 setReplaceFolderPath(path);
                 return undefined;
             }
@@ -316,15 +315,11 @@ export function useCommands(
 
     const onOpenRecentItem = useCallback(
         async (item: RecentItem, expectedTabSetRevision: number): Promise<EntryCommandOutcome | undefined> => {
-            const result =
-                item.kind === 'folder'
-                    ? await (item.path === store.getState().workspace.snapshot?.rootPath
-                          ? openWorkspace(item.path)
-                          : onOpenWorkspacePath(item.path))
-                    : await onOpenRecentFile(item.path, expectedTabSetRevision);
-            return result;
+            return item.kind === 'folder'
+                ? onOpenWorkspacePath(item.path)
+                : onOpenRecentFile(item.path, expectedTabSetRevision);
         },
-        [onOpenRecentFile, onOpenWorkspacePath, openWorkspace],
+        [onOpenRecentFile, onOpenWorkspacePath],
     );
 
     const onReopenLastFile = useCallback(

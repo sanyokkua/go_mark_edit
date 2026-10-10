@@ -190,15 +190,15 @@ func TestASecondPathBeforeFrontendReadyGoesToANewWindow(t *testing.T) {
 	}
 }
 
-func TestEveryPathAfterFrontendReadyGoesToANewWindowEvenForAnEmptyUntitledWindow(t *testing.T) {
+func TestEveryPathAfterFrontendReadyGoesToANewWindowEvenForAWindowWithoutDocuments(t *testing.T) {
 	launcher := &lockedLauncher{}
 	holder := newLaunchHolder(t, application.ApplicationContextOptions{NewWindowLauncher: launcher})
 	state, err := holder.AppModelService.GetState(context.Background())
 	if err != nil {
 		t.Fatalf("GetState: %v", err)
 	}
-	if len(state.Snapshot.OrderedDocumentIDs) != 1 {
-		t.Fatalf("window holds %d documents, want only the empty Untitled document", len(state.Snapshot.OrderedDocumentIDs))
+	if len(state.Snapshot.OrderedDocumentIDs) != 0 {
+		t.Fatalf("window holds %d documents, want none before a launch target is opened", len(state.Snapshot.OrderedDocumentIDs))
 	}
 
 	holder.FrontendReady(context.Background())

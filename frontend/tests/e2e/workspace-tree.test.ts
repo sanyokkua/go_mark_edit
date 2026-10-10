@@ -145,7 +145,7 @@ test.afterEach(async ({ app }) => {
 async function disableAutosave(page: Page): Promise<void> {
     await page.getByRole('button', { name: 'Settings', exact: true }).click();
     const menu = page.getByRole('menu', { name: 'Settings menu' });
-    const autosave = menu.getByRole('checkbox', { name: 'Autosave' });
+    const autosave = menu.getByRole('menuitemcheckbox', { name: 'Autosave' });
     if (await autosave.isChecked()) await menu.locator('[data-settings-toggle="Autosave"]').click();
     await page.keyboard.press('Escape');
 }
@@ -228,8 +228,13 @@ test('when a folder opens, the tree filters and orders rows and refreshes stale 
     const root = await fixture(app);
     await app.launch();
     const page = app.page;
+    await expect(page.getByText('No folder open')).toBeHidden();
+    await expect(page.getByTestId('document-launcher')).toBeVisible();
+    await page.keyboard.press('ControlOrMeta+\\');
     await expect(page.getByText('No folder open')).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Open Folder' })).toBeVisible();
+    await expect(
+        page.getByLabel('Sidebar', { exact: true }).getByRole('button', { name: 'Open Folder' }),
+    ).toBeVisible();
     await app.openWorkspace(root);
     await page.screenshot({ path: testInfo.outputPath('populated-tree.png'), fullPage: true });
 
@@ -517,7 +522,7 @@ test('when a folder is empty or closed, the sidebar explains its state and honor
     expect(await readFile(file, 'utf8')).toBe('# One\n');
     await app.page.getByRole('button', { name: 'Close Folder' }).click();
     await app.page.getByRole('button', { name: 'Keep them open' }).click();
-    await expect(app.page.getByText('No folder open')).toBeVisible();
+    await expect(app.page.getByText('No folder open')).toBeHidden();
     await expect(app.page.getByRole('tab', { name: 'one.md' })).toBeVisible();
     await expect(app.page.locator('[aria-label="Document identity"]')).toContainText('Unsaved changes');
     await app.openWorkspace(root);
@@ -526,7 +531,7 @@ test('when a folder is empty or closed, the sidebar explains its state and honor
     const savePrompt = app.page.getByRole('dialog', { name: 'Save changes before closing?' });
     await expect(savePrompt).toBeVisible();
     await savePrompt.getByRole('button', { name: 'Save all', exact: true }).click();
-    await expect(app.page.getByText('No folder open')).toBeVisible();
+    await expect(app.page.getByText('No folder open')).toBeHidden();
     await expect(app.page.getByRole('tab', { name: 'one.md' })).toHaveCount(0);
     expect(await readFile(file, 'utf8')).toContain('Edited before closing');
     await app.openWorkspace(root);

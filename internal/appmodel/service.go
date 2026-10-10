@@ -88,40 +88,12 @@ func NewAppModelServiceForHost(options ...AppModelOption) *AppModelService {
 }
 
 func newAppModelService(options ...AppModelOption) *AppModelService {
-	documentID := mintDocumentID()
-	initialDocument := &openDocument{
-		metadata: apperr.DocumentMetadata{
-			DocumentID: documentID,
-			Title:      "Untitled",
-			Path:       "",
-			Capability: "writable",
-			Encoding:   "utf-8",
-			LineEnding: "lf",
-			View: apperr.DocView{
-				Arrangement:    ArrangementSplit,
-				SplitRatio:     defaultSplitRatio,
-				EditorVisible:  true,
-				PreviewVisible: true,
-				Cursor:         apperr.CursorPosition{Line: 1, Column: 1},
-				Selection: apperr.SelectionRange{
-					Start: apperr.CursorPosition{Line: 1, Column: 1},
-					End:   apperr.CursorPosition{Line: 1, Column: 1},
-				},
-			},
-		},
-	}
-
-	initialDocument.id = documentID
-	initialDocument.canonicalPath = ""
-	initialDocument.setBufferRevision(initialDocument.metadata.ContentRevision)
 	service := &AppModelService{timer: systemLayoutTimer{}, autosaveTimer: systemAutosaveTimerFactory{}, autosaveEnabled: true, writerID: newLayoutWriterID(), reservations: make(map[string]*openReservation), closePlans: make(map[string]*closePlan), conflictQueue: newConflictQueue(), stableRead: file.ReadClassifiedStable, diskVersion: file.CurrentDiskVersion, defaultOpenMode: OpenModeEditor, applicationVersion: "dev", logger: zerolog.Nop(), state: applicationState{
-		orderedDocumentIDs: []string{documentID},
-		documents:          map[string]*openDocument{documentID: initialDocument},
-		activeDocumentID:   documentID,
+		documents: make(map[string]*openDocument),
 		ui: apperr.UILayout{
 			WindowWidth:    pointerTo(1024),
 			WindowHeight:   pointerTo(768),
-			SidebarVisible: pointerTo(true),
+			SidebarVisible: pointerTo(false),
 		},
 	}}
 	for _, option := range options {
@@ -364,9 +336,9 @@ func (service *AppModelService) RestoreUILayout(ctx context.Context) error {
 		LayoutWindowWidth,
 		LayoutWindowHeight,
 		LayoutWindowMaximized,
-		LayoutWorkspaceVisible,
 		LayoutWorkspaceWidth,
 		LayoutArrangementBackup,
+		LayoutWorkspaceHiddenFolders,
 	} {
 		value, found, err := repository.Read(ctx, field)
 		if err != nil {
@@ -391,10 +363,6 @@ func (service *AppModelService) RestoreUILayout(ctx context.Context) error {
 			if maximized, ok := value.Value.(bool); ok {
 				restored.WindowMaximized = pointerTo(maximized)
 			}
-		case LayoutWorkspaceVisible:
-			if visible, ok := value.Value.(bool); ok {
-				restored.SidebarVisible = pointerTo(visible)
-			}
 		case LayoutWorkspaceWidth:
 			if width, ok := value.Value.(int); ok && width >= 0 {
 				restored.SidebarWidth = pointerTo(width)
@@ -402,6 +370,10 @@ func (service *AppModelService) RestoreUILayout(ctx context.Context) error {
 		case LayoutArrangementBackup:
 			if arrangement, ok := value.Value.(string); ok && validArrangement(arrangement) {
 				restored.ViewArrangement = pointerTo(arrangement)
+			}
+		case LayoutWorkspaceHiddenFolders:
+			if show, ok := value.Value.(bool); ok {
+				restored.ShowHiddenFolders = pointerTo(show)
 			}
 		}
 	}
@@ -489,6 +461,8 @@ func (service *AppModelService) SetUILayout(ctx context.Context, layout apperr.U
 	if err := validateUILayout(layout); err != nil {
 		return err
 	}
+	// SetWorkspaceHiddenFolders is the only writer of the hidden folders preference.
+	layout.ShowHiddenFolders = nil
 	continuous := apperr.UILayout{
 		WindowWidth:  layout.WindowWidth,
 		WindowHeight: layout.WindowHeight,
@@ -615,7 +589,6 @@ func (service *AppModelService) persistLayout(ctx context.Context, layout apperr
 		{LayoutWindowWidth, layout.WindowWidth, layout.WindowWidth != nil},
 		{LayoutWindowHeight, layout.WindowHeight, layout.WindowHeight != nil},
 		{LayoutWindowMaximized, layout.WindowMaximized, layout.WindowMaximized != nil},
-		{LayoutWorkspaceVisible, layout.SidebarVisible, layout.SidebarVisible != nil},
 		{LayoutWorkspaceWidth, layout.SidebarWidth, layout.SidebarWidth != nil},
 		{LayoutArrangementBackup, layout.ViewArrangement, layout.ViewArrangement != nil},
 	} {
@@ -651,12 +624,6 @@ func (service *AppModelService) persistLayout(ctx context.Context, layout apperr
 					return apperr.UILayout{}, fmt.Errorf("invalid stored native window maximized state")
 				}
 				acknowledged.WindowMaximized = pointerTo(winner)
-			case LayoutWorkspaceVisible:
-				winner, ok := result.Value.Value.(bool)
-				if !ok {
-					return apperr.UILayout{}, fmt.Errorf("invalid stored workspace visibility")
-				}
-				acknowledged.SidebarVisible = pointerTo(winner)
 			case LayoutWorkspaceWidth:
 				winner, ok := result.Value.Value.(int)
 				if !ok {
@@ -996,6 +963,9 @@ func mergeUILayout(destination *apperr.UILayout, patch apperr.UILayout) {
 	}
 	if patch.AssistantWidth != nil {
 		destination.AssistantWidth = pointerTo(*patch.AssistantWidth)
+	}
+	if patch.ShowHiddenFolders != nil {
+		destination.ShowHiddenFolders = pointerTo(*patch.ShowHiddenFolders)
 	}
 }
 

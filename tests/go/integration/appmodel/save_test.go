@@ -49,15 +49,11 @@ func TestSaveAsUsesTheDialogTargetAndAdoptsItsCanonicalPath(t *testing.T) {
 		AppModelOption{AutosaveTimer: &fakeAutosaveClock{}},
 		WithDialogs(nil, saveDialog{path: target}),
 	)
-	state, err := service.GetState(context.Background())
-	if err != nil {
-		t.Fatalf("initial GetState: %v", err)
-	}
-	documentID := state.Snapshot.ActiveDocumentID
+	documentID := newUntitledID(t, service)
 	if err := service.UpdateBuffer(context.Background(), documentID, "untitled content\n"); err != nil {
 		t.Fatalf("UpdateBuffer: %v", err)
 	}
-	state, err = service.GetState(context.Background())
+	state, err := service.GetState(context.Background())
 	if err != nil {
 		t.Fatalf("GetState before Save As: %v", err)
 	}
@@ -119,15 +115,11 @@ func TestSaveAsUpdatesTheTitleAndDisplayNameOfAnOpenDocument(t *testing.T) {
 func TestSaveRefusesAnUnsupportedSaveAsSuffixBeforeCreatingTheTarget(t *testing.T) {
 	target := filepath.Join(t.TempDir(), "saved.png")
 	service := NewAppModelServiceForHost(WithEmitter(&recordingEmitter{}), WithDialogs(nil, saveDialog{path: target}))
-	state, err := service.GetState(context.Background())
-	if err != nil {
-		t.Fatalf("initial GetState: %v", err)
-	}
-	documentID := state.Snapshot.ActiveDocumentID
+	documentID := newUntitledID(t, service)
 	if err := service.UpdateBuffer(context.Background(), documentID, "content\n"); err != nil {
 		t.Fatalf("UpdateBuffer: %v", err)
 	}
-	state, err = service.GetState(context.Background())
+	state, err := service.GetState(context.Background())
 	if err != nil {
 		t.Fatalf("GetState before unsupported Save As: %v", err)
 	}

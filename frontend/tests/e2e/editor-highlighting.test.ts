@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import type { Page } from '@playwright/test';
 
-import { expect, test } from '../support/harness';
+import { expect, newUntitledDocument, test } from '../support/harness';
 
 const appearances = [
     ['Liquid Glass', 'Light', 'glass', 'light'],
@@ -115,6 +115,8 @@ test('recolours Mermaid and Python source with the preview palette through every
     test.setTimeout(180_000);
     await app.launch();
     const { page } = app;
+    await newUntitledDocument(page);
+    await page.getByRole('radiogroup', { name: 'View arrangement' }).getByRole('radio', { name: 'Split' }).click();
     await replaceEditor(page, source, 'PY_COMMENT');
 
     for (const [label, modeLabel, theme, mode] of appearances) {
@@ -162,11 +164,6 @@ test('a saved document recolours fenced keywords across appearances without a so
     await app.seedRecents([path]);
     await app.launch();
     const { page } = app;
-    await page
-        .getByRole('tab', { name: 'Untitled' })
-        .locator('..')
-        .getByRole('button', { name: /^Close /u })
-        .click();
     await page.getByTestId('document-launcher').getByRole('button', { name: 'saved-highlighting.md' }).click();
     await expect(page.getByRole('textbox', { name: 'Editor content' })).toBeVisible();
     const initialKeyword = await paletteColor(page, 'keyword');
@@ -200,6 +197,7 @@ test('a saved document recolours fenced keywords across appearances without a so
 test('keeps tilde fenced Python source plain while backtick fenced Python is coloured', async ({ app }) => {
     await app.launch();
     const { page } = app;
+    await newUntitledDocument(page);
     await replaceEditor(
         page,
         ['~~~python', 'def tilde_sample():', '    return "TILDE_STRING"', '~~~'].join('\n'),
@@ -296,6 +294,7 @@ test('tokenises every supported canonical and alias fence in the real editor', {
     test.setTimeout(180_000);
     await app.launch();
     const { page } = app;
+    await newUntitledDocument(page);
     await page.getByRole('radiogroup', { name: 'View arrangement' }).getByRole('radio', { name: 'Editor' }).click();
     const failures: string[] = [];
     for (const { id, code, line, word, family } of fenceSamples) {
@@ -317,6 +316,7 @@ test('tokenises every supported canonical and alias fence in the real editor', {
 test('colours structural JSON, diff, and Makefile tokens from the shared palette', async ({ app }) => {
     await app.launch();
     const { page } = app;
+    await newUntitledDocument(page);
     await page.getByRole('radiogroup', { name: 'View arrangement' }).getByRole('radio', { name: 'Editor' }).click();
     for (const [id, code, checks] of [
         [
@@ -363,6 +363,7 @@ test('colours structural JSON, diff, and Makefile tokens from the shared palette
 test('recolours CSS numbers, units, and hex values through every appearance', { tag: '@perf' }, async ({ app }) => {
     await app.launch();
     const { page } = app;
+    await newUntitledDocument(page);
     await page.getByRole('radiogroup', { name: 'View arrangement' }).getByRole('radio', { name: 'Editor' }).click();
     await replaceEditor(page, ['```css', 'sample { width: 12px; color: #abc; }', '```'].join('\n'), '#abc');
     for (const [label, modeLabel, theme, mode] of appearances) {
@@ -588,6 +589,7 @@ test('colours supported source categories in every canonical and alias fence', {
     expect(categorySamples.flatMap(({ ids }) => ids).sort()).toEqual(fenceSamples.map(({ id }) => id).sort());
     await app.launch();
     const { page } = app;
+    await newUntitledDocument(page);
     await page.getByRole('radiogroup', { name: 'View arrangement' }).getByRole('radio', { name: 'Editor' }).click();
     const failures: string[] = [];
     for (const { ids, code, checks } of categorySamples) {

@@ -41,7 +41,6 @@ async function closeTab(page: Page, filename: string): Promise<void> {
 }
 
 async function openRecentFromLauncher(page: Page, filename: string): Promise<void> {
-    await closeTab(page, 'Untitled');
     const launcher = page.getByTestId('document-launcher');
     await expect(launcher).toBeVisible();
     await expect(page.locator('[data-editor-surface]')).toHaveCount(0);
@@ -59,7 +58,7 @@ async function openRecentFromFileMenu(page: Page, filename: string): Promise<voi
 async function disableAutosave(page: Page): Promise<void> {
     await page.getByRole('button', { name: 'Settings', exact: true }).click();
     const menu = page.getByRole('menu', { name: 'Settings menu' });
-    const autosave = menu.getByRole('checkbox', { name: 'Autosave' });
+    const autosave = menu.getByRole('menuitemcheckbox', { name: 'Autosave' });
     if (await autosave.isChecked()) {
         await menu.locator('[data-settings-toggle="Autosave"]').click();
     }
@@ -95,14 +94,14 @@ test('creates a document, opens Recents, saves once, moves tabs, and restores sa
 
     await app.page.getByRole('button', { name: 'File', exact: true }).click();
     await app.page.getByRole('menu', { name: 'File' }).getByRole('menuitem', { name: 'New File', exact: true }).click();
-    await expect(app.page.getByRole('tab')).toHaveCount(2);
-    const newDocumentTab = app.page.getByRole('tab').nth(1);
+    await expect(app.page.getByRole('tab')).toHaveCount(1);
+    const newDocumentTab = app.page.getByRole('tab').first();
     await expect(newDocumentTab).toBeVisible();
     await newDocumentTab
         .locator('..')
         .getByRole('button', { name: /^Close /u })
         .click();
-    await expect(app.page.getByRole('tab')).toHaveCount(1);
+    await expect(app.page.getByRole('tab')).toHaveCount(0);
 
     await openRecentFromLauncher(app.page, 'first.md');
     await openRecentFromFileMenu(app.page, 'second.md');
@@ -126,7 +125,7 @@ test('creates a document, opens Recents, saves once, moves tabs, and restores sa
     expect(await readFile(first, 'utf8')).toBe(saved);
 
     await app.relaunch();
-    await expect(app.page.getByRole('tab', { name: 'Untitled' })).toBeVisible();
+    await expect(app.page.getByTestId('document-launcher')).toBeVisible();
     await openRecentFromLauncher(app.page, 'first.md');
     await expect(app.page.locator('[aria-label="Document identity"]')).toContainText('Saved');
     await expect(app.page.locator('[data-editor-surface] .view-lines').first()).toContainText(

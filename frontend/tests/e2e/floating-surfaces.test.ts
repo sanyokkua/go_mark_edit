@@ -21,7 +21,10 @@ async function selectPalette(page: Page, themeLabel: string, modeLabel: string, 
     await page.keyboard.press('Escape');
 }
 
-async function expectFloatingSurface(target: Locator, glass: boolean): Promise<void> {
+const glassBackground = { light: 'rgba(255, 255, 255, 0.5)', dark: 'rgba(28, 30, 54, 0.5)' } as const;
+const glassSaturation = { light: 'saturate(1.5)', dark: 'saturate(1.6)' } as const;
+
+async function expectFloatingSurface(target: Locator, glass: boolean, mode: 'light' | 'dark'): Promise<void> {
     await expect(target).toBeVisible();
     const appearance = await target.evaluate((element) => {
         const style = getComputedStyle(element);
@@ -31,12 +34,25 @@ async function expectFloatingSurface(target: Locator, glass: boolean): Promise<v
         };
     });
     if (glass) {
-        expect(appearance.backdrop).toContain('blur(48px)');
-        expect(appearance.background).toMatch(/^rgba\(/u);
+        expect(appearance.backdrop).toContain('blur(28px)');
+        expect(appearance.backdrop).toContain(glassSaturation[mode]);
+        expect(appearance.background).toBe(glassBackground[mode]);
     } else {
         expect(appearance.backdrop).toBe('none');
         expect(appearance.background).toMatch(/^rgb\(/u);
     }
+}
+
+async function expectDialogScrim(page: Page): Promise<void> {
+    const scrim = await page.evaluate(() => {
+        const dialog = document.querySelector('[role="dialog"]');
+        const overlay = dialog?.previousElementSibling;
+        if (!(overlay instanceof HTMLElement)) throw new Error('dialog overlay is missing');
+        const style = getComputedStyle(overlay);
+        return { background: style.backgroundColor, backdrop: style.backdropFilter };
+    });
+    expect(scrim.background).toBe('rgba(6, 8, 16, 0.42)');
+    expect(scrim.backdrop).toBe('blur(3px)');
 }
 
 async function expectHighContrastUnderlayObscured(page: Page, target: Locator): Promise<void> {
@@ -113,18 +129,33 @@ test('floating menus and dialogs obscure high-contrast content in Glass and rema
     const { page } = app;
 
     for (const [themeLabel, modeLabel, theme, mode] of palettes) {
+        const glass = theme === 'glass';
         await selectPalette(page, themeLabel, modeLabel, theme, mode);
         await page.getByRole('button', { name: 'About', exact: true }).click();
         const popup = page.locator('[data-viewport-popup="about-menu"]');
-        await expectFloatingSurface(popup, theme === 'glass');
+        await expectFloatingSurface(popup, glass, mode);
         expect(await popup.evaluate((element) => element.parentElement === document.body)).toBe(true);
-        if (theme === 'glass') await expectHighContrastUnderlayObscured(page, popup);
+        if (glass) await expectHighContrastUnderlayObscured(page, popup);
 
         await popup.getByRole('menuitem', { name: 'About GoMarkEdit' }).click();
         const dialog = page.getByRole('dialog', { name: 'About GoMarkEdit' });
-        await expectFloatingSurface(dialog, theme === 'glass');
-        if (theme === 'glass') await expectHighContrastUnderlayObscured(page, dialog);
+        await expectFloatingSurface(dialog, glass, mode);
+        await expectDialogScrim(page);
+        if (glass) await expectHighContrastUnderlayObscured(page, dialog);
         await dialog.getByRole('button', { name: 'Close' }).click();
         await expect(dialog).toHaveCount(0);
+
+        await page.getByRole('button', { name: 'Settings', exact: true }).click();
+        const settingsPopup = page.locator('[data-viewport-popup="settings-menu"]');
+        await expectFloatingSurface(settingsPopup, glass, mode);
+        if (glass) await expectHighContrastUnderlayObscured(page, settingsPopup);
+
+        await settingsPopup.getByRole('menuitem', { name: 'All settings…' }).click();
+        const settingsDialog = page.getByRole('dialog', { name: 'Settings' });
+        await expectFloatingSurface(settingsDialog, glass, mode);
+        await expectDialogScrim(page);
+        if (glass) await expectHighContrastUnderlayObscured(page, settingsDialog);
+        await settingsDialog.getByRole('button', { name: 'Close' }).click();
+        await expect(settingsDialog).toHaveCount(0);
     }
 });

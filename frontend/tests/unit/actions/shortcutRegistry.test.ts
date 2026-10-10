@@ -8,7 +8,11 @@ import {
 it('exposes the frozen Editor-stage bindings', () => {
     expect(shortcutRegistry.bold).toBe('Mod+B');
     expect(shortcutRegistry.italic).toBe('Mod+I');
+    expect(shortcutRegistry['bold-italic']).toBe('Mod+Shift+B');
     expect(shortcutRegistry['heading-1']).toBe('Mod+1');
+    expect(shortcutRegistry['heading-4']).toBe('Mod+4');
+    expect(shortcutRegistry['heading-5']).toBe('Mod+5');
+    expect(shortcutRegistry['heading-6']).toBe('Mod+6');
     expect(shortcutRegistry['numbered-list']).toBe('Mod+Shift+7');
     expect(shortcutRegistry.table).toBe('Mod+Shift+T');
     expect(shortcutRegistry.format).toBe('Alt+Shift+F');

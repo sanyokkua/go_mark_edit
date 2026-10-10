@@ -163,7 +163,6 @@ func TestStartupWithoutArgumentsAcceptsNoTarget(t *testing.T) {
 	}
 }
 func TestNewWindowChildStartsWithoutFolderOrTabs(t *testing.T) {
-	t.Setenv("GOMARKEDIT_NEW_WINDOW_CHILD", "1")
 	holder := application.NewApplicationContextHolderWithOptions(nil, nil, application.ApplicationContextOptions{})
 	state, err := holder.AppModelService.GetState(context.Background())
 	if err != nil {
@@ -174,8 +173,7 @@ func TestNewWindowChildStartsWithoutFolderOrTabs(t *testing.T) {
 	}
 }
 
-func TestMarkedFolderChildTakesAFolderTargetAndStartsWithoutTabs(t *testing.T) {
-	t.Setenv("GOMARKEDIT_NEW_WINDOW_CHILD", "1")
+func TestFolderStartupArgumentIsTakenAsAFolderAndStartsWithoutTabs(t *testing.T) {
 	folderPath := t.TempDir()
 	holder := application.NewApplicationContextHolderWithOptions(&startupFileUtils{databasePath: filepath.Join(t.TempDir(), "settings.db")}, nil, application.ApplicationContextOptions{
 		StartupArgs:     []string{folderPath},
@@ -200,8 +198,7 @@ func TestMarkedFolderChildTakesAFolderTargetAndStartsWithoutTabs(t *testing.T) {
 	}
 }
 
-func TestUnmarkedMissingStartupArgumentKeepsUntitled(t *testing.T) {
-	t.Setenv("GOMARKEDIT_NEW_WINDOW_CHILD", "")
+func TestMissingStartupArgumentShowsNoDocument(t *testing.T) {
 	missing := filepath.Join(t.TempDir(), "missing")
 	holder := application.NewApplicationContextHolderWithOptions(nil, nil, application.ApplicationContextOptions{
 		StartupArgs: []string{missing},
@@ -213,8 +210,28 @@ func TestUnmarkedMissingStartupArgumentKeepsUntitled(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetState: %v", err)
 	}
-	if len(state.Snapshot.OrderedDocumentIDs) != 1 || state.ActiveBuffer == nil || state.Snapshot.Documents[state.Snapshot.ActiveDocumentID].Title != "Untitled" {
-		t.Fatalf("unmarked launch state = %+v, want default Untitled tab", state)
+	if len(state.Snapshot.OrderedDocumentIDs) != 0 || state.Snapshot.ActiveDocumentID != "" || state.ActiveBuffer != nil {
+		t.Fatalf("missing-argument launch state = %+v, want no document", state)
+	}
+}
+
+func TestUnsupportedStartupArgumentShowsNoDocument(t *testing.T) {
+	unsupported := filepath.Join(t.TempDir(), "photo.png")
+	if err := os.WriteFile(unsupported, []byte("png"), 0o600); err != nil {
+		t.Fatalf("write unsupported file: %v", err)
+	}
+	holder := application.NewApplicationContextHolderWithOptions(nil, nil, application.ApplicationContextOptions{
+		StartupArgs: []string{unsupported},
+	})
+	if target := holder.TakeLaunchTarget(context.Background()); target.Path != unsupported || target.Kind != "file" {
+		t.Fatalf("target = %+v, want the unsupported path as a file target", target)
+	}
+	state, err := holder.AppModelService.GetState(context.Background())
+	if err != nil {
+		t.Fatalf("GetState: %v", err)
+	}
+	if len(state.Snapshot.OrderedDocumentIDs) != 0 || state.Snapshot.ActiveDocumentID != "" || state.ActiveBuffer != nil {
+		t.Fatalf("unsupported-argument launch state = %+v, want no document", state)
 	}
 }
 

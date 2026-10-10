@@ -7,24 +7,16 @@ import { currentPlatform, formatShortcut } from '../../../logic/actions/shortcut
 import type { EditorSettings, FileSettings, MarkdownSettings } from '../../../logic/adapter';
 import type { AppearanceChoice, Theme } from '../../../logic/theme/theme';
 import MenuItem, { MenuItemIndicator } from '../../components/MenuItem';
-import menuItemStyles from '../../components/MenuItem/MenuItem.module.css';
+import { switchTrackClassName } from '../../primitives/Switch';
 import Popup, { PopupGroupLabel, PopupSeparator, PopupTrigger } from '../../components/Popup';
 import Segmented, { type SegmentedOption } from '../../primitives/Segmented';
-import type { PdfAppearance, ReadingWidth } from '../../../logic/adapter/settingsTypes';
-import type { DefaultOpenMode } from '../appearanceSettingsContext';
 import styles from './SettingsMenu.module.css';
 
 export interface SettingsMenuProps {
-    defaultOpenMode?: DefaultOpenMode;
     mode: AppearanceChoice;
-    onDefaultOpenModeChange?: (defaultOpenMode: DefaultOpenMode) => void;
     onModeChange: (mode: AppearanceChoice) => void;
     onOpenAppearance: (opener?: HTMLElement | null) => void;
-    onPdfAppearanceChange?: (pdfAppearance: PdfAppearance) => void;
-    onReadingWidthChange?: (readingWidth: ReadingWidth) => void;
     onThemeChange: (theme: Theme) => void;
-    pdfAppearance?: PdfAppearance;
-    readingWidth?: ReadingWidth;
     theme: Theme;
     open?: boolean;
     onOpenChange?: (open: boolean) => void;
@@ -67,21 +59,6 @@ const modeOptions: readonly SegmentedOption<AppearanceChoice>[] = [
     { label: t('settings.menu.appearance.dark'), value: 'dark' },
 ];
 
-const openModeOptions: readonly { label: string; value: DefaultOpenMode }[] = [
-    { label: t('settings.openMode.reading'), value: 'viewer' },
-    { label: t('settings.openMode.editor'), value: 'editor' },
-];
-
-const readingWidthOptions: readonly { label: string; value: ReadingWidth }[] = [
-    { label: t('settings.readingWidth.page'), value: 'page' },
-    { label: t('settings.readingWidth.full'), value: 'full' },
-];
-
-const pdfAppearanceOptions: readonly { label: string; value: PdfAppearance }[] = [
-    { label: t('settings.pdfAppearance.styled'), value: 'styled' },
-    { label: t('settings.pdfAppearance.clean'), value: 'clean' },
-];
-
 const markdownStandardOptions = [
     { label: t('settings.menu.markdown.minimal'), value: 'minimal' },
     { label: t('settings.menu.markdown.gfm'), value: 'gfm' },
@@ -95,38 +72,26 @@ const saveToggleLabels = {
 } as const;
 
 interface CompactSettingsContentProps {
-    defaultOpenMode?: DefaultOpenMode;
     fileSettings?: FileSettings;
     markdownSettings?: MarkdownSettings;
     mode: AppearanceChoice;
-    onDefaultOpenModeChange?: (defaultOpenMode: DefaultOpenMode) => void;
     onFileSettingsChange?: (patch: Partial<FileSettings>) => void;
     onMarkdownSettingsChange?: (patch: Partial<MarkdownSettings>) => void;
     onModeChange: (mode: AppearanceChoice) => void;
     onOpenAppearance: () => void;
-    onPdfAppearanceChange?: (pdfAppearance: PdfAppearance) => void;
-    onReadingWidthChange?: (readingWidth: ReadingWidth) => void;
     onThemeChange: (theme: Theme) => void;
-    pdfAppearance?: PdfAppearance;
-    readingWidth?: ReadingWidth;
     theme: Theme;
 }
 
 const CompactSettingsContent: React.FC<CompactSettingsContentProps> = ({
-    defaultOpenMode = 'editor',
     fileSettings,
     markdownSettings,
     mode,
-    onDefaultOpenModeChange,
     onFileSettingsChange,
     onMarkdownSettingsChange,
     onModeChange,
     onOpenAppearance,
-    onPdfAppearanceChange,
-    onReadingWidthChange,
     onThemeChange,
-    pdfAppearance = 'styled',
-    readingWidth = 'page',
     theme,
 }: CompactSettingsContentProps): React.JSX.Element => {
     /* Availability comes from the canonical registry and hydration state. */
@@ -145,9 +110,8 @@ const CompactSettingsContent: React.FC<CompactSettingsContentProps> = ({
      * calls nothing is inoperable. A row is operable only
      * when the registry allows it *and* something is there to receive the change.
      *
-     * Default open mode writes through the appearance controller; Markdown
-     * standard uses the same acknowledged settings writer as the other
-     * Markdown controls.
+     * Markdown standard uses the same acknowledged settings writer as the
+     * other Markdown controls.
      */
     const rowUnavailable = (id: ActionId, writer?: unknown): boolean => settingUnavailable(id) || writer === undefined;
 
@@ -159,55 +123,24 @@ const CompactSettingsContent: React.FC<CompactSettingsContentProps> = ({
         checked: boolean,
         onChange: (checked: boolean) => void,
         disabled = false,
-        /*
-         * The MenuItem role matches the open-mode and Markdown rows above. Without
-         * it these rows were plain divs inside `role="menu"`, so they were not
-         * exposed as menu children at all and assistive technology never announced
-         * them as part of the menu.
-         */
-    ): React.JSX.Element => {
-        if (actionId !== 'autosave') {
-            return (
-                <MenuItem
-                    checked={checked}
-                    data-availability={availabilityOf(actionId)}
-                    data-settings-row={label}
-                    disabled={disabled}
-                    label={label}
-                    onSelect={(): void => onChange(!checked)}
-                    trailing={
-                        <span
-                            aria-hidden="true"
-                            className={menuItemStyles.toggle}
-                            data-checked={checked}
-                            data-settings-toggle={label}
-                        />
-                    }
+    ): React.JSX.Element => (
+        <MenuItem
+            checked={checked}
+            data-availability={availabilityOf(actionId)}
+            data-settings-row={label}
+            disabled={disabled}
+            label={label}
+            onSelect={(): void => onChange(!checked)}
+            trailing={
+                <span
+                    aria-hidden="true"
+                    className={switchTrackClassName}
+                    data-checked={checked}
+                    data-settings-toggle={label}
                 />
-            );
-        }
-        return (
-            <MenuItem
-                checked={checked}
-                data-availability={availabilityOf(actionId)}
-                data-settings-row={label}
-                disabled={disabled}
-                label={label}
-                trailing={
-                    <label className={menuItemStyles.toggle} data-checked={checked} data-settings-toggle={label}>
-                        <input
-                            aria-label={label}
-                            checked={checked}
-                            className={styles.toggleInput}
-                            disabled={disabled}
-                            type="checkbox"
-                            onChange={(event): void => onChange(event.target.checked)}
-                        />
-                    </label>
-                }
-            />
-        );
-    };
+            }
+        />
+    );
 
     return (
         <div className={styles.settingsBody} data-settings-content>
@@ -242,51 +175,6 @@ const CompactSettingsContent: React.FC<CompactSettingsContentProps> = ({
                 options={modeOptions}
                 value={mode}
             />
-            <PopupSeparator />
-            <PopupGroupLabel>{t('settings.openMode')}</PopupGroupLabel>
-            {openModeOptions.map((option) => (
-                <MenuItem
-                    data-availability={availabilityOf('default-open-mode')}
-                    data-settings-row={option.label}
-                    checked={defaultOpenMode === option.value}
-                    disabled={rowUnavailable('default-open-mode', onDefaultOpenModeChange)}
-                    key={option.value}
-                    label={option.label}
-                    onSelect={(): void => onDefaultOpenModeChange?.(option.value)}
-                    radio
-                    trailing={<MenuItemIndicator checked={defaultOpenMode === option.value} />}
-                />
-            ))}
-            <PopupSeparator />
-            <PopupGroupLabel>{t('settings.readingWidth')}</PopupGroupLabel>
-            {readingWidthOptions.map((option) => (
-                <MenuItem
-                    data-availability={availabilityOf('reading-width')}
-                    data-settings-row={option.label}
-                    checked={readingWidth === option.value}
-                    disabled={rowUnavailable('reading-width', onReadingWidthChange)}
-                    key={option.value}
-                    label={option.label}
-                    onSelect={(): void => onReadingWidthChange?.(option.value)}
-                    radio
-                    trailing={<MenuItemIndicator checked={readingWidth === option.value} />}
-                />
-            ))}
-            <PopupSeparator />
-            <PopupGroupLabel>{t('settings.pdfAppearance')}</PopupGroupLabel>
-            {pdfAppearanceOptions.map((option) => (
-                <MenuItem
-                    data-availability={availabilityOf('pdf-appearance')}
-                    data-settings-row={option.label}
-                    checked={pdfAppearance === option.value}
-                    disabled={rowUnavailable('pdf-appearance', onPdfAppearanceChange)}
-                    key={option.value}
-                    label={option.label}
-                    onSelect={(): void => onPdfAppearanceChange?.(option.value)}
-                    radio
-                    trailing={<MenuItemIndicator checked={pdfAppearance === option.value} />}
-                />
-            ))}
             <PopupSeparator />
             <PopupGroupLabel>{t('settings.menu.markdown')}</PopupGroupLabel>
             {markdownStandardOptions.map((option) => (
@@ -335,16 +223,10 @@ const CompactSettingsContent: React.FC<CompactSettingsContentProps> = ({
 };
 
 const SettingsMenu: React.FC<SettingsMenuProps> = ({
-    defaultOpenMode,
     mode,
-    onDefaultOpenModeChange,
     onModeChange,
     onOpenAppearance,
-    onPdfAppearanceChange,
-    onReadingWidthChange,
     onThemeChange,
-    pdfAppearance,
-    readingWidth,
     theme,
     open: controlledOpen,
     onOpenChange,
@@ -421,29 +303,9 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({
                 onOpenChange={setOpen}
             >
                 <CompactSettingsContent
-                    defaultOpenMode={defaultOpenMode}
                     fileSettings={fileSettings}
                     markdownSettings={markdownSettings}
                     mode={mode}
-                    onDefaultOpenModeChange={
-                        onDefaultOpenModeChange === undefined
-                            ? undefined
-                            : (next): void =>
-                                  dispatchSettingsAction('default-open-mode', () => onDefaultOpenModeChange(next))
-                    }
-                    onReadingWidthChange={
-                        onReadingWidthChange === undefined
-                            ? undefined
-                            : (next): void => dispatchSettingsAction('reading-width', () => onReadingWidthChange(next))
-                    }
-                    onPdfAppearanceChange={
-                        onPdfAppearanceChange === undefined
-                            ? undefined
-                            : (next): void =>
-                                  dispatchSettingsAction('pdf-appearance', () => onPdfAppearanceChange(next))
-                    }
-                    pdfAppearance={pdfAppearance}
-                    readingWidth={readingWidth}
                     onFileSettingsChange={(patch): void =>
                         dispatchSettingsAction('autosave', () => onFileSettingsChange?.(patch))
                     }

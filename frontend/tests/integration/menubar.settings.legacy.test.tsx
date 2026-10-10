@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 
 import catalogue from '../../src/i18n/locales/en.json';
 import { currentPlatform, formatShortcut } from '../../src/logic/actions/shortcutRegistry';
@@ -74,7 +74,7 @@ it('renders the acknowledged autosave control and leaves save rows unavailable w
     render(<SettingsMenu {...props} fileSettings={{ autosave: true }} onFileSettingsChange={onFileSettingsChange} />);
     fireEvent.click(screen.getByRole('button', { name: 'Settings' }));
 
-    const autosave = screen.getByRole('checkbox', { name: 'Autosave' });
+    const autosave = screen.getByRole('menuitemcheckbox', { name: 'Autosave' });
     expect(autosave).toBeChecked();
     fireEvent.click(autosave);
     expect(onFileSettingsChange).toHaveBeenCalledWith({ autosave: false });
@@ -196,9 +196,6 @@ it('keeps the binding popup labels, roles, and acknowledged state', () => {
         'Auto (system)',
         'Light',
         'Dark',
-        'Default open mode',
-        'Reading (Viewer)',
-        'Editor',
         'Markdown',
         'Minimal (CommonMark)',
         'GFM',
@@ -215,7 +212,7 @@ it('keeps the binding popup labels, roles, and acknowledged state', () => {
 
     expect(screen.getByRole('radiogroup', { name: 'Theme' })).toBeVisible();
     expect(screen.getByRole('radiogroup', { name: 'Appearance' })).toBeVisible();
-    expect(screen.getByRole('checkbox', { name: 'Autosave' })).not.toBeChecked();
+    expect(screen.getByRole('menuitemcheckbox', { name: 'Autosave' })).not.toBeChecked();
     expect(screen.getByRole('menuitemcheckbox', { name: 'Format on save' })).toBeChecked();
     expect(screen.getByRole('menuitemcheckbox', { name: 'Lint on save' })).not.toBeChecked();
 
@@ -300,17 +297,8 @@ function withRegistryAvailability(overrides: Partial<Record<ActionId, ActionAvai
     });
 }
 
-/*
- * The five rows that report a stored value: the two default-open-mode options
- * and the three Markdown standards. Every one is drawn by a `.stateRow`.
- */
-const STATE_ROW_LABELS = [
-    'Reading (Viewer)',
-    'Editor',
-    'Minimal (CommonMark)',
-    'GFM',
-    'Full (+ math, alerts, admonitions)',
-] as const;
+/* The three rows that report a stored value: the Markdown standards. */
+const STATE_ROW_LABELS = ['Minimal (CommonMark)', 'GFM', 'Full (+ math, alerts, admonitions)'] as const;
 
 function settingsRow(label: string): HTMLElement {
     const row = Array.from(document.querySelectorAll<HTMLElement>('[data-settings-row]')).find(
@@ -337,7 +325,7 @@ it('disables Autosave when the registry defers it, even with the handler wired',
     render(<SettingsMenu {...props} fileSettings={{ autosave: true }} onFileSettingsChange={jest.fn()} />);
     fireEvent.click(screen.getByRole('button', { name: 'Settings' }));
 
-    expect(screen.getByRole('checkbox', { name: 'Autosave' })).toBeDisabled();
+    expect(screen.getByRole('menuitemcheckbox', { name: 'Autosave' })).toBeDisabled();
     expect(settingsRow('Autosave')).toHaveAttribute('data-availability', 'deferred');
 });
 
@@ -411,11 +399,9 @@ it('updates each live save preference once from its row by click, Space, or Ente
     expect(onMarkdownSettingsChange).toHaveBeenLastCalledWith({ lintOnSave: false });
 });
 
-/* Default open mode and Markdown standard each activate through their own writer. */
 it('activates a hydrated standard exactly once through its settings writer', () => {
     const onMarkdownSettingsChange = jest.fn();
     withRegistryAvailability({
-        'default-open-mode': { kind: 'available' },
         'markdown-standard': { kind: 'available' },
     });
     render(
@@ -434,7 +420,6 @@ it('activates a hydrated standard exactly once through its settings writer', () 
     );
     fireEvent.click(screen.getByRole('button', { name: 'Settings' }));
 
-    expect(settingsRow('Reading (Viewer)')).toHaveAttribute('aria-disabled', 'true');
     expect(settingsRow('GFM')).toHaveAttribute('aria-disabled', 'false');
     expect(screen.getByRole('menuitemradio', { name: 'GFM' })).toHaveAttribute('aria-checked', 'false');
     expect(screen.getByRole('menuitemradio', { name: 'Full (+ math, alerts, admonitions)' })).toHaveAttribute(
@@ -446,17 +431,21 @@ it('activates a hydrated standard exactly once through its settings writer', () 
     expect(onMarkdownSettingsChange).toHaveBeenCalledWith({ standard: 'gfm' });
 });
 
-it('enables the open-mode rows once a writer is connected and sends the stored values', () => {
-    const onDefaultOpenModeChange = jest.fn();
-    render(<SettingsMenu {...props} defaultOpenMode="viewer" onDefaultOpenModeChange={onDefaultOpenModeChange} />);
+it('offers none of the settings that live only in the Settings dialog', () => {
+    render(<SettingsMenu {...props} />);
     fireEvent.click(screen.getByRole('button', { name: 'Settings' }));
+    const menu = screen.getByRole('menu', { name: 'Settings menu' });
 
-    expect(settingsRow('Reading (Viewer)')).toHaveAttribute('aria-disabled', 'false');
-    expect(settingsRow('Editor')).toHaveAttribute('aria-disabled', 'false');
-    expect(screen.getByRole('menuitemradio', { name: 'Reading (Viewer)' })).toHaveAttribute('aria-checked', 'true');
-    expect(screen.getByRole('menuitemradio', { name: 'Editor' })).toHaveAttribute('aria-checked', 'false');
-    fireEvent.click(settingsRow('Editor'));
-    expect(onDefaultOpenModeChange).toHaveBeenLastCalledWith('editor');
-    fireEvent.click(settingsRow('Reading (Viewer)'));
-    expect(onDefaultOpenModeChange).toHaveBeenLastCalledWith('viewer');
+    for (const label of [
+        'Default open mode',
+        'Reading (Viewer)',
+        'Reading width',
+        'Full width',
+        'PDF appearance',
+        'Styled',
+        'Clean',
+    ]) {
+        expect(menu).not.toHaveTextContent(label);
+    }
+    expect(within(menu).queryByRole('menuitemradio', { name: 'Editor' })).toBeNull();
 });

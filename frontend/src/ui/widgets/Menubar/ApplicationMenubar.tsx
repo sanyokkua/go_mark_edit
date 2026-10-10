@@ -3,6 +3,7 @@ import { useContext, useMemo } from 'react';
 import { t } from '../../../i18n';
 import { setEditorPaneVisible, setPreviewPaneVisible, setViewArrangement } from '../../../logic/store/docViewCommands';
 import { useAppDispatch, useAppSelector } from '../../../logic/store';
+import { useEditorShown } from '../../../logic/hooks/useEditorShown';
 import { toggleReading, toggleReadingSidebar } from '../../../logic/store/readingSlice';
 import { notifyError } from '../../../logic/store/notificationsSlice';
 import { reportClassifiedError } from '../../../logic/store/classifiedNotification';
@@ -10,7 +11,7 @@ import { setWorkspaceVisible } from '../../../logic/store/uiLayoutCommands';
 import type { ViewArrangement, RecentItem } from '../../../logic/store/appModelTypes';
 import { parseError } from '../../../logic/utils/parseError';
 import { useEditorSettings } from '../../../logic/settings/editorSettings';
-import { useAppearanceSettings, type DefaultOpenMode } from '../appearanceSettingsContext';
+import { useAppearanceSettings } from '../appearanceSettingsContext';
 import { useMinimumWindow } from '../minimumWindow';
 import type { ApplicationMenuTarget } from '../applicationMenuRequest';
 import Menubar from './Menubar';
@@ -62,9 +63,10 @@ export default function ApplicationMenubar({
     const activeDocument = useAppSelector((state) =>
         state.documents.activeDocumentId === null ? undefined : state.documents.byId[state.documents.activeDocumentId],
     );
-    const workspaceVisible = useAppSelector((state) => state.ui.layout.sidebarVisible ?? true);
+    const workspaceVisible = useAppSelector((state) => state.ui.layout.sidebarVisible ?? false);
     const workspaceOpen = useAppSelector((state) => state.workspace.snapshot !== null);
     const reading = useAppSelector((state) => state.reading.active);
+    const editorShown = useEditorShown();
     const minimumWindow = useMinimumWindow();
     const readingSidebarAvailable = workspaceOpen && !minimumWindow;
     const tabSetRevision = useAppSelector((state) => state.documents.tabSetRevision);
@@ -77,12 +79,6 @@ export default function ApplicationMenubar({
     const editorActions = useEditorActionExecutor();
     const settingsMenuProps: SettingsMenuProps = useMemo(
         () => ({
-            defaultOpenMode: appearanceSettings.appearance.defaultOpenMode as DefaultOpenMode,
-            onDefaultOpenModeChange: appearanceSettings.onDefaultOpenModeChange,
-            onPdfAppearanceChange: appearanceSettings.onPdfAppearanceChange,
-            onReadingWidthChange: appearanceSettings.onReadingWidthChange,
-            pdfAppearance: appearanceSettings.appearance.pdfAppearance,
-            readingWidth: appearanceSettings.appearance.readingWidth,
             editorSettings: editorSettings.settings,
             fileSettings: editorSettings.fileSettings,
             markdownSettings: editorSettings.markdownSettings,
@@ -109,8 +105,9 @@ export default function ApplicationMenubar({
             activeDocument={activeDocument}
             canReopenLastFile={canReopenLastFile}
             documentId={menuState.documentId}
-            formatMenuProps={{
+            markdownMenuProps={{
                 markdownSettingsLoaded: editorSettings.markdownSettings !== undefined,
+                editorShown,
                 slot,
                 capture: editorActions.capture,
                 onExecute: editorActions.execute,

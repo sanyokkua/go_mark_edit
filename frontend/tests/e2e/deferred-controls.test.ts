@@ -11,20 +11,15 @@ test('runs tidy from the active document and enables Export and Distraction-free
     await page.setViewportSize({ width: 1280, height: 720 });
     await expect(page.getByTestId('application-shell')).toBeVisible();
 
-    await page
-        .getByRole('tab', { name: /Untitled/u })
-        .locator('..')
-        .getByRole('button', { name: /^Close /u })
-        .click();
     await page.getByTestId('document-launcher').getByRole('button', { name: 'tidy-surface.md' }).click();
     await expect(page.getByRole('tab', { name: 'tidy-surface.md' })).toBeVisible();
     await expect(page.getByRole('textbox', { name: 'Editor content' })).toBeVisible();
     await expect(page.locator('[data-editor-surface] .view-lines')).toContainText('* item');
 
     const toolbar = page.getByRole('toolbar', { name: 'Document toolbar' });
-    for (const id of ['format', 'compact', 'lint'] as const) {
-        await expect(toolbar.locator(`[data-action-id="${id}"]`)).toBeEnabled();
-    }
+    await expect(toolbar.locator('[data-action-id="format"]')).toBeEnabled();
+    await expect(toolbar.locator('[data-action-id="compact"]')).toHaveCount(0);
+    await expect(toolbar.locator('[data-action-id="lint"]')).toHaveCount(0);
     await toolbar.locator('[data-action-id="format"]').click();
     await expect
         .poll(async () =>
@@ -46,9 +41,9 @@ test('runs tidy from the active document and enables Export and Distraction-free
         )
         .toBe('- item\n');
 
-    await page.getByRole('menubar').getByRole('button', { name: 'Format', exact: true }).click();
-    const formatMenu = page.getByRole('menu', { name: 'Format' });
-    await expect(formatMenu.getByRole('menuitem', { name: /Lint/u })).toBeEnabled();
+    await page.getByRole('menubar').getByRole('button', { name: 'Markdown', exact: true }).click();
+    const markdownMenu = page.getByRole('menu', { name: 'Markdown' });
+    await expect(markdownMenu.getByRole('menuitem', { name: /Lint/u })).toBeEnabled();
     await page.keyboard.press('Escape');
 
     const assistant = page.getByRole('button', { name: 'Toggle Assistant' });

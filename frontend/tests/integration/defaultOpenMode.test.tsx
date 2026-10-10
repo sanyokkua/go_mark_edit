@@ -35,16 +35,13 @@ const updateAppearance = settingsAdapter.updateAppearance as jest.MockedFunction
 >;
 
 function Menu(): React.JSX.Element {
-    const { appearance, onDefaultOpenModeChange, onModeChange, onOpenAppearance, onThemeChange } =
-        useAppearanceSettings();
+    const { appearance, onModeChange, onOpenAppearance, onThemeChange } = useAppearanceSettings();
     const { fileSettings, markdownSettings } = useEditorSettings();
     return (
         <SettingsMenu
-            defaultOpenMode={appearance.defaultOpenMode as 'viewer' | 'editor'}
             fileSettings={fileSettings}
             markdownSettings={markdownSettings}
             mode={appearance.mode}
-            onDefaultOpenModeChange={onDefaultOpenModeChange}
             onModeChange={onModeChange}
             onOpenAppearance={onOpenAppearance}
             onThemeChange={onThemeChange}
@@ -74,12 +71,19 @@ async function openMenu(): Promise<HTMLElement> {
     return screen.getByRole('menu', { name: 'Settings menu' });
 }
 
-it('sends the viewer value when Reading (Viewer) is chosen in the menu', async () => {
-    renderHarness();
+async function openDialog(): Promise<HTMLElement> {
     const menu = await openMenu();
-    expect(within(menu).getByRole('menuitemradio', { name: 'Editor' })).toHaveAttribute('aria-checked', 'true');
+    fireEvent.click(within(menu).getByRole('menuitem', { name: /All settings/u }));
+    return screen.getByRole('dialog', { name: 'Settings' });
+}
 
-    fireEvent.click(within(menu).getByRole('menuitemradio', { name: 'Reading (Viewer)' }));
+it('sends the viewer value when Reading (Viewer) is chosen in the dialog', async () => {
+    renderHarness();
+    const dialog = await openDialog();
+    const group = within(dialog).getByRole('radiogroup', { name: 'Default open mode' });
+    expect(within(group).getByRole('radio', { name: 'Editor' })).toBeChecked();
+
+    fireEvent.click(within(group).getByRole('radio', { name: 'Reading (Viewer)' }));
 
     await waitFor(() =>
         expect(updateAppearance).toHaveBeenCalledWith({
@@ -90,53 +94,17 @@ it('sends the viewer value when Reading (Viewer) is chosen in the menu', async (
             theme: 'material',
         }),
     );
-    await waitFor(() =>
-        expect(within(menu).getByRole('menuitemradio', { name: 'Reading (Viewer)' })).toHaveAttribute(
-            'aria-checked',
-            'true',
-        ),
-    );
-});
-
-it('keeps the dialog row and the menu in sync in both directions', async () => {
-    renderHarness();
-    const menu = await openMenu();
-    fireEvent.click(within(menu).getByRole('menuitemradio', { name: 'Reading (Viewer)' }));
-    await waitFor(() => expect(updateAppearance).toHaveBeenCalledTimes(1));
-
-    fireEvent.click(within(menu).getByRole('menuitem', { name: /All settings/u }));
-    const dialog = screen.getByRole('dialog', { name: 'Settings' });
-    const group = within(dialog).getByRole('radiogroup', { name: 'Default open mode' });
     await waitFor(() => expect(within(group).getByRole('radio', { name: 'Reading (Viewer)' })).toBeChecked());
-
-    fireEvent.click(within(group).getByRole('radio', { name: 'Editor' }));
-    await waitFor(() =>
-        expect(updateAppearance).toHaveBeenLastCalledWith({
-            defaultOpenMode: 'editor',
-            readingWidth: 'page',
-            pdfAppearance: 'styled',
-            mode: 'auto',
-            theme: 'material',
-        }),
-    );
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Close' }));
-    const reopened = await openMenu();
-    await waitFor(() =>
-        expect(within(reopened).getByRole('menuitemradio', { name: 'Editor' })).toHaveAttribute('aria-checked', 'true'),
-    );
 });
 
 it('restores Editor when Reset appearance is activated', async () => {
     renderHarness();
-    const menu = await openMenu();
-    fireEvent.click(within(menu).getByRole('menuitemradio', { name: 'Reading (Viewer)' }));
+    const dialog = await openDialog();
+    const group = within(dialog).getByRole('radiogroup', { name: 'Default open mode' });
+    fireEvent.click(within(group).getByRole('radio', { name: 'Reading (Viewer)' }));
     await waitFor(() => expect(updateAppearance).toHaveBeenCalledTimes(1));
 
-    fireEvent.click(within(menu).getByRole('menuitem', { name: /All settings/u }));
-    fireEvent.click(screen.getByRole('button', { name: 'Reset appearance' }));
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Reset appearance' }));
 
-    const group = within(screen.getByRole('dialog', { name: 'Settings' })).getByRole('radiogroup', {
-        name: 'Default open mode',
-    });
     await waitFor(() => expect(within(group).getByRole('radio', { name: 'Editor' })).toBeChecked());
 });

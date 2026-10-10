@@ -453,13 +453,14 @@ func writeMixedDocument(t *testing.T, service *AppModelService, content string) 
 // killed. Quitting with every tab closed is the ordinary way to reach it.
 func TestPrepareCloseWithNoTargetsMarshalsAnEmptyTargetArray(t *testing.T) {
 	service := NewAppModelServiceForHost(WithEmitter(&recordingEmitter{}))
+	newUntitledID(t, service)
 	state, err := service.GetState(context.Background())
 	if err != nil {
 		t.Fatalf("GetState: %v", err)
 	}
 
-	// Reach the state a user reaches by closing every tab: the clean Untitled
-	// document the service starts with is closed, leaving nothing to target.
+	// Reach the state a user reaches by closing every tab: the only clean
+	// Untitled document is closed, leaving nothing to target.
 	opening := service.PrepareClose(context.Background(), apperr.ClosePlanSingle, state.Snapshot.OrderedDocumentIDs, state.Snapshot.TabSetRevision)
 	if opening.Data == nil {
 		t.Fatalf("prepare initial close: %+v", opening.Error)

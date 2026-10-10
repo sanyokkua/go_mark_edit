@@ -65,7 +65,7 @@ test('retrying a failed settings startup mounts the shell once and can quit clea
         (button as HTMLElement).click();
     });
 
-    await expect(app.page.getByRole('toolbar')).toBeVisible({ timeout: 20_000 });
+    await expect(app.page.getByTestId('application-shell')).toBeVisible({ timeout: 20_000 });
     await expect(failure).toHaveCount(0);
 
     const appPid = app.appChildPid;

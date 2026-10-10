@@ -358,4 +358,12 @@ export const test = base.extend<E2EFixtures & E2EOptions>({
     },
 });
 
+/** Presses Mod+N and waits for the new Untitled tab: a launched window starts with no document. */
+export async function newUntitledDocument(page: Page): Promise<void> {
+    const tabs = page.getByRole('tab', { name: /Untitled/u });
+    const before = await tabs.count();
+    await page.keyboard.press('ControlOrMeta+N');
+    await expect(tabs).toHaveCount(before + 1);
+}
+
 export { expect };

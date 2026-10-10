@@ -1,6 +1,6 @@
 import type { Page } from '@playwright/test';
 
-import { expect, test } from '../support/harness';
+import { expect, newUntitledDocument, test } from '../support/harness';
 
 const appearances = [
     ['Liquid Glass', 'Light', 'glass', 'light'],
@@ -12,18 +12,13 @@ const appearances = [
 ] as const;
 
 async function openDocument(page: Page, name: string): Promise<void> {
-    await page
-        .getByRole('tab', { name: 'Untitled' })
-        .locator('..')
-        .getByRole('button', { name: /^Close /u })
-        .click();
     await page.getByTestId('document-launcher').getByRole('button', { name }).click();
     await expect(page.getByRole('tab', { name })).toBeVisible();
 }
 
 test('table words stay intact in narrow Split and wide Preview under Full and GFM', async ({ app }) => {
     const longCode = 'unbroken' + 'x'.repeat(220);
-    const prose = 'outside' + 'y'.repeat(150);
+    const prose = 'outside' + 'y'.repeat(600);
     const markdown = [
         prose,
         '',
@@ -144,6 +139,7 @@ test('focused Monaco input has no decoration while editor boundary and caret ret
 }) => {
     await app.launch();
     const { page } = app;
+    await newUntitledDocument(page);
     const input = page.locator('[data-editor-surface] textarea.inputarea');
     await expect(input).toBeVisible();
     for (const [label, modeLabel, theme, mode] of appearances) {

@@ -27,6 +27,13 @@ export interface EditorRange {
 
 export type EditorSelection = EditorRange;
 
+/** A change Enter makes instead of a plain new line, with the caret to leave behind. */
+export interface EnterEdit {
+    range: EditorRange;
+    text: string;
+    selection: EditorSelection;
+}
+
 export interface EditorMarker {
     startLine: number;
     startColumn: number;
@@ -68,6 +75,11 @@ export interface CodeEditorProps {
      */
     readOnly?: boolean;
     visible?: boolean;
+    /**
+     * Decides what Enter does at a collapsed caret. Receives the document lines up to and including the caret
+     * line; `null` leaves Enter as a plain new line.
+     */
+    enterEdit?: (lines: readonly string[], position: EditorPosition) => EnterEdit | null;
     onChange?: (value: string) => void;
     onBlur?: () => void;
     onCursorPositionChange?: (position: EditorPosition) => void;
@@ -306,6 +318,7 @@ const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(function CodeEd
         minimap = false,
         readOnly = false,
         visible = true,
+        enterEdit,
         onChange,
         onBlur,
         onCursorPositionChange,
@@ -322,6 +335,7 @@ const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(function CodeEd
     const monacoRef = useRef<typeof import('monaco-editor') | null>(null);
     const lintDecorationsRef = useRef<editor.IEditorDecorationsCollection | null>(null);
     const onChangeRef = useRef(onChange);
+    const enterEditRef = useRef(enterEdit);
     const readOnlyRef = useRef(readOnly);
     const onBlurRef = useRef(onBlur);
     const onCursorPositionChangeRef = useRef(onCursorPositionChange);
@@ -348,6 +362,7 @@ const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(function CodeEd
     }, []);
 
     onChangeRef.current = onChange;
+    enterEditRef.current = enterEdit;
     readOnlyRef.current = readOnly;
     onBlurRef.current = onBlur;
     onCursorPositionChangeRef.current = onCursorPositionChange;
@@ -605,7 +620,35 @@ const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(function CodeEd
                 });
             });
         }
-        if (newlyMounted) editorInstance.layout();
+        if (newlyMounted) {
+            editorInstance.layout();
+            editorInstance.addAction({
+                id: 'gomarkedit.enter',
+                label: 'Insert new line',
+                keybindings: [monaco.KeyCode.Enter],
+                precondition:
+                    'editorTextFocus && !editorReadonly && !suggestWidgetVisible && !inSnippetMode && !editorHasSelection && !editorHasMultipleSelections',
+                run: (): void => {
+                    const position = editorInstance.getPosition();
+                    const model = editorInstance.getModel();
+                    if (enterEditRef.current !== undefined && position !== null && model !== null) {
+                        const lines: string[] = [];
+                        for (let line = 1; line <= position.lineNumber; line += 1)
+                            lines.push(model.getLineContent(line));
+                        const edit = enterEditRef.current(lines, toEditorPosition(position));
+                        if (edit !== null) {
+                            applyEdit(
+                                editorInstance,
+                                [{ range: toMonacoRange(edit.range), text: edit.text }],
+                                edit.selection,
+                            );
+                            return;
+                        }
+                    }
+                    editorInstance.trigger('keyboard', 'type', { text: '\n' });
+                },
+            });
+        }
         editorInstance.onDidBlurEditorText((): void => {
             onBlurRef.current?.();
         });

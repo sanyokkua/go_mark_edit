@@ -1,0 +1,28 @@
+.row {
+    align-items: center;
+    border-bottom: var(--control-border-width) solid var(--stroke-soft);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1rem;
+    justify-content: space-between;
+    padding: 0.5625rem 0;
+}
+
+.text {
+    flex: 1 1 12rem;
+    min-inline-size: 0;
+    overflow-wrap: anywhere;
+}
+
+.description {
+    color: var(--faint);
+    display: block;
+    font-size: 0.71875rem;
+    margin-block-start: 0.125rem;
+}
+
+.control {
+    flex: none;
+    max-inline-size: 100%;
+    min-inline-size: 0;
+}

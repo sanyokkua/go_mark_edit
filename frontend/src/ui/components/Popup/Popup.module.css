@@ -37,6 +37,7 @@
     box-shadow: var(--win-shadow);
     box-sizing: border-box;
     display: block;
+    max-inline-size: min(var(--popup-max-width), calc(100vw - 2 * var(--app-gap)));
     min-inline-size: var(--popup-min-width);
     overflow: visible;
     padding: var(--popup-padding);

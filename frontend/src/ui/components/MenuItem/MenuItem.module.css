@@ -78,35 +78,3 @@
     flex-basis: 100%;
     padding-inline-start: var(--popup-row-indent);
 }
-
-.toggle {
-    background: var(--surface-3);
-    border: var(--control-border-width) solid var(--stroke);
-    border-radius: 12px;
-    cursor: pointer;
-    flex: none;
-    height: 19px;
-    position: relative;
-    width: 34px;
-}
-
-.toggle::after {
-    background: var(--muted);
-    border-radius: 50%;
-    content: '';
-    height: 14px;
-    left: 1.5px;
-    position: absolute;
-    top: 1.5px;
-    width: 14px;
-}
-
-.toggle[data-checked='true'] {
-    background: var(--accent);
-    border-color: transparent;
-}
-
-.toggle[data-checked='true']::after {
-    background: var(--accent-contrast);
-    left: 16px;
-}

@@ -4,6 +4,7 @@ import { t } from '../../../i18n';
 import type { DocumentMetadata, RecentItem } from '../../../logic/store/appModelTypes';
 import {
     actionsForSurface,
+    groupedActionsForSurface,
     getAction,
     getActionAvailability,
     type ActionId,
@@ -28,7 +29,7 @@ import DocumentIdentity from '../DocumentIdentity';
 import { safeRecentLabel } from '../Launcher';
 import { isMinimumWindow } from '../minimumWindow';
 import SettingsMenu, { type SettingsMenuProps } from './SettingsMenu';
-import FormatMenu, { type FormatMenuProps } from './FormatMenu';
+import MarkdownMenu, { type MarkdownMenuProps } from './MarkdownMenu';
 import type { ApplicationMenuTarget } from '../applicationMenuRequest';
 import Bar from '../../components/Bar';
 import ModalShell from '../../components/ModalShell';
@@ -104,9 +105,9 @@ export interface MenubarProps {
     writable?: boolean;
     onShortcuts?: () => void;
     settingsMenuProps: SettingsMenuProps;
-    formatMenuProps?: Pick<
-        FormatMenuProps,
-        'markdownSettingsLoaded' | 'projectedState' | 'slot' | 'onExecute' | 'capture' | 'onCancel'
+    markdownMenuProps?: Pick<
+        MarkdownMenuProps,
+        'markdownSettingsLoaded' | 'editorShown' | 'projectedState' | 'slot' | 'onExecute' | 'capture' | 'onCancel'
     >;
     toggleFullscreen?: () => Promise<boolean>;
     viewMenuProps?: ViewMenuProps;
@@ -128,7 +129,7 @@ export interface MenubarProps {
  */
 const isNarrowViewport = isMinimumWindow;
 
-type ActiveMenu = 'settings' | 'view' | 'file' | 'format' | 'about' | null;
+type ActiveMenu = 'settings' | 'view' | 'file' | 'markdown' | 'about' | null;
 
 const Menubar: React.FC<MenubarProps> = ({
     modalOpen,
@@ -156,7 +157,7 @@ const Menubar: React.FC<MenubarProps> = ({
     sessionDocumentId,
     writable,
     settingsMenuProps,
-    formatMenuProps,
+    markdownMenuProps,
     toggleFullscreen = windowAdapter.toggleFullscreen,
     viewMenuProps,
     requestedMenu = null,
@@ -186,16 +187,17 @@ const Menubar: React.FC<MenubarProps> = ({
         aboutTriggerRef.current = element;
         setAboutTrigger(element);
     }, []);
+    const { onOpenAppearance } = settingsMenuProps;
     const settingsOpen = activeMenu === 'settings';
-    const formatOpen = activeMenu === 'format';
+    const markdownOpen = activeMenu === 'markdown';
     const viewOpen = activeMenu === 'view';
     const fileOpen = activeMenu === 'file';
     const aboutOpen = activeMenu === 'about';
     const setSettingsOpen = (open: boolean): void => {
         setActiveMenu((current): ActiveMenu => (open ? 'settings' : current === 'settings' ? null : current));
     };
-    const setFormatOpen = (open: boolean): void => {
-        setActiveMenu((current): ActiveMenu => (open ? 'format' : current === 'format' ? null : current));
+    const setMarkdownOpen = (open: boolean): void => {
+        setActiveMenu((current): ActiveMenu => (open ? 'markdown' : current === 'markdown' ? null : current));
     };
     const setViewOpen = (open: boolean): void => {
         setActiveMenu((current): ActiveMenu => (open ? 'view' : current === 'view' ? null : current));
@@ -336,7 +338,8 @@ const Menubar: React.FC<MenubarProps> = ({
                 viewAvailable: viewMenuProps !== undefined,
                 openSettings: (): void => {
                     setViewOpen(false);
-                    setSettingsOpen(true);
+                    setSettingsOpen(false);
+                    onOpenAppearance();
                 },
                 openView: (): void => {
                     setSettingsOpen(false);
@@ -360,7 +363,7 @@ const Menubar: React.FC<MenubarProps> = ({
                 documentOpen: documentId !== undefined,
                 toggleFullscreen,
             }),
-        [documentId, modalOpen, onAbout, onShortcuts, toggleFullscreen, viewMenuProps],
+        [documentId, modalOpen, onAbout, onOpenAppearance, onShortcuts, toggleFullscreen, viewMenuProps],
     );
     /*
      * Every File row that both declares a registry shortcut and has a handler
@@ -424,7 +427,7 @@ const Menubar: React.FC<MenubarProps> = ({
             (action.id !== 'view' || viewMenuProps !== undefined),
     );
     const fileActions = actionsForSurface('file-menu');
-    const formatActions = actionsForSurface('format-menu');
+    const markdownGroups = groupedActionsForSurface('markdown-menu');
     const fileActionLabel = (item: (typeof fileActions)[number]): string =>
         t(item.surfaceLabelKeys?.['file-menu'] ?? item.labelKey);
     /*
@@ -539,10 +542,10 @@ const Menubar: React.FC<MenubarProps> = ({
                                         }}
                                     />
                                     <MenuItem
-                                        label={t('shell.format')}
+                                        label={t('shell.markdown')}
                                         onSelect={(): void => {
                                             setOverflowOpen(false);
-                                            setFormatOpen(true);
+                                            setMarkdownOpen(true);
                                         }}
                                     />
                                     {menuActions.map((item) => (
@@ -554,7 +557,12 @@ const Menubar: React.FC<MenubarProps> = ({
                                             onSelect={(): void => {
                                                 setOverflowOpen(false);
                                                 if (item.id === 'view') requestViewOpen(true);
-                                                dispatch(item);
+                                                /* The overflow row opens the Settings popup; only Mod+, opens the dialog. */
+                                                dispatch(
+                                                    item.id === 'settings'
+                                                        ? { ...item, invoke: (): void => setSettingsOpen(true) }
+                                                        : item,
+                                                );
                                             }}
                                         />
                                     ))}
@@ -680,16 +688,17 @@ const Menubar: React.FC<MenubarProps> = ({
                                     anchorElement={overflowTrigger}
                                     showTrigger={false}
                                 />
-                                <FormatMenu
-                                    actions={formatActions}
-                                    markdownSettingsLoaded={formatMenuProps?.markdownSettingsLoaded ?? false}
-                                    projectedState={formatMenuProps?.projectedState ?? projectedState}
-                                    slot={formatMenuProps?.slot ?? { state: 'idle' }}
-                                    capture={formatMenuProps?.capture}
-                                    onExecute={formatMenuProps?.onExecute}
-                                    onCancel={formatMenuProps?.onCancel}
-                                    open={!modalOpen && formatOpen}
-                                    onOpenChange={setFormatOpen}
+                                <MarkdownMenu
+                                    groups={markdownGroups}
+                                    markdownSettingsLoaded={markdownMenuProps?.markdownSettingsLoaded ?? false}
+                                    editorShown={markdownMenuProps?.editorShown}
+                                    projectedState={markdownMenuProps?.projectedState ?? projectedState}
+                                    slot={markdownMenuProps?.slot ?? { state: 'idle' }}
+                                    capture={markdownMenuProps?.capture}
+                                    onExecute={markdownMenuProps?.onExecute}
+                                    onCancel={markdownMenuProps?.onCancel}
+                                    open={!modalOpen && markdownOpen}
+                                    onOpenChange={setMarkdownOpen}
                                     showTrigger={false}
                                     anchorElement={overflowTrigger}
                                 />
@@ -814,16 +823,17 @@ const Menubar: React.FC<MenubarProps> = ({
                                         ))}
                                 </Popup>
 
-                                <FormatMenu
-                                    actions={formatActions}
-                                    markdownSettingsLoaded={formatMenuProps?.markdownSettingsLoaded ?? false}
-                                    projectedState={formatMenuProps?.projectedState ?? projectedState}
-                                    slot={formatMenuProps?.slot ?? { state: 'idle' }}
-                                    capture={formatMenuProps?.capture}
-                                    onExecute={formatMenuProps?.onExecute}
-                                    onCancel={formatMenuProps?.onCancel}
-                                    open={!modalOpen && formatOpen}
-                                    onOpenChange={setFormatOpen}
+                                <MarkdownMenu
+                                    groups={markdownGroups}
+                                    markdownSettingsLoaded={markdownMenuProps?.markdownSettingsLoaded ?? false}
+                                    editorShown={markdownMenuProps?.editorShown}
+                                    projectedState={markdownMenuProps?.projectedState ?? projectedState}
+                                    slot={markdownMenuProps?.slot ?? { state: 'idle' }}
+                                    capture={markdownMenuProps?.capture}
+                                    onExecute={markdownMenuProps?.onExecute}
+                                    onCancel={markdownMenuProps?.onCancel}
+                                    open={!modalOpen && markdownOpen}
+                                    onOpenChange={setMarkdownOpen}
                                     onTrigger={(): void => {
                                         setFileOpen(false);
                                         setSettingsOpen(false);
@@ -928,7 +938,7 @@ const Menubar: React.FC<MenubarProps> = ({
                                     data-action-id={sidebarAction.id}
                                     icon="sidebar"
                                     label={t(sidebarAction.accessibilityKey)}
-                                    pressed={viewMenuProps.workspaceVisible ?? true}
+                                    pressed={viewMenuProps.workspaceVisible ?? false}
                                     variant="icon"
                                     onActivate={(): void => dispatch(action('toggle-sidebar'))}
                                 />

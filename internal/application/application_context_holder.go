@@ -4,7 +4,6 @@ package application
 import (
 	"context"
 	"fmt"
-	"os"
 	"sync"
 	"time"
 
@@ -97,9 +96,6 @@ func NewApplicationContextHolderWithOptions(fileService file.FileUtilsServiceAPI
 		modelOptions = append(modelOptions, appmodel.WithLogger(appLogger.Zerolog()))
 	}
 	modelOptions = append(modelOptions, options.AppModelOptions...)
-	if os.Getenv(newWindowChildEnv) == "1" {
-		modelOptions = append(modelOptions, appmodel.WithEmptySession())
-	}
 	appModelService := appmodel.NewAppModelServiceForHost(
 		modelOptions...,
 	)

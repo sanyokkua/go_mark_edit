@@ -44,6 +44,7 @@ function mockCreateEditor(content: string): MockEditor & { instance: editor.ISta
         getSelection: (): null => null,
         getTopForLineNumber: (lineNumber: number): number => 12 + (lineNumber - 1) * 20,
         layout: jest.fn(),
+        addAction: jest.fn(() => ({ dispose: jest.fn() })),
         onDidBlurEditorText: idle,
         onDidChangeConfiguration: idle,
         onDidChangeCursorPosition: idle,
@@ -90,9 +91,10 @@ jest.mock('@monaco-editor/react', () => {
 
         React.useEffect((): void => {
             mockMonaco.instances.push(mounted);
-            onMount?.(mounted.instance, { editor: { ScrollType: { Immediate: 1 } } } as unknown as Parameters<
-                NonNullable<EditorProps['onMount']>
-            >[1]);
+            onMount?.(mounted.instance, {
+                editor: { ScrollType: { Immediate: 1 } },
+                KeyCode: { Enter: 3 },
+            } as unknown as Parameters<NonNullable<EditorProps['onMount']>>[1]);
         }, [mounted]);
 
         return React.createElement('textarea', { 'aria-label': 'Markdown source', defaultValue });
@@ -499,7 +501,9 @@ it('restyles at once when the appearance changes from Light to Dark and stays in
 it('lays the stage out by the Reading width and restyles at once from the Settings dialog while reading', async () => {
     await renderApp('split');
     toggleReading();
-    const stage = (): HTMLElement => screen.getByRole('tabpanel');
+    // The open Settings dialog also has a tabpanel (its selected section), so pick the document stage.
+    const stage = (): HTMLElement =>
+        screen.getAllByRole('tabpanel').find((panel) => panel.hasAttribute('data-variant')) as HTMLElement;
     expect(stage()).toHaveAttribute('data-variant', 'reading');
     expect(stage()).toHaveAttribute('data-reading-width', 'page');
 
@@ -580,15 +584,16 @@ it('leaves Reading mode when Escape is pressed with nothing else open', async ()
     expect(screen.getByRole('banner', { name: 'Document identity' })).toBeVisible();
 });
 
-it('closes the Settings menu with Escape and stays in Reading mode', async () => {
+it('closes the Settings dialog opened with Ctrl+, using Escape and stays in Reading mode', async () => {
     await renderApp('split');
     toggleReading();
     pressCtrl(',');
-    expect(await screen.findByRole('menu', { name: 'Settings menu' })).toBeVisible();
+    expect(await screen.findByRole('dialog', { name: 'Settings' })).toBeVisible();
+    expect(screen.queryByRole('menu', { name: 'Settings menu' })).not.toBeInTheDocument();
 
     pressEscape();
 
-    await waitFor(() => expect(screen.queryByRole('menu', { name: 'Settings menu' })).not.toBeInTheDocument());
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Settings' })).not.toBeInTheDocument());
     expect(store.getState().reading.active).toBe(true);
 
     pressEscape();

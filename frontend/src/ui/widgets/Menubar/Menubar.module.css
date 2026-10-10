@@ -106,5 +106,5 @@
 }
 
 .narrowOverflow {
-    max-inline-size: calc(100vw - 2 * var(--app-gap));
+    max-inline-size: min(var(--popup-max-width), calc(100vw - 2 * var(--app-gap)));
 }

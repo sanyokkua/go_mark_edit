@@ -189,9 +189,9 @@ func TestHandlerClassifiesLayoutPersistenceFailuresWithSafeSubject(t *testing.T)
 		AppModelOption{LayoutRepository: failingLayoutPersistenceRepository{}},
 	)
 	handler := NewAppModelHandler(service, nil, nil)
-	visible := false
+	maximized := true
 
-	result := handler.SetUILayout(boundRequest("layout-persistence"), apperr.UILayout{SidebarVisible: &visible})
+	result := handler.SetUILayout(boundRequest("layout-persistence"), apperr.UILayout{WindowMaximized: &maximized})
 
 	if result.Error == nil || result.Error.Code != apperr.CodeIO {
 		t.Fatalf("layout persistence result = %+v, want io typed envelope", result)

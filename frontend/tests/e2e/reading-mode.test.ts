@@ -10,13 +10,6 @@ const PREVIEW = 'section[aria-label="Preview pane"]';
 
 async function openRecentFromLauncher(page: Page, filename: string): Promise<void> {
     const launcher = page.getByTestId('document-launcher');
-    if (!(await launcher.isVisible())) {
-        await page
-            .getByRole('tab', { name: /Untitled/u })
-            .locator('..')
-            .getByRole('button', { name: /^Close /u })
-            .click();
-    }
     await expect(launcher).toBeVisible();
     await launcher.getByRole('button', { name: filename, exact: true }).click();
     await expect(page.getByRole('tab', { name: filename })).toBeVisible();
@@ -97,7 +90,7 @@ test('Ctrl+Tab still switches documents while Reading mode is active', async ({ 
     await expect(page.locator(PREVIEW)).not.toContainText('Second document text.');
 });
 
-test('Ctrl+, in Reading mode opens the Settings menu and Escape closes it while Reading mode stays active', async ({
+test('Ctrl+, in Reading mode opens the Settings dialog and Escape closes it while Reading mode stays active', async ({
     app,
 }) => {
     const source = await app.writeDocument('reading-settings.md', '# Settings\n\nText.\n');
@@ -110,12 +103,12 @@ test('Ctrl+, in Reading mode opens the Settings menu and Escape closes it while 
     await expectReading(page);
 
     await page.keyboard.press('ControlOrMeta+,');
-    const menu = page.getByRole('menu', { name: 'Settings menu' });
-    await expect(menu).toBeVisible();
-    await expect(page.getByRole('dialog')).toHaveCount(0);
+    const dialog = page.getByRole('dialog', { name: 'Settings' });
+    await expect(dialog).toBeVisible();
+    await expect(page.getByRole('menu', { name: 'Settings menu' })).toHaveCount(0);
 
     await page.keyboard.press('Escape');
-    await expect(menu).toBeHidden();
+    await expect(dialog).toBeHidden();
     await expect(page.locator(SHELL)).toHaveAttribute('data-reading', 'true');
 });
 
@@ -451,6 +444,32 @@ test('closes the overlay with Escape before leaving Reading mode and keeps the s
     expect((await page.getByRole('complementary', { name: 'Sidebar' }).boundingBox())!.width).toBe(widthBefore);
 });
 
+test('Hidden sidebar stays hidden after the overlay is shown and hidden and Reading mode is left', async ({ app }) => {
+    const root = join(app.documentDirectory, 'reading-hidden');
+    const source = await app.writeDocument('reading-hidden/doc.md', '# Doc\n\nBody.\n');
+    await app.seedRecents([source]);
+    await app.launch();
+    await app.openWorkspace(root);
+    const { page } = app;
+    await page.setViewportSize({ width: 1280, height: 720 });
+    await openRecentFromLauncher(page, 'doc.md');
+    await page.keyboard.press('ControlOrMeta+\\');
+    await expect(page.locator(SHELL)).toHaveAttribute('data-workspace-visible', 'false');
+    await page.locator('[data-editor-surface] .view-lines').first().click();
+    await page.keyboard.press('ControlOrMeta+Enter');
+    await expectReading(page);
+
+    await page.keyboard.press('ControlOrMeta+\\');
+    const overlay = page.getByRole('complementary', { name: 'Sidebar' });
+    await expect(overlay).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(overlay).toBeHidden();
+
+    await page.keyboard.press('Escape');
+    await expectNormal(page);
+    await expect(page.locator(SHELL)).toHaveAttribute('data-workspace-visible', 'false');
+});
+
 test('restores the first document scroll offset after switching to another tab and back in Reading mode', async ({
     app,
 }) => {
@@ -554,7 +573,7 @@ test('closes a mouse-opened preview menu with Escape and keeps Reading mode on t
     await expect(page.locator('[data-reading-document]')).toBeFocused();
 });
 
-test('Full width through the Ctrl+, Settings menu widens the document in Reading mode and persists after restart', async ({
+test('Full width through the Ctrl+, Settings dialog widens the document in Reading mode and persists after restart', async ({
     app,
 }) => {
     const source = await app.writeDocument('reading-width.md', '# Width\n\nWidth text.\n');
@@ -569,13 +588,13 @@ test('Full width through the Ctrl+, Settings menu widens the document in Reading
     expect(pageBox.width).toBeLessThanOrEqual(700);
 
     await page.keyboard.press('ControlOrMeta+,');
-    const menu = page.getByRole('menu', { name: 'Settings menu' });
-    await menu.getByRole('menuitemradio', { name: 'Full width', exact: true }).click();
-    await expect(menu.getByRole('menuitemradio', { name: 'Full width', exact: true })).toHaveAttribute(
-        'aria-checked',
-        'true',
-    );
+    const dialog = page.getByRole('dialog', { name: 'Settings' });
+    await dialog.getByRole('radiogroup', { name: 'Reading width' }).getByRole('radio', { name: 'Full width' }).click();
+    await expect(
+        dialog.getByRole('radiogroup', { name: 'Reading width' }).getByRole('radio', { name: 'Full width' }),
+    ).toHaveAttribute('aria-checked', 'true');
     await page.keyboard.press('Escape');
+    await expect(dialog).toBeHidden();
 
     await expect(page.locator(SHELL)).toHaveAttribute('data-reading', 'true');
     await expect(async () => {
@@ -585,19 +604,26 @@ test('Full width through the Ctrl+, Settings menu widens the document in Reading
 
     await app.relaunch();
     await page.getByRole('button', { name: 'Settings', exact: true }).click();
+    await page.getByRole('menuitem', { name: 'All settings…', exact: true }).click();
     await expect(
         page
-            .getByRole('menu', { name: 'Settings menu' })
-            .getByRole('menuitemradio', { name: 'Full width', exact: true }),
+            .getByRole('dialog', { name: 'Settings' })
+            .getByRole('radiogroup', { name: 'Reading width' })
+            .getByRole('radio', { name: 'Full width', exact: true }),
     ).toHaveAttribute('aria-checked', 'true');
     app.expectNoForeignRequests();
 });
 
 async function chooseDefaultOpenMode(page: Page, name: 'Editor' | 'Reading (Viewer)'): Promise<void> {
     await page.getByRole('button', { name: 'Settings', exact: true }).click();
-    const menu = page.getByRole('menu', { name: 'Settings menu' });
-    await menu.getByRole('menuitemradio', { name, exact: true }).click();
+    await page.getByRole('menuitem', { name: 'All settings…', exact: true }).click();
+    const dialog = page.getByRole('dialog', { name: 'Settings' });
+    await dialog
+        .getByRole('radiogroup', { name: 'Default open mode' })
+        .getByRole('radio', { name, exact: true })
+        .click();
     await page.keyboard.press('Escape');
+    await expect(dialog).toBeHidden();
 }
 
 test('opening a file from the launcher with Reading (Viewer) shows Reading mode and exit shows the saved arrangement', async ({
@@ -609,11 +635,6 @@ test('opening a file from the launcher with Reading (Viewer) shows Reading mode 
     const { page } = app;
     await page.setViewportSize({ width: 1280, height: 720 });
     await chooseDefaultOpenMode(page, 'Reading (Viewer)');
-    await page
-        .getByRole('tab', { name: /Untitled/u })
-        .locator('..')
-        .getByRole('button', { name: /^Close /u })
-        .click();
     await page.getByTestId('document-launcher').getByRole('button', { name: 'on-open.md', exact: true }).click();
     await expectReading(page);
     await expect(page.locator(PREVIEW)).toContainText('Open body.');

@@ -21,6 +21,7 @@ import {
     type LivePreviewSnapshot,
     useLivePreviewSnapshot,
 } from '../../../logic/hooks/useLivePreview';
+import { continueList } from '../../../logic/format/listContinuation';
 import PreviewContextMenu from '../PreviewContextMenu';
 import { dispatchAction } from '../../../logic/actions/actionDispatcher';
 import { useScrollSync } from '../../../logic/hooks/useScrollSync';
@@ -233,6 +234,7 @@ const ActiveEditor = forwardRef<ActiveEditorHandle, ActiveEditorProps>(function 
             }}
             readOnly={readOnly}
             visible={visible}
+            enterEdit={continueList}
             onViewStateCaptureReady={(capture: (() => void) | null): void => {
                 viewStateCaptureRef.current = capture;
             }}

@@ -14,10 +14,7 @@ jest.mock('../../src/logic/adapter', () => ({
 }));
 
 const settingsMenuProps: SettingsMenuProps = {
-    defaultOpenMode: 'editor',
-    readingWidth: 'page',
     mode: 'auto',
-    onDefaultOpenModeChange: jest.fn(),
     onModeChange: jest.fn(),
     onOpenAppearance: jest.fn(),
     onThemeChange: jest.fn(),
@@ -119,7 +116,7 @@ it('draws every menubar trigger from one owner', () => {
     );
 
     const menu = screen.getByRole('navigation', { name: 'Application actions' });
-    const triggers = ['File', 'Format', 'Settings', 'View', 'About'].map((name) =>
+    const triggers = ['File', 'Markdown', 'Settings', 'View', 'About'].map((name) =>
         within(menu).getByRole('button', { name }),
     );
 
@@ -131,7 +128,7 @@ it('draws every menubar trigger from one owner', () => {
     }
 });
 
-it.each(['File', 'Format', 'Settings', 'View', 'About'])(
+it.each(['File', 'Markdown', 'Settings', 'View', 'About'])(
     'opens the %s menu from ArrowDown like every other menubar trigger',
     (name) => {
         render(
@@ -156,7 +153,7 @@ it.each(['File', 'Format', 'Settings', 'View', 'About'])(
     },
 );
 
-it('renders File, Format, Settings, View, About in binding order with exact menu inventories', async () => {
+it('renders File, Markdown, Settings, View, About in binding order with exact menu inventories', async () => {
     const onAbout = jest.fn();
     render(
         <Menubar
@@ -175,24 +172,42 @@ it('renders File, Format, Settings, View, About in binding order with exact menu
         within(menu)
             .getAllByRole('button')
             .map((button) => button.textContent),
-    ).toEqual(['File', 'Format', 'Settings', 'View', 'About']);
+    ).toEqual(['File', 'Markdown', 'Settings', 'View', 'About']);
 
-    fireEvent.click(within(menu).getByRole('button', { name: 'Format' }));
-    const formatMenu = screen.getByRole('menu', { name: 'Format' });
-    expect(formatMenu).toHaveAttribute('data-viewport-popup', 'format-menu');
-    expect(menuItemLabels(formatMenu)).toEqual(['Format', 'Compact', 'Lint']);
-    fireEvent.click(within(menu).getByRole('button', { name: 'Format' }));
+    fireEvent.click(within(menu).getByRole('button', { name: 'Markdown' }));
+    const markdownMenu = screen.getByRole('menu', { name: 'Markdown' });
+    expect(markdownMenu).toHaveAttribute('data-viewport-popup', 'markdown-menu');
+    expect(menuItemLabels(markdownMenu)).toEqual([
+        'Bold',
+        'Italic',
+        'Bold italic',
+        'Strikethrough',
+        'Inline code',
+        'Heading 1',
+        'Heading 2',
+        'Heading 3',
+        'Heading 4',
+        'Heading 5',
+        'Heading 6',
+        'Bullet list',
+        'Numbered list',
+        'Task list',
+        'Quote',
+        'Link',
+        'Image',
+        'Table…',
+        'Format',
+        'Compact',
+        'Lint',
+    ]);
+    fireEvent.click(within(menu).getByRole('button', { name: 'Markdown' }));
 
     fireEvent.click(within(menu).getByRole('button', { name: 'Settings' }));
     const settingsMenu = screen.getByRole('menu', { name: 'Settings menu' });
     expect(settingsMenu).toBeVisible();
     expect(settingsMenu).toHaveAttribute('data-viewport-popup', 'settings-menu');
-    const readingRow = within(settingsMenu).getByRole('menuitemradio', { name: 'Reading (Viewer)' });
-    expect(readingRow).toHaveAttribute('aria-disabled', 'false');
-    expect(readingRow).toHaveAttribute('aria-checked', 'false');
-    const editorRow = within(settingsMenu).getByRole('menuitemradio', { name: 'Editor' });
-    expect(editorRow).toHaveAttribute('aria-disabled', 'false');
-    expect(editorRow).toHaveAttribute('aria-checked', 'true');
+    expect(within(settingsMenu).getByRole('menuitemradio', { name: 'GFM' })).toBeInTheDocument();
+    expect(within(settingsMenu).queryByText('Default open mode')).toBeNull();
     fireEvent.click(within(menu).getByRole('button', { name: 'Settings' }));
 
     fireEvent.keyDown(within(menu).getByRole('button', { name: 'View' }), {
@@ -354,7 +369,7 @@ it('moves the same ordered top-level actions into overflow at narrow width', () 
     fireEvent.keyDown(overflow, { key: 'ArrowDown' });
     expect(menuItemLabels(screen.getByRole('menu', { name: 'Application actions' }))).toEqual([
         'File',
-        'Format',
+        'Markdown',
         'Settings',
         'View',
         'About',
@@ -568,7 +583,7 @@ it('switches to the keyboard-reachable overflow only at the 375-pixel state', ()
     fireEvent.keyDown(overflow, { key: 'ArrowDown' });
     expect(menuItemLabels(screen.getByRole('menu', { name: 'Application actions' }))).toEqual([
         'File',
-        'Format',
+        'Markdown',
         'Settings',
         'View',
         'About',
@@ -605,7 +620,7 @@ it('keeps the implemented desktop menubar grouped and keyboard-reachable', () =>
         within(menu as HTMLElement)
             .getAllByRole('button')
             .map((button) => button.textContent),
-    ).toEqual(['File', 'Format', 'Settings', 'View', 'About']);
+    ).toEqual(['File', 'Markdown', 'Settings', 'View', 'About']);
     expect(
         within(menu as HTMLElement)
             .getAllByRole('button')

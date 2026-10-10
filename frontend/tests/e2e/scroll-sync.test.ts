@@ -366,17 +366,7 @@ async function scrollEditorToLimit(page: Page, deltaY: number): Promise<void> {
     throw new Error('the editor did not settle while wheel-scrolling to its limit');
 }
 
-async function closeUntitled(page: Page): Promise<void> {
-    const tab = page.getByRole('tab', { name: /Untitled/u });
-    await expect(tab).toBeVisible();
-    await tab
-        .locator('..')
-        .getByRole('button', { name: /^Close /u })
-        .click();
-}
-
 async function openRecent(page: Page, filename: string): Promise<void> {
-    await closeUntitled(page);
     const launcher = page.getByTestId('document-launcher');
     await expect(launcher).toBeVisible();
     await launcher.getByRole('button', { name: filename, exact: true }).click();
@@ -532,13 +522,14 @@ test('turns synchronized scrolling off from the View menu and keeps the choice a
     expect(await previewScrollMetrics(page)).toEqual(previewBeforeScroll);
 
     await app.relaunch();
-    await expect(page.getByRole('tab', { name: 'Untitled' })).toBeVisible();
+    await expect(page.getByTestId('document-launcher')).toBeVisible();
     await openViewMenu(page);
     await expect(page.getByRole('menuitemcheckbox', { name: 'Synchronized scrolling' })).not.toBeChecked();
     await closeMenu(page);
 
     await openRecent(page, 'long.md');
     await chooseArrangement(page, 'Split');
+    await expect(page.locator('[data-editor-surface] .line-numbers').first()).toBeVisible({ timeout: 30_000 });
     await seekEditorToLine(page, 300, 12);
 
     await openViewMenu(page);

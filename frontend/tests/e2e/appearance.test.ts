@@ -1,6 +1,6 @@
 import type { Page } from '@playwright/test';
 
-import { expect, test } from '../support/harness';
+import { expect, newUntitledDocument, test } from '../support/harness';
 import { expectCompactMenuRows } from '../support/menuRows';
 
 const palettes = [
@@ -37,6 +37,7 @@ test('changes all six palettes through keyboard-reachable controls without overf
     await app.launch();
 
     const { page } = app;
+    await newUntitledDocument(page);
     for (const width of [375, 768, 1280]) {
         await page.setViewportSize({ width, height: 720 });
         await openAppearance(page);
@@ -90,11 +91,6 @@ test('raw mark follows preview colors across all six palettes', async ({ app }) 
     await app.launch();
 
     const { page } = app;
-    await page
-        .getByRole('tab', { name: 'Untitled' })
-        .locator('..')
-        .getByRole('button', { name: /^Close /u })
-        .click();
     await page.getByTestId('document-launcher').getByRole('button', { name: 'mark.md' }).click();
     await page.getByRole('radiogroup', { name: 'View arrangement' }).getByRole('radio', { name: 'Preview' }).click();
     await expect(page.locator('.gme-preview mark')).toHaveText('highlighted');
@@ -133,6 +129,7 @@ test('keeps compact Settings theme rows labeled, stacked, and frame-bounded', as
     await app.launch();
 
     const { page } = app;
+    await newUntitledDocument(page);
     const themeNames = ['Liquid Glass', 'Material', 'Minimal'] as const;
     for (const width of [375, 768, 1280]) {
         await page.setViewportSize({ width, height: 720 });
@@ -300,11 +297,6 @@ test('preview code follows six palettes without replacing syntax spans', async (
     await app.launch();
 
     const { page } = app;
-    await page
-        .getByRole('tab', { name: 'Untitled' })
-        .locator('..')
-        .getByRole('button', { name: /^Close /u })
-        .click();
     await page.getByTestId('document-launcher').getByRole('button', { name: 'highlight.md' }).click();
     await page.getByRole('radiogroup', { name: 'View arrangement' }).getByRole('radio', { name: 'Preview' }).click();
     const keyword = page.locator('.gme-preview pre code .hljs-keyword').first();

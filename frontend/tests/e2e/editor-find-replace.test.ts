@@ -4,11 +4,6 @@ import type { Page } from '@playwright/test';
 import { expect, test } from '../support/harness';
 
 async function openRecent(page: Page, filename: string): Promise<void> {
-    const untitled = page.getByRole('tab', { name: /Untitled/u });
-    await untitled
-        .locator('..')
-        .getByRole('button', { name: /^Close /u })
-        .click();
     await page.getByTestId('document-launcher').getByRole('button', { name: filename, exact: true }).click();
     await expect(page.getByRole('tab', { name: filename })).toBeVisible();
 }
@@ -16,7 +11,7 @@ async function openRecent(page: Page, filename: string): Promise<void> {
 async function disableAutosave(page: Page): Promise<void> {
     await page.getByRole('button', { name: 'Settings', exact: true }).click();
     const menu = page.getByRole('menu', { name: 'Settings menu' });
-    const autosave = menu.getByRole('checkbox', { name: 'Autosave' });
+    const autosave = menu.getByRole('menuitemcheckbox', { name: 'Autosave' });
     if (await autosave.isChecked()) await menu.locator('[data-settings-toggle="Autosave"]').click();
     await page.keyboard.press('Escape');
 }

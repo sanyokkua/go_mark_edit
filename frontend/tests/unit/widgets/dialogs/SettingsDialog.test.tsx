@@ -17,14 +17,19 @@ function renderDialog(onOpenChange = jest.fn<void, [boolean]>()) {
     return onOpenChange;
 }
 
-it('contains only delivered Appearance controls and traps keyboard focus', () => {
+it('opens on Appearance with the delivered rows, a Close button and a focus trap', () => {
     renderDialog();
 
     const dialog = screen.getByRole('dialog', { name: 'Settings' });
-    expect(dialog).toHaveFocus();
+    expect(within(dialog).getByRole('tab', { name: 'Appearance' })).toHaveFocus();
+    expect(within(dialog).getByRole('tabpanel', { name: 'Appearance' })).toBeInTheDocument();
     expect(screen.getByRole('radiogroup', { name: 'Theme' })).toBeInTheDocument();
-    expect(screen.getByRole('radiogroup', { name: 'Appearance' })).toBeInTheDocument();
-    expect(screen.queryByText(/assistant|editor settings|files|future/i)).toBeNull();
+    expect(screen.getByRole('radiogroup', { name: 'Color mode' })).toBeInTheDocument();
+    expect(screen.getByRole('radiogroup', { name: 'Default open mode' })).toBeInTheDocument();
+    expect(screen.getByRole('radiogroup', { name: 'Reading width' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Reset appearance' })).toBeInTheDocument();
+    expect(screen.queryByRole('radiogroup', { name: 'PDF appearance' })).toBeNull();
+    expect(screen.queryByText(/assistant|future/i)).toBeNull();
 
     const focusable = Array.from(
         dialog.querySelectorAll<HTMLElement>('button:not([tabindex="-1"]), button[tabindex="0"]'),
@@ -36,6 +41,118 @@ it('contains only delivered Appearance controls and traps keyboard focus', () =>
     focusable[0].focus();
     fireEvent.keyDown(document, { key: 'Tab', shiftKey: true });
     expect(focusable.at(-1)).toHaveFocus();
+});
+
+it('closes from the header Close button', () => {
+    const onOpenChange = renderDialog();
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+});
+
+it('lists exactly Appearance, Editor, Markdown, Workspace and Export in order', () => {
+    renderDialog();
+    expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual([
+        'Appearance',
+        'Editor',
+        'Markdown',
+        'Workspace',
+        'Export',
+    ]);
+});
+
+it('starts on Appearance each time it is opened', () => {
+    const props = {
+        mode: 'auto',
+        onModeChange: jest.fn(),
+        onOpenChange: jest.fn(),
+        onReset: jest.fn(),
+        onThemeChange: jest.fn(),
+        theme: 'material',
+    } as const;
+    const { rerender } = render(<SettingsDialog {...props} open />);
+    fireEvent.click(screen.getByRole('tab', { name: 'Export' }));
+    rerender(<SettingsDialog {...props} open={false} />);
+    rerender(<SettingsDialog {...props} open />);
+    expect(screen.getByRole('tab', { name: 'Appearance' })).toHaveAttribute('aria-selected', 'true');
+});
+
+it('moves between sections with the arrow, Home and End keys and shows the section at once', () => {
+    renderDialog();
+    const appearance = screen.getByRole('tab', { name: 'Appearance' });
+
+    fireEvent.keyDown(appearance, { key: 'ArrowDown' });
+    const editor = screen.getByRole('tab', { name: 'Editor' });
+    expect(editor).toHaveFocus();
+    expect(editor).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('tabpanel', { name: 'Editor' })).toBeInTheDocument();
+
+    fireEvent.keyDown(editor, { key: 'ArrowRight' });
+    expect(screen.getByRole('tab', { name: 'Markdown' })).toHaveFocus();
+    fireEvent.keyDown(screen.getByRole('tab', { name: 'Markdown' }), { key: 'End' });
+    expect(screen.getByRole('tab', { name: 'Export' })).toHaveFocus();
+    fireEvent.keyDown(screen.getByRole('tab', { name: 'Export' }), { key: 'ArrowUp' });
+    expect(screen.getByRole('tab', { name: 'Workspace' })).toHaveFocus();
+    fireEvent.keyDown(screen.getByRole('tab', { name: 'Workspace' }), { key: 'ArrowLeft' });
+    expect(screen.getByRole('tab', { name: 'Markdown' })).toHaveFocus();
+    fireEvent.keyDown(screen.getByRole('tab', { name: 'Markdown' }), { key: 'ArrowLeft' });
+    fireEvent.keyDown(screen.getByRole('tab', { name: 'Editor' }), { key: 'Home' });
+    expect(screen.getByRole('tab', { name: 'Appearance' })).toHaveFocus();
+});
+
+it('keeps the section list as one tab stop', () => {
+    renderDialog();
+    const tabs = screen.getAllByRole('tab');
+    expect(tabs.map((tab) => tab.getAttribute('tabindex'))).toEqual(['0', '-1', '-1', '-1', '-1']);
+});
+
+it('shows the Editor switches and Font size drop-down with the stored values and writes changes', () => {
+    const onEditorSettingsChange = jest.fn();
+    const onFileSettingsChange = jest.fn();
+    render(
+        <SettingsDialog
+            editorSettings={{ fontSize: 16, lineNumbers: true, scrollSync: false, wordWrap: false }}
+            fileSettings={{ autosave: true }}
+            mode="auto"
+            onEditorSettingsChange={onEditorSettingsChange}
+            onFileSettingsChange={onFileSettingsChange}
+            onModeChange={jest.fn()}
+            onOpenChange={jest.fn()}
+            onReset={jest.fn()}
+            onThemeChange={jest.fn()}
+            open
+            theme="material"
+        />,
+    );
+    fireEvent.click(screen.getByRole('tab', { name: 'Editor' }));
+
+    expect(screen.getByRole('switch', { name: 'Autosave' })).toHaveAttribute('aria-checked', 'true');
+    expect(screen.getByRole('switch', { name: 'Line numbers' })).toHaveAttribute('aria-checked', 'true');
+    expect(screen.getByRole('switch', { name: 'Word wrap' })).toHaveAttribute('aria-checked', 'false');
+    expect(screen.getByRole('switch', { name: 'Scroll sync' })).toHaveAttribute('aria-checked', 'false');
+    const fontSize = screen.getByRole('combobox', { name: 'Font size' });
+    expect(fontSize).toHaveValue('16');
+    expect(
+        within(fontSize)
+            .getAllByRole('option')
+            .map((option) => option.textContent),
+    ).toEqual(['13 px', '14 px', '16 px']);
+
+    fireEvent.click(screen.getByRole('switch', { name: 'Word wrap' }));
+    expect(onEditorSettingsChange).toHaveBeenLastCalledWith({ wordWrap: true });
+    fireEvent.click(screen.getByRole('switch', { name: 'Autosave' }));
+    expect(onFileSettingsChange).toHaveBeenLastCalledWith({ autosave: false });
+    fireEvent.change(fontSize, { target: { value: '13' } });
+    expect(onEditorSettingsChange).toHaveBeenLastCalledWith({ fontSize: 13 });
+});
+
+it('disables the Markdown controls with the loading explanation until settings are supplied', () => {
+    renderDialog();
+    fireEvent.click(screen.getByRole('tab', { name: 'Markdown' }));
+
+    const panel = screen.getByRole('tabpanel', { name: 'Markdown' });
+    expect(within(panel).getByText('Markdown settings are loading.')).toBeInTheDocument();
+    for (const radio of within(panel).getAllByRole('radio')) expect(radio).toBeDisabled();
+    for (const toggle of within(panel).getAllByRole('switch')) expect(toggle).toBeDisabled();
 });
 
 it('closes on Escape and restores focus to the opener', () => {
@@ -165,6 +282,7 @@ it('shows the stored PDF appearance with its description and sends styled or cle
         />,
     );
 
+    fireEvent.click(screen.getByRole('tab', { name: 'Export' }));
     const group = screen.getByRole('radiogroup', { name: 'PDF appearance' });
     expect(group).toHaveAccessibleDescription(/black text on white/u);
     expect(within(group).getByRole('radio', { name: 'Clean' })).toBeChecked();
@@ -175,8 +293,43 @@ it('shows the stored PDF appearance with its description and sends styled or cle
 it('disables the PDF appearance group when no change handler is supplied', () => {
     renderDialog();
 
+    fireEvent.click(screen.getByRole('tab', { name: 'Export' }));
     const group = screen.getByRole('radiogroup', { name: 'PDF appearance' });
     for (const radio of within(group).getAllByRole('radio')) {
         expect(radio).toBeDisabled();
     }
+});
+
+it('shows the Show hidden folders switch in the Workspace section and writes its change', () => {
+    const onShowHiddenFoldersChange = jest.fn();
+    render(
+        <SettingsDialog
+            mode="auto"
+            onModeChange={jest.fn()}
+            onOpenChange={jest.fn()}
+            onReset={jest.fn()}
+            onShowHiddenFoldersChange={onShowHiddenFoldersChange}
+            onThemeChange={jest.fn()}
+            open
+            showHiddenFolders
+            theme="material"
+        />,
+    );
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Workspace' }));
+    const panel = screen.getByRole('tabpanel', { name: 'Workspace' });
+    const toggle = within(panel).getByRole('switch', { name: 'Show hidden folders' });
+    expect(toggle).toBeChecked();
+    expect(toggle).toHaveAccessibleDescription(/folders whose names start with a dot/iu);
+    fireEvent.click(toggle);
+    expect(onShowHiddenFoldersChange).toHaveBeenCalledWith(false);
+});
+
+it('shows Show hidden folders off and disabled when no value or handler is supplied', () => {
+    renderDialog();
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Workspace' }));
+    const toggle = screen.getByRole('switch', { name: 'Show hidden folders' });
+    expect(toggle).not.toBeChecked();
+    expect(toggle).toBeDisabled();
 });

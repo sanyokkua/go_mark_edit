@@ -1,9 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Provider } from 'react-redux';
 
-import { store, useAppDispatch, useAppSelector } from '../logic/store';
-import { setWorkspaceVisible } from '../logic/store/uiLayoutCommands';
+import { store } from '../logic/store';
 import { ApplicationMenuRequestContext } from '../ui/widgets/applicationMenuRequest';
+import { InsertTableRequestContext } from '../ui/widgets/insertTableRequest';
 import { EditorSessionProvider } from '../ui/widgets/editorSession';
 import { ModalStateProvider } from '../ui/widgets/modalState';
 import { TabRemediationContext } from '../ui/widgets/tabRemediation';
@@ -37,13 +37,6 @@ const AppWorkflows = ({
     shutdown: ReturnType<typeof useShutdown>;
 }): React.JSX.Element => {
     const [problemsOpen, setProblemsOpen] = useState(false);
-    const dispatch = useAppDispatch();
-    const workspaceRootPath = useAppSelector((state) => state.workspace.snapshot?.rootPath);
-    useEffect(() => {
-        if (workspaceRootPath !== undefined && workspaceRootPath !== null) {
-            void dispatch(setWorkspaceVisible(true));
-        }
-    }, [dispatch, workspaceRootPath]);
     const conflicts = useConflictCommands(session.activation);
     const writes = useDocumentWrites(session, conflicts);
     const close = useCloseWorkflow({ session, shutdown, conflicts, recoverySurface: writes.recoverySurface, writes });
@@ -85,44 +78,47 @@ const AppWorkflows = ({
             <TabRemediationContext.Provider value={notifications.tabRemediationRef}>
                 <WorkspaceTreeCommandsContext.Provider value={commands}>
                     <ApplicationMenuRequestContext.Provider value={presentation.requestMenu}>
-                        <AppFrame
-                            problemsOpen={problemsOpen}
-                            onToggleProblems={(): void => setProblemsOpen((open) => !open)}
-                            bootstrap={bootstrap}
-                            menuState={presentation.menuState}
-                            settingsOpen={presentation.settingsOpen}
-                            onSettingsOpenChange={presentation.setSettingsOpen}
-                            onQuit={shutdown.requestQuit}
-                            onRetry={bootstrap.retry}
-                            notices={notifications.notices}
-                            banners={notifications.banners}
-                            onDismiss={notifications.onDismiss}
-                            recovery={writes.recoverySurface}
-                            printRequest={pdf.request}
-                            shell={{
-                                ...commands,
-                                onOpenLink: commands.openLink,
-                                problemsOpen,
-                                onToggleProblems: (): void => setProblemsOpen((open) => !open),
-                                onCloseProblems: (): void => setProblemsOpen(false),
-                                dropEpoch: drops.dropEpoch,
-                                onCloseDocument: close.onCloseDocument,
-                                onOpenFolder: commands.onOpenFolder,
-                                onExternalConflict: external.receiveConflict,
-                            }}
-                        >
-                            <AppDialogs
-                                status={bootstrap.status}
-                                version={bootstrap.result?.applicationVersion ?? ''}
-                                about={presentation.about}
-                                shortcuts={presentation.shortcuts}
-                                prompts={prompts}
-                                folderCommands={commands}
-                                drops={drops}
+                        <InsertTableRequestContext.Provider value={presentation.requestTable}>
+                            <AppFrame
+                                problemsOpen={problemsOpen}
+                                onToggleProblems={(): void => setProblemsOpen((open) => !open)}
+                                bootstrap={bootstrap}
+                                menuState={presentation.menuState}
+                                settingsOpen={presentation.settingsOpen}
+                                onSettingsOpenChange={presentation.setSettingsOpen}
+                                onQuit={shutdown.requestQuit}
+                                onRetry={bootstrap.retry}
+                                notices={notifications.notices}
+                                banners={notifications.banners}
+                                onDismiss={notifications.onDismiss}
                                 recovery={writes.recoverySurface}
-                                announcement={notifications.announcement}
-                            />
-                        </AppFrame>
+                                printRequest={pdf.request}
+                                shell={{
+                                    ...commands,
+                                    onOpenLink: commands.openLink,
+                                    problemsOpen,
+                                    onToggleProblems: (): void => setProblemsOpen((open) => !open),
+                                    onCloseProblems: (): void => setProblemsOpen(false),
+                                    dropEpoch: drops.dropEpoch,
+                                    onCloseDocument: close.onCloseDocument,
+                                    onOpenFolder: commands.onOpenFolder,
+                                    onExternalConflict: external.receiveConflict,
+                                }}
+                            >
+                                <AppDialogs
+                                    status={bootstrap.status}
+                                    version={bootstrap.result?.applicationVersion ?? ''}
+                                    about={presentation.about}
+                                    shortcuts={presentation.shortcuts}
+                                    table={presentation.table}
+                                    prompts={prompts}
+                                    folderCommands={commands}
+                                    drops={drops}
+                                    recovery={writes.recoverySurface}
+                                    announcement={notifications.announcement}
+                                />
+                            </AppFrame>
+                        </InsertTableRequestContext.Provider>
                     </ApplicationMenuRequestContext.Provider>
                 </WorkspaceTreeCommandsContext.Provider>
             </TabRemediationContext.Provider>

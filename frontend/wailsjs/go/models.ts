@@ -52,6 +52,7 @@ export namespace apperr {
 	    previewPaneVisible?: boolean;
 	    assistantVisible?: boolean;
 	    assistantWidth?: number;
+	    showHiddenFolders?: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new UILayout(source);
@@ -69,6 +70,7 @@ export namespace apperr {
 	        this.previewPaneVisible = source["previewPaneVisible"];
 	        this.assistantVisible = source["assistantVisible"];
 	        this.assistantWidth = source["assistantWidth"];
+	        this.showHiddenFolders = source["showHiddenFolders"];
 	    }
 	}
 	export class WorkspaceNode {

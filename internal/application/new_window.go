@@ -24,8 +24,6 @@ type processNewWindowLauncher struct {
 	logger *logging.Logger
 }
 
-const newWindowChildEnv = "GOMARKEDIT_NEW_WINDOW_CHILD"
-
 // NewOSNewWindowLauncher returns the process launcher used by the desktop app.
 func NewOSNewWindowLauncher(logger *logging.Logger) NewWindowLauncher {
 	return processNewWindowLauncher{logger: logger}
@@ -42,12 +40,6 @@ func (launcher processNewWindowLauncher) Launch(targetPath string) error {
 		args = []string{targetPath}
 	}
 	command := exec.Command(executablePath, args...)
-	for _, entry := range os.Environ() {
-		if !strings.HasPrefix(entry, newWindowChildEnv+"=") {
-			command.Env = append(command.Env, entry)
-		}
-	}
-	command.Env = append(command.Env, newWindowChildEnv+"=1")
 	if err := command.Start(); err != nil {
 		return err
 	}

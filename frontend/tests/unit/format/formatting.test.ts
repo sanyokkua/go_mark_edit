@@ -28,7 +28,7 @@ const request = (
     ...overrides,
 });
 
-it.each(['italic', 'bullet-list', 'task-list'] as const)(
+it.each(['italic', 'bold-italic', 'bullet-list', 'task-list'] as const)(
     'refuses direct %s edits before reading a document when marker settings are absent',
     (actionId) => {
         const getContent = jest.fn(() => ({ status: 'available' as const, value: 'word' }));
@@ -268,16 +268,17 @@ it('edits an existing link instead of nesting and selects the empty-link URL', (
     });
 });
 
-it('inserts a two-column table at a block boundary without consuming source text', () => {
+it('inserts a default 3 by 3 table at a block boundary without consuming source text', () => {
+    const skeleton = '| Header 1 | Header 2 | Header 3 |\n| --- | --- | --- |\n|  |  |  |\n|  |  |  |\n|  |  |  |';
     const inline = formatMarkdown(request('table', 'A sentence continues here.', selection(1, 12)));
     expect(inline.range).toEqual({
         start: { lineNumber: 1, column: 27 },
         end: { lineNumber: 1, column: 27 },
     });
-    expect(inline.text).toBe('\n\n| Header 1 | Header 2 |\n| --- | --- |\n|  |  |');
+    expect(inline.text).toBe(`\n\n${skeleton}`);
 
     const blank = formatMarkdown(request('table', '\n', selection(1, 1)));
-    expect(blank.text).toBe('| Header 1 | Header 2 |\n| --- | --- |\n|  |  |');
+    expect(blank.text).toBe(skeleton);
     expect(blank.selection).toEqual({
         start: { lineNumber: 1, column: 3 },
         end: { lineNumber: 1, column: 11 },
@@ -330,9 +331,9 @@ it('transforms every selected heading line without deleting bounded source bytes
     });
 });
 
-it('converts every selected list line to canonical numbered markers without renumbering', () => {
+it('replaces mixed list markers with a sequential count and still removes numbering when every line is numbered', () => {
     const result = formatMarkdown(request('numbered-list', '- first\n* second\n12. third', selection(1, 1, 3, 10)));
-    expect(result.text).toBe('1. first\n1. second\nthird');
+    expect(result.text).toBe('1. first\n2. second\n3. third');
 
     expect(formatMarkdown(request('numbered-list', '1. first\n1. second', selection(1, 1, 2, 10))).text).toBe(
         'first\nsecond',
@@ -343,8 +344,28 @@ it('applies quote, source-only link, and the empty GFM table skeleton', () => {
     expect(formatMarkdown(request('quote', 'alpha\nbeta', selection(1, 1, 2, 5))).text).toBe('> alpha\n> beta');
     expect(formatMarkdown(request('link', 'docs', selection(1, 1, 1, 5))).text).toBe('[docs](url)');
     expect(formatMarkdown(request('table', '', selection(1, 1))).text).toBe(
-        '| Header 1 | Header 2 |\n| --- | --- |\n|  |  |',
+        '| Header 1 | Header 2 | Header 3 |\n| --- | --- | --- |\n|  |  |  |\n|  |  |  |\n|  |  |  |',
     );
+});
+
+it('builds a table of the requested size and selects Header 1', () => {
+    const result = formatMarkdown(request('table', '', selection(1, 1), { table: { columns: 4, rows: 2 } }));
+    expect(result.text).toBe(
+        '| Header 1 | Header 2 | Header 3 | Header 4 |\n| --- | --- | --- | --- |\n|  |  |  |  |\n|  |  |  |  |',
+    );
+    expect(result.selection).toEqual({
+        start: { lineNumber: 1, column: 3 },
+        end: { lineNumber: 1, column: 11 },
+    });
+});
+
+it('separates a table from a non-blank line by exactly one blank line', () => {
+    const result = formatMarkdown(request('table', 'Intro', selection(1, 6), { table: { columns: 2, rows: 1 } }));
+    expect(result.text).toBe('\n\n| Header 1 | Header 2 |\n| --- | --- |\n|  |  |');
+    expect(result.selection).toEqual({
+        start: { lineNumber: 3, column: 3 },
+        end: { lineNumber: 3, column: 11 },
+    });
 });
 
 it('routes a bounded result through the existing document-command seam', () => {
@@ -446,5 +467,113 @@ it('forwards empty-pair caret intent as well as selected-range intent', () => {
     expect(replaceRange).toHaveBeenCalledWith(expect.anything(), '****', {
         start: { lineNumber: 1, column: 3 },
         end: { lineNumber: 1, column: 3 },
+    });
+});
+
+describe('Bold italic', () => {
+    const boldItalic = (source: string, range: FormatRequest['selection'], emphasisMarker: '_' | '*' = '_') =>
+        formatMarkdown(
+            request('bold-italic', source, range, {
+                markers: { bulletMarker: '-', emphasisMarker, headingStyle: 'atx' },
+            }),
+        );
+
+    it('wraps the selection with strong outside and the emphasis marker inside, and restores it on a second use', () => {
+        const applied = boldItalic('word', selection(1, 1, 1, 5));
+        expect(applied.text).toBe('**_word_**');
+
+        const restored = boldItalic('**_word_**', selection(1, 1, 1, 11));
+        expect(restored.text).toBe('word');
+    });
+
+    it('uses three asterisks when the emphasis marker is an asterisk', () => {
+        expect(boldItalic('word', selection(1, 1, 1, 5), '*').text).toBe('***word***');
+    });
+
+    it('completes bold text when the caret is inside it', () => {
+        expect(boldItalic('**word**', selection(1, 5)).text).toBe('**_word_**');
+    });
+
+    it('completes italic text by adding strong outside it', () => {
+        expect(boldItalic('_word_', selection(1, 4)).text).toBe('**_word_**');
+    });
+
+    it('wraps every non-empty line of a multi-line selection separately', () => {
+        const source = '- first\n\n> second';
+        expect(boldItalic(source, selection(1, 1, 3, 10)).text).toBe('- **_first_**\n\n> **_second_**');
+        expect(boldItalic(source, selection(1, 1, 3, 10), '*').text).toBe('- ***first***\n\n> ***second***');
+    });
+});
+
+describe('Heading levels 4 to 6', () => {
+    it.each([
+        ['heading-4', '#### Title'],
+        ['heading-5', '##### Title'],
+        ['heading-6', '###### Title'],
+    ] as const)('%s sets the heading level and toggles it off again', (actionId, expected) => {
+        expect(formatMarkdown(request(actionId, 'Title', selection(1, 3))).text).toBe(expected);
+        expect(formatMarkdown(request(actionId, expected, selection(1, 3))).text).toBe('Title');
+    });
+
+    it('changes a different heading level to the requested one', () => {
+        expect(formatMarkdown(request('heading-5', '## Title', selection(1, 4))).text).toBe('##### Title');
+    });
+});
+
+describe('Numbered list numbering', () => {
+    const numbered = (source: string, range: FormatRequest['selection']) =>
+        formatMarkdown(request('numbered-list', source, range)).text;
+
+    it('numbers three plain lines from 1', () => {
+        expect(numbered('a\nb\nc', selection(1, 1, 3, 2))).toBe('1. a\n2. b\n3. c');
+    });
+
+    it('continues the numbered item above with its count and delimiter', () => {
+        expect(numbered('4) d\nx\ny', selection(2, 1, 3, 2))).toBe('5) x\n6) y');
+    });
+
+    it('continues a numbered item inside a block quote', () => {
+        expect(numbered('> 2. b\n> x', selection(2, 1, 2, 4))).toBe('> 3. x');
+    });
+
+    it('does not continue a numbered item above that has a different indentation', () => {
+        expect(numbered('  4. d\nx', selection(2, 1))).toBe('1. x');
+    });
+
+    it('does not continue a numbered item above that has a different quote prefix', () => {
+        expect(numbered('> 4. d\nx', selection(2, 1))).toBe('1. x');
+    });
+
+    it('restarts nested runs and resumes the outer count', () => {
+        expect(numbered('a\n  b\n  c\nd', selection(1, 1, 4, 2))).toBe('1. a\n  1. b\n  2. c\n2. d');
+    });
+
+    it('restarts a nested run after each shallower line', () => {
+        expect(numbered('a\n  b\nc\n  d', selection(1, 1, 4, 4))).toBe('1. a\n  1. b\n2. c\n  1. d');
+        expect(numbered('a\n  b\n    c\n  d\n    e', selection(1, 1, 5, 6))).toBe(
+            '1. a\n  1. b\n    1. c\n  2. d\n    1. e',
+        );
+    });
+
+    it('keeps blank lines blank without consuming a number', () => {
+        expect(numbered('a\n\nb', selection(1, 1, 3, 2))).toBe('1. a\n\n2. b');
+    });
+
+    it('turns a single blank caret line into an empty first item', () => {
+        expect(numbered('', selection(1, 1))).toBe('1. ');
+    });
+
+    it('replaces task and heading markers with numbers', () => {
+        expect(numbered('- [ ] a\n# b', selection(1, 1, 2, 4))).toBe('1. a\n2. b');
+    });
+
+    it('removes numbering when every non-blank line is a numbered item', () => {
+        expect(numbered('1. first\n2. second', selection(1, 1, 2, 10))).toBe('first\nsecond');
+    });
+
+    it('does not renumber items below the selection', () => {
+        const edit = formatMarkdown(request('numbered-list', 'a\n7. z', selection(1, 1)));
+        expect(edit.text).toBe('1. a');
+        expect(edit.range.end.lineNumber).toBe(1);
     });
 });

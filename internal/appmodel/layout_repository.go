@@ -6,7 +6,6 @@ const (
 	LayoutWindowWidth            = "window.width"
 	LayoutWindowHeight           = "window.height"
 	LayoutWindowMaximized        = "window.maximized"
-	LayoutWorkspaceVisible       = "workspace.visible"
 	LayoutWorkspaceWidth         = "workspace.width"
 	LayoutWorkspaceHiddenFolders = "workspace.showHiddenFolders"
 	LayoutArrangementBackup      = "document.arrangementFallback"

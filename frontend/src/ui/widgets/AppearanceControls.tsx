@@ -1,8 +1,8 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 
 import { settingsAdapter } from '../../logic/adapter';
 import type { PdfAppearance, ReadingWidth } from '../../logic/adapter/settingsTypes';
-import { useAppDispatch } from '../../logic/store';
+import { useAppDispatch, useAppSelector } from '../../logic/store';
 import { readingWidthAcknowledged } from '../../logic/store/settingsSlice';
 import {
     applyThemeToRoot,
@@ -15,6 +15,7 @@ import { writeStartupThemeMirror } from '../../logic/theme/startupThemeMirror';
 import { createSettingsCommandOwner, defaultAppearanceSettings } from '../../logic/settings/settingsCommands';
 import { useEditorSettings } from '../../logic/settings/editorSettings';
 import SettingsDialog from './dialogs/SettingsDialog';
+import { WorkspaceTreeCommandsContext } from './WorkspaceTree/workspaceTreeCommands';
 import {
     AppearanceSettingsContext,
     useAppearanceSettings,
@@ -216,28 +217,44 @@ export const AppearanceControlsContent: React.FC<AppearanceControlsContentProps>
     visible = true,
 }: AppearanceControlsContentProps) => {
     const controller = useAppearanceSettings();
-    const markdown = useEditorSettings();
+    const editor = useEditorSettings();
+    const workspaceCommands = useContext(WorkspaceTreeCommandsContext);
+    const showHiddenFolders = useAppSelector((state) => state.ui.layout.showHiddenFolders);
     if (!visible) return null;
     return (
         <>
             {children}
             <SettingsDialog
                 defaultOpenMode={controller.appearance.defaultOpenMode as DefaultOpenMode}
-                markdownSettings={markdown.markdownSettings}
+                editorSettings={editor.settings}
+                fileSettings={editor.fileSettings}
+                markdownSettings={editor.markdownSettings}
                 mode={controller.appearance.mode}
                 open={controller.open}
                 pdfAppearance={controller.appearance.pdfAppearance}
                 readingWidth={controller.appearance.readingWidth}
                 returnFocusTo={controller.returnFocusTo}
+                showHiddenFolders={showHiddenFolders}
                 theme={controller.appearance.theme}
                 onDefaultOpenModeChange={controller.onDefaultOpenModeChange}
                 onModeChange={controller.onModeChange}
                 onPdfAppearanceChange={controller.onPdfAppearanceChange}
                 onReadingWidthChange={controller.onReadingWidthChange}
+                onEditorSettingsChange={(patch): void => {
+                    void editor.update(patch).catch((): void => undefined);
+                }}
+                onFileSettingsChange={(patch): void => {
+                    void editor.updateFile(patch).catch((): void => undefined);
+                }}
                 onMarkdownSettingsChange={(patch): void => {
-                    void markdown.updateMarkdown(patch).catch((): void => undefined);
+                    void editor.updateMarkdown(patch).catch((): void => undefined);
                 }}
                 onReset={controller.onReset}
+                onShowHiddenFoldersChange={
+                    workspaceCommands === null
+                        ? undefined
+                        : (show): void => void workspaceCommands.onSetWorkspaceHiddenFolders(show)
+                }
                 onOpenChange={controller.onOpenChange}
                 onThemeChange={controller.onThemeChange}
             />

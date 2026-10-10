@@ -92,3 +92,29 @@ it('restores focus to the opener when the shell closes', () => {
     );
     expect(opener).toHaveFocus();
 });
+
+it('shows a labelled Close button and a surface class only when asked', () => {
+    const onRequestClose = jest.fn();
+    const { rerender } = render(
+        <ModalShell dismiss="escape" onRequestClose={onRequestClose} open title="Plain dialog">
+            <p>Body</p>
+        </ModalShell>,
+    );
+    expect(screen.queryByRole('button', { name: 'Close' })).toBeNull();
+
+    rerender(
+        <ModalShell
+            className="custom-surface"
+            closeLabel="Close"
+            dismiss="escape"
+            onRequestClose={onRequestClose}
+            open
+            title="Plain dialog"
+        >
+            <p>Body</p>
+        </ModalShell>,
+    );
+    expect(screen.getByRole('dialog', { name: 'Plain dialog' })).toHaveClass('custom-surface');
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+    expect(onRequestClose).toHaveBeenCalledTimes(1);
+});

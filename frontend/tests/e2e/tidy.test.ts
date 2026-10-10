@@ -3,14 +3,14 @@ import { join } from 'node:path';
 import type { Locator, Page } from '@playwright/test';
 
 import { expect, test, type E2EAppHarness } from '../support/harness';
+import { openMarkdownMenuItem, runFromMarkdownMenu } from '../support/markdownMenu';
 import { makeDeepLists, makeLargeMarkdown } from './largeMarkdown';
 
 // Large worker fixtures share host resources; keep each isolated app journey sequential.
 test.describe.configure({ mode: 'default' });
 
 const toolbar = (page: Page): Locator => page.getByRole('toolbar', { name: 'Document toolbar' });
-const action = (page: Page, id: 'format' | 'compact' | 'lint'): Locator =>
-    toolbar(page).locator(`[data-action-id="${id}"]`);
+const action = (page: Page, id: 'format'): Locator => toolbar(page).locator(`[data-action-id="${id}"]`);
 
 const formattedMessy = [
     '# Messy document',
@@ -132,15 +132,12 @@ async function openDocument(app: E2EAppHarness, filename: string, contents: stri
     await app.seedRecents([source]);
     await app.launch();
     const { page } = app;
-    await page
-        .getByRole('tab', { name: /Untitled/u })
-        .locator('..')
-        .getByRole('button', { name: /^Close /u })
-        .click();
     await page.getByTestId('document-launcher').getByRole('button', { name: filename, exact: true }).click();
     await expect(page.getByRole('tab', { name: filename })).toBeVisible({ timeout: 30_000 });
     await expect.poll(() => activeText(page), { timeout: 30_000 }).toBe(contents);
-    await expect(page.locator('[data-editor-surface] .view-lines')).toContainText(contents.split('\n')[0]);
+    await expect(page.locator('[data-editor-surface] .view-lines')).toContainText(contents.split('\n')[0], {
+        timeout: 30_000,
+    });
 }
 
 async function fixture(app: E2EAppHarness, filename: string): Promise<string> {
@@ -150,7 +147,7 @@ async function fixture(app: E2EAppHarness, filename: string): Promise<string> {
 async function disableAutosave(page: Page): Promise<void> {
     await page.getByRole('button', { name: 'Settings', exact: true }).click();
     const menu = page.getByRole('menu', { name: 'Settings menu' });
-    const autosave = menu.getByRole('checkbox', { name: 'Autosave' });
+    const autosave = menu.getByRole('menuitemcheckbox', { name: 'Autosave' });
     if (await autosave.isChecked()) await menu.locator('[data-settings-toggle="Autosave"]').click();
     await page.keyboard.press('Escape');
 }
@@ -251,7 +248,7 @@ test('compacts whitespace while preserving hard breaks and the rendered preview'
         });
     const before = await rendered();
 
-    await action(page, 'compact').click();
+    await runFromMarkdownMenu(page, 'compact');
     await expect.poll(() => activeText(page)).toBe(compactedMessy);
     await expect.poll(rendered).toBe(before);
     app.expectNoForeignRequests();
@@ -272,7 +269,7 @@ test('keeps visible Monaco text when changing views and docking or closing Probl
     await arrangement.getByRole('radio', { name: 'Split' }).click();
     await expect(lines).toContainText('Visible editor line');
 
-    await action(page, 'lint').click();
+    await runFromMarkdownMenu(page, 'lint');
     await expect(page.getByRole('button', { name: '1 problems' })).toBeVisible();
     await page.getByRole('button', { name: '1 problems' }).click();
     const panel = page.getByRole('region', { name: 'Problems' });
@@ -349,11 +346,6 @@ test('blocks typing during close Save Format while progress and Cancel remain us
     await app.seedRecents([path]);
     await app.launch();
     const { page } = app;
-    await page
-        .getByRole('tab', { name: /Untitled/u })
-        .locator('..')
-        .getByRole('button', { name: /^Close /u })
-        .click();
     await page.getByTestId('document-launcher').getByRole('button', { name: 'close-save-format.md' }).click();
     await expect(page.getByRole('tab', { name: 'close-save-format.md' })).toBeVisible();
     await disableAutosave(page);
@@ -399,14 +391,31 @@ test('disables other tidy actions while Format runs and discards a result after 
     await action(page, 'format').click();
     await expect(action(page, 'format')).toHaveAccessibleName('Cancel');
     for (const id of ['compact', 'lint'] as const) {
-        await expect(action(page, id)).toBeDisabled();
-        await expect(action(page, id)).toHaveAttribute('title', 'Another operation is in progress.');
+        const item = await openMarkdownMenuItem(page, id);
+        await expect(item).toBeDisabled();
+        await expect(item).toHaveAttribute('title', 'Another operation is in progress.');
     }
+    await page.keyboard.press('Escape');
     const editor = page.locator('[data-editor-surface] textarea').first();
     await editor.focus();
     await page.keyboard.insertText('X');
     await expect(page.locator('[data-notification-code="tidy-stale"]')).toBeVisible({ timeout: 120_000 });
     await expect.poll(() => activeText(page)).toBe(`X${source}`);
+    app.expectNoForeignRequests();
+});
+
+test('shows Cancel on the toolbar Format control while Compact runs from its shortcut', async ({ app }) => {
+    test.setTimeout(120_000);
+    const source = makeLargeMarkdown(2 * 1024 * 1024);
+    await openDocument(app, 'large-compact.md', source);
+    const { page } = app;
+    await disableAutosave(page);
+    await page.locator('[data-editor-surface] textarea').first().focus();
+    await page.keyboard.press('Alt+Shift+C');
+    await expect(action(page, 'format')).toHaveAccessibleName('Cancel', { timeout: 60_000 });
+    await action(page, 'format').click();
+    await expect(page.locator('[data-notification-code="tidy-cancelled"]')).toBeVisible();
+    await expect.poll(() => activeText(page)).toBe(source);
     app.expectNoForeignRequests();
 });
 
@@ -434,7 +443,7 @@ test('keeps the Problems panel legible and reachable in every theme and mode', a
     await openDocument(app, 'palette-problems.md', '# Palette\n\n* bullet\n');
     const { page } = app;
     await page.setViewportSize({ width: 1280, height: 720 });
-    await action(page, 'lint').click();
+    await runFromMarkdownMenu(page, 'lint');
     const status = page.getByRole('button', { name: '1 problems' });
     await expect(status).toBeVisible();
     await status.click();

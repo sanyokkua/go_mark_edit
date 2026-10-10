@@ -1,0 +1,19 @@
+.select {
+    background: var(--surface-2);
+    border: var(--control-border-width) solid var(--stroke);
+    border-radius: var(--control-radius);
+    color: var(--text);
+    font: inherit;
+    font-size: var(--font-size-sm);
+    padding: var(--control-padding);
+}
+
+.select:focus-visible {
+    box-shadow: var(--focus-ring);
+    outline: 0;
+}
+
+.select:disabled {
+    cursor: not-allowed;
+    opacity: var(--disabled-opacity);
+}

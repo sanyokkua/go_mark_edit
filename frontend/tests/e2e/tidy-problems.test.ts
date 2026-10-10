@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import type { Page } from '@playwright/test';
 
 import { expect, test, type E2EAppHarness } from '../support/harness';
+import { openMarkdownMenuItem, runFromMarkdownMenu } from '../support/markdownMenu';
 
 async function activeText(page: Page): Promise<string> {
     return page.evaluate(async () => {
@@ -38,20 +39,15 @@ async function openDocument(app: E2EAppHarness, filename: string, contents: stri
     await app.seedRecents([source]);
     await app.launch();
     const { page } = app;
-    await page
-        .getByRole('tab', { name: /Untitled/u })
-        .locator('..')
-        .getByRole('button', { name: /^Close /u })
-        .click();
     await page.getByTestId('document-launcher').getByRole('button', { name: filename, exact: true }).click();
     await expect(page.getByRole('tab', { name: filename })).toBeVisible();
-    await expect(page.locator('[data-editor-surface] .view-lines')).toContainText(contents.split(/[\r\n]/u)[0]);
+    await expect(page.locator('[data-editor-surface] .view-lines')).toContainText(contents.split(/[\r\n]/u)[0], {
+        timeout: 30_000,
+    });
     return page;
 }
 
-function lint(page: Page): ReturnType<Page['locator']> {
-    return page.getByRole('toolbar', { name: 'Document toolbar' }).locator('[data-action-id="lint"]');
-}
+const runLint = (page: Page): Promise<void> => runFromMarkdownMenu(page, 'lint');
 
 async function openProblems(page: Page, count: number): Promise<ReturnType<Page['getByRole']>> {
     const status = page.getByRole('button', { name: `${count.toLocaleString('en-US')} problems` });
@@ -68,7 +64,7 @@ test('shows three distinct lint rules, hover guidance, and mouse and keyboard fi
         'utf8',
     );
     const page = await openDocument(app, 'three-findings.md', original);
-    await lint(page).click();
+    await runLint(page);
     const panel = await openProblems(page, 3);
     const rows = panel.locator('[data-problem-row="true"]');
     await expect(rows).toHaveCount(3);
@@ -101,7 +97,7 @@ test('shows three distinct lint rules, hover guidance, and mouse and keyboard fi
 
 test('shows zero findings on clean text and retains stale findings after an edit', async ({ app }) => {
     const page = await openDocument(app, 'stale.md', '# Heading\n\n* bullet\n');
-    await lint(page).click();
+    await runLint(page);
     const panel = await openProblems(page, 1);
     await expect(page.locator('.squiggly-warning')).toHaveCount(1);
     const editor = page.locator('[data-editor-surface] textarea').first();
@@ -115,7 +111,7 @@ test('shows zero findings on clean text and retains stale findings after an edit
     await editor.press(`${modifier}+a`);
     await page.keyboard.insertText('# Clean\n');
     await expect.poll(() => activeText(page)).toBe('# Clean\n');
-    await lint(page).click();
+    await runLint(page);
     await expect(page.getByRole('button', { name: '0 problems' })).toBeVisible();
     await expect(panel).toContainText('No problems');
     await expect(page.locator('.squiggly-warning, .squiggly-error')).toHaveCount(0);
@@ -125,13 +121,16 @@ test('shows zero findings on clean text and retains stale findings after an edit
 test('keeps Lint available for a read-only document with a lone carriage return', async ({ app }) => {
     const page = await openDocument(app, 'read-only.md', '# Read only\rA line\n');
     const toolbar = page.getByRole('toolbar', { name: 'Document toolbar' });
-    for (const id of ['format', 'compact']) {
-        const control = toolbar.locator(`[data-action-id="${id}"]`);
-        await expect(control).toBeDisabled();
-        await expect(control).toHaveAttribute('title', 'This document is read-only.');
-    }
-    await expect(lint(page)).toBeEnabled();
-    await lint(page).click();
+    const format = toolbar.locator('[data-action-id="format"]');
+    await expect(format).toBeDisabled();
+    await expect(format).toHaveAttribute('title', 'This document is read-only.');
+    const compact = await openMarkdownMenuItem(page, 'compact');
+    await expect(compact).toBeDisabled();
+    await expect(compact).toHaveAttribute('title', 'This document is read-only.');
+    await page.keyboard.press('Escape');
+    await expect(await openMarkdownMenuItem(page, 'lint')).toBeEnabled();
+    await page.keyboard.press('Escape');
+    await runLint(page);
     await expect(page.getByRole('button', { name: /\d+ problems/u })).toBeVisible();
     app.expectNoForeignRequests();
 });
@@ -142,14 +141,9 @@ test('clears the prior document summary on activation and publishes fresh clean 
     await app.seedRecents([first, second]);
     await app.launch();
     const { page } = app;
-    await page
-        .getByRole('tab', { name: /Untitled/u })
-        .locator('..')
-        .getByRole('button', { name: /^Close /u })
-        .click();
     await page.getByTestId('document-launcher').getByRole('button', { name: 'first-lint.md' }).click();
     await expect(page.locator('[data-editor-surface] .view-lines')).toContainText('First');
-    await lint(page).click();
+    await runLint(page);
     const panel = await openProblems(page, 1);
     await expect(panel.locator('[data-problem-row="true"]')).toHaveCount(1);
 
@@ -159,7 +153,7 @@ test('clears the prior document summary on activation and publishes fresh clean 
     await expect(page.locator('[data-editor-surface] .view-lines')).toContainText('Second');
     await expect(page.getByRole('button', { name: '1 problems' })).toHaveCount(0);
     await expect(panel).toContainText('Run Lint to check this document');
-    await lint(page).click();
+    await runLint(page);
     await expect(page.getByRole('button', { name: '0 problems' })).toBeVisible();
     await expect(panel).toContainText('No problems');
     await page.getByRole('tab', { name: 'first-lint.md' }).click();
@@ -177,7 +171,7 @@ for (const count of [1500, 12000] as const) {
     }) => {
         const source = `# Findings\n\n${'* item\n'.repeat(count)}`;
         const page = await openDocument(app, `findings-${count}.md`, source);
-        await lint(page).click();
+        await runLint(page);
         const panel = await openProblems(page, count);
         await expect(panel.locator('[data-problem-row="true"]')).toHaveCount(Math.min(count, 10000));
         const visibleMarkers = await page.locator('.squiggly-warning').count();

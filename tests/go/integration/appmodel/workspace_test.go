@@ -427,12 +427,6 @@ func TestHiddenFolderSetterPersistsAndRefreshesOnlyItsWindow(t *testing.T) {
 	writeWorkspaceFile(t, root, "visible.md")
 	first := appmodel.NewAppModelServiceForHost(appmodel.WithEmitter(&recordingEmitter{}), appmodel.AppModelOption{LayoutRepository: repository})
 	second := appmodel.NewAppModelServiceForHost(appmodel.WithEmitter(&recordingEmitter{}), appmodel.AppModelOption{LayoutRepository: repository})
-	if refused := first.SetWorkspaceHiddenFolders(ctx, true); refused.Status != apperr.WorkspaceStatusRefused || refused.Error == nil || refused.Error.Category != apperr.ClassifiedNotFound {
-		t.Fatalf("setting without folder = %+v", refused)
-	}
-	if _, found, err := repository.Read(ctx, appmodel.LayoutWorkspaceHiddenFolders); err != nil || found {
-		t.Fatalf("setting written without folder: found=%t err=%v", found, err)
-	}
 	first.OpenWorkspace(ctx, root)
 	second.OpenWorkspace(ctx, root)
 	shown := first.SetWorkspaceHiddenFolders(ctx, true)
@@ -452,6 +446,90 @@ func TestHiddenFolderSetterPersistsAndRefreshesOnlyItsWindow(t *testing.T) {
 	relaunched := appmodel.NewAppModelServiceForHost(appmodel.WithEmitter(&recordingEmitter{}), appmodel.AppModelOption{LayoutRepository: repository})
 	if reopened := relaunched.OpenWorkspace(ctx, root); reopened.Workspace == nil || reopened.Workspace.ShowHiddenFolders {
 		t.Fatalf("relaunch = %+v", reopened)
+	}
+}
+
+func TestHiddenFolderSetterWorksWithoutFolderPublishesAndRestores(t *testing.T) {
+	ctx := context.Background()
+	database, err := db.Open(ctx, filepath.Join(t.TempDir(), "settings.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = database.Close() }()
+	repository := appmodel.NewSqliteLayoutRepository(database)
+	emitter := &recordingEmitter{}
+	service := appmodel.NewAppModelServiceForHost(appmodel.WithEmitter(emitter), appmodel.AppModelOption{LayoutRepository: repository})
+
+	result := service.SetWorkspaceHiddenFolders(ctx, true)
+	if result.Status == apperr.WorkspaceStatusRefused || result.Error != nil || result.Workspace != nil {
+		t.Fatalf("setting without folder = %+v", result)
+	}
+	stored, found, err := repository.Read(ctx, appmodel.LayoutWorkspaceHiddenFolders)
+	if err != nil || !found || stored.Value != true {
+		t.Fatalf("stored = %+v found=%t err=%v", stored, found, err)
+	}
+	patches := emitter.Patches()
+	if len(patches) != 1 || patches[0].UI == nil || !isTrue(patches[0].UI.ShowHiddenFolders) || patches[0].Workspace != nil {
+		t.Fatalf("patches = %+v, want one UI-only patch carrying showHiddenFolders", patches)
+	}
+	state, err := service.GetState(ctx)
+	if err != nil || !isTrue(state.Snapshot.UI.ShowHiddenFolders) || state.Snapshot.Workspace != nil {
+		t.Fatalf("state = %+v/%v", state.Snapshot.UI, err)
+	}
+
+	restarted := appmodel.NewAppModelServiceForHost(appmodel.WithEmitter(&recordingEmitter{}), appmodel.AppModelOption{LayoutRepository: repository})
+	if err := restarted.RestoreUILayout(ctx); err != nil {
+		t.Fatal(err)
+	}
+	state, err = restarted.GetState(ctx)
+	if err != nil || !isTrue(state.Snapshot.UI.ShowHiddenFolders) {
+		t.Fatalf("restored UI = %+v/%v", state.Snapshot.UI, err)
+	}
+
+	root := t.TempDir()
+	writeWorkspaceFile(t, root, ".notes/a.md")
+	opened := restarted.OpenWorkspace(ctx, root)
+	if opened.Workspace == nil || !opened.Workspace.ShowHiddenFolders || !equalStrings(workspaceChildNamesFromSnapshot(opened.Workspace.Root.Children), []string{".notes"}) {
+		t.Fatalf("open after restore = %+v", opened)
+	}
+}
+
+func TestHiddenFolderSetterWithFolderPublishesUIAndWorkspaceInOnePatch(t *testing.T) {
+	ctx := context.Background()
+	database, err := db.Open(ctx, filepath.Join(t.TempDir(), "settings.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = database.Close() }()
+	root := t.TempDir()
+	writeWorkspaceFile(t, root, ".notes/a.md")
+	emitter := &recordingEmitter{}
+	service := appmodel.NewAppModelServiceForHost(appmodel.WithEmitter(emitter), appmodel.AppModelOption{LayoutRepository: appmodel.NewSqliteLayoutRepository(database)})
+	service.OpenWorkspace(ctx, root)
+	before := emitter.Count()
+	service.SetWorkspaceHiddenFolders(ctx, true)
+	patches := emitter.Patches()[before:]
+	if len(patches) != 1 || patches[0].UI == nil || !isTrue(patches[0].UI.ShowHiddenFolders) || patches[0].Workspace == nil {
+		t.Fatalf("patches = %+v, want one patch with UI and workspace", patches)
+	}
+}
+
+func TestSetUILayoutIgnoresIncomingShowHiddenFolders(t *testing.T) {
+	ctx := context.Background()
+	repository := &storedLayoutRepository{}
+	service := appmodel.NewAppModelServiceForHost(appmodel.WithEmitter(&recordingEmitter{}), appmodel.AppModelOption{LayoutRepository: repository})
+	show, maximized := true, true
+	if err := service.SetUILayout(ctx, apperr.UILayout{ShowHiddenFolders: &show, WindowMaximized: &maximized}); err != nil {
+		t.Fatal(err)
+	}
+	for _, field := range repository.writes {
+		if field == appmodel.LayoutWorkspaceHiddenFolders {
+			t.Fatalf("writes = %v, SetUILayout must not write the hidden-folders preference", repository.writes)
+		}
+	}
+	state, err := service.GetState(ctx)
+	if err != nil || isTrue(state.Snapshot.UI.ShowHiddenFolders) {
+		t.Fatalf("UI = %+v/%v, incoming showHiddenFolders must be ignored", state.Snapshot.UI, err)
 	}
 }
 

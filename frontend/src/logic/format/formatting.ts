@@ -5,11 +5,15 @@ import type { ActionId } from '../actions/actionRegistry';
 export type FormatActionId =
     | 'bold'
     | 'italic'
+    | 'bold-italic'
     | 'strike'
     | 'inline-code'
     | 'heading-1'
     | 'heading-2'
     | 'heading-3'
+    | 'heading-4'
+    | 'heading-5'
+    | 'heading-6'
     | 'bullet-list'
     | 'numbered-list'
     | 'task-list'
@@ -20,11 +24,15 @@ export type FormatActionId =
 export const formatActionIds: Readonly<Partial<Record<ActionId, FormatActionId>>> = Object.freeze({
     bold: 'bold',
     italic: 'italic',
+    'bold-italic': 'bold-italic',
     strike: 'strike',
     'inline-code': 'inline-code',
     'heading-1': 'heading-1',
     'heading-2': 'heading-2',
     'heading-3': 'heading-3',
+    'heading-4': 'heading-4',
+    'heading-5': 'heading-5',
+    'heading-6': 'heading-6',
     'bullet-list': 'bullet-list',
     'numbered-list': 'numbered-list',
     'task-list': 'task-list',
@@ -56,6 +64,12 @@ export interface FormatRequest {
     source: string;
     selection: EditorSelection;
     markers?: MarkdownMarkerPreferences;
+    table?: TableSize;
+}
+
+export interface TableSize {
+    columns: number;
+    rows: number;
 }
 
 export interface FormatEdit {
@@ -69,6 +83,7 @@ export interface FormatRunnerRequest {
     commands: DocumentCommandAPI | null;
     markers?: MarkdownMarkerPreferences;
     selection?: EditorSelection | null;
+    table?: TableSize;
 }
 
 const emptySelection: EditorSelection = {
@@ -104,6 +119,7 @@ export function runFormatAction(request: FormatRunnerRequest): DocumentCommandRe
         markers: request.markers,
         selection: request.selection ?? emptySelection,
         source: '',
+        table: request.table,
     });
 }
 
@@ -113,7 +129,10 @@ export function applyFormatEdit(
 ): DocumentCommandResult<FormatEdit> {
     if (
         request.markers === undefined &&
-        (request.actionId === 'italic' || request.actionId === 'bullet-list' || request.actionId === 'task-list')
+        (request.actionId === 'italic' ||
+            request.actionId === 'bold-italic' ||
+            request.actionId === 'bullet-list' ||
+            request.actionId === 'task-list')
     ) {
         return { status: 'unavailable' };
     }
@@ -201,22 +220,34 @@ function selectedText(request: FormatRequest): {
     };
 }
 
-function pairFor(actionId: FormatActionId, emphasisMarker?: '_' | '*'): string | null {
+interface InlinePair {
+    close: string;
+    open: string;
+}
+
+function symmetricPair(marker: string): InlinePair {
+    return { open: marker, close: marker };
+}
+
+function pairFor(actionId: FormatActionId, emphasisMarker?: '_' | '*'): InlinePair | null {
     switch (actionId) {
         case 'bold':
-            return '**';
+            return symmetricPair('**');
         case 'italic':
-            return emphasisMarker ?? null;
+            return emphasisMarker === undefined ? null : symmetricPair(emphasisMarker);
+        case 'bold-italic':
+            return emphasisMarker === undefined ? null : { open: '**' + emphasisMarker, close: emphasisMarker + '**' };
         case 'strike':
-            return '~~';
+            return symmetricPair('~~');
         case 'inline-code':
-            return '`';
+            return symmetricPair('`');
         default:
             return null;
     }
 }
 
 type InlineStyle = 'bold' | 'italic' | 'strike' | 'inline-code';
+type RequestedInlineStyle = InlineStyle | 'bold-italic';
 
 interface InlineWrapper {
     marker: string;
@@ -235,12 +266,14 @@ interface InlineWrapperStack {
 const MAX_INLINE_WRAPPER_DEPTH = 8;
 const INLINE_WRAPPER_CHARACTERS = new Set(['*', '_', '~', '`']);
 
-function inlineStyleFor(actionId: FormatActionId): InlineStyle | null {
+function inlineStyleFor(actionId: FormatActionId): RequestedInlineStyle | null {
     switch (actionId) {
         case 'bold':
             return 'bold';
         case 'italic':
             return 'italic';
+        case 'bold-italic':
+            return 'bold-italic';
         case 'strike':
             return 'strike';
         case 'inline-code':
@@ -359,22 +392,49 @@ function wrapperPrefixLength(wrappers: readonly InlineWrapper[]): number {
     return wrappers.reduce((length, wrapper) => length + wrapper.marker.length, 0);
 }
 
+function boldItalicWrappers(stack: InlineWrapperStack, emphasisMarker: string): InlineWrapper[] {
+    const hasBold = stack.wrappers.some((wrapper) => wrapper.style === 'bold');
+    const hasItalic = stack.wrappers.some((wrapper) => wrapper.style === 'italic');
+    if (hasBold && hasItalic) {
+        return stack.wrappers.filter((wrapper) => wrapper.style !== 'bold' && wrapper.style !== 'italic');
+    }
+    const wrappers = [...stack.wrappers];
+    if (!hasBold) wrappers.unshift({ marker: '**', style: 'bold' });
+    if (!hasItalic) {
+        wrappers.splice(wrappers.findIndex((wrapper) => wrapper.style === 'bold') + 1, 0, {
+            marker: emphasisMarker,
+            style: 'italic',
+        });
+    }
+    return wrappers;
+}
+
+function singleStyleWrappers(
+    stack: InlineWrapperStack,
+    style: InlineStyle,
+    marker: string,
+    collapsed: boolean,
+): InlineWrapper[] {
+    const existingStyleIndex = stack.wrappers.findIndex((wrapper) => wrapper.style === style);
+    if (existingStyleIndex !== -1) return stack.wrappers.filter((_, index) => index !== existingStyleIndex);
+    return collapsed && stack.wrappers.length === 1
+        ? stack.wrappers.map(() => ({ marker, style }))
+        : [{ marker, style }, ...stack.wrappers];
+}
+
 function inlineStackEdit(
     source: string,
     stack: InlineWrapperStack,
-    style: InlineStyle,
+    style: RequestedInlineStyle,
     marker: string,
     start: number,
     end: number,
 ): FormatEdit {
-    const existingStyleIndex = stack.wrappers.findIndex((wrapper) => wrapper.style === style);
     const collapsed = start === end;
     const wrappers =
-        existingStyleIndex !== -1
-            ? stack.wrappers.filter((_, index) => index !== existingStyleIndex)
-            : collapsed && stack.wrappers.length === 1
-              ? stack.wrappers.map(() => ({ marker, style }))
-              : [{ marker, style }, ...stack.wrappers];
+        style === 'bold-italic'
+            ? boldItalicWrappers(stack, marker)
+            : singleStyleWrappers(stack, style, marker, collapsed);
     const text = renderInlineWrapperStack(wrappers, stack.baseText);
     const prefixLength = wrapperPrefixLength(wrappers);
     const nextSelection = collapsed
@@ -390,43 +450,43 @@ function inlineStackEdit(
     return editForOffsets(source, stack.start, stack.end, text, nextSelection);
 }
 
-function fallbackPairEdit(request: FormatRequest, marker: string): FormatEdit {
+function fallbackPairEdit(request: FormatRequest, pair: InlinePair): FormatEdit {
     const { start, end, text } = selectedText(request);
     const source = request.source;
     if (start === end) {
         const isEmptyPair =
-            source.substring(start - marker.length, start) === marker &&
-            source.substring(start, start + marker.length) === marker;
+            source.substring(start - pair.open.length, start) === pair.open &&
+            source.substring(start, start + pair.close.length) === pair.close;
         if (isEmptyPair) {
-            const caret = positionAt(source, start - marker.length);
-            return editForOffsets(source, start - marker.length, start + marker.length, '', {
+            const caret = positionAt(source, start - pair.open.length);
+            return editForOffsets(source, start - pair.open.length, start + pair.close.length, '', {
                 start: caret,
                 end: caret,
             });
         }
 
-        const caret = positionAt(source, start + marker.length);
-        return editForOffsets(source, start, end, marker + marker, {
+        const caret = positionAt(source, start + pair.open.length);
+        return editForOffsets(source, start, end, pair.open + pair.close, {
             start: caret,
             end: caret,
         });
     }
 
     const hasOutsideMarkers =
-        source.substring(start - marker.length, start) === marker &&
-        source.substring(end, end + marker.length) === marker;
+        source.substring(start - pair.open.length, start) === pair.open &&
+        source.substring(end, end + pair.close.length) === pair.close;
     if (hasOutsideMarkers) {
-        return editForOffsets(source, start - marker.length, end + marker.length, text);
+        return editForOffsets(source, start - pair.open.length, end + pair.close.length, text);
     }
 
     const inlineText = text
         .split('\n')
-        .map((line) => formatInlineLine(line, marker))
+        .map((line) => formatInlineLine(line, pair))
         .join('\n');
     const firstLine = inlineText.split('\n', 1)[0] ?? '';
     const lastLine = inlineText.slice(inlineText.lastIndexOf('\n') + 1);
-    const firstContent = inlineContentBounds(firstLine, marker);
-    const lastContent = inlineContentBounds(lastLine, marker);
+    const firstContent = inlineContentBounds(firstLine, pair);
+    const lastContent = inlineContentBounds(lastLine, pair);
     const nextSelection = {
         start: positionAt(source, start + firstContent.start),
         end: positionAt(source, start + inlineText.length - lastLine.length + lastContent.end),
@@ -434,31 +494,39 @@ function fallbackPairEdit(request: FormatRequest, marker: string): FormatEdit {
     return editForOffsets(source, start, end, inlineText, nextSelection);
 }
 
-function pairEdit(request: FormatRequest, marker: string): FormatEdit {
+function pairEdit(request: FormatRequest, pair: InlinePair): FormatEdit {
     const { start, end } = selectedText(request);
     const style = inlineStyleFor(request.actionId);
     const stack = style === null ? null : resolveInlineWrapperStack(request.source, start, end);
+    // For bold italic the inner marker is the emphasis marker, which is also the close pair's first character.
     return stack === null || style === null
-        ? fallbackPairEdit(request, marker)
-        : inlineStackEdit(request.source, stack, style, marker, start, end);
+        ? fallbackPairEdit(request, pair)
+        : inlineStackEdit(
+              request.source,
+              stack,
+              style,
+              style === 'bold-italic' ? pair.close.charAt(0) : pair.open,
+              start,
+              end,
+          );
 }
 
 function inlinePrefix(line: string): string {
     return line.match(/^(\s*(?:>\s*)?(?:(?:[-+*]|\d+[.)])\s+(?:\[[ xX]\]\s*)?)?)/)?.[1] ?? '';
 }
 
-function formatInlineLine(line: string, marker: string): string {
+function formatInlineLine(line: string, pair: InlinePair): string {
     const prefix = inlinePrefix(line);
     const remainder = line.slice(prefix.length);
     const leading = remainder.match(/^\s*/)?.[0] ?? '';
     const trailing = remainder.match(/\s*$/)?.[0] ?? '';
     const content = remainder.slice(leading.length, remainder.length - trailing.length);
-    return content.length === 0 ? line : prefix + leading + marker + content + marker + trailing;
+    return content.length === 0 ? line : prefix + leading + pair.open + content + pair.close + trailing;
 }
 
 function inlineContentBounds(
     line: string,
-    marker: string,
+    pair: InlinePair,
 ): {
     start: number;
     end: number;
@@ -468,8 +536,8 @@ function inlineContentBounds(
     const leading = remainder.match(/^\s*/)?.[0] ?? '';
     const trailing = remainder.match(/\s*$/)?.[0] ?? '';
     return {
-        start: prefix.length + leading.length + marker.length,
-        end: line.length - trailing.length - marker.length,
+        start: prefix.length + leading.length + pair.open.length,
+        end: line.length - trailing.length - pair.close.length,
     };
 }
 
@@ -503,7 +571,7 @@ interface QuotedLine {
     content: string;
 }
 
-function parseQuoteLine(line: string): QuotedLine {
+export function parseQuoteLine(line: string): QuotedLine {
     const match = line.match(/^(\s*)(>\s?)?(.*)$/);
     return {
         indent: match?.[1] ?? '',
@@ -517,7 +585,7 @@ function removeHeading(line: string): string {
     return match === null ? line : (match[1] ?? '') + (match[2] ?? '');
 }
 
-function parseListLine(line: string): ParsedLine {
+export function parseListLine(line: string): ParsedLine {
     const indent = line.match(/^\s*/)?.[0] ?? '';
     const rest = line.slice(indent.length);
     const task = rest.match(/^[-+*]\s+\[[ xX]\]\s*(.*)$/);
@@ -535,9 +603,78 @@ function parseListLine(line: string): ParsedLine {
     return { indent, kind: null, content: rest };
 }
 
-function listEdit(request: FormatRequest, kind: ListKind): FormatEdit {
+const NUMBERED_MARKER = /^(\d+)([.)])\s/;
+
+interface NumberCounter {
+    delimiter: string;
+    next: number;
+}
+
+function numberedEdit(request: FormatRequest): FormatEdit {
     const bounds = lineBounds(request.source, request.selection);
-    const marker = kind === 'numbered-list' ? undefined : request.markers?.bulletMarker;
+    const parsedLines = bounds.lines.map((line) => {
+        const quoted = parseQuoteLine(line);
+        return {
+            line,
+            parsed: parseListLine(quoted.content),
+            prefix: quoted.indent + quoted.quote,
+            quote: quoted.quote,
+            depth: quoted.indent.length + parseListLine(quoted.content).indent.length,
+        };
+    });
+    const nonBlank = parsedLines.filter(({ parsed }) => parsed.kind !== null || parsed.content.trim().length > 0);
+    if (nonBlank.length > 0 && nonBlank.every(({ parsed }) => parsed.kind === 'numbered-list')) {
+        const text = parsedLines
+            .map(({ line, parsed, prefix }) => (parsed.kind === null ? line : prefix + parsed.indent + parsed.content))
+            .join('\n');
+        return editForOffsets(request.source, bounds.start, bounds.end, text);
+    }
+
+    const counters = new Map<string, Map<number, NumberCounter>>();
+    const first = parsedLines[0];
+    const startLine = Math.min(request.selection.start.lineNumber, request.selection.end.lineNumber);
+    if (first !== undefined && startLine > 1) {
+        const above = request.source.substring(
+            lineStartOffset(request.source, startLine - 1),
+            lineEndOffset(request.source, startLine - 1),
+        );
+        const quotedAbove = parseQuoteLine(above);
+        const parsedAbove = parseListLine(quotedAbove.content);
+        const continued =
+            parsedAbove.kind === 'numbered-list' ? quotedAbove.content.trimStart().match(NUMBERED_MARKER) : null;
+        if (
+            continued !== null &&
+            quotedAbove.indent + quotedAbove.quote === first.prefix &&
+            parsedAbove.indent === first.parsed.indent
+        ) {
+            counters.set(
+                first.quote,
+                new Map([[first.depth, { delimiter: continued[2] ?? '.', next: Number(continued[1]) + 1 }]]),
+            );
+        }
+    }
+
+    const text = parsedLines
+        .map(({ line, parsed, prefix, quote, depth }) => {
+            const isBlank = parsed.kind === null && parsed.content.trim().length === 0;
+            if (isBlank && parsedLines.length > 1) return line;
+            const levels = counters.get(quote) ?? new Map<number, NumberCounter>();
+            counters.set(quote, levels);
+            for (const level of [...levels.keys()]) {
+                if (level > depth) levels.delete(level);
+            }
+            const counter = levels.get(depth) ?? { delimiter: '.', next: 1 };
+            levels.set(depth, { delimiter: counter.delimiter, next: counter.next + 1 });
+            return prefix + parsed.indent + counter.next + counter.delimiter + ' ' + removeHeading(parsed.content);
+        })
+        .join('\n');
+    return editForOffsets(request.source, bounds.start, bounds.end, text);
+}
+
+function listEdit(request: FormatRequest, kind: ListKind): FormatEdit {
+    if (kind === 'numbered-list') return numberedEdit(request);
+    const bounds = lineBounds(request.source, request.selection);
+    const marker = request.markers?.bulletMarker;
     const text = bounds.lines
         .map((line) => {
             const quoted = parseQuoteLine(line);
@@ -545,7 +682,6 @@ function listEdit(request: FormatRequest, kind: ListKind): FormatEdit {
             const prefix = quoted.indent + quoted.quote;
             if (parsed.kind === kind) return prefix + parsed.indent + parsed.content;
             const content = removeHeading(parsed.content);
-            if (kind === 'numbered-list') return prefix + parsed.indent + '1. ' + content;
             if (marker === undefined) return line;
             if (kind === 'task-list') {
                 return prefix + parsed.indent + marker + ' [ ] ' + content;
@@ -622,9 +758,18 @@ function linkEdit(request: FormatRequest): FormatEdit {
     });
 }
 
-const tableSkeleton = '| Header 1 | Header 2 |\n| --- | --- |\n|  |  |';
+const defaultTableSize: TableSize = { columns: 3, rows: 3 };
+
+function buildTable({ columns, rows }: TableSize): string {
+    const row = (cell: (column: number) => string): string =>
+        `|${Array.from({ length: columns }, (_, column) => ` ${cell(column)} |`).join('')}`;
+    const lines = [row((column) => `Header ${column + 1}`), row(() => '---')];
+    for (let index = 0; index < rows; index += 1) lines.push(row(() => ''));
+    return lines.join('\n');
+}
 
 function tableEdit(request: FormatRequest): FormatEdit {
+    const table = buildTable(request.table ?? defaultTableSize);
     const { start } = selectedText(request);
     const source = request.source;
     const lineStart = (start === 0 ? -1 : source.lastIndexOf('\n', start - 1)) + 1;
@@ -645,7 +790,7 @@ function tableEdit(request: FormatRequest): FormatEdit {
                   lineNumber: insertionPosition.lineNumber + 2,
                   column: 3,
               };
-    return editForOffsets(source, insertion, insertion, prefix + tableSkeleton, {
+    return editForOffsets(source, insertion, insertion, prefix + table, {
         start: firstHeaderStart,
         end: {
             ...firstHeaderStart,
@@ -655,7 +800,7 @@ function tableEdit(request: FormatRequest): FormatEdit {
 }
 
 export function formatMarkdown(request: FormatRequest): FormatEdit {
-    const pair = pairFor(request.actionId, request.actionId === 'italic' ? request.markers?.emphasisMarker : undefined);
+    const pair = pairFor(request.actionId, request.markers?.emphasisMarker);
     if (pair !== null) return pairEdit(request, pair);
 
     switch (request.actionId) {
@@ -665,6 +810,12 @@ export function formatMarkdown(request: FormatRequest): FormatEdit {
             return headingEdit(request, 2);
         case 'heading-3':
             return headingEdit(request, 3);
+        case 'heading-4':
+            return headingEdit(request, 4);
+        case 'heading-5':
+            return headingEdit(request, 5);
+        case 'heading-6':
+            return headingEdit(request, 6);
         case 'bullet-list':
         case 'numbered-list':
         case 'task-list':

@@ -240,6 +240,7 @@ export interface UILayout {
     sidebarVisible?: boolean;
     sidebarWidth?: number;
     viewArrangement?: string;
+    showHiddenFolders?: boolean;
 }
 
 export interface PendingClose {

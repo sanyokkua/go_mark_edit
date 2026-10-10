@@ -74,6 +74,7 @@ receive commands through props and contexts.
 | `frontend/src/logic/actions/actionRegistry.ts`       | The action catalogue and availability decisions used by every command surface, including Markdown hydration, document and tidy-operation state.   |
 | `frontend/src/logic/actions/editorActionExecutor.ts` | The sole editor-action owner for dispatch, clipboard, formatting, selection snapshots and focus restoration.                                      |
 | `frontend/src/logic/format/formatting.ts`            | The inline wrapper-stack resolver and formatting runner called by the editor-action executor.                                                     |
+| `frontend/src/logic/format/listContinuation.ts`      | The pure Enter-key list continuation: next marker, or end of list on an empty item; `null` inside fences or mid-item.                             |
 | `frontend/src/logic/markdown/`                       | Markdown standards, rendering pipeline, sanitization, code highlighting, math, diagrams, headings and shared link classification.                 |
 | `frontend/src/logic/markdown/mermaid/`               | Serialized Mermaid theme/render queue, isolated realm, SVG scrubbing and bounded cache.                                                           |
 | `frontend/src/logic/tidy/`                           | Pure Format, Compact and Lint engine plus its cancellable module worker.                                                                          |
@@ -92,7 +93,7 @@ receive commands through props and contexts.
 | `frontend/src/ui/widgets/PreviewContextMenu.tsx`     | Preview and Reading mode context menu (Copy, Select all) built from the action registry.                                                          |
 | `frontend/src/ui/widgets/useReadingPresentation.ts`  | Reading mode Escape and focus handling: closes an open overlay first, then leaves Reading mode.                                                   |
 | `frontend/src/ui/widgets/ProblemsPanel/`             | Accessible presentation of active-document lint findings; activation returns through the guarded editor command seam.                             |
-| `frontend/src/ui/widgets/dialogs/`                   | Settings, About, Shortcuts, close, conflict and normalization dialogs.                                                                            |
+| `frontend/src/ui/widgets/dialogs/`                   | Settings, About, Shortcuts, Insert table, close, conflict and normalization dialogs.                                                              |
 | `frontend/src/ui/widgets/StartupFailure/`            | Per-step startup failure, Retry and Quit.                                                                                                         |
 
 ## Shared UI owners and consumer inventory
@@ -111,7 +112,7 @@ with fixed viewport coordinates, uses an 8 px application-frame collision margin
 trigger, point and bounds anchors. The body portal keeps floating surfaces outside the application
 frame's backdrop root so their blur samples the document content beneath them.
 
-Consumers: File menu, Settings menu, View menu, About menu, narrow menubar overflow, tab context menu,
+Consumers: File menu, Markdown menu, Settings menu, View menu, About menu, narrow menubar overflow, tab context menu,
 workspace tree context menu (point-anchored), editor context menu, preview context menu, formatting-toolbar overflow and the
 StatusBar Document details disclosure.
 
@@ -122,7 +123,8 @@ changes the bundled font metrics) preserves the user’s current control focus.
 
 MenuItem is the single owner of popup-row typography, minimum height, padding, alignment, hover,
 keyboard focus, disabled presentation, selection marks and accelerator placement. Shared defaults
-live in `frontend/src/ui/styles/tokens.css`; rows can grow for larger content. Popup owns the surface,
+live in `frontend/src/ui/styles/tokens.css`; rows can grow for larger content, but a popup is never wider than
+`--popup-max-width` (360px) or the window minus its gaps, and a row that does not fit is truncated with an ellipsis. Popup owns the surface,
 section labels and separators, without a competing row style.
 
 Consumers are File (including indented recent/reopen rows), Settings (Theme and Appearance radios,
@@ -200,7 +202,33 @@ The committed `DocView.splitRatio` belongs to the backend and survives arrangeme
 
 ModalShell owns modal portal, backdrop, focus trap, Tab/Shift+Tab, Escape, opener restoration and
 dismissal policy. Its consumers are Settings, About, Shortcuts, Normalization, Close, External change,
-Recovery, Create workspace entry, Replace workspace, Multi-folder drop and Close folder dialogs.
+Recovery, Create workspace entry, Replace workspace, Multi-folder drop, Close folder and Insert table dialogs.
+An optional `closeLabel` adds a title row with a Close icon button (accessible name = the label) and an
+optional `className` styles the surface; only the Settings dialog uses them so far.
+
+### Switch and Select — `frontend/src/ui/primitives/Switch/`, `.../Select/`
+
+`Switch` owns the on/off control (a `role="switch"` button with `aria-checked`, Space and Enter, the 34 by
+19 px track and thumb, also exported as `switchTrackClassName` for the display-only switches in the Settings
+and View popup rows) and `Select` wraps the native
+drop-down with the shared field look. Their consumers are the Settings dialog's Editor and Markdown sections
+(Autosave, Line numbers, Word wrap, Scroll sync, Format on save and Lint on save; Font size).
+
+### Settings dialog — `frontend/src/ui/widgets/dialogs/`
+
+`SettingsDialog` owns the dialog shell and a section array (Appearance, Editor, Markdown, Workspace, Export); it mounts
+only while open so every opening starts on Appearance. `SettingsSectionNav` is the vertical `tablist` (one
+tab stop, roving `tabindex`, Up/Left/Down/Right/Home/End move and show a section at once), the pane is its
+`tabpanel` (an ESLint exemption lets this one file own the tab roles and its buttons, as TabBar does), and `SettingsRow` lays out label, description and control. Each section component receives the
+dialog props and calls the existing writers: `AppearanceSettingsProvider` for theme, mode, default open mode,
+reading width and PDF appearance, and `useEditorSettings` (`update`, `updateFile`, `updateMarkdown`) for the
+editor, autosave and Markdown settings, and `onSetWorkspaceHiddenFolders` from `WorkspaceTreeCommandsContext`
+(the tree toggle's writer) for Show hidden folders, read from `state.ui.layout.showHiddenFolders`; all wired in
+`AppearanceControls.tsx`. Ctrl/Cmd+, (the `settings` action)
+opens the dialog through `onOpenAppearance`; the Settings button and the narrow overflow row still open the
+Settings popup, which offers only Theme, Appearance, Markdown standard, Autosave, Format on save and Lint on save
+as shortcuts to the same stored settings (`SettingsMenu.tsx`), and whose All settings… row opens the dialog. At 40rem or narrower the section list sits above the
+rows.
 
 ### Banner — `frontend/src/ui/primitives/Banner.tsx`
 
@@ -272,14 +300,27 @@ command seam to move the caret and focus the editor, first restoring the editor 
 the document is in preview-only mode. The panel renders up to 10,000 ordered findings and reports
 any remaining count without truncating the status total.
 
-The action registry now exposes Format, Compact and Lint on the toolbar, editor context menu,
-Format menu and editor-scoped shortcuts. Its availability check distinguishes loading settings,
-no document, read-only Format/Compact and a busy operation slot; read-only Lint remains available.
+The action registry exposes Format, Compact and Lint on the Markdown menu, the editor context menu and
+editor-scoped shortcuts; the toolbar shows only Format. Its availability check distinguishes loading settings,
+no document, read-only Format/Compact and a busy operation slot; read-only Lint remains available. The editor
+formatting commands (Bold through Table) are also unavailable (`editor-hidden`, "Show the editor to use
+formatting.") while the active document's editor is not shown: callers pass `editorShown` from
+`useEditorShown` (a document is open, its editor pane is visible and Reading mode is off) to the Markdown
+menu, the toolbar and the shortcut executor, so all three follow the one registry rule.
+The `table` action does not edit directly: `editorActionExecutor.ts` hands its captured session snapshot to
+`requestTable` (`InsertTableRequestContext`, held by `useAppPresentation` and counted in `modalOpen`), which opens
+`InsertTableDialog`. The dialog validates Columns 1-20 and Rows 1-100, inserts through `runFormatAction` with the
+snapshot's selection as one edit, and then returns focus to the editor.
+
 `editorActionExecutor.ts` invokes the single tidy command owner and maps its terminal outcomes
-into dispatcher results. The Format menu uses the captured editor session even after the popup
-takes focus. The operation slot's kind and visible progress replace the matching toolbar or
-Format-menu action with Cancel; the toolbar's never-overflowing control also serves runs started
-from context menus or shortcuts. Feature 006 leaves the command palette, Assistant, Export PDF and
+into dispatcher results. The Markdown menu (`MarkdownMenu.tsx`) is built from the registry's
+`markdown-menu` surface: `groupedActionsForSurface` groups consecutive actions by their
+`surfaceGroupKeys` heading (Text, Headings, Lists & quotes, Links, images & tables, Formatting &
+verification), and each group renders as a `role="group"` with a visible heading. It uses the captured
+editor session even after the popup takes focus. The operation slot's kind and visible progress replace the
+running action in the Markdown menu with Cancel, and the toolbar's never-overflowing Format control shows the
+progress and Cancel of whichever of Format, Compact or Lint is running, including runs started from context
+menus or shortcuts. Feature 006 leaves the command palette, Assistant, Export PDF and
 image insertion deferred.
 
 `frontend/src/logic/tidy/` owns source tidying independently of Monaco, Redux and the bridge.
@@ -301,6 +342,8 @@ completed worker, and terminates a cancelled worker. Vite builds the client as a
 so the production client and worker are available independently of interface integration. The dev
 optimizer prebundles the worker's direct width and character-classification dependencies so its first
 lazy run cannot reload the active editor.
+
+`CodeEditor` owns the Enter keybinding, a per-editor Monaco action gated on a writable, collapsed caret with no suggest widget or snippet; it applies the edit from the `enterEdit` prop (fed by `logic/format/listContinuation.ts`) as one undo step, or inserts a plain line. IME composition is never dispatched to it.
 
 `frontend/src/ui/components/CodeEditor.tsx` owns the visible Monaco working copy and publishes its scroll
 port for synchronized scrolling. Its handle applies LF-indexed tidy edits as one undo group, retains the
@@ -385,8 +428,10 @@ All appearance values come from `frontend/src/ui/styles/tokens.css`. The three t
 values are selected on the document root. Widget stylesheets do not select themes and portalled
 surfaces inherit the root attributes.
 Popup and ModalShell share dedicated floating-surface background and backdrop-filter tokens.
-Liquid Glass floating surfaces use strong frost in both appearances; these tokens do not change
-the application-wide blur or the solid Material and Minimal surfaces.
+Liquid Glass floating surfaces use a dedicated `--floating-surface` (white / `rgb(28, 30, 54)` at 50%) over `--blur` (a
+28-pixel blur with 150% / 160% saturation); these tokens do not change the application-wide blur or the solid
+Material and Minimal surfaces. Behind every dialog `ModalShell` paints the `--overlay` scrim
+(`rgb(6, 8, 16)` at 42%) with `--overlay-backdrop-filter` (a 3-pixel blur) in every theme.
 `frontend/src/ui/styles/base.css` paints the application tint and optional Glass highlight/backdrop
 on `.application-frame`, above the body canvas. Header and status rows show that continuous app
 surface; the status row adds only the theme backdrop. Surface opacity must not depend on tab count,
@@ -720,7 +765,9 @@ rewrite existing data.
 Settings, layout, recents and file metadata use `internal/kv/` and leave keys they do not own alone.
 The `recent.files` key stores versioned v2 Recent Items with file and folder kinds; older file-only
 values migrate into that list. `workspace.showHiddenFolders` stores the app-wide hidden-folders
-preference. The workspace root and tree are session state and are not restored.
+preference; it is stored whether or not a folder is open and is also published in the UI layout
+state (D23). The workspace root and tree are session state and are not restored. Sidebar visibility is
+unsaved window state (D22): `layout.workspace.visible` is neither written nor read, and an old row is ignored.
 Layout changes write through immediately; continuous window resize is debounced and flushed during
 shutdown. Shared state follows last-writer-wins by change time. Missing or invalid values fall back to
 defaults. The Markdown group uses the six existing keys `markdown.standard`, `format.bulletMarker`,
@@ -740,7 +787,7 @@ An accepted view change is retained when metadata storage fails; the existing as
 error seam reports a persistence warning. A later explicit resize or Save retries storage.
 This restores a reopened file's view preference, without restoring tabs or document contents.
 
-The Markdown popup and Settings dialog use `useEditorSettings` and one settings command owner.
+The Settings popup and Settings dialog use `useEditorSettings` and one settings command owner.
 Queued Markdown writes read the latest acknowledged group before merging a patch; a rejected write
 keeps the projection unchanged and reports an error notice. All six dialog controls and the popup
 on-save rows stay unavailable until the backend Markdown group is hydrated.
@@ -920,8 +967,8 @@ The owner decisions that shaped this refactor are recorded here so they are not 
 - **D17 — Reading mode is transient frontend window state:** it refines ADR-0014. Whether the window
   is in Reading mode lives in the frontend-owned
   `frontend/src/logic/store/readingSlice.ts`. The state is never persisted: it is not stored per
-  document or across restarts, and it never changes a document's saved arrangement or the stored
-  sidebar visibility and width. With the Reading (Viewer) default open mode the backend signals
+  document or across restarts, and it never changes a document's saved arrangement or the
+  sidebar's visibility and width. With the Reading (Viewer) default open mode the backend signals
   Reading-on-open to the frontend through `OpenResult.readingMode`, as described in the open-document
   flow above.
   The Reading width (Page or Full width, stored as `view.readingWidth`, `page` by default) is the
@@ -1007,6 +1054,40 @@ The owner decisions that shaped this refactor are recorded here so they are not 
   names no control. The PDF appearance setting (`export.pdfAppearance`, `styled` default or `clean`, carried in the
   appearance group) sets `data-print-appearance` on the copy; Clean redefines the colour tokens with the Material Light
   values in `tokens.css`, and `resolveMermaidTheme(element)` probes inside the element so diagrams are drawn light.
+
+- **D21 — Empty-session startup:** it refines D18. `newAppModelService` starts every window with no document, an empty
+  `orderedDocumentIDs` and an empty `activeDocumentID`, so a window without a launch target shows the launcher
+  (`ui/widgets/Launcher.tsx`), whether it was started from the icon, from New Window or with an unsupported or missing
+  path argument. The `StartEmpty` option, `WithEmptySession` and the `GOMARKEDIT_NEW_WINDOW_CHILD` marker no longer exist:
+  a New Window child inherits the parent's environment unchanged. The Untitled replacement of D18 is unchanged: an
+  untouched, empty Untitled document that the user created with New File is still replaced when a file opens. Tests that
+  need a document create one through the public `NewDocument` path (`newUntitledID` in `tests/go/`, and
+  `newUntitledDocument` in `frontend/tests/support/harness.ts`, which presses Mod+N). Known transient: the launch target
+  is taken after `windowReady`, so a file argument shows one frame of the launcher. Rejected: keeping `WithEmptySession`
+  with the default flipped (a dead option), an "initial Untitled" option used only by tests, and closing the tab in the
+  frontend at bootstrap (the frontend would own the session, and it flashes).
+
+- **D22 — Sidebar visibility is derived, unsaved window state:** it refines D17's "stored sidebar visibility". The Go
+  service owns it in `state.ui.SidebarVisible`, which starts `false`. `OpenWorkspace` sets it `true` in the same patch as
+  the workspace snapshot, and the already-open branch publishes a sidebar-only patch when the sidebar is hidden.
+  `CloseWorkspace` sets it `false` in its patch. `SetUILayout` keeps a visibility change in memory and publishes it
+  (Ctrl/Cmd+\, dragging the width to 0) but never persists it; `LayoutWorkspaceVisible` is removed from `persistLayout`,
+  `RestoreUILayout` and the layout repository, so an old `layout.workspace.visible` row is ignored. Document opens,
+  creations and closes leave it unchanged. The frontend no longer reacts to a folder appearing: the effect in `App.tsx`
+  is gone, `onOpenWorkspacePath` sends a same-root open to the backend `OpenWorkspace` without the Replace prompt, and
+  the `sidebarVisible` fallbacks are `false`. Rejected: keeping the frontend effect (a second owner racing the backend
+  patch) and persisting visibility per folder.
+
+- **D23 — Show hidden folders outside a workspace:** the preference `layout.workspace.showHiddenFolders` is stored
+  and published whether or not a folder is open. `SetWorkspaceHiddenFolders` no longer refuses without a folder: it
+  writes the value, merges it into `state.ui.ShowHiddenFolders` and publishes one patch carrying `ui.showHiddenFolders`,
+  plus the rebuilt `workspace` when a folder is open (a refused rebuild still publishes the UI value together with the
+  unavailable state). `RestoreUILayout` seeds the field at start, `SetUILayout` ignores an incoming value so the setter
+  stays the only writer, and the `UILayout` wire type, `mergeUILayout` and `cloneUILayout` carry the new field. The
+  Settings dialog's Workspace section and the tree toggle write through the same `onSetWorkspaceHiddenFolders` and
+  the dialog reads the store projection `ui.layout.showHiddenFolders`; the tree keeps reading the workspace snapshot,
+  which the same patch updates. Rejected: moving the preference into `internal/settings` (two owners) and disabling the
+  row while no folder is open.
 
 ## Planning decisions retained
 
