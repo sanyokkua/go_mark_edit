@@ -123,7 +123,8 @@ changes the bundled font metrics) preserves the user’s current control focus.
 
 MenuItem is the single owner of popup-row typography, minimum height, padding, alignment, hover,
 keyboard focus, disabled presentation, selection marks and accelerator placement. Shared defaults
-live in `frontend/src/ui/styles/tokens.css`; rows can grow for larger content. Popup owns the surface,
+live in `frontend/src/ui/styles/tokens.css`; rows can grow for larger content, but a popup is never wider than
+`--popup-max-width` (360px) or the window minus its gaps, and a row that does not fit is truncated with an ellipsis. Popup owns the surface,
 section labels and separators, without a competing row style.
 
 Consumers are File (including indented recent/reopen rows), Settings (Theme and Appearance radios,

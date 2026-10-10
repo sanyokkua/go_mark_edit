@@ -573,6 +573,22 @@ and squash-merge it back.
           test; task 9 tests the dialog side only).
     - Docs: `docs/index.md` Settings menu description.
 
+## 12. Menu width limit
+
+- [x] 12.1 Limit every popup and dropdown menu to a static maximum width, so that a long recent file name no longer
+      widens the File menu to the window width. Verify that the named test passes, `scripts/verify` is green, and in the
+      real app the File menu with a long recent name is at most 360 px wide with the name truncated.
+    - Requirements:
+        - app-shell "Menu width limit" (both scenarios).
+    - Work:
+        - `ui/styles/tokens.css`: `--popup-max-width: 360px`.
+        - `ui/components/Popup/Popup.module.css` `.surface` and `ui/widgets/Menubar/Menubar.module.css`
+          `.narrowOverflow`: `max-inline-size: min(var(--popup-max-width), calc(100vw - 2 * var(--app-gap)))`. Row
+          labels already truncate with an ellipsis and recent rows carry the full path as `title`.
+    - Adds tests: e2e `menu-width.test.ts` (long recent name: popup width at most 360 px, row inside the popup, full
+      path in the title).
+    - Docs: `docs/architecture.md` MenuItem section (popup surface sizing).
+
 ## Workflow follow-up
 
 - Archive the change on `feature/refine-startup-menus-and-settings` once every task is verified (`/opsx:archive`), then

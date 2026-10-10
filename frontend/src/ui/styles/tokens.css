@@ -96,6 +96,7 @@
     --icon-size: 15px;
     --icon-stroke: 1.75;
     --popup-min-width: 250px;
+    --popup-max-width: 360px;
     --popup-radius: 12px;
     --popup-padding: 6px;
     --menu-item-height: 30px;

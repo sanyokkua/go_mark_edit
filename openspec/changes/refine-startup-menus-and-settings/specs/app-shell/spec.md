@@ -116,3 +116,17 @@ The Markdown menu SHALL list every formatting and tidy command in five groups, i
 - **WHEN** a writable document is active in the Preview arrangement and the user opens the Markdown menu
 - **THEN** the Text, Headings, Lists & quotes and Links, images & tables items are disabled because no editor is
   shown, and Format, Compact and Lint are enabled
+
+### Requirement: Menu width limit
+
+Every dropdown menu and popup SHALL be at most 360 pixels wide, and never wider than the window minus its side gaps. A row whose text does not fit SHALL be truncated with an ellipsis and keep the full text available as its tooltip; a long file name SHALL NOT widen a menu.
+
+#### Scenario: Long recent file name
+
+- **WHEN** a recent file has a name of more than 200 characters and the user opens the File menu in a wide window
+- **THEN** the File menu is at most 360 pixels wide, the file's row ends with an ellipsis inside the menu, and its tooltip shows the full path
+
+#### Scenario: Narrow window
+
+- **WHEN** the window is narrower than 360 pixels plus its side gaps and the user opens a menu
+- **THEN** the menu is no wider than the window minus its side gaps
