@@ -20,8 +20,12 @@ test('the Default open mode choice persists after restart in the dialog', async 
 
     await app.relaunch();
 
-    await page.keyboard.press('ControlOrMeta+,');
     const reopened = page.getByRole('dialog', { name: 'Settings' });
+    await expect(page.getByTestId('document-launcher')).toBeVisible();
+    await expect(async () => {
+        await page.keyboard.press('ControlOrMeta+,');
+        await expect(reopened).toBeVisible({ timeout: 1000 });
+    }).toPass();
     await expect(
         reopened
             .getByRole('radiogroup', { name: 'Default open mode' })
