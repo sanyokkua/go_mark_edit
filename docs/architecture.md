@@ -112,7 +112,7 @@ with fixed viewport coordinates, uses an 8 px application-frame collision margin
 trigger, point and bounds anchors. The body portal keeps floating surfaces outside the application
 frame's backdrop root so their blur samples the document content beneath them.
 
-Consumers: File menu, Settings menu, View menu, About menu, narrow menubar overflow, tab context menu,
+Consumers: File menu, Markdown menu, Settings menu, View menu, About menu, narrow menubar overflow, tab context menu,
 workspace tree context menu (point-anchored), editor context menu, preview context menu, formatting-toolbar overflow and the
 StatusBar Document details disclosure.
 
@@ -787,7 +787,7 @@ An accepted view change is retained when metadata storage fails; the existing as
 error seam reports a persistence warning. A later explicit resize or Save retries storage.
 This restores a reopened file's view preference, without restoring tabs or document contents.
 
-The Markdown popup and Settings dialog use `useEditorSettings` and one settings command owner.
+The Settings popup and Settings dialog use `useEditorSettings` and one settings command owner.
 Queued Markdown writes read the latest acknowledged group before merging a patch; a rejected write
 keeps the projection unchanged and reports an error notice. All six dialog controls and the popup
 on-save rows stay unavailable until the backend Markdown group is hydrated.

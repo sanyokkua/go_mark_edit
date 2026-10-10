@@ -136,6 +136,14 @@ Monaco's built-in Find/Replace searches the active editor document: Ctrl/Cmd+F o
 Ctrl/Cmd+R opens Replace, alongside Monaco's standard Replace shortcuts. Find works on read-only
 files; replacements use ordinary editing, undo, live preview and saving.
 
+Editor formatting commands (Bold, Italic, Bold Italic, Strikethrough, Inline code, Heading 1-6, Bullet, Numbered and Task
+lists, Quote, Link, Table) are offered by the Markdown menu, the formatting toolbar and their shortcuts, and are
+unavailable while the active document's editor is not shown (no document, Preview arrangement or Reading mode). Numbered
+list numbers the selected lines 1, 2, 3 ... and continues from a numbered line directly above. Table opens an Insert table
+dialog (Ctrl/Cmd+Shift+T) for 1-20 columns and 1-100 body rows (defaults 3 and 3). In a writable editor, Enter at the
+end of a list item starts the next item with the next marker, and Enter on an empty item ends the list; this does not
+apply inside fenced code. Image stays disabled.
+
 ### 6.2 Error Handling and Edge Cases
 
 | Scenario                                        | Behavior                                                                                            |
