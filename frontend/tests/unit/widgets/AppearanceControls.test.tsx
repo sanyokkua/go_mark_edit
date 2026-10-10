@@ -51,13 +51,10 @@ const getSettings = settingsAdapter.getSettings as jest.MockedFunction<typeof se
 const resetAppearance = settingsAdapter.resetAppearance as jest.MockedFunction<typeof settingsAdapter.resetAppearance>;
 
 function AppearanceMenu(): React.JSX.Element {
-    const { appearance, onDefaultOpenModeChange, onModeChange, onOpenAppearance, onThemeChange } =
-        useAppearanceSettings();
+    const { appearance, onModeChange, onOpenAppearance, onThemeChange } = useAppearanceSettings();
     const { fileSettings, markdownSettings, updateFile, updateMarkdown } = useEditorSettings();
     return (
         <SettingsMenu
-            defaultOpenMode={appearance.defaultOpenMode as 'viewer' | 'editor'}
-            onDefaultOpenModeChange={onDefaultOpenModeChange}
             fileSettings={fileSettings}
             markdownSettings={markdownSettings}
             mode={appearance.mode}
@@ -471,7 +468,10 @@ it('normalizes invalid persisted values before exposing controls or root attribu
     fireEvent.click(screen.getByRole('button', { name: 'Settings' }));
     expect(screen.getByRole('radio', { name: 'Material' })).toBeChecked();
     expect(screen.getByRole('radio', { name: 'Auto (system)' })).toBeChecked();
-    expect(screen.getByRole('menuitemradio', { name: 'Styled' })).toHaveAttribute('aria-checked', 'true');
+    fireEvent.click(screen.getByRole('menuitem', { name: /All settings/u }));
+    const dialog = screen.getByRole('dialog', { name: 'Settings' });
+    fireEvent.click(within(dialog).getByRole('tab', { name: 'Export' }));
+    expect(within(dialog).getByRole('radio', { name: 'Styled' })).toBeChecked();
 });
 
 it('owns one Auto listener, ignores a later system change while pinned, and stays silent on success', async (): Promise<void> => {

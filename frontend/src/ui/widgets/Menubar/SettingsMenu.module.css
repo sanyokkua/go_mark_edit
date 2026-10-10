@@ -24,19 +24,3 @@
 .swatch[data-menu-swatch='minimal'] {
     background: var(--theme-minimal-swatch);
 }
-
-/*
- * Settings drives its switches from a real checkbox so the control is operable
- * and labelled; the View menu's switch is decorative. The input is taken out of
- * the flow rather than hidden, so it stays focusable and keyboard-operable.
- */
-.toggleInput {
-    height: 1px;
-    opacity: 0;
-    position: absolute;
-    width: 1px;
-}
-
-.toggleInput:disabled {
-    cursor: default;
-}

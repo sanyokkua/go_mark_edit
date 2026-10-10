@@ -41,8 +41,7 @@ const updateAppearance = settingsAdapter.updateAppearance as jest.MockedFunction
 >;
 
 function Menu(): React.JSX.Element {
-    const { appearance, onModeChange, onOpenAppearance, onPdfAppearanceChange, onThemeChange } =
-        useAppearanceSettings();
+    const { appearance, onModeChange, onOpenAppearance, onThemeChange } = useAppearanceSettings();
     const { fileSettings, markdownSettings } = useEditorSettings();
     return (
         <SettingsMenu
@@ -51,9 +50,7 @@ function Menu(): React.JSX.Element {
             mode={appearance.mode}
             onModeChange={onModeChange}
             onOpenAppearance={onOpenAppearance}
-            onPdfAppearanceChange={onPdfAppearanceChange}
             onThemeChange={onThemeChange}
-            pdfAppearance={appearance.pdfAppearance}
             theme={appearance.theme}
         />
     );
@@ -80,13 +77,20 @@ async function openMenu(): Promise<HTMLElement> {
     return screen.getByRole('menu', { name: 'Settings menu' });
 }
 
-it('shows Styled selected and sends clean when Clean is chosen in the menu', async () => {
-    renderHarness();
+async function openExportGroup(): Promise<{ dialog: HTMLElement; group: HTMLElement }> {
     const menu = await openMenu();
-    expect(within(menu).getByText('PDF appearance')).toBeInTheDocument();
-    expect(within(menu).getByRole('menuitemradio', { name: 'Styled' })).toHaveAttribute('aria-checked', 'true');
+    fireEvent.click(within(menu).getByRole('menuitem', { name: /All settings/u }));
+    const dialog = screen.getByRole('dialog', { name: 'Settings' });
+    fireEvent.click(within(dialog).getByRole('tab', { name: 'Export' }));
+    return { dialog, group: within(dialog).getByRole('radiogroup', { name: 'PDF appearance' }) };
+}
 
-    fireEvent.click(within(menu).getByRole('menuitemradio', { name: 'Clean' }));
+it('shows Styled selected and sends clean when Clean is chosen in the dialog', async () => {
+    renderHarness();
+    const { group } = await openExportGroup();
+    expect(within(group).getByRole('radio', { name: 'Styled' })).toBeChecked();
+
+    fireEvent.click(within(group).getByRole('radio', { name: 'Clean' }));
 
     await waitFor(() =>
         expect(updateAppearance).toHaveBeenCalledWith({
@@ -97,12 +101,10 @@ it('shows Styled selected and sends clean when Clean is chosen in the menu', asy
             theme: 'material',
         }),
     );
-    await waitFor(() =>
-        expect(within(menu).getByRole('menuitemradio', { name: 'Clean' })).toHaveAttribute('aria-checked', 'true'),
-    );
+    await waitFor(() => expect(within(group).getByRole('radio', { name: 'Clean' })).toBeChecked());
 });
 
-it('shows the stored Clean choice in the menu and the dialog after startup', async () => {
+it('shows the stored Clean choice in the dialog after startup', async () => {
     (settingsAdapter.getSettings as jest.Mock).mockResolvedValueOnce({
         appearance: {
             defaultOpenMode: 'editor',
@@ -122,18 +124,11 @@ it('shows the stored Clean choice in the menu and the dialog after startup', asy
         },
     });
     renderHarness();
-    const menu = await openMenu();
-    await waitFor(() =>
-        expect(within(menu).getByRole('menuitemradio', { name: 'Clean' })).toHaveAttribute('aria-checked', 'true'),
-    );
-    fireEvent.click(within(menu).getByRole('menuitem', { name: /All settings/u }));
-    const stored = screen.getByRole('dialog', { name: 'Settings' });
-    fireEvent.click(within(stored).getByRole('tab', { name: 'Export' }));
-    const group = within(stored).getByRole('radiogroup', { name: 'PDF appearance' });
-    expect(within(group).getByRole('radio', { name: 'Clean' })).toBeChecked();
+    const { group } = await openExportGroup();
+    await waitFor(() => expect(within(group).getByRole('radio', { name: 'Clean' })).toBeChecked());
 });
 
-it('keeps the dialog row and the menu in sync, is reachable by keyboard and restores Styled on Reset appearance', async () => {
+it('is reachable by keyboard in the dialog and restores Styled on Reset appearance', async () => {
     renderHarness();
     const menu = await openMenu();
     fireEvent.click(within(menu).getByRole('menuitem', { name: /All settings/u }));
@@ -159,7 +154,6 @@ it('keeps the dialog row and the menu in sync, is reachable by keyboard and rest
 
     fireEvent.click(within(dialog).getByRole('button', { name: 'Close' }));
     const reopened = await openMenu();
-    expect(within(reopened).getByRole('menuitemradio', { name: 'Clean' })).toHaveAttribute('aria-checked', 'true');
     fireEvent.click(within(reopened).getByRole('menuitem', { name: /All settings/u }));
 
     const dialogAgain = screen.getByRole('dialog', { name: 'Settings' });
@@ -167,7 +161,4 @@ it('keeps the dialog row and the menu in sync, is reachable by keyboard and rest
     fireEvent.click(within(dialogAgain).getByRole('tab', { name: 'Export' }));
     const groupAgain = within(dialogAgain).getByRole('radiogroup', { name: 'PDF appearance' });
     await waitFor(() => expect(within(groupAgain).getByRole('radio', { name: 'Styled' })).toBeChecked());
-    fireEvent.click(within(dialogAgain).getByRole('button', { name: 'Close' }));
-    const afterReset = await openMenu();
-    expect(within(afterReset).getByRole('menuitemradio', { name: 'Styled' })).toHaveAttribute('aria-checked', 'true');
 });

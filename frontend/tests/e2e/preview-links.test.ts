@@ -276,7 +276,7 @@ async function expectRowInTreeViewport(page: Page, name: string): Promise<void> 
 async function disableAutosave(page: Page): Promise<void> {
     await page.getByRole('button', { name: 'Settings', exact: true }).click();
     const menu = page.getByRole('menu', { name: 'Settings menu' });
-    const autosave = menu.getByRole('checkbox', { name: 'Autosave' });
+    const autosave = menu.getByRole('menuitemcheckbox', { name: 'Autosave' });
     if (await autosave.isChecked()) await menu.locator('[data-settings-toggle="Autosave"]').click();
     await page.keyboard.press('Escape');
     await expect(menu).not.toBeVisible();

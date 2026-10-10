@@ -77,7 +77,7 @@ async function openDocument(app: E2EAppHarness, filename: string, contents: stri
 async function disableAutosave(page: Page): Promise<void> {
     await page.getByRole('button', { name: 'Settings', exact: true }).click();
     const menu = page.getByRole('menu', { name: 'Settings menu' });
-    const toggle = menu.getByRole('checkbox', { name: 'Autosave' });
+    const toggle = menu.getByRole('menuitemcheckbox', { name: 'Autosave' });
     if (await toggle.isChecked()) await menu.locator('[data-settings-toggle="Autosave"]').click();
     await page.keyboard.press('Escape');
 }

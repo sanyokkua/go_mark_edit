@@ -545,7 +545,7 @@ and squash-merge it back.
 
 ## 11. Settings popup as shortcuts
 
-- [ ] 11.1 Reduce the Settings popup to Theme, Appearance, Markdown, the Autosave, Format on save and Lint on save
+- [x] 11.1 Reduce the Settings popup to Theme, Appearance, Markdown, the Autosave, Format on save and Lint on save
       switches, and All settings…, removing Default open mode, Reading width and PDF appearance. Verify that the named
       tests pass, `scripts/verify` is green, and in the real app the popup matches the trimmed list and changing a
       shortcut item is reflected in the open dialog's matching row.

@@ -225,7 +225,8 @@ editor, autosave and Markdown settings, and `onSetWorkspaceHiddenFolders` from `
 (the tree toggle's writer) for Show hidden folders, read from `state.ui.layout.showHiddenFolders`; all wired in
 `AppearanceControls.tsx`. Ctrl/Cmd+, (the `settings` action)
 opens the dialog through `onOpenAppearance`; the Settings button and the narrow overflow row still open the
-Settings popup, whose All settings… row opens the dialog. At 40rem or narrower the section list sits above the
+Settings popup, which offers only Theme, Appearance, Markdown standard, Autosave, Format on save and Lint on save
+as shortcuts to the same stored settings (`SettingsMenu.tsx`), and whose All settings… row opens the dialog. At 40rem or narrower the section list sits above the
 rows.
 
 ### Banner — `frontend/src/ui/primitives/Banner.tsx`

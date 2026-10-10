@@ -8,7 +8,7 @@ test('cancelling a dirty quit leaves the next quit with a new close decision', a
     const settingsTrigger = app.page.locator('[data-settings-opener]');
     await settingsTrigger.click();
     const settingsMenu = app.page.locator('[data-viewport-popup="settings-menu"]');
-    const autosave = settingsMenu.getByRole('checkbox', { name: 'Autosave' });
+    const autosave = settingsMenu.getByRole('menuitemcheckbox', { name: 'Autosave' });
     await expect(autosave).toBeChecked();
     await autosave.click();
     await expect(autosave).not.toBeChecked({ timeout: 15_000 });

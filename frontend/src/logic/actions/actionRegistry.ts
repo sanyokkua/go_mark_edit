@@ -59,9 +59,6 @@ export type ActionId =
     | 'settings'
     | 'appearance'
     | 'editor-settings'
-    | 'default-open-mode'
-    | 'reading-width'
-    | 'pdf-appearance'
     | 'markdown-standard'
     | 'autosave'
     | 'format-on-save'
@@ -288,9 +285,6 @@ export const actionRegistry: readonly ActionEntry[] = Object.freeze([
     entry('settings', 'application', ['settings-menu'], { shortcut: 'Mod+,' }),
     entry('appearance', 'application', ['settings-menu']),
     entry('editor-settings', 'application', ['settings-menu']),
-    entry('default-open-mode', 'application', ['settings-menu']),
-    entry('reading-width', 'application', ['settings-menu']),
-    entry('pdf-appearance', 'application', ['settings-menu']),
     entry('markdown-standard', 'application', ['settings-menu']),
     entry('autosave', 'application', ['settings-menu'], {
         availability: available(),

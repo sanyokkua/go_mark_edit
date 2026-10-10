@@ -11,7 +11,7 @@ import { setWorkspaceVisible } from '../../../logic/store/uiLayoutCommands';
 import type { ViewArrangement, RecentItem } from '../../../logic/store/appModelTypes';
 import { parseError } from '../../../logic/utils/parseError';
 import { useEditorSettings } from '../../../logic/settings/editorSettings';
-import { useAppearanceSettings, type DefaultOpenMode } from '../appearanceSettingsContext';
+import { useAppearanceSettings } from '../appearanceSettingsContext';
 import { useMinimumWindow } from '../minimumWindow';
 import type { ApplicationMenuTarget } from '../applicationMenuRequest';
 import Menubar from './Menubar';
@@ -79,12 +79,6 @@ export default function ApplicationMenubar({
     const editorActions = useEditorActionExecutor();
     const settingsMenuProps: SettingsMenuProps = useMemo(
         () => ({
-            defaultOpenMode: appearanceSettings.appearance.defaultOpenMode as DefaultOpenMode,
-            onDefaultOpenModeChange: appearanceSettings.onDefaultOpenModeChange,
-            onPdfAppearanceChange: appearanceSettings.onPdfAppearanceChange,
-            onReadingWidthChange: appearanceSettings.onReadingWidthChange,
-            pdfAppearance: appearanceSettings.appearance.pdfAppearance,
-            readingWidth: appearanceSettings.appearance.readingWidth,
             editorSettings: editorSettings.settings,
             fileSettings: editorSettings.fileSettings,
             markdownSettings: editorSettings.markdownSettings,

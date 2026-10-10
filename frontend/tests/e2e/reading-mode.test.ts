@@ -604,19 +604,26 @@ test('Full width through the Ctrl+, Settings dialog widens the document in Readi
 
     await app.relaunch();
     await page.getByRole('button', { name: 'Settings', exact: true }).click();
+    await page.getByRole('menuitem', { name: 'All settings…', exact: true }).click();
     await expect(
         page
-            .getByRole('menu', { name: 'Settings menu' })
-            .getByRole('menuitemradio', { name: 'Full width', exact: true }),
+            .getByRole('dialog', { name: 'Settings' })
+            .getByRole('radiogroup', { name: 'Reading width' })
+            .getByRole('radio', { name: 'Full width', exact: true }),
     ).toHaveAttribute('aria-checked', 'true');
     app.expectNoForeignRequests();
 });
 
 async function chooseDefaultOpenMode(page: Page, name: 'Editor' | 'Reading (Viewer)'): Promise<void> {
     await page.getByRole('button', { name: 'Settings', exact: true }).click();
-    const menu = page.getByRole('menu', { name: 'Settings menu' });
-    await menu.getByRole('menuitemradio', { name, exact: true }).click();
+    await page.getByRole('menuitem', { name: 'All settings…', exact: true }).click();
+    const dialog = page.getByRole('dialog', { name: 'Settings' });
+    await dialog
+        .getByRole('radiogroup', { name: 'Default open mode' })
+        .getByRole('radio', { name, exact: true })
+        .click();
     await page.keyboard.press('Escape');
+    await expect(dialog).toBeHidden();
 }
 
 test('opening a file from the launcher with Reading (Viewer) shows Reading mode and exit shows the saved arrangement', async ({

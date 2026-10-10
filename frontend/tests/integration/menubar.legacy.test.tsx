@@ -14,10 +14,7 @@ jest.mock('../../src/logic/adapter', () => ({
 }));
 
 const settingsMenuProps: SettingsMenuProps = {
-    defaultOpenMode: 'editor',
-    readingWidth: 'page',
     mode: 'auto',
-    onDefaultOpenModeChange: jest.fn(),
     onModeChange: jest.fn(),
     onOpenAppearance: jest.fn(),
     onThemeChange: jest.fn(),
@@ -209,12 +206,8 @@ it('renders File, Markdown, Settings, View, About in binding order with exact me
     const settingsMenu = screen.getByRole('menu', { name: 'Settings menu' });
     expect(settingsMenu).toBeVisible();
     expect(settingsMenu).toHaveAttribute('data-viewport-popup', 'settings-menu');
-    const readingRow = within(settingsMenu).getByRole('menuitemradio', { name: 'Reading (Viewer)' });
-    expect(readingRow).toHaveAttribute('aria-disabled', 'false');
-    expect(readingRow).toHaveAttribute('aria-checked', 'false');
-    const editorRow = within(settingsMenu).getByRole('menuitemradio', { name: 'Editor' });
-    expect(editorRow).toHaveAttribute('aria-disabled', 'false');
-    expect(editorRow).toHaveAttribute('aria-checked', 'true');
+    expect(within(settingsMenu).getByRole('menuitemradio', { name: 'GFM' })).toBeInTheDocument();
+    expect(within(settingsMenu).queryByText('Default open mode')).toBeNull();
     fireEvent.click(within(menu).getByRole('button', { name: 'Settings' }));
 
     fireEvent.keyDown(within(menu).getByRole('button', { name: 'View' }), {

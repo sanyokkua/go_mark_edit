@@ -233,20 +233,30 @@ test('Clean prints a white page from Dark mode, keeps the screen dark and surviv
     const menu = page.getByRole('menu', { name: 'Settings menu' });
     await menu.getByRole('radio', { name: 'Material', exact: true }).click();
     await menu.getByRole('radio', { name: 'Dark', exact: true }).click();
-    await menu.getByRole('menuitemradio', { name: 'Clean', exact: true }).click();
+    await menu.getByRole('menuitem', { name: 'All settings…' }).click();
+    const dialog = page.getByRole('dialog', { name: 'Settings' });
+    await dialog.getByRole('tab', { name: 'Export' }).click();
+    await dialog
+        .getByRole('radiogroup', { name: 'PDF appearance' })
+        .getByRole('radio', { name: 'Clean', exact: true })
+        .click();
     await expect(page.locator('html')).toHaveAttribute('data-mode', 'dark');
     await page.keyboard.press('Escape');
+    await expect(dialog).toBeHidden();
 
     await app.relaunch();
     const restarted = app.page;
     await newUntitledDocument(restarted);
-    await restarted.getByRole('button', { name: 'Settings', exact: true }).click();
+    await restarted.keyboard.press('ControlOrMeta+,');
+    const restartedDialog = restarted.getByRole('dialog', { name: 'Settings' });
+    await restartedDialog.getByRole('tab', { name: 'Export' }).click();
     await expect(
-        restarted
-            .getByRole('menu', { name: 'Settings menu' })
-            .getByRole('menuitemradio', { name: 'Clean', exact: true }),
-    ).toBeChecked();
+        restartedDialog
+            .getByRole('radiogroup', { name: 'PDF appearance' })
+            .getByRole('radio', { name: 'Clean', exact: true }),
+    ).toHaveAttribute('aria-checked', 'true');
     await restarted.keyboard.press('Escape');
+    await expect(restartedDialog).toBeHidden();
     await expect(restarted.locator('html')).toHaveAttribute('data-mode', 'dark');
 
     const recorder = await recordPrintWindow(restarted);
