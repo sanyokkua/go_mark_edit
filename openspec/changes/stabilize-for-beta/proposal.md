@@ -40,6 +40,10 @@ Visible failures
 Editor and shortcuts
 
 - Undo history survives switching to another tab and back; it is still reset by Reload from disk.
+- The editor gains the caret and line keys of common desktop code editors, which are missing today: move, select
+  and delete by word (Option+arrows / Option+Backspace on macOS, Ctrl+arrows / Ctrl+Backspace elsewhere) and line
+  operations (move, copy, delete, indent and outdent lines, delete to line start, insert line above). Existing line
+  and document start/end keys are covered by tests. App shortcuts keep priority where keys overlap.
 - Mod+K (Link) and Cmd+E (Inline code on macOS) work while the editor has focus.
 - **Changed shortcut:** tab switching becomes Ctrl+Tab / Ctrl+Shift+Tab on every platform (shown ⌃⇥ / ⌃⇧⇥ on
   macOS), replacing the unusable Mod+Tab on macOS; Ctrl+PageDown / Ctrl+PageUp keep working, now also while the
@@ -81,7 +85,8 @@ None.
   by a later write; the touched-file scenario covers files saved by the application.
 - `file-lifecycle`: write-protected files open read-only; new files get normal permissions; BOM kept after Save As;
   autosave skips mixed-ending documents; committed-save warnings and sync failures are reported.
-- `editor`: undo history survives tab switches and is reset by Reload.
+- `editor`: undo history survives tab switches and is reset by Reload; standard text navigation and line editing
+  keys.
 - `actions-shortcuts`: tab-switch keys change; editor-focused shortcuts are not swallowed by the editor.
 - `app-shell`: window shown after a startup watchdog delay; recoverable error screen for rendering errors; quitting
   is not blocked by a layout save failure.
@@ -90,7 +95,7 @@ None.
 
 - Backend: `internal/appmodel` (save, conflict, lifecycle, close plan, autosave, layout drain), `internal/file`
   (atomic replace, document reader), `internal/application` (native window), `main.go` (headless test ports).
-- Frontend: `useSyncedBuffer`, `CodeEditor`, `useEditorActionExecutor`, shortcut registry, `DocumentTabs`,
+- Frontend: `useSyncedBuffer`, `CodeEditor`, `monacoSetup`, `useEditorActionExecutor`, shortcut registry, `DocumentTabs`,
   `useDocumentWrites`, adapter error reporting, `MarkdownView`/`useLivePreview`, `useWindowGeometry`, `Menubar`,
   `Toast` styles, `tokens.css`, the markdown highlight plugin, `main.tsx`.
 - Tooling: `scripts/build`, `scripts/verify` stages, Playwright config and harness, CI workflows, `wails.json` and

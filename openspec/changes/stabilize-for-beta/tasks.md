@@ -108,9 +108,9 @@ Spec: file-lifecycle "Save outcome reporting" and "Editor changes that cannot be
 
 ## 8. Shortcuts work while the editor has focus
 
-Spec: actions-shortcuts "Application and window shortcuts", "Shortcut dispatch", "Shortcuts in the editor text area".
+Spec: editor "Text navigation and line editing keys"; actions-shortcuts "Application and window shortcuts", "Shortcut dispatch", "Shortcuts in the editor text area".
 Design §7. Owners: `frontend/src/ui/widgets/useEditorActionExecutor.ts`, `DocumentTabs.tsx`, `useShellShortcuts.ts`,
-`frontend/src/logic/actions/actionRegistry.ts`, `shortcutRegistry.ts`.
+`frontend/src/logic/actions/actionRegistry.ts`, `shortcutRegistry.ts`, `frontend/src/ui/components/monacoSetup.ts`.
 
 - [ ] 8.1 Register the executor and tab-navigation listeners in the capture phase for events targeted at the editor
       text area, stopping propagation when an available command matches; leave Find/Replace inputs on the bubble
@@ -119,6 +119,13 @@ Design §7. Owners: `frontend/src/ui/widgets/useEditorActionExecutor.ts`, `Docum
 - [ ] 8.2 Replace Mod+Tab with physical Ctrl+Tab / Ctrl+Shift+Tab on every platform, show ⌃ on macOS in
       `formatShortcut`, and update the shortcuts dialog and menu hints; add `shortcutForKeyEvent` and formatting unit
       tests for darwin and other platforms; verify them, and check Control+Tab and Cmd+K/Cmd+E in the real app.
+
+- [ ] 8.3 Load Monaco's `wordOperations` and `linesOperations` contributions in `monacoSetup.ts` (spec: editor "Text
+      navigation and line editing keys"; design §7). Add a unit test next to `monacoLanguages.test.ts` that the word
+      and line commands are registered, and an e2e test covering word move/select/delete, line start/end, document
+      start/end, move/copy/delete line and Mod+Enter still entering Reading mode with the editor focused, using the
+      running platform's keys; verify they pass, check Option+arrows and Cmd+arrows in the real app on macOS, and
+      record the bundle-size change for task 14.1.
 
 ## 9. Startup and rendering failures are visible
 

@@ -130,6 +130,18 @@ displayed bindings, and teach `formatShortcut` the macOS Control symbol (⌃).
 - Rejected: registering each catalogue shortcut as a Monaco command. It needs the executor plumbed into
   `CodeEditor`, a binding converter and a second registration path for the same catalogue.
 
+Text navigation and line editing: `monacoSetup.ts` loads `editor.api`, `coreCommands` and three contributions
+only. `coreCommands` already binds line start/end and document start/end with VS Code's platform defaults (⌘←/→ and
+⌘↑/↓ on macOS, Home/End and Ctrl+Home/End elsewhere), but word move/select/delete lives in the `wordOperations`
+contribution, which is not loaded, so Option+arrows do nothing. Import the `wordOperations` and `linesOperations`
+contributions there. Their only overlap with the catalogue is Mod+Enter (insert line below versus Distraction-free
+reading); the capture-phase dispatch above runs the catalogue command first. Monaco's read-only mode already refuses
+the line edits.
+
+- Rejected: importing `editor.all`. It also brings suggest, folding, code actions and more, works against the bundle
+  goal in §12, and adds bindings that would need their own conflict review.
+- Rejected: custom keybindings for word movement. They would re-implement Monaco's word-separator logic.
+
 ### 8. Visible startup and render failures
 
 - Startup watchdog: `NativeWindowService.Restore` (`internal/application/native_window.go`) arms a 12-second timer;
