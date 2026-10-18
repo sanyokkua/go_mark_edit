@@ -26,21 +26,33 @@ The system SHALL keep the window hidden at launch until the saved window size ha
 
 ### Requirement: Unexpected interface error
 
-IF part of the interface fails while drawing, THEN the system SHALL keep the rest of the window usable when the
-failure is inside the preview, showing the preview's inline error, and otherwise SHALL replace the window content with
-a "Something went wrong" screen offering Reload interface and Quit. Reload interface SHALL keep every open document and
-its unsaved text.
-
-#### Scenario: Preview failure
-
-- **WHEN** a document contains content that makes the preview fail while drawing
-- **THEN** the preview shows an inline error, and the editor, tabs and menus keep working
+IF the interface fails while drawing outside the preview, THEN the system SHALL replace the window content with a
+"Something went wrong" screen offering Reload interface and Quit, with keyboard focus on Reload interface. Reload
+interface SHALL keep every open document and its unsaved text. (A failure inside the preview is defined in
+markdown-preview "Live update and degradation".)
 
 #### Scenario: Reload interface
 
 - **WHEN** the "Something went wrong" screen is shown with two open documents, one modified, and the user chooses
   Reload interface
 - **THEN** the interface starts again with both tabs open and the modified one still shows its unsaved text
+
+### Requirement: Quitting from the error screen
+
+WHILE the "Something went wrong" screen is shown, Quit SHALL exit at once when no document has unsaved text; otherwise
+it SHALL first ask "Quit and discard unsaved changes in N documents?" with Quit and Cancel, and Cancel SHALL return to
+the screen. Closing the window or pressing the quit shortcut on this screen SHALL behave like Quit.
+
+#### Scenario: Quit with unsaved work
+
+- **WHEN** the "Something went wrong" screen is shown with one modified document and the user chooses Quit
+- **THEN** the screen asks "Quit and discard unsaved changes in 1 document?", Cancel returns to the screen, and
+  confirming quits without writing the file
+
+#### Scenario: Quit with nothing unsaved
+
+- **WHEN** the "Something went wrong" screen is shown, no document is modified, and the user closes the window
+- **THEN** the application quits
 
 ### Requirement: Quitting is not blocked by layout storage
 

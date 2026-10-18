@@ -24,7 +24,9 @@ Data integrity
 - Save As of a file with a byte-order mark keeps the mark on later saves.
 - Files created by Save As, by saving an untitled document, or by recreating a deleted file get normal
   read-for-everyone permissions (0644 before umask) instead of owner-only.
-- A file whose owner-write permission is missing opens read-only instead of being overwritten by Save or autosave.
+- A file whose owner-write permission is missing opens read-only with the new reason "The file is write-protected."
+  instead of being overwritten by Save or autosave; Save As to another path stays available for it. A permission
+  change on disk is reported like any other external change (as it already is), so Reload re-checks it.
 
 Visible failures
 
@@ -33,8 +35,9 @@ Visible failures
   background buffer sync is reported.
 - If the interface never reports ready, the window is shown anyway 12 seconds after the window size was restored, so
   the startup failure screen is visible.
-- An unexpected rendering error shows a recoverable error screen instead of a blank window; an error inside the
-  preview stays inside the preview pane.
+- An unexpected rendering error shows a recoverable "Something went wrong" screen instead of a blank window, with
+  Reload interface (keeps every document and its unsaved text) and Quit (asks before discarding unsaved changes); an
+  error inside the preview stays inside the preview pane.
 - A layout (window geometry) save failure no longer prevents quitting.
 
 Editor and shortcuts
@@ -51,7 +54,8 @@ Editor and shortcuts
 
 Performance, quality and tooling (no spec-level behaviour change)
 
-- Live preview defers rendering of large documents so typing is not blocked, and does no work while hidden.
+- Live preview does no size measurement while hidden and measures each text once; the existing 2 MiB pause stays
+  the protection for large documents.
 - Each window-resize event no longer writes to the database; the layout sequence counter is updated under its lock.
 - The success toast uses the success colour; duplicated theme token declarations and duplicated menu markup are
   removed; dead save-status code is deleted.
@@ -82,21 +86,29 @@ None.
 ### Modified Capabilities
 
 - `external-change-conflict`: Keep mine combines with an accepted line-ending normalization; Reload is never undone
-  by a later write; the touched-file scenario covers files saved by the application.
+  by a later write; the touched-file scenario covers files saved by the application; a permission change is listed
+  as a change (current behaviour, now specified); a file that became write-protected on disk offers only Reload from
+  disk and Cancel.
 - `file-lifecycle`: write-protected files open read-only; new files get normal permissions; BOM kept after Save As;
   autosave skips mixed-ending documents; committed-save warnings and sync failures are reported.
 - `editor`: undo history survives tab switches and is reset by Reload; standard text navigation and line editing
   keys.
-- `actions-shortcuts`: tab-switch keys change; editor-focused shortcuts are not swallowed by the editor.
+- `actions-shortcuts`: tab-switch keys change; editor-focused shortcuts are not swallowed by the editor; Save As
+  stays available for a write-protected document.
 - `app-shell`: window shown after a startup watchdog delay; recoverable error screen for rendering errors; quitting
   is not blocked by a layout save failure.
+- `markdown-preview`: an error while drawing the preview shows the inline preview error instead of failing the window.
 
 ## Impact
 
 - Backend: `internal/appmodel` (save, conflict, lifecycle, close plan, autosave, layout drain), `internal/file`
-  (atomic replace, document reader), `internal/application` (native window), `main.go` (headless test ports).
-- Frontend: `useSyncedBuffer`, `CodeEditor`, `monacoSetup`, `useEditorActionExecutor`, shortcut registry, `DocumentTabs`,
-  `useDocumentWrites`, adapter error reporting, `MarkdownView`/`useLivePreview`, `useWindowGeometry`, `Menubar`,
+  (atomic replace, document reader), `internal/application` (native window, `application_context_holder.go` port
+  wiring), `main.go` (headless test ports).
+- Bridge: one new read-capability value for write-protected files (generated bindings regenerate); no bound method
+  signature changes.
+- Frontend: `useSyncedBuffer`, `useDocumentSession`, `CodeEditor`, `EditorStage`, `monacoSetup`,
+  `useEditorActionExecutor`, `useShellShortcuts`, shortcut registry, `DocumentTabs`, `readOnlyReason`,
+  `useDocumentWrites`, adapter error reporting, the root error boundary in `App`, `MarkdownView`/`useLivePreview`, `useWindowGeometry`, `Menubar`,
   `Toast` styles, `tokens.css`, the markdown highlight plugin, `main.tsx`.
 - Tooling: `scripts/build`, `scripts/verify` stages, Playwright config and harness, CI workflows, `wails.json` and
   `build/` bundle templates, frontend dependencies (`rehype-highlight` replaced by a plugin on the existing `lowlight`

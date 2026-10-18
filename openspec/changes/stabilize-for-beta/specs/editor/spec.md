@@ -26,8 +26,8 @@ The system SHALL edit each document's Markdown source in a Monaco editor whose c
 ### Requirement: Text navigation and line editing keys
 
 The editor SHALL provide the caret movement, selection and line editing keys of common desktop code editors, following
-each platform's convention listed in the scenarios; adding Shift to a movement key SHALL extend the selection. WHEN a
-key combination is also a command catalogue shortcut, the catalogue command SHALL run. In a read-only document only
+each platform's convention listed in the scenarios; adding Shift to a movement key SHALL extend the selection. A key
+combination that is also a command catalogue shortcut follows "Shortcuts in the editor text area". In a read-only document only
 movement and selection keys SHALL work.
 
 #### Scenario: Move by word
@@ -61,11 +61,6 @@ movement and selection keys SHALL work.
 - **AND** Shift+Option+Down (Shift+Alt+Down) copies the current line below it, Cmd+Shift+K (Ctrl+Shift+K) deletes it,
   Cmd+] and Cmd+[ (Ctrl+] and Ctrl+[) indent and outdent it, Cmd+Backspace on macOS deletes from the caret to the line
   start, and Cmd+Shift+Enter (Ctrl+Shift+Enter) inserts an empty line above
-
-#### Scenario: Catalogue shortcut wins
-
-- **WHEN** the editor has focus and the user presses Cmd+Enter on macOS (Ctrl+Enter elsewhere)
-- **THEN** Distraction-free reading starts and no line is inserted
 
 #### Scenario: Read-only document
 

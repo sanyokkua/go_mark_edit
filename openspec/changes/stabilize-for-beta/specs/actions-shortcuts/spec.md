@@ -35,7 +35,7 @@ The system SHALL bind: Mod+N New File; Mod+O Open File; Mod+Shift+Alt+T Reopen L
 
 ### Requirement: Shortcut dispatch
 
-WHEN a pressed key combination matches the shortcut of an available command, the system SHALL run that command and suppress the browser default. IF the command is unavailable, THEN the system SHALL ignore the key combination without running anything. IF the focused control has already handled the key combination, THEN the system SHALL NOT run a command for it. Shortcut hints SHALL use the symbols for Cmd, Control, Option and Shift on macOS and "Ctrl+", "Alt+", "Shift+" elsewhere.
+WHEN a pressed key combination matches the shortcut of an available command, the system SHALL run that command and suppress the browser default. IF the command is unavailable, THEN the system SHALL ignore the key combination without running anything. IF the focused control has already handled the key combination, THEN the system SHALL NOT run a command for it, except in the editor's text area as defined by "Shortcuts in the editor text area". Shortcut hints SHALL use the symbols for Cmd, Control, Option and Shift on macOS and "Ctrl+", "Alt+", "Shift+" elsewhere.
 
 #### Scenario: Unavailable shortcut
 
@@ -46,6 +46,40 @@ WHEN a pressed key combination matches the shortcut of an available command, the
 
 - **WHEN** the editor's Find input has focus and the user presses the physical Ctrl key with Enter (Ctrl+Enter on every platform, including macOS)
 - **THEN** the Find input handles the key and Reading mode is not entered
+
+### Requirement: Availability and disabled reasons
+
+A command SHALL be unavailable, and shown disabled, when no document is open, Markdown settings are loading, a modal dialog is open, the document is read-only (except the commands that "Read-only documents" keeps available), or a Format, Compact or Lint run is in progress. A disabled item SHALL state the reason as a tooltip where one exists.
+
+#### Scenario: Tab limit
+
+- **WHEN** 40 tabs are open
+- **THEN** New File and Open File are disabled
+
+#### Scenario: Modal open
+
+- **WHEN** the Settings dialog is open
+- **THEN** menu commands and keyboard shortcuts are inactive until it closes
+
+#### Scenario: Formatting while the editor is not shown
+
+- **WHEN** a writable document is in the Preview arrangement
+- **THEN** the toolbar's formatting buttons are disabled with the tooltip "Show the editor to use formatting.", the
+  Format button stays enabled, and pressing Ctrl+B (Cmd+B on macOS) changes nothing
+
+### Requirement: Read-only documents
+
+For a read-only document the system SHALL disable Save, Save As, Format, Compact and every editing command, and SHALL keep Copy, Find and Lint available. Save As SHALL stay available for a document that is read-only only because the file is write-protected.
+
+#### Scenario: Large file
+
+- **WHEN** the active document is read-only
+- **THEN** Bold is disabled while Copy and Find work
+
+#### Scenario: Save As of a write-protected file
+
+- **WHEN** the active document is read-only because "locked.md" is write-protected and the user chooses Save As
+- **THEN** the Save As dialog opens, and saving as "copy.md" the tab becomes "copy.md" and accepts edits
 
 ## ADDED Requirements
 
@@ -64,6 +98,11 @@ while the editor's Find or Replace input has focus.
 
 - **WHEN** "x" is selected in a writable editor on macOS and the user presses Cmd+E
 - **THEN** the selection becomes inline code and the Find input is not filled
+
+#### Scenario: Catalogue shortcut wins over an editor key
+
+- **WHEN** the editor text area has focus and the user presses Cmd+Enter on macOS (Ctrl+Enter elsewhere)
+- **THEN** Distraction-free reading starts and no line is inserted
 
 #### Scenario: Previous tab from the editor
 
