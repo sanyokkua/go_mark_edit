@@ -168,6 +168,7 @@ func (service *AppModelService) autosaveEligibleLocked(documentID string, revisi
 		return false
 	}
 	return document.metadata.Path != "" &&
+		document.metadata.LineEnding != string(file.LineEndingMixed) &&
 		document.metadata.Capability == string(file.CapabilityWritable) &&
 		!document.detached &&
 		!document.closing

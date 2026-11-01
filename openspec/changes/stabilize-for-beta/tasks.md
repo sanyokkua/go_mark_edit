@@ -87,7 +87,7 @@ Spec: external-change-conflict "Keep mine together with line-ending normalizatio
       keep-mine token in `normalizationAuthorizationForLocked`, the `proposedEnding` check in
       `validNormalizationTokenLocked`, the re-keying on consumption and the version-scoped keep-mine reset in `registerConflict`;
       verify the tests pass with `go test -race`.
-- [ ] 4.2 Exclude mixed-ending documents in `autosaveEligibleLocked` and add an `autosave_test.go` case using
+- [x] 4.2 Exclude mixed-ending documents in `autosaveEligibleLocked` and add an `autosave_test.go` case using
       `fakeAutosaveClock` (`support_test.go:208`) and `writeMixedDocument`: Save returns the prompt, the clock fires,
       confirming the original token writes once; add a close-drain case showing `flushAutosaveForClose` mints no
       token. Verify they pass and the frontend `saveTidy` keep-mine integration test stays green.
