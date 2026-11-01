@@ -23,7 +23,7 @@ No spec change (test isolation). Design §11. Owners: `main.go`, `internal/appli
       `:156,180`) to assert the recorded path and drop its `@native-clipboard` tag (`:140`); `preview-links.test.ts`
       keeps asserting `recordLinkBridge` (`:223-260`), whose passthrough now reaches the recorder. Verify both files
       pass and no Finder window opens during a local run.
-- [ ] 1.3 Run the `chromium-native` Playwright project (`playwright.config.ts:60-67, 84-91`) only when
+- [x] 1.3 Run the `chromium-native` Playwright project (`playwright.config.ts:60-67, 84-91`) only when
       `E2E_NATIVE_CLIPBOARD=1` or in the macOS subset; set the variable in `release.yml` and in the `push.yml` job
       that selects `chromium-native` via `E2E_PROJECTS` (`:165`). Add one fixture in `nativeClipboard.ts` that saves
       the clipboard text before each native-clipboard test and restores it after; use it in `rich-rendering`

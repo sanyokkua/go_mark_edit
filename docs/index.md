@@ -241,7 +241,7 @@ scripts/baseline --compare
 
 On Windows, `scripts/build` also builds the NSIS installer when `makensis` is on `PATH` and logs that it was skipped otherwise. On Linux it copies the desktop entry, MIME file, `install.sh` and the icon next to the binary in `build/bin/`; run `install.sh` there to install per user and `install.sh --uninstall` to remove it.
 
-Use `scripts/build setup --with-browser` to install Chromium for E2E verification. Linux desktop builds require GTK 3 and WebKit2GTK 4.1 development headers. Each verification run keeps only the 10 newest folders under `.local_tmp_files/runs/` and shares tool caches in `.local_tmp_files/cache/`. See [the E2E performance note](e2e-performance.md) for harness behavior.
+Use `scripts/build setup --with-browser` to install Chromium for E2E verification. Native clipboard tests are excluded by default; run `E2E_NATIVE_CLIPBOARD=1 scripts/test e2e -- --project=chromium-native` to opt in. They run serially and restore clipboard text, not other clipboard formats. The macOS release subset includes them automatically. Linux desktop builds require GTK 3 and WebKit2GTK 4.1 development headers. Each verification run keeps only the 10 newest folders under `.local_tmp_files/runs/` and shares tool caches in `.local_tmp_files/cache/`. See [the E2E performance note](e2e-performance.md) for harness behavior.
 
 ### Local SonarQube analysis
 

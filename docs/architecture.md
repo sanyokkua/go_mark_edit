@@ -514,7 +514,7 @@ and runs in parallel (CI: three workers; local: at most four and the available C
 `@perf` (latency bounds, deadline-based rendering, large-document and cancellation timing) run in
 `chromium-serial` with one worker, after `chromium`, so concurrent work never inflates a measurement;
 a case that proves flaky under parallel load is moved there rather than loosened. The OS clipboard
-writer cases (`@native-clipboard`) run in `chromium-native`, also serial and after `chromium-serial`.
+writer cases (`@native-clipboard`) run in `chromium-native`, serial and after `chromium-serial`, when `E2E_NATIVE_CLIPBOARD=1` is set or the macOS subset is selected. Each tagged test restores the original clipboard text after the test, including on failure; non-text clipboard formats are not preserved.
 Setting `E2E_SUBSET=macos` replaces these with a macOS subset (`pdf-export`, `launch-target` and `menus`
 files, then the clipboard cases), which the release workflow runs on macOS. Playwright retries are zero.
 CI allows 15 seconds for UI assertions rather than the local five seconds. Product performance bounds and

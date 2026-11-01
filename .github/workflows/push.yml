@@ -164,6 +164,7 @@ jobs:
                     - { name: parallel 4/4, projects: chromium, shard: 4/4 }
                     - { name: serial, projects: 'chromium-serial,chromium-native', shard: '' }
         env:
+            E2E_NATIVE_CLIPBOARD: ${{ matrix.name == 'serial' && '1' || '' }}
             E2E_PROJECTS: ${{ matrix.projects }}
             E2E_SHARD: ${{ matrix.shard }}
         steps:

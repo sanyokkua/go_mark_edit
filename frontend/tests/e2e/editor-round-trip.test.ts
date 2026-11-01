@@ -1,8 +1,8 @@
 import type { Page } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
 
-import { expect, test } from '../support/harness';
-import { invokeEditorContextAction, nativeClipboardText, setNativeClipboard } from '../support/nativeClipboard';
+import { expect } from '../support/harness';
+import { test, invokeEditorContextAction, nativeClipboardText, setNativeClipboard } from '../support/nativeClipboard';
 
 interface ActiveState {
     data?: {
@@ -142,10 +142,11 @@ test(
     {
         tag: '@native-clipboard',
     },
-    async ({ app }) => {
+    async ({ app, preserveNativeClipboard }) => {
         const source = await app.writeDocument('editor-actions.md', 'Cut this');
         await app.seedRecents([source]);
         await app.launch();
+        await preserveNativeClipboard();
 
         const { page } = app;
         await openRecent(page, 'editor-actions.md');

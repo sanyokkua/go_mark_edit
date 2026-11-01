@@ -2,8 +2,8 @@ import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { Page } from '@playwright/test';
 
-import { expect, test, type E2EAppHarness } from '../support/harness';
-import { invokePreviewContextAction, nativeClipboardText, setNativeClipboard } from '../support/nativeClipboard';
+import { expect, type E2EAppHarness } from '../support/harness';
+import { test, invokePreviewContextAction, nativeClipboardText, setNativeClipboard } from '../support/nativeClipboard';
 
 const SHELL = '[data-testid="application-shell"]';
 const PREVIEW = 'section[aria-label="Preview pane"]';
@@ -514,37 +514,41 @@ async function openReferenceDocument(app: E2EAppHarness): Promise<void> {
     await openRecentFromLauncher(app.page, 'reference-document.md');
 }
 
-test('copies selected preview text with the keyboard shortcut', { tag: '@native-clipboard' }, async ({ app }) => {
-    await openReferenceDocument(app);
-    const { page } = app;
-    await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
-    await page.getByRole('radiogroup', { name: 'View arrangement' }).getByRole('radio', { name: 'Preview' }).click();
-    await page.evaluate(() => navigator.clipboard.writeText('sentinel'));
-    await page.locator(PREVIEW).getByRole('heading', { name: 'Getting Started' }).click({ clickCount: 3 });
-    await page.keyboard.press('ControlOrMeta+C');
-    await expect
-        .poll(async () => (await page.evaluate(() => navigator.clipboard.readText())).trim())
-        .toBe('Getting Started');
-});
+test(
+    'copies selected preview text with the keyboard shortcut',
+    { tag: '@native-clipboard' },
+    async ({ app, preserveNativeClipboard }) => {
+        await openReferenceDocument(app);
+        await preserveNativeClipboard();
+        const { page } = app;
+        await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
+        await page
+            .getByRole('radiogroup', { name: 'View arrangement' })
+            .getByRole('radio', { name: 'Preview' })
+            .click();
+        await page.evaluate(() => navigator.clipboard.writeText('sentinel'));
+        await page.locator(PREVIEW).getByRole('heading', { name: 'Getting Started' }).click({ clickCount: 3 });
+        await page.keyboard.press('ControlOrMeta+C');
+        await expect
+            .poll(async () => (await page.evaluate(() => navigator.clipboard.readText())).trim())
+            .toBe('Getting Started');
+    },
+);
 
 test(
     'copies selected text through the preview context menu in Reading mode',
     { tag: '@native-clipboard' },
-    async ({ app }) => {
+    async ({ app, preserveNativeClipboard }) => {
         await openReferenceDocument(app);
+        await preserveNativeClipboard();
         const { page } = app;
         await page.keyboard.press('ControlOrMeta+Enter');
         await expectReading(page);
-        const original = await nativeClipboardText(page);
-        try {
-            await setNativeClipboard(page, 'sentinel');
-            await page.locator(PREVIEW).getByRole('heading', { name: 'Getting Started' }).click({ clickCount: 3 });
-            await invokePreviewContextAction(page, 'Copy');
-            await expect.poll(async () => (await nativeClipboardText(page)).trim()).toBe('Getting Started');
-            await expectReading(page);
-        } finally {
-            await setNativeClipboard(page, original);
-        }
+        await setNativeClipboard(page, 'sentinel');
+        await page.locator(PREVIEW).getByRole('heading', { name: 'Getting Started' }).click({ clickCount: 3 });
+        await invokePreviewContextAction(page, 'Copy');
+        await expect.poll(async () => (await nativeClipboardText(page)).trim()).toBe('Getting Started');
+        await expectReading(page);
     },
 );
 

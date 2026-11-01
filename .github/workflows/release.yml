@@ -132,11 +132,13 @@ jobs:
               if: steps.branch-guard.outputs.on_master == 'true' && steps.gate.outputs.full == 'true'
               env:
                   GOMARKEDIT_E2E_REUSE_DIST: '1'
+                  E2E_NATIVE_CLIPBOARD: '1'
               run: scripts/verify
             - name: macOS E2E subset
               if: steps.branch-guard.outputs.on_master == 'true' && steps.gate.outputs.full != 'true'
               env:
                   E2E_SUBSET: macos
+                  E2E_NATIVE_CLIPBOARD: '1'
               run: scripts/verify e2e
             - name: Stage timings
               if: always() && steps.branch-guard.outputs.on_master == 'true'

@@ -81,14 +81,18 @@ export default defineConfig({
                       workers: 1,
                       use: { ...devices['Desktop Chrome'] },
                   },
-                  {
-                      name: 'chromium-native',
-                      grep: /@native-clipboard/u,
-                      dependencies: ['chromium-serial'],
-                      fullyParallel: false,
-                      workers: 1,
-                      use: { ...devices['Desktop Chrome'] },
-                  },
+                  ...(process.env.E2E_NATIVE_CLIPBOARD === '1'
+                      ? [
+                            {
+                                name: 'chromium-native',
+                                grep: /@native-clipboard/u,
+                                dependencies: ['chromium-serial'],
+                                fullyParallel: false,
+                                workers: 1,
+                                use: { ...devices['Desktop Chrome'] },
+                            },
+                        ]
+                      : []),
               ],
     ),
 });

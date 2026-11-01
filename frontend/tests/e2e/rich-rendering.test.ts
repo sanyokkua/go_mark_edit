@@ -2,8 +2,8 @@ import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { Page } from '@playwright/test';
 
-import { expect, newUntitledDocument, test } from '../support/harness';
-import { invokeEditorContextAction, nativeClipboardText, setNativeClipboard } from '../support/nativeClipboard';
+import { expect, newUntitledDocument } from '../support/harness';
+import { test, invokeEditorContextAction, setNativeClipboard } from '../support/nativeClipboard';
 
 const strippedElements = [
     'script',
@@ -891,7 +891,7 @@ test.describe('shipping-assets performance', { tag: '@perf' }, () => {
 test(
     'rapid editor revisions never insert a Mermaid result from an older source',
     { tag: '@native-clipboard' },
-    async ({ app }) => {
+    async ({ app, preserveNativeClipboard }) => {
         const initial = '```mermaid\nflowchart LR\n    A[Initial] --> B[Done]\n```';
         const intermediate =
             Array.from(
@@ -904,6 +904,7 @@ test(
         const path = await app.writeDocument('rapid-diagram-edits.md', initial);
         await app.seedRecents([path]);
         await app.launch();
+        await preserveNativeClipboard();
         const { page } = app;
         await page.getByTestId('document-launcher').getByRole('button', { name: 'rapid-diagram-edits.md' }).click();
         await page.getByRole('radiogroup', { name: 'View arrangement' }).getByRole('radio', { name: 'Split' }).click();
@@ -911,152 +912,146 @@ test(
         await expect(preview.locator('[data-mermaid-block] svg')).toHaveCount(1);
         const editor = page.locator('[data-editor-surface] textarea').first();
         const modifier = await page.evaluate(() => (navigator.userAgent.includes('Macintosh') ? 'Meta' : 'Control'));
-        const originalClipboard = await nativeClipboardText(page);
-        try {
-            await editor.focus();
-            await editor.press(`${modifier}+A`);
-            await setNativeClipboard(page, intermediate);
-            await invokeEditorContextAction(page, 'Paste');
-            await expect.poll(() => activeBufferContent(page)).toBe(intermediate);
-            await expect(preview.locator('[data-mermaid-block]')).toHaveCount(50);
-            const pendingCount = await preview.locator('[data-mermaid-block] svg').count();
-            expect(pendingCount).toBeLessThan(50);
-            await page.evaluate(() => {
-                const article = document.querySelector('article.gme-preview');
-                const input = document.querySelector('[data-editor-surface] textarea');
-                if (!article || !input) throw new Error('The editor and preview must both be mounted');
-                const record = {
-                    started: false,
-                    accepted: false,
-                    typingStarted: false,
-                    stale: false,
-                    inputCount: 0,
-                    maxKeyDelay: 0,
-                    maxInputGap: 0,
-                    pendingAtRevision: -1,
-                };
-                (window as unknown as { __mermaidStaleCheck?: typeof record }).__mermaidStaleCheck = record;
-                let lastKeydown: number | undefined;
-                let lastInput: number | undefined;
-                input.addEventListener(
-                    'keydown',
-                    (event) => {
-                        const keyboard = event as KeyboardEvent;
-                        if (
-                            (keyboard.key.length === 1 || keyboard.key === 'Enter') &&
-                            !keyboard.metaKey &&
-                            !keyboard.ctrlKey
-                        ) {
-                            record.typingStarted = true;
-                            lastKeydown = performance.now();
-                        }
-                    },
-                    { capture: true },
-                );
-                input.addEventListener(
-                    'input',
-                    () => {
-                        const now = performance.now();
-                        if (!record.typingStarted) return;
-                        record.inputCount++;
-                        if (lastKeydown !== undefined)
-                            record.maxKeyDelay = Math.max(record.maxKeyDelay, now - lastKeydown);
-                        if (lastInput !== undefined) record.maxInputGap = Math.max(record.maxInputGap, now - lastInput);
-                        lastInput = now;
-                    },
-                    { capture: true },
-                );
-                const observer = new MutationObserver((changes) => {
-                    if (!record.started) return;
-                    if (!record.accepted) {
-                        if (article.querySelector('h1')?.textContent !== 'Latest revision') return;
-                        record.accepted = true;
+        await editor.focus();
+        await editor.press(`${modifier}+A`);
+        await setNativeClipboard(page, intermediate);
+        await invokeEditorContextAction(page, 'Paste');
+        await expect.poll(() => activeBufferContent(page)).toBe(intermediate);
+        await expect(preview.locator('[data-mermaid-block]')).toHaveCount(50);
+        const pendingCount = await preview.locator('[data-mermaid-block] svg').count();
+        expect(pendingCount).toBeLessThan(50);
+        await page.evaluate(() => {
+            const article = document.querySelector('article.gme-preview');
+            const input = document.querySelector('[data-editor-surface] textarea');
+            if (!article || !input) throw new Error('The editor and preview must both be mounted');
+            const record = {
+                started: false,
+                accepted: false,
+                typingStarted: false,
+                stale: false,
+                inputCount: 0,
+                maxKeyDelay: 0,
+                maxInputGap: 0,
+                pendingAtRevision: -1,
+            };
+            (window as unknown as { __mermaidStaleCheck?: typeof record }).__mermaidStaleCheck = record;
+            let lastKeydown: number | undefined;
+            let lastInput: number | undefined;
+            input.addEventListener(
+                'keydown',
+                (event) => {
+                    const keyboard = event as KeyboardEvent;
+                    if (
+                        (keyboard.key.length === 1 || keyboard.key === 'Enter') &&
+                        !keyboard.metaKey &&
+                        !keyboard.ctrlKey
+                    ) {
+                        record.typingStarted = true;
+                        lastKeydown = performance.now();
                     }
-                    for (const change of changes) {
-                        for (const added of change.addedNodes) {
-                            if (!(added instanceof Element)) continue;
-                            const diagrams = [
-                                ...(added.matches('[data-mermaid-block] svg') ? [added] : []),
-                                ...added.querySelectorAll('[data-mermaid-block] svg'),
-                            ];
-                            if (diagrams.some((diagram) => diagram.textContent?.includes('Intermediate')))
-                                record.stale = true;
-                        }
+                },
+                { capture: true },
+            );
+            input.addEventListener(
+                'input',
+                () => {
+                    const now = performance.now();
+                    if (!record.typingStarted) return;
+                    record.inputCount++;
+                    if (lastKeydown !== undefined) record.maxKeyDelay = Math.max(record.maxKeyDelay, now - lastKeydown);
+                    if (lastInput !== undefined) record.maxInputGap = Math.max(record.maxInputGap, now - lastInput);
+                    lastInput = now;
+                },
+                { capture: true },
+            );
+            const observer = new MutationObserver((changes) => {
+                if (!record.started) return;
+                if (!record.accepted) {
+                    if (article.querySelector('h1')?.textContent !== 'Latest revision') return;
+                    record.accepted = true;
+                }
+                for (const change of changes) {
+                    for (const added of change.addedNodes) {
+                        if (!(added instanceof Element)) continue;
+                        const diagrams = [
+                            ...(added.matches('[data-mermaid-block] svg') ? [added] : []),
+                            ...added.querySelectorAll('[data-mermaid-block] svg'),
+                        ];
+                        if (diagrams.some((diagram) => diagram.textContent?.includes('Intermediate')))
+                            record.stale = true;
                     }
-                });
-                observer.observe(article, { childList: true, subtree: true });
+                }
             });
-            await editor.focus();
-            await editor.press(`${modifier}+A`);
-            await setNativeClipboard(page, latestPrefix);
-            await editor.press('Shift+F10');
-            const menu = page.locator('[data-viewport-popup="context-menu"]');
-            await expect(menu).toBeVisible();
-            const paste = menu.getByRole('menuitem', { name: 'Paste', exact: true });
-            await paste.evaluate((item) => {
-                item.addEventListener(
-                    'click',
-                    () => {
-                        const record = (
-                            window as unknown as {
-                                __mermaidStaleCheck?: {
-                                    started: boolean;
-                                    pendingAtRevision: number;
-                                };
-                            }
-                        ).__mermaidStaleCheck;
-                        if (!record) throw new Error('Stale render observer is absent');
-                        record.pendingAtRevision = document.querySelectorAll(
-                            'article.gme-preview [data-mermaid-block] svg',
-                        ).length;
-                        record.started = true;
-                    },
-                    { capture: true, once: true },
-                );
-            });
-            await paste.click();
-            await expect(menu).toHaveCount(0);
-            await expect(editor).toBeFocused();
-            await expect.poll(() => activeBufferContent(page)).toBe(latestPrefix);
-            await page.keyboard.type(typedSuffix);
-            await expect.poll(() => activeBufferContent(page)).toBe(latest);
-            await expect(preview.locator('[data-mermaid-block]')).toHaveCount(1);
-            await expect(preview.locator('h1')).toHaveText('Latest revision');
-            await expect(preview.locator('[data-mermaid-block] svg')).toContainText('Latest typed node', {
-                timeout: 10_000,
-            });
-            await page.waitForTimeout(300);
-            const stale = await page.evaluate(
-                () =>
-                    (
+            observer.observe(article, { childList: true, subtree: true });
+        });
+        await editor.focus();
+        await editor.press(`${modifier}+A`);
+        await setNativeClipboard(page, latestPrefix);
+        await editor.press('Shift+F10');
+        const menu = page.locator('[data-viewport-popup="context-menu"]');
+        await expect(menu).toBeVisible();
+        const paste = menu.getByRole('menuitem', { name: 'Paste', exact: true });
+        await paste.evaluate((item) => {
+            item.addEventListener(
+                'click',
+                () => {
+                    const record = (
                         window as unknown as {
                             __mermaidStaleCheck?: {
                                 started: boolean;
-                                accepted: boolean;
-                                stale: boolean;
-                                inputCount: number;
-                                maxKeyDelay: number;
-                                maxInputGap: number;
                                 pendingAtRevision: number;
                             };
                         }
-                    ).__mermaidStaleCheck,
+                    ).__mermaidStaleCheck;
+                    if (!record) throw new Error('Stale render observer is absent');
+                    record.pendingAtRevision = document.querySelectorAll(
+                        'article.gme-preview [data-mermaid-block] svg',
+                    ).length;
+                    record.started = true;
+                },
+                { capture: true, once: true },
             );
-            expect(stale?.started).toBe(true);
-            expect(stale?.accepted).toBe(true);
-            expect(stale?.inputCount).toBe(typedSuffix.length);
-            expect(stale?.pendingAtRevision).toBeGreaterThanOrEqual(0);
-            expect(stale?.pendingAtRevision).toBeLessThan(50);
-            expect(stale?.stale).toBe(false);
-            console.log(
-                `[mermaid] pending=${pendingCount}/50, max key-to-input ${Math.round(stale?.maxKeyDelay ?? 0)}ms, max input gap ${Math.round(stale?.maxInputGap ?? 0)}ms`,
-            );
-            expect(stale?.maxKeyDelay).toBeLessThanOrEqual(100);
-            expect(stale?.maxInputGap).toBeLessThanOrEqual(100);
-            await expect(preview.locator('[data-mermaid-block] svg')).toContainText('Latest typed node');
-            app.expectNoForeignRequests();
-        } finally {
-            await setNativeClipboard(page, originalClipboard);
-        }
+        });
+        await paste.click();
+        await expect(menu).toHaveCount(0);
+        await expect(editor).toBeFocused();
+        await expect.poll(() => activeBufferContent(page)).toBe(latestPrefix);
+        await page.keyboard.type(typedSuffix);
+        await expect.poll(() => activeBufferContent(page)).toBe(latest);
+        await expect(preview.locator('[data-mermaid-block]')).toHaveCount(1);
+        await expect(preview.locator('h1')).toHaveText('Latest revision');
+        await expect(preview.locator('[data-mermaid-block] svg')).toContainText('Latest typed node', {
+            timeout: 10_000,
+        });
+        await page.waitForTimeout(300);
+        const stale = await page.evaluate(
+            () =>
+                (
+                    window as unknown as {
+                        __mermaidStaleCheck?: {
+                            started: boolean;
+                            accepted: boolean;
+                            stale: boolean;
+                            inputCount: number;
+                            maxKeyDelay: number;
+                            maxInputGap: number;
+                            pendingAtRevision: number;
+                        };
+                    }
+                ).__mermaidStaleCheck,
+        );
+        expect(stale?.started).toBe(true);
+        expect(stale?.accepted).toBe(true);
+        expect(stale?.inputCount).toBe(typedSuffix.length);
+        expect(stale?.pendingAtRevision).toBeGreaterThanOrEqual(0);
+        expect(stale?.pendingAtRevision).toBeLessThan(50);
+        expect(stale?.stale).toBe(false);
+        console.log(
+            `[mermaid] pending=${pendingCount}/50, max key-to-input ${Math.round(stale?.maxKeyDelay ?? 0)}ms, max input gap ${Math.round(stale?.maxInputGap ?? 0)}ms`,
+        );
+        expect(stale?.maxKeyDelay).toBeLessThanOrEqual(100);
+        expect(stale?.maxInputGap).toBeLessThanOrEqual(100);
+        await expect(preview.locator('[data-mermaid-block] svg')).toContainText('Latest typed node');
+        app.expectNoForeignRequests();
     },
 );
