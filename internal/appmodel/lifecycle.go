@@ -116,10 +116,16 @@ func (document *DocumentRecord) effectiveMetadata() apperr.DocumentMetadata {
 }
 
 func normalizationAuthorizationForLocked(document *DocumentRecord, token string) (*normalizationAuthorization, bool) {
-	if document == nil || document.normalization == nil || document.normalization.token != token {
+	if document == nil {
 		return nil, false
 	}
-	return document.normalization, true
+	if document.normalization != nil && document.normalization.token == token {
+		return document.normalization, true
+	}
+	if authorization := document.keepMine[token]; authorization != nil && authorization.normalization != nil && authorization.normalization.accepted {
+		return authorization.normalization, true
+	}
+	return nil, false
 }
 
 // waitForIdle is intentionally kept next to the lifecycle disposal contract:

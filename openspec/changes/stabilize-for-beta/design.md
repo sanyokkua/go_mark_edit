@@ -96,9 +96,9 @@ Changes, all inside `internal/appmodel`:
   `target.normalizationToken` (`close_plan.go:163`) with the keep-mine token is covered.
   `validNormalizationTokenLocked` gains the `proposedEnding` check the Save gate already does, so the close plan never
   accepts a token that Save then rejects.
-- Consumption order: when `inspectDocument` consumes the keep-mine token it re-keys `document.normalization` to that
-  token. If `snapshotForWrite` then refuses, the write fails with its normal error; the user's next Save raises the
-  conflict again (the adopted baseline is restored from the unchanged disk), so no write happens without consent.
+- Consumption order: when `inspectDocument` confirms the disk version still matches and consumes the keep-mine token it re-keys `document.normalization` to that
+  token. If `snapshotForWrite` then refuses, the write fails with its normal error. The adopted baseline and re-keyed
+  normalization remain bound to that authorized disk version and content revision; a subsequent disk change is checked before a write.
 - `registerConflict` (`conflict.go:446-459`) drops the document's keep-mine records whose disk `version` differs from
   the newly registered one, so a Keep mine from an earlier conflict is never honoured. Records for the same version
   survive: focus and tab-activation checks call `inspectDocument(..., "")` (`conflict.go:68`) and re-register the

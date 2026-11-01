@@ -72,10 +72,10 @@ the text the document held before the reload.
 
 ### Requirement: Keep mine together with line-ending normalization
 
-WHEN a document with mixed line endings has an unresolved conflict, the user has accepted "Normalize line endings?"
-for the current text and then chooses Keep mine, the next Save, Save As or save from the close prompt SHALL write the
-normalized text once without asking again. Choosing Skip, or editing the text, SHALL require the normalization to be
-accepted again. A Keep mine decision SHALL be discarded when a new conflict is raised for the document.
+WHEN the user accepts normalization for mixed endings and chooses Keep mine for a conflict, the next Save, Save As
+or close-prompt save SHALL write the normalized text once without asking again. Skip or an edit SHALL require renewed
+normalization consent. A conflict for a different disk version SHALL discard Keep mine; rechecking the same version
+SHALL preserve it.
 
 #### Scenario: Keep mine on a mixed-ending file
 
@@ -92,7 +92,7 @@ accepted again. A Keep mine decision SHALL be discarded when a new conflict is r
 #### Scenario: Skip asks again
 
 - **WHEN** the user accepted normalization, chose Skip in the comparison and saves again
-- **THEN** the comparison appears again and no file is written
+- **THEN** normalization must be accepted again before the comparison reappears, and no file is written
 
 #### Scenario: Keep mine from an earlier conflict
 

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -265,5 +266,122 @@ func TestKeepMineAuthorizationIsSingleUseAndSavesTheCurrentBuffer(t *testing.T) 
 	second := service.Save(context.Background(), documentID, saved.Data.WrittenContentRevision, authorized.DecisionToken)
 	if second.Status == apperr.WriteStatusCommitted {
 		t.Fatal("reused keep-mine authorization committed a second write")
+	}
+}
+
+func TestMixedKeepMineSurvivesSameVersionCheck(t *testing.T) {
+	ctx := context.Background()
+	service := NewAppModelServiceForHost(WithEmitter(&recordingEmitter{}), AppModelOption{AutosaveTimer: &fakeAutosaveClock{}})
+	path, id := openAutosaveDocument(t, service, "a\r\nb\n")
+	if err := service.UpdateBuffer(ctx, id, "mine\n"); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, []byte("external\n"), 0640); err != nil {
+		t.Fatal(err)
+	}
+	state, _ := service.GetState(ctx)
+	revision := state.Snapshot.Documents[id].ContentRevision
+	normalization := service.Save(ctx, id, revision, "")
+	if normalization.Status != apperr.WriteStatusNeedsNormalization {
+		t.Fatalf("normalization = %+v", normalization)
+	}
+	conflict := service.Save(ctx, id, revision, normalization.DecisionToken)
+	if conflict.Status == apperr.WriteStatusCommitted {
+		t.Fatal("unexpected write")
+	}
+	detected := service.CheckExternalChanges(ctx, id)
+	if detected.Preview == nil {
+		t.Fatalf("conflict = %+v", detected)
+	}
+	authorized := service.AuthorizeKeepMine(ctx, id, revision, path, detected.Preview.DetectedDiskVersion)
+	if authorized.Status != apperr.ConflictStatusAuthorized {
+		t.Fatalf("authorization = %+v", authorized)
+	}
+	service.CheckExternalChanges(ctx, id)
+	saved := service.Save(ctx, id, revision, authorized.DecisionToken)
+	if saved.Status != apperr.WriteStatusCommitted {
+		t.Fatalf("save = %+v, want committed", saved)
+	}
+	bytes, err := os.ReadFile(path)
+	if err != nil || string(bytes) != "mine\r\n" {
+		t.Fatalf("disk = %q, %v", bytes, err)
+	}
+}
+
+func TestMixedKeepMineRejectsNewDiskVersionAndSkipClearsConsent(t *testing.T) {
+	ctx := context.Background()
+	service := NewAppModelServiceForHost(WithEmitter(&recordingEmitter{}), AppModelOption{AutosaveTimer: &fakeAutosaveClock{}})
+	path, id := openAutosaveDocument(t, service, "a\r\nb\n")
+	if err := service.UpdateBuffer(ctx, id, "mine\n"); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, []byte("external\n"), 0640); err != nil {
+		t.Fatal(err)
+	}
+	state, _ := service.GetState(ctx)
+	revision := state.Snapshot.Documents[id].ContentRevision
+	n := service.Save(ctx, id, revision, "")
+	service.Save(ctx, id, revision, n.DecisionToken)
+	detected := service.CheckExternalChanges(ctx, id)
+	if detected.Preview == nil {
+		t.Fatal("missing conflict")
+	}
+	k := service.AuthorizeKeepMine(ctx, id, revision, path, detected.Preview.DetectedDiskVersion)
+	if k.Status != apperr.ConflictStatusAuthorized {
+		t.Fatalf("authorize: %+v", k)
+	}
+	if err := os.WriteFile(path, []byte("another external version\n"), 0640); err != nil {
+		t.Fatal(err)
+	}
+	result := service.Save(ctx, id, revision, k.DecisionToken)
+	if result.Conflict == nil {
+		t.Fatalf("new version should conflict: %+v", result)
+	}
+	bytes, err := os.ReadFile(path)
+	if err != nil || string(bytes) != "another external version\n" {
+		t.Fatalf("disk = %q, %v", bytes, err)
+	}
+	skipped := service.SkipConflict(ctx, id, revision, result.Conflict.DetectedDiskVersion)
+	if skipped.Status != apperr.ConflictStatusSkipped {
+		t.Fatalf("skip: %+v", skipped)
+	}
+	again := service.Save(ctx, id, revision, n.DecisionToken)
+	if again.Status != apperr.WriteStatusNeedsNormalization || again.DecisionToken == n.DecisionToken {
+		t.Fatalf("save after skip = %+v", again)
+	}
+}
+
+func TestMixedKeepMineSaveAs(t *testing.T) {
+	ctx := context.Background()
+	target := filepath.Join(t.TempDir(), "copy.md")
+	service := NewAppModelServiceForHost(WithEmitter(&recordingEmitter{}), WithDialogs(nil, saveDialog{path: target}), AppModelOption{AutosaveTimer: &fakeAutosaveClock{}})
+	path, id := openAutosaveDocument(t, service, "a\r\nb\n")
+	if err := service.UpdateBuffer(ctx, id, "mine\n"); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, []byte("external\n"), 0640); err != nil {
+		t.Fatal(err)
+	}
+	state, _ := service.GetState(ctx)
+	revision := state.Snapshot.Documents[id].ContentRevision
+	n := service.SaveAs(ctx, id, revision, "")
+	if n.Status != apperr.WriteStatusNeedsNormalization {
+		t.Fatalf("normalization = %+v", n)
+	}
+	conflict := service.SaveAs(ctx, id, revision, n.DecisionToken)
+	if conflict.Conflict == nil {
+		t.Fatalf("conflict = %+v", conflict)
+	}
+	k := service.AuthorizeKeepMine(ctx, id, revision, path, conflict.Conflict.DetectedDiskVersion)
+	if k.Status != apperr.ConflictStatusAuthorized {
+		t.Fatalf("authorize = %+v", k)
+	}
+	saved := service.SaveAs(ctx, id, revision, k.DecisionToken)
+	if saved.Status != apperr.WriteStatusCommitted {
+		t.Fatalf("save as = %+v", saved)
+	}
+	bytes, err := os.ReadFile(target)
+	if err != nil || string(bytes) != "mine\r\n" {
+		t.Fatalf("target = %q, %v", bytes, err)
 	}
 }

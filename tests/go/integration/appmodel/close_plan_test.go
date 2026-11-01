@@ -733,3 +733,46 @@ func TestPrepareCloseRefusesARevisionThatMovedWhileAutosaveDrained(t *testing.T)
 		t.Errorf("remediation = %q, want %q", refused.Error.Remediation(), apperr.RemediationRetry)
 	}
 }
+
+func TestCloseMixedDocumentAfterKeepMine(t *testing.T) {
+	ctx := context.Background()
+	service := NewAppModelServiceForHost(WithEmitter(&recordingEmitter{}), AppModelOption{AutosaveTimer: &fakeAutosaveClock{}})
+	path, id := writeMixedDocument(t, service, "a\r\nb\n")
+	if err := service.UpdateBuffer(ctx, id, "mine\n"); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, []byte("external\n"), 0640); err != nil {
+		t.Fatal(err)
+	}
+	state, _ := service.GetState(ctx)
+	plan := service.PrepareClose(ctx, apperr.ClosePlanSingle, []string{id}, state.Snapshot.TabSetRevision)
+	if plan.Error != nil || plan.Data == nil {
+		t.Fatalf("prepare = %+v", plan)
+	}
+	normalization := service.ResolveClosePlan(ctx, plan.Data.ID, []apperr.ClosePlanDecision{{DocumentID: id, Choice: apperr.CloseChoiceSave}})
+	if normalization.Data == nil || normalization.Data.Targets[0].NormalizationToken == "" {
+		t.Fatalf("normalization = %+v", normalization)
+	}
+	token := normalization.Data.Targets[0].NormalizationToken
+	conflict := service.ResolveClosePlan(ctx, plan.Data.ID, []apperr.ClosePlanDecision{{DocumentID: id, Choice: apperr.CloseChoiceSave, DecisionToken: token}})
+	if conflict.Data == nil || conflict.Data.Targets[0].Conflict == nil {
+		t.Fatalf("conflict = %+v", conflict)
+	}
+	preview := conflict.Data.Targets[0].Conflict
+	k := service.AuthorizeKeepMine(ctx, id, preview.ContentRevision, path, preview.DetectedDiskVersion)
+	if k.Status != apperr.ConflictStatusAuthorized {
+		t.Fatalf("authorize = %+v", k)
+	}
+	ready := service.ResolveClosePlan(ctx, plan.Data.ID, []apperr.ClosePlanDecision{{DocumentID: id, Choice: apperr.CloseChoiceSave, DecisionToken: k.DecisionToken}})
+	if ready.Data == nil || ready.Data.Status != apperr.ClosePlanReady {
+		t.Fatalf("ready = %+v", ready)
+	}
+	closed := service.ExecuteClosePlan(ctx, plan.Data.ID)
+	if closed.Error != nil || closed.Status != apperr.TabTransitionClosed {
+		t.Fatalf("close = %+v", closed)
+	}
+	bytes, err := os.ReadFile(path)
+	if err != nil || string(bytes) != "mine\r\n" {
+		t.Fatalf("disk = %q, %v", bytes, err)
+	}
+}

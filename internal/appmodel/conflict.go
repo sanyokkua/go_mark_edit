@@ -32,6 +32,7 @@ type keepMineAuthorization struct {
 	version         file.DiskVersion
 	rawHash         string
 	characteristics file.FileCharacteristics
+	normalization   *normalizationAuthorization
 }
 
 type diskInspectionKind string
@@ -196,7 +197,12 @@ func (service *AppModelService) AuthorizeKeepMine(ctx context.Context, documentI
 	if document.keepMine == nil {
 		document.keepMine = make(map[string]*keepMineAuthorization)
 	}
-	document.keepMine[token] = &keepMineAuthorization{token: token, documentID: documentID, contentRevision: contentRevision, path: canonicalPath, version: queued.version, rawHash: queued.rawHash, characteristics: queued.read.Characteristics}
+	authorization := &keepMineAuthorization{token: token, documentID: documentID, contentRevision: contentRevision, path: canonicalPath, version: queued.version, rawHash: queued.rawHash, characteristics: queued.read.Characteristics}
+	if document.normalization != nil && document.normalization.accepted && document.normalization.contentRevision == contentRevision {
+		copy := *document.normalization
+		authorization.normalization = &copy
+	}
+	document.keepMine[token] = authorization
 	return apperr.ConflictResult{Status: apperr.ConflictStatusAuthorized, DocumentID: documentID, DocumentRevision: contentRevision, DecisionToken: token, Preview: &queued.preview}
 }
 
@@ -219,6 +225,7 @@ func (service *AppModelService) SkipConflict(ctx context.Context, documentID str
 	}
 	before := service.snapshotLocked()
 	service.removeConflictLocked(documentID)
+	document.normalization = nil
 	patch := service.documentPatchLocked(documentID)
 	if err := service.publishLocked(ctx, before, patch); err != nil {
 		return service.conflictRefusedLocked(documentID, apperr.ClassifiedIOFailure, "The conflict decision could not be published.", apperr.RemediationRetry)
@@ -271,6 +278,7 @@ func (service *AppModelService) inspectDocument(ctx context.Context, documentID 
 	}
 
 	if decisionToken != "" {
+		currentVersion, versionErr := service.currentDiskVersion(path)
 		service.mu.Lock()
 		currentDocument := service.state.documents[documentID]
 		var authorization *keepMineAuthorization
@@ -278,8 +286,13 @@ func (service *AppModelService) inspectDocument(ctx context.Context, documentID 
 			authorization = currentDocument.keepMine[decisionToken]
 		}
 		authorized := authorization != nil
-		if authorized && authorization.documentID == documentID && authorization.contentRevision == expectedRevision && authorization.path == path {
+		if authorized && authorization.documentID == documentID && authorization.contentRevision == expectedRevision && authorization.path == path && versionErr == nil && currentVersion.Equal(authorization.version) {
 			delete(currentDocument.keepMine, decisionToken)
+			if authorization.normalization != nil {
+				copy := *authorization.normalization
+				copy.token = decisionToken
+				currentDocument.normalization = &copy
+			}
 			before := service.snapshotLocked()
 			currentDocument.baselineVersion = authorization.version
 			currentDocument.baselineRawHash = authorization.rawHash
@@ -327,7 +340,7 @@ func (service *AppModelService) inspectDocument(ctx context.Context, documentID 
 		return diskInspection{kind: diskUnchanged, version: stable.Version, rawHash: stable.RawHash, characteristics: stable.Read.Characteristics}
 	}
 	preview := buildConflictPreview(documentID, &documentSnapshot, stable.Read, stable.Version)
-	if err := service.registerConflict(ctx, documentID, expectedRevision, stable, preview); err != nil {
+	if err := service.registerConflict(ctx, documentID, expectedRevision, stable, preview, decisionToken); err != nil {
 		return diskInspection{classified: bridge.ClassifiedWithID(apperr.ClassifiedConflict, service.documentLabel(documentID), "The external-change decision could not be queued.", apperr.RemediationRetry, documentID)}
 	}
 	return diskInspection{kind: diskConflict, version: stable.Version, rawHash: stable.RawHash, characteristics: stable.Read.Characteristics, preview: &preview}
@@ -443,7 +456,7 @@ func (service *AppModelService) applyReload(ctx context.Context, documentID stri
 	return service.publishLocked(ctx, before, patch)
 }
 
-func (service *AppModelService) registerConflict(ctx context.Context, documentID string, expectedRevision uint64, stable file.StableClassifiedRead, preview apperr.ConflictPreview) error {
+func (service *AppModelService) registerConflict(ctx context.Context, documentID string, expectedRevision uint64, stable file.StableClassifiedRead, preview apperr.ConflictPreview, decisionToken string) error {
 	service.mu.Lock()
 	defer service.mu.Unlock()
 	document, ok := service.state.documents[documentID]
@@ -451,6 +464,14 @@ func (service *AppModelService) registerConflict(ctx context.Context, documentID
 		return errConflictRevisionChanged
 	}
 	before := service.snapshotLocked()
+	if document.normalization != nil && document.normalization.token == decisionToken && decisionToken != "" && document.normalization.contentRevision == expectedRevision {
+		document.normalization.accepted = true
+	}
+	for token, authorization := range document.keepMine {
+		if !authorization.version.Equal(stable.Version) {
+			delete(document.keepMine, token)
+		}
+	}
 	document.conflictBlocked = true
 	document.conflict = &documentConflict{preview: preview, version: stable.Version, rawHash: stable.RawHash, read: stable.Read, createdAt: service.state.revision + 1}
 	service.conflictQueue.Enqueue(conflictQueueEntry{DocumentID: documentID, ContentRevision: expectedRevision, DiskVersion: stable.Version, Preview: preview})

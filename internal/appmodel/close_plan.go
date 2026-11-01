@@ -740,7 +740,7 @@ func validNormalizationTokenLocked(service *AppModelService, token, documentID s
 		return false
 	}
 	authorization, ok := normalizationAuthorizationForLocked(document, token)
-	return token != "" && ok && authorization.documentID == documentID && authorization.contentRevision == revision
+	return token != "" && ok && authorization.documentID == documentID && authorization.contentRevision == revision && authorization.proposedEnding == document.normalizationEnding
 }
 
 func (service *AppModelService) setNormalizationRequirementLocked(target *apperr.CloseTarget, result apperr.WriteResult) {

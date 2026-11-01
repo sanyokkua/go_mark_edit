@@ -78,7 +78,7 @@ Spec: external-change-conflict "Keep mine together with line-ending normalizatio
 267-296`, `conflict.go:27-35, 150-201, 252-334, 446-459`, `lifecycle.go:118-123`, `close_plan.go:163, 190, 742`,
 `autosave.go:165-174`).
 
-- [ ] 4.1 Write failing Go integration tests: in `tests/go/integration/appmodel/conflict_test.go` with a file
+- [x] 4.1 Write failing Go integration tests: in `tests/go/integration/appmodel/conflict_test.go` with a file
       `"a\r\nb\n"` (external edit, buffer edit, Save → normalization, Save(N) → conflict, Keep mine, Save(K) →
       committed); the "Skip asks again" and "Keep mine from an earlier conflict" cases; Keep mine, then a focus check
       (`CheckExternalChanges`) for the same disk version, then Save writes the file; and the same flow through the

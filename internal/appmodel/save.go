@@ -25,6 +25,7 @@ type normalizationAuthorization struct {
 	documentID      string
 	contentRevision uint64
 	proposedEnding  string
+	accepted        bool
 }
 
 type writeSnapshot struct {
