@@ -55,7 +55,7 @@ Depends on group 2 (activation token adoption). Owners: `frontend/src/app/useDoc
 `frontend/src/ui/components/CodeEditor.tsx`, `frontend/src/ui/widgets/EditorStage/EditorStage.tsx`,
 `frontend/src/ui/widgets/EditorView.tsx`.
 
-- [ ] 3.1 Make `externalEpoch` per document in `useDocumentSession` (`:14-19`) and use the document's own epoch for
+- [x] 3.1 Make `externalEpoch` per document in `useDocumentSession` (`:14-19`) and use the document's own epoch for
       the activation token and model path. In `CodeEditor`, keep one model per open writable document in a
       module-local registry keyed by that path: `keepCurrentModel`, no `model.dispose()` in the cleanup
       (`:416-420`), disposal when the id leaves the new `openDocumentIds` prop (passed from `EditorView.tsx:250`

@@ -61,6 +61,8 @@ export interface CodeEditorProps {
     initialValue: string;
     /** Fresh identity for each activation; omitted only by isolated legacy callers. */
     activationId?: string;
+    externalEpoch?: number;
+    openDocumentIds?: readonly string[];
     lineNumbers?: 'on' | 'off';
     wordWrap?: 'on' | 'off';
     fontSize?: 13 | 14 | 16;
@@ -169,9 +171,20 @@ function getEditorFontSize(): number {
     return Number.isFinite(fontSize) && fontSize > 0 ? fontSize : 14;
 }
 
-function modelPath(documentId: string, activationId?: string): string {
-    const activationSuffix = activationId === undefined ? '' : `/${encodeURIComponent(activationId)}`;
-    return `inmemory://gomarkedit/${encodeURIComponent(documentId)}${activationSuffix}.md`;
+const retainedModels = new Map<string, { documentId: string; model: editor.ITextModel }>();
+
+export function reconcileEditorModels(openDocumentIds: readonly string[]): void {
+    const open = new Set(openDocumentIds);
+    for (const [path, entry] of retainedModels) {
+        if (!open.has(entry.documentId)) {
+            entry.model.dispose();
+            retainedModels.delete(path);
+        }
+    }
+}
+
+function modelPath(documentId: string, epoch: number): string {
+    return `inmemory://gomarkedit/${encodeURIComponent(documentId)}/${epoch}.md`;
 }
 
 function applyEdit(
@@ -311,6 +324,8 @@ const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(function CodeEd
         documentId,
         initialValue,
         activationId,
+        externalEpoch = 0,
+        openDocumentIds,
         lineNumbers = 'on',
         wordWrap = 'off',
         fontSize,
@@ -331,6 +346,26 @@ const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(function CodeEd
     }: CodeEditorProps,
     ref,
 ): React.JSX.Element {
+    const path = modelPath(documentId, externalEpoch);
+    const preparationKey = `${path}:${activationId ?? 'legacy'}:${readOnly}`;
+    const [preparedPath, setPreparedPath] = useState<string | null>(null);
+    const initialValueRef = useRef(initialValue);
+    initialValueRef.current = initialValue;
+    useLayoutEffect(() => {
+        for (const [key, entry] of retainedModels) {
+            if (
+                entry.documentId === documentId &&
+                (key !== path || readOnly || entry.model.getValue() !== initialValueRef.current)
+            ) {
+                entry.model.dispose();
+                retainedModels.delete(key);
+            }
+        }
+        setPreparedPath(preparationKey);
+    }, [documentId, path, preparationKey, readOnly]);
+    useEffect(() => {
+        if (openDocumentIds !== undefined) reconcileEditorModels(openDocumentIds);
+    }, [openDocumentIds]);
     const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
     const monacoRef = useRef<typeof import('monaco-editor') | null>(null);
     const lintDecorationsRef = useRef<editor.IEditorDecorationsCollection | null>(null);
@@ -414,7 +449,7 @@ const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(function CodeEd
                 onScrollPortReadyRef.current?.(null);
             }
             const model = editorRef.current?.getModel();
-            if (typeof model?.dispose === 'function') {
+            if (readOnly && typeof model?.dispose === 'function') {
                 model.dispose();
             }
             if (typeof editorRef.current?.dispose === 'function') {
@@ -422,7 +457,7 @@ const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(function CodeEd
             }
             editorRef.current = null;
         };
-    }, [activationId, documentId]);
+    }, [activationId, documentId, readOnly]);
 
     useEffect(() => {
         const wasVisible = wasVisibleRef.current;
@@ -672,6 +707,7 @@ const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(function CodeEd
                 createEditorScrollPort(editorInstance, (): boolean => editorRef.current === editorInstance),
             );
         }
+        if (!readOnly && model !== null) retainedModels.set(path, { documentId, model });
         onEditorMountedRef.current?.(editorInstance);
         void import('./monacoSetup').then(({ applyMonacoThemeFromRoot }): void => {
             if (model === null || editorRef.current !== editorInstance || editorInstance.getModel() !== model) return;
@@ -681,7 +717,7 @@ const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(function CodeEd
 
     return (
         <div className={styles.editor} data-editor-surface>
-            {overflowWidgetsHost === null ? (
+            {overflowWidgetsHost === null || preparedPath !== preparationKey ? (
                 <div aria-busy="true" className={styles.loading} />
             ) : (
                 <Suspense fallback={<div aria-busy="true" className={styles.loading} />}>
@@ -689,7 +725,8 @@ const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(function CodeEd
                         key={`${documentId}:${activationId ?? 'legacy'}`}
                         defaultValue={initialValue}
                         language="markdown"
-                        path={modelPath(documentId, activationId)}
+                        path={path}
+                        keepCurrentModel
                         className={styles.editor}
                         options={{
                             lineNumbers,

@@ -1,6 +1,6 @@
 import { useCallback, useContext, useEffect, useLayoutEffect, useRef, useState } from 'react';
 
-import type { EditorPosition } from '../components/CodeEditor';
+import { reconcileEditorModels, type EditorPosition } from '../components/CodeEditor';
 import { appModelAdapter } from '../../logic/adapter';
 import { dispatchAction } from '../../logic/actions/actionDispatcher';
 import type { LivePreviewSnapshot } from '../../logic/hooks/useLivePreview';
@@ -100,6 +100,8 @@ const EditorView: React.FC<EditorViewProps> = ({
 }: EditorViewProps): React.JSX.Element | null => {
     const dispatch = useAppDispatch();
     const activeBuffer = useContext(EditorSessionContext);
+    const openDocumentIds = useAppSelector((state) => state.documents.orderedIds);
+    useEffect(() => reconcileEditorModels(openDocumentIds), [openDocumentIds]);
     const minimumWindow = useMinimumWindow();
     const reading = useAppSelector((state) => state.reading.active);
     const tabsShown = useAppSelector((state) => state.reading.tabsShown);
@@ -251,6 +253,7 @@ const EditorView: React.FC<EditorViewProps> = ({
                 ref={stageRef}
                 activeBuffer={activeBuffer}
                 activeDocument={activeDocument}
+                openDocumentIds={openDocumentIds}
                 adapter={adapter}
                 editorVisible={editorVisible}
                 interactionBlocked={modalOpen}

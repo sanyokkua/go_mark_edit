@@ -56,6 +56,8 @@ interface MockMonacoRuntime {
     cursorSelectionListener: ((event: editor.ICursorSelectionChangedEvent) => void) | undefined;
     editor: editor.IStandaloneCodeEditor;
     model: {
+        dispose: jest.Mock<void, []>;
+        getValue: jest.Mock<string, []>;
         getFullModelRange: jest.Mock<IRange, []>;
         getLineCount: jest.Mock<number, []>;
         setValue: jest.Mock<void, [string]>;
@@ -80,6 +82,8 @@ function resetMockMonaco(): void {
         positionColumn: 1,
     } as ISelection;
     mockRuntime.model = {
+        dispose: jest.fn(),
+        getValue: jest.fn(() => mockRuntime.content),
         getFullModelRange: jest.fn<IRange, []>(() => ({
             startLineNumber: 1,
             startColumn: 1,
@@ -2068,4 +2072,39 @@ it('restores each of forty documents its own view across repeated switches', asy
     for (const index of [0, 39, 1, 38, 7, 21, 7, 0, 21]) {
         await expectRestored(index);
     }
+});
+
+it('releases the last cached model when the final tab closes', async () => {
+    const document = statusDocument({ documentId: 'last-model' });
+    store.dispatch(
+        hydrateProjection({
+            revision: 1,
+            orderedDocumentIds: [document.documentId],
+            documents: { [document.documentId]: document },
+            activeDocumentId: document.documentId,
+            ui: {},
+        }),
+    );
+    const { rerender } = render(
+        <Provider store={store}>
+            <EditorSessionProvider activeBuffer={{ documentId: document.documentId, content: '' }}>
+                <EditorView />
+            </EditorSessionProvider>
+        </Provider>,
+    );
+    await screen.findByRole('textbox', { name: 'Markdown source' });
+    const model = mockRuntime.model;
+    act(() => {
+        store.dispatch(
+            hydrateProjection({ revision: 2, orderedDocumentIds: [], documents: {}, activeDocumentId: null, ui: {} }),
+        );
+    });
+    rerender(
+        <Provider store={store}>
+            <EditorSessionProvider activeBuffer={null}>
+                <EditorView />
+            </EditorSessionProvider>
+        </Provider>,
+    );
+    expect(model.dispose).toHaveBeenCalledTimes(1);
 });

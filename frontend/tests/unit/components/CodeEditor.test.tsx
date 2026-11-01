@@ -6,6 +6,7 @@ import type { EditorProps } from '@monaco-editor/react';
 import type { editor, IDisposable, IPosition, IRange, IScrollEvent, ISelection } from 'monaco-editor';
 
 import CodeEditor, {
+    reconcileEditorModels,
     type CodeEditorHandle,
     type EditorPosition,
     type EditorSelection,
@@ -83,6 +84,8 @@ const fullModelRange: IRange = {
 };
 
 const mockRuntime = {} as MockMonacoRuntime;
+let mockUseModelPaths = false;
+const mockModels = new Map<string, MockModel>();
 
 /** The fake lays Monaco out with 20 px lines under the editor's 12 px padding in a 300 px viewport. */
 const mockLineHeight = 20;
@@ -225,6 +228,8 @@ function installMockEditor(): void {
 }
 
 function resetMockMonaco(): void {
+    mockUseModelPaths = false;
+    mockModels.clear();
     mockRuntime.blurListener = null;
     mockRuntime.content = '';
     mockRuntime.cursorListener = null;
@@ -259,6 +264,26 @@ jest.mock('@monaco-editor/react', () => {
         mockRuntime.props = props;
 
         React.useEffect(() => {
+            if (mockUseModelPaths && props.path !== undefined) {
+                const path = props.path;
+                let model = mockModels.get(path);
+                if (model === undefined) {
+                    let content = String(props.defaultValue ?? '');
+                    model = {
+                        dispose: jest.fn(() => {
+                            mockModels.delete(path);
+                        }),
+                        getFullModelRange: jest.fn(() => fullModelRange),
+                        getLineCount: jest.fn(() => content.split('\n').length),
+                        getValue: jest.fn(() => content),
+                        setValue: jest.fn((value: string) => {
+                            content = value;
+                        }),
+                    };
+                    mockModels.set(path, model);
+                }
+                mockRuntime.model = model;
+            }
             mockRuntime.mountCount += 1;
             onMount?.(editorInstance, {
                 editor: { setModelMarkers, ScrollType: { Immediate: 1 } },
@@ -301,6 +326,7 @@ jest.mock('../../../src/ui/components/monacoSetup', () => ({
 }));
 
 beforeEach((): void => {
+    reconcileEditorModels([]);
     resetMockMonaco();
     setModelMarkers.mockClear();
     setLintDecorations.mockClear();
@@ -601,7 +627,7 @@ it('configures the default Markdown editor tokens and options', async () => {
     expect(mockRuntime.props).toMatchObject({
         defaultValue: '# Heading',
         language: 'markdown',
-        path: 'inmemory://gomarkedit/document-1.md',
+        path: 'inmemory://gomarkedit/document-1/0.md',
         options: {
             lineNumbers: 'on',
             lineNumbersMinChars: 3,
@@ -671,11 +697,12 @@ it('seeds a model only for a new document identity', async () => {
     expect(secondModel).toHaveValue('second document');
     expect(mockRuntime.props).toMatchObject({
         defaultValue: 'second document',
-        path: 'inmemory://gomarkedit/document-2.md',
+        path: 'inmemory://gomarkedit/document-2/0.md',
     });
 });
 
-it('creates a fresh activation model and drops prior undo identity', async () => {
+it('retains the writable model when the same document is activated again', async () => {
+    mockRuntime.content = 'first activation';
     const { rerender } = render(
         <CodeEditor
             documentId="document-1"
@@ -690,13 +717,12 @@ it('creates a fresh activation model and drops prior undo identity', async () =>
         <CodeEditor
             documentId="document-1"
             activationId="Symbol(editor-activation-2)"
-            initialValue="second activation"
+            initialValue="first activation"
         />,
     );
 
-    expect(mockRuntime.props?.path).not.toBe(firstPath);
-    expect(mockRuntime.props?.defaultValue).toBe('second activation');
-    expect(mockRuntime.model.dispose).toHaveBeenCalled();
+    expect(mockRuntime.props?.path).toBe(firstPath);
+    expect(mockRuntime.model.dispose).not.toHaveBeenCalled();
     expect(mockRuntime.editor.dispose).toHaveBeenCalled();
 });
 
@@ -1077,7 +1103,6 @@ it('publishes one scroll port per Monaco instance and withdraws it when the acti
     expect(onScrollPortReady).toHaveBeenCalledTimes(3);
     expect(onScrollPortReady.mock.calls[1][0]).toBeNull();
     const withdrawnAt = onScrollPortReady.mock.invocationCallOrder[1];
-    expect(withdrawnAt).toBeLessThan(mockRuntime.model.dispose.mock.invocationCallOrder[0]);
     expect(withdrawnAt).toBeLessThan((mockRuntime.editor.dispose as jest.Mock).mock.invocationCallOrder[0]);
     const secondPort = onScrollPortReady.mock.calls[2][0];
     expect(secondPort).not.toBeNull();
@@ -1240,4 +1265,71 @@ it('ignores scroll port calls after its editor is disposed', async () => {
         stopScroll();
         stopGeometry();
     }).not.toThrow();
+});
+
+it('disposes the old model when the reload epoch changes', async () => {
+    mockRuntime.content = 'before';
+    const { rerender } = render(<CodeEditor documentId="reload-test" initialValue="before" externalEpoch={0} />);
+    await screen.findByRole('textbox', { name: 'Markdown source' });
+    const model = mockRuntime.model;
+    rerender(<CodeEditor documentId="reload-test" initialValue="after" externalEpoch={1} />);
+    expect(model.dispose).toHaveBeenCalledTimes(1);
+});
+
+it('disposes a cached model when the backend buffer differs on activation', async () => {
+    mockRuntime.content = 'stale';
+    const { rerender } = render(<CodeEditor documentId="mismatch-test" initialValue="stale" activationId="one" />);
+    await screen.findByRole('textbox', { name: 'Markdown source' });
+    const model = mockRuntime.model;
+    rerender(<CodeEditor documentId="mismatch-test" initialValue="backend" activationId="two" />);
+    expect(model.dispose).toHaveBeenCalledTimes(1);
+});
+
+it('disposes a read-only model when its activation ends', async () => {
+    const { unmount } = render(<CodeEditor documentId="readonly-test" initialValue="large" readOnly />);
+    await screen.findByRole('textbox', { name: 'Markdown source' });
+    const model = mockRuntime.model;
+    unmount();
+    expect(model.dispose).toHaveBeenCalledTimes(1);
+});
+
+it('reuses each writable document model across A to B to A', async () => {
+    mockUseModelPaths = true;
+    const { rerender } = render(<CodeEditor documentId="A" initialValue="alpha" activationId="A1" />);
+    await screen.findByRole('textbox', { name: 'Markdown source' });
+    const first = mockRuntime.model;
+    first.setValue('edited alpha');
+    rerender(<CodeEditor documentId="B" initialValue="beta" activationId="B1" />);
+    const second = mockRuntime.model;
+    expect(second).not.toBe(first);
+    rerender(<CodeEditor documentId="A" initialValue="edited alpha" activationId="A2" />);
+    expect(mockRuntime.model).toBe(first);
+    expect(mockRuntime.model.getValue()).toBe('edited alpha');
+    expect(first.dispose).not.toHaveBeenCalled();
+});
+
+it('keeps the live model when initial content changes during the same activation', async () => {
+    mockUseModelPaths = true;
+    const { rerender } = render(<CodeEditor documentId="live" initialValue="original" activationId="one" />);
+    await screen.findByRole('textbox', { name: 'Markdown source' });
+    const model = mockRuntime.model;
+    model.setValue('user edit');
+    rerender(<CodeEditor documentId="live" initialValue="updated projection" activationId="one" />);
+    expect(model.dispose).not.toHaveBeenCalled();
+    expect(mockRuntime.model).toBe(model);
+    expect(model.getValue()).toBe('user edit');
+});
+
+it('disposes an inactive document model when its tab closes while another remains open', async () => {
+    mockUseModelPaths = true;
+    const { rerender } = render(
+        <CodeEditor documentId="A" initialValue="alpha" activationId="A1" openDocumentIds={['A', 'B']} />,
+    );
+    await screen.findByRole('textbox', { name: 'Markdown source' });
+    const first = mockRuntime.model;
+    rerender(<CodeEditor documentId="B" initialValue="beta" activationId="B1" openDocumentIds={['A', 'B']} />);
+    const second = mockRuntime.model;
+    rerender(<CodeEditor documentId="B" initialValue="beta" activationId="B1" openDocumentIds={['B']} />);
+    expect(first.dispose).toHaveBeenCalledTimes(1);
+    expect(second.dispose).not.toHaveBeenCalled();
 });

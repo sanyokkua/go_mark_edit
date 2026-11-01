@@ -41,7 +41,7 @@ jest.mock('../../src/ui/components/CodeEditor', () => {
         },
     );
 
-    return { __esModule: true, default: MockCodeEditor };
+    return { __esModule: true, default: MockCodeEditor, reconcileEditorModels: jest.fn() };
 });
 
 const adapter: EditorViewAdapter = {

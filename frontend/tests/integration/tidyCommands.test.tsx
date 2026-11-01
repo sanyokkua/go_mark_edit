@@ -1,13 +1,13 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import type { EditorProps } from '@monaco-editor/react';
 import type { editor, IPosition, IRange, ISelection } from 'monaco-editor';
-import { useCallback, useContext, useState } from 'react';
+import { useCallback, useContext, useEffect, useState } from 'react';
 import { Provider } from 'react-redux';
 
 import type { TidyOutcome } from '../../src/logic/tidy/protocol';
 import { getSnapshot as slotSnapshot } from '../../src/logic/operations/operationSlot';
 import { getSnapshot as problemsSnapshot, clear as clearProblems } from '../../src/logic/operations/problemsSummary';
-import { store } from '../../src/logic/store';
+import { store, useAppSelector } from '../../src/logic/store';
 import { resetProjection, hydrateProjection } from '../../src/logic/store/appModelProjectionActions';
 import { hydrateSettings, resetSettingsProjection } from '../../src/logic/store/settingsSlice';
 import { resetNotifications } from '../../src/logic/store/notificationsSlice';
@@ -15,7 +15,7 @@ import { runOnText } from '../../src/logic/tidy/engine';
 import type { TidyRequest } from '../../src/logic/tidy/protocol';
 import type { ActiveBuffer, DocumentMetadata } from '../../src/logic/store/appModelTypes';
 import { EditorSessionProvider, useEditorSessionAttachment } from '../../src/ui/widgets/editorSession';
-import CodeEditor from '../../src/ui/components/CodeEditor';
+import CodeEditor, { reconcileEditorModels } from '../../src/ui/components/CodeEditor';
 import EditorStage from '../../src/ui/widgets/EditorStage/EditorStage';
 import { TidyCommandsProvider } from '../../src/app/TidyCommandsProvider';
 import { TidyCommandsContext } from '../../src/ui/widgets/tidyCommandsContext';
@@ -48,6 +48,7 @@ interface Runtime {
 }
 
 const runtimes: Runtime[] = [];
+const mockRuntimeByPath = new Map<string, Runtime>();
 const noEvent = (): { dispose: () => void } => ({ dispose: (): void => undefined });
 
 function offset(text: string, line: number, column: number): number {
@@ -60,7 +61,7 @@ function position(text: string, at: number): IPosition {
     return { lineNumber: before.length, column: before.at(-1)!.length + 1 };
 }
 
-function createRuntime(initial: string): Runtime {
+function createRuntime(initial: string, path: string): Runtime {
     const runtime: Runtime = {
         content: initial,
         markers: [],
@@ -83,6 +84,7 @@ function createRuntime(initial: string): Runtime {
             return { startLineNumber: 1, startColumn: 1, endLineNumber: end.lineNumber, endColumn: end.column };
         },
         dispose: (): void => {
+            mockRuntimeByPath.delete(path);
             runtime.disposed = true;
             runtime.markers = [];
             runtime.decorations = [];
@@ -151,7 +153,14 @@ function createRuntime(initial: string): Runtime {
 jest.mock('@monaco-editor/react', () => {
     const React = jest.requireActual<typeof import('react')>('react');
     const MockMonacoEditor = (props: EditorProps): React.JSX.Element => {
-        const runtime = React.useMemo(() => createRuntime(props.defaultValue ?? ''), [props.path]);
+        const runtime = React.useMemo(() => {
+            const path = props.path ?? '';
+            const existing = mockRuntimeByPath.get(path);
+            if (existing !== undefined) return existing;
+            const created = createRuntime(props.defaultValue ?? '', path);
+            mockRuntimeByPath.set(path, created);
+            return created;
+        }, [props.path]);
         runtime.onChange = (text: string): void => props.onChange?.(text, {} as never);
         React.useEffect(() => {
             props.onMount?.(runtime.editor, {
@@ -257,11 +266,18 @@ const Controls = (): React.JSX.Element => {
     );
 };
 
+function ModelReconciler(): null {
+    const ids = useAppSelector((state) => state.documents.orderedIds);
+    useEffect(() => reconcileEditorModels(ids), [ids]);
+    return null;
+}
+
 function view(buffer: ActiveBuffer | null, externalEpoch = 0): React.JSX.Element {
     return (
         <Provider store={store}>
             <EditorSessionProvider activeBuffer={buffer} externalEpoch={externalEpoch}>
                 <TidyCommandsProvider>
+                    <ModelReconciler />
                     <Controls />
                     {buffer && <HarnessEditor buffer={buffer} />}
                 </TidyCommandsProvider>
@@ -331,6 +347,8 @@ async function settle<T>(pending: ReturnType<typeof deferred<T>>, value: T): Pro
 }
 
 beforeEach(() => {
+    reconcileEditorModels([]);
+    mockRuntimeByPath.clear();
     runtimes.length = 0;
     mockRunTidy.mockReset();
     stageUpdateBuffer.mockClear();
@@ -370,6 +388,8 @@ function findingAt(index: number) {
 }
 
 afterEach(() => {
+    reconcileEditorModels([]);
+    mockRuntimeByPath.clear();
     jest.restoreAllMocks();
     store.dispatch(resetProjection());
     store.dispatch(resetSettingsProjection());
@@ -650,7 +670,7 @@ it('invalidates a run and clears findings after switching away and back or closi
         rendered.rerender(view({ documentId: 'second', content: 'other\n' }));
     });
     expect(problemsSnapshot()).toBeNull();
-    expect(firstRuntime.disposed).toBe(true);
+    expect(firstRuntime.disposed).toBe(false);
     expect(firstRuntime.markers).toEqual([]);
     act(() => {
         store.dispatch(
@@ -667,7 +687,7 @@ it('invalidates a run and clears findings after switching away and back or closi
         rendered.rerender(view(buffer));
     });
     await settle(pending, { kind: 'edits', edits: [{ from: 0, to: 1, text: 'X' }] });
-    expect(runtimes.at(-1)!.content).toBe('line \n');
+    expect(firstRuntime.content).toBe('line \n');
     expect(problemsSnapshot()).toBeNull();
     expect(noticeCodes()).toContain('tidy-stale');
     expect(slotSnapshot()).toEqual({ state: 'idle' });
@@ -756,7 +776,10 @@ it('clears completed lint findings when the active editor closes', async () => {
     fireEvent.click(screen.getByRole('button', { name: 'Lint' }));
     await waitFor(() => expect(problemsSnapshot()?.total).toBe(1));
     const oldRuntime = runtimes.at(-1)!;
-    rendered.rerender(view(null));
+    act(() => {
+        store.dispatch(hydrateProjection({ revision: 2, documents: {}, activeDocumentId: null, ui: {} }));
+        rendered.rerender(view(null));
+    });
     expect(problemsSnapshot()).toBeNull();
     expect(oldRuntime.disposed).toBe(true);
     expect(oldRuntime.markers).toEqual([]);

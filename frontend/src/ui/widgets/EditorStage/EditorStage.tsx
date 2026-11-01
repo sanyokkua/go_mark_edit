@@ -62,6 +62,7 @@ export interface EditorStageHandle {
 export type EditorStageVariant = 'normal' | 'reading';
 
 export interface EditorStageProps {
+    openDocumentIds?: readonly string[];
     activeBuffer: ActiveBuffer;
     activeDocument?: DocumentMetadata;
     adapter?: EditorStageAdapter;
@@ -89,6 +90,7 @@ export interface FragmentRequest {
 }
 
 interface ActiveEditorProps {
+    openDocumentIds?: readonly string[];
     activeBuffer: ActiveBuffer;
     adapter: EditorStageAdapter;
     documentPath: string;
@@ -113,6 +115,7 @@ const ActiveEditor = forwardRef<ActiveEditorHandle, ActiveEditorProps>(function 
     {
         activeBuffer,
         adapter,
+        openDocumentIds,
         documentPath,
         fragmentRequest,
         handledFragmentRef,
@@ -219,6 +222,8 @@ const ActiveEditor = forwardRef<ActiveEditorHandle, ActiveEditorProps>(function 
             documentId={activeBuffer.documentId}
             initialValue={activeBuffer.content}
             activationId={synchronizedBuffer.activationId}
+            externalEpoch={externalEpoch}
+            openDocumentIds={openDocumentIds}
             fontSize={editorSettings.fontSize as 13 | 14 | 16}
             lineNumbers={editorSettings.lineNumbers ? 'on' : 'off'}
             wordWrap={editorSettings.wordWrap ? 'on' : 'off'}
@@ -447,6 +452,7 @@ const EditorStage = forwardRef<EditorStageHandle, EditorStageProps>(function Edi
     {
         activeBuffer,
         activeDocument,
+        openDocumentIds,
         adapter = appModelAdapter,
         fragmentRequest,
         editorVisible,
@@ -536,6 +542,7 @@ const EditorStage = forwardRef<EditorStageHandle, EditorStageProps>(function Edi
                         <ActiveEditor
                             ref={activeEditorRef}
                             activeBuffer={activeBuffer}
+                            openDocumentIds={openDocumentIds}
                             adapter={adapter}
                             documentPath={activeDocument?.path ?? ''}
                             fragmentRequest={fragmentRequest}

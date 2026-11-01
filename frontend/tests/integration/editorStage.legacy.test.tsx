@@ -48,7 +48,7 @@ jest.mock('../../src/ui/components/CodeEditor', () => {
         });
     });
 
-    return { __esModule: true, default: MockCodeEditor };
+    return { __esModule: true, default: MockCodeEditor, reconcileEditorModels: jest.fn() };
 });
 
 import { hydrateProjection, resetProjection } from '../../src/logic/store/appModelProjectionActions';
