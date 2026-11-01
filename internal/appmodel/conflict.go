@@ -439,7 +439,6 @@ func (service *AppModelService) applyReload(ctx context.Context, documentID stri
 	 * the document clean against the newly read disk contents. */
 	document.metadata.ContentRevision++
 	document.committedRevision = document.metadata.ContentRevision
-	document.failedWrite = false
 	document.detached = false
 	document.metadata.Encoding = string(read.Characteristics.Encoding)
 	document.metadata.BOM = string(read.Characteristics.BOM)

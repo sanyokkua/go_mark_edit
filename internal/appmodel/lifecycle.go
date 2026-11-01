@@ -33,7 +33,6 @@ type DocumentRecord struct {
 	baselineVersion         file.DiskVersion
 	baselineCharacteristics file.FileCharacteristics
 	baselineOrigin          SaveOrigin
-	failedWrite             bool
 	detached                bool
 	normalizationEnding     string
 	baselineRawHash         string
@@ -81,7 +80,6 @@ func (service *AppModelService) dispose(documentID string) {
 	document.baselineVersion = file.DiskVersion{}
 	document.baselineCharacteristics = file.FileCharacteristics{}
 	document.baselineOrigin = ""
-	document.failedWrite = false
 	document.detached = false
 	document.normalizationEnding = ""
 	document.baselineRawHash = ""

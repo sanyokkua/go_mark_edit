@@ -104,7 +104,7 @@ As"). Design §4. Owners: `internal/appmodel/save.go` (`:400, 555-558, 639-659`)
       still starts with EF BB BF and the metadata reports a BOM. Export a byte classifier from `internal/file`, use
       it for every committed write, take the BOM from the encoder outcome and delete
       `characteristicsForWrittenSnapshot`; verify the tests pass.
-- [ ] 5.2 Remove the unused `failedWrite` field, `markFailedWrite` and their reads (design §4 lists them); verify
+- [x] 5.2 Remove the unused `failedWrite` field, `markFailedWrite` and their reads (design §4 lists them); verify
       `go vet`, the appmodel unit and integration suites and the frontend dirty-state tests stay green.
 
 ## 6. File permissions

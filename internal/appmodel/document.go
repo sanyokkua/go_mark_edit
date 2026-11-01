@@ -76,7 +76,7 @@ func (commands documentCommands) UpdateBuffer(ctx context.Context, documentID, c
 		commands.service.removeConflictLocked(documentID)
 	}
 	document.content = content
-	document.metadata.Dirty = document.content != document.baseline || document.detached || (document.metadata.Path == "" && document.content != "") || document.failedWrite || document.metadata.ContentRevision > document.committedRevision
+	document.metadata.Dirty = document.content != document.baseline || document.detached || (document.metadata.Path == "" && document.content != "") || document.metadata.ContentRevision > document.committedRevision
 	document.metadata.WordCount = len(strings.Fields(content))
 	patch := commands.service.documentPatchLocked(documentID)
 	if err := commands.service.publishLocked(ctx, before, patch); err != nil {

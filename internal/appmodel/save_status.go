@@ -31,7 +31,7 @@ func saveStatusForDocument(document *openDocument) SaveStatus {
 	if document.metadata.Path == "" && document.content == "" {
 		return SaveStatusNotSaved
 	}
-	if document.content != document.baseline || document.detached || (document.metadata.Path == "" && document.content != "") || document.failedWrite || document.metadata.ContentRevision > document.committedRevision {
+	if document.content != document.baseline || document.detached || (document.metadata.Path == "" && document.content != "") || document.metadata.ContentRevision > document.committedRevision {
 		return SaveStatusUnsavedChanges
 	}
 	if document.baselineOrigin == SaveOriginAutosave {
@@ -40,16 +40,10 @@ func saveStatusForDocument(document *openDocument) SaveStatus {
 	return SaveStatusSaved
 }
 
-func markFailedWrite(document *openDocument) {
-	document.failedWrite = true
-	document.metadata.Dirty = true
-}
-
 func applyCommittedBaseline(document *openDocument, snapshot WriteSnapshot, version file.DiskVersion, origin SaveOrigin) {
 	document.baseline = snapshot.CanonicalContent
 	document.baselineVersion = version
 	document.baselineOrigin = origin
 	document.committedRevision = snapshot.ContentRevision
-	document.failedWrite = false
 	document.metadata.Dirty = document.content != document.baseline
 }
