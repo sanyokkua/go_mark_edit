@@ -227,6 +227,14 @@ func readBounded(reader io.Reader, maxBytes int64) ([]byte, error) {
 }
 
 func classifyDocumentBytes(canonical CanonicalDocumentPath, info os.FileInfo, raw []byte) ClassifiedRead {
+	read := ClassifyDocumentBytes(raw, info.Mode())
+	read.CanonicalPath = canonical
+	read.Characteristics.RawSizeBytes = info.Size()
+	return read
+}
+
+// ClassifyDocumentBytes describes the supplied bytes and mode using the reader's rules.
+func ClassifyDocumentBytes(raw []byte, mode os.FileMode) ClassifiedRead {
 	payload := raw
 	bom := BOMAbsent
 	if bytes.HasPrefix(payload, []byte{0xef, 0xbb, 0xbf}) {
@@ -249,26 +257,18 @@ func classifyDocumentBytes(canonical CanonicalDocumentPath, info os.FileInfo, ra
 	} else if loneCR {
 		capability = CapabilityUnsafeReadOnly
 		warning = WarningLoneCR
-	} else if info.Size() > MaxWritableDocumentBytes {
+	} else if int64(len(raw)) > MaxWritableDocumentBytes {
 		capability = CapabilityLargeReadOnly
 		warning = WarningLargeFile
 	}
-
 	content := tolerantDisplay(payload)
 	if capability == CapabilityWritable || capability == CapabilityLargeReadOnly {
 		content = normalizeCRLF(content)
 	}
 	return ClassifiedRead{
-		CanonicalPath: canonical,
-		Content:       content,
-		Characteristics: FileCharacteristics{
-			Encoding: encoding, BOM: bom, LineEnding: lineEnding,
-			LFCount: lfCount, CRLFCount: crlfCount, FirstEnding: firstEnding,
-			RawSizeBytes: info.Size(), Capability: capability, Warning: warning, Mode: info.Mode(),
-		},
-		Capability: capability,
-		Outcome:    readOutcomeOpened,
-		Warning:    warning,
+		Content:         content,
+		Characteristics: FileCharacteristics{Encoding: encoding, BOM: bom, LineEnding: lineEnding, LFCount: lfCount, CRLFCount: crlfCount, FirstEnding: firstEnding, RawSizeBytes: int64(len(raw)), Capability: capability, Warning: warning, Mode: mode},
+		Capability:      capability, Outcome: readOutcomeOpened, Warning: warning,
 	}
 }
 

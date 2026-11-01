@@ -1,10 +1,13 @@
 package appmodel_test
 
 import (
+	"bytes"
 	"context"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/sanyokkua/go_mark_edit/internal/apperr"
 	. "github.com/sanyokkua/go_mark_edit/internal/appmodel"
@@ -190,5 +193,113 @@ func TestSaveRejectsAStaleContentRevisionWithoutWriting(t *testing.T) {
 	}
 	if string(disk) != "base\n" {
 		t.Fatalf("stale Save changed disk to %q", disk)
+	}
+}
+
+func TestTouchedSavedFileIsUnchanged(t *testing.T) {
+	service := NewAppModelServiceForHost(WithEmitter(&recordingEmitter{}), AppModelOption{AutosaveTimer: &fakeAutosaveClock{}})
+	path, id := openAutosaveDocument(t, service, "base\n")
+	if err := service.UpdateBuffer(context.Background(), id, "edited\n"); err != nil {
+		t.Fatal(err)
+	}
+	state, err := service.GetState(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result := service.Save(context.Background(), id, state.Snapshot.Documents[id].ContentRevision, ""); result.Status != apperr.WriteStatusCommitted {
+		t.Fatalf("Save = %+v", result)
+	}
+	assertTouchedUnchanged(t, service, path, id)
+}
+
+func TestTouchedSavedUntitledWithoutNewlineIsUnchanged(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "hello.md")
+	service := NewAppModelServiceForHost(WithEmitter(&recordingEmitter{}), AppModelOption{AutosaveTimer: &fakeAutosaveClock{}}, WithDialogs(nil, saveDialog{path: path}))
+	id := newUntitledID(t, service)
+	if err := service.UpdateBuffer(context.Background(), id, "hello"); err != nil {
+		t.Fatal(err)
+	}
+	state, err := service.GetState(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result := service.Save(context.Background(), id, state.Snapshot.Documents[id].ContentRevision, ""); result.Status != apperr.WriteStatusCommitted {
+		t.Fatalf("Save = %+v", result)
+	}
+	assertTouchedUnchanged(t, service, path, id)
+}
+
+func assertTouchedUnchanged(t *testing.T, service *AppModelService, path, id string) {
+	t.Helper()
+	future := time.Now().Add(time.Hour)
+	if err := os.Chtimes(path, future, future); err != nil {
+		t.Fatal(err)
+	}
+	if result := service.CheckExternalChanges(context.Background(), id); result.Status != apperr.ConflictStatusUnchanged {
+		t.Fatalf("CheckExternalChanges = %+v, want unchanged", result)
+	}
+}
+
+func TestSaveAsPreservesBOMOnNextSave(t *testing.T) {
+	target := filepath.Join(t.TempDir(), "copy.md")
+	service := NewAppModelServiceForHost(WithEmitter(&recordingEmitter{}), AppModelOption{AutosaveTimer: &fakeAutosaveClock{}}, WithDialogs(nil, saveDialog{path: target}))
+	_, id := openAutosaveDocument(t, service, "\xef\xbb\xbfbase\n")
+	state, err := service.GetState(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result := service.SaveAs(context.Background(), id, state.Snapshot.Documents[id].ContentRevision, ""); result.Status != apperr.WriteStatusCommitted {
+		t.Fatalf("SaveAs = %+v", result)
+	}
+	state, err = service.GetState(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := state.Snapshot.Documents[id].BOM; got != "present" {
+		t.Errorf("BOM after Save As = %q, want present", got)
+	}
+	if err := service.UpdateBuffer(context.Background(), id, "edited\n"); err != nil {
+		t.Fatal(err)
+	}
+	state, err = service.GetState(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result := service.Save(context.Background(), id, state.Snapshot.Documents[id].ContentRevision, ""); result.Status != apperr.WriteStatusCommitted {
+		t.Fatalf("Save = %+v", result)
+	}
+	data, err := os.ReadFile(target)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.HasPrefix(data, []byte{0xef, 0xbb, 0xbf}) {
+		t.Fatalf("saved bytes = %q, want BOM", data)
+	}
+}
+
+func TestTouchedSavedGrownDocumentIsUnchangedAndEditable(t *testing.T) {
+	service := NewAppModelServiceForHost(WithEmitter(&recordingEmitter{}), AppModelOption{AutosaveTimer: &fakeAutosaveClock{}})
+	path, id := openAutosaveDocument(t, service, "base\n")
+	content := strings.Repeat("a", 10_485_761)
+	if err := service.UpdateBuffer(context.Background(), id, content); err != nil {
+		t.Fatal(err)
+	}
+	state, err := service.GetState(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result := service.Save(context.Background(), id, state.Snapshot.Documents[id].ContentRevision, ""); result.Status != apperr.WriteStatusCommitted {
+		t.Fatalf("Save = %+v", result)
+	}
+	assertTouchedUnchanged(t, service, path, id)
+	state, err = service.GetState(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := state.Snapshot.Documents[id].Capability; got != "writable" {
+		t.Fatalf("capability = %q, want writable", got)
+	}
+	if err := service.UpdateBuffer(context.Background(), id, content+"x"); err != nil {
+		t.Fatalf("edit after save: %v", err)
 	}
 }

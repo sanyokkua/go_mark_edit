@@ -121,7 +121,7 @@ Consent is preserved: Skip or an edit mints a fresh, unaccepted normalization to
 `characteristicsEqual` (`conflict.go:545-547`) compares them, so the next disk check after any save differs from a
 fresh read. Save As writes the source's BOM (`encodeWrite`, `save.go:555-558`) yet sets the metadata BOM to absent
 (`save.go:400`), so the next Save drops it. Classify the written bytes with the same function the reader uses:
-extract the size-independent part of `classifyDocumentBytes` (`internal/file/document_reader.go:229`) into an
+extract the byte classification from `classifyDocumentBytes` (`internal/file/document_reader.go:229`) into an
 exported helper in `internal/file` taking the bytes and file mode, use it after every committed write, and delete
 `characteristicsForWrittenSnapshot`. The BOM comes from the encoder's outcome.
 

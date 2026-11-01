@@ -399,6 +399,9 @@ func (service *AppModelService) executeWrite(ctx context.Context, snapshot write
 		document.metadata.SizeClass = "small"
 		document.metadata.Encoding = string(file.EncodingUTF8)
 		document.metadata.BOM = string(file.BOMAbsent)
+		if encoded.bomOutcome == apperr.BOMOutcomePreserved {
+			document.metadata.BOM = string(file.BOMPresent)
+		}
 		document.metadata.LineEnding = string(file.LineEndingLF)
 	}
 	document.metadata.LineEnding = writtenLineEnding(snapshot, service.normalizationEndingForLocked(snapshot.documentID))
@@ -406,7 +409,7 @@ func (service *AppModelService) executeWrite(ctx context.Context, snapshot write
 	document.detached = false
 	applyCommittedBaseline(document, committed.Snapshot, committed.DiskVersion, origin)
 	document.baselineRawHash = hashBytes(encoded.data)
-	document.baselineCharacteristics = characteristicsForWrittenSnapshot(snapshot, encoded, committed.DiskVersion)
+	document.baselineCharacteristics = file.ClassifyDocumentBytes(encoded.data, committed.DiskVersion.Mode).Characteristics
 	service.removeConflictLocked(snapshot.documentID)
 	if document.metadata.LineEnding == string(file.LineEndingLF) && encoded.lineEndingOutcome == apperr.LineEndingPreservedCRLF {
 		document.metadata.LineEnding = string(file.LineEndingCRLF)
@@ -635,28 +638,6 @@ func rawBytesHash(path string) (string, error) {
 	}
 	digest := sha256.Sum256(data)
 	return hex.EncodeToString(digest[:]), nil
-}
-
-func characteristicsForWrittenSnapshot(snapshot writeSnapshot, encoded encodedWrite, version file.DiskVersion) file.FileCharacteristics {
-	lineEnding := file.LineEnding(snapshot.metadata.LineEnding)
-	if lineEnding == file.LineEndingMixed {
-		if encoded.lineEndingOutcome == apperr.LineEndingNormalizedCRLF {
-			lineEnding = file.LineEndingCRLF
-		} else {
-			lineEnding = file.LineEndingLF
-		}
-	}
-	if lineEnding == "" {
-		lineEnding = file.LineEndingLF
-	}
-	bom := file.BOM(snapshot.metadata.BOM)
-	if bom == "" {
-		bom = file.BOMAbsent
-	}
-	return file.FileCharacteristics{
-		Encoding: file.EncodingUTF8, BOM: bom, LineEnding: lineEnding,
-		RawSizeBytes: int64(len(encoded.data)), Capability: file.CapabilityWritable, Mode: version.Mode,
-	}
 }
 
 var errTargetDiskChanged = errors.New("target disk version changed while reading")

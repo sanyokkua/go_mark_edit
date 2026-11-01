@@ -99,7 +99,7 @@ untitled document without a line break"); file-lifecycle "Byte-preserving encodi
 As"). Design §4. Owners: `internal/appmodel/save.go` (`:400, 555-558, 639-659`), `internal/file/document_reader.go`
 (`classifyDocumentBytes` `:229`), `internal/appmodel/save_status.go`.
 
-- [ ] 5.1 Write failing tests: open an LF file, edit, Save, `os.Chtimes`, check external changes → unchanged; the
+- [x] 5.1 Write failing tests: open an LF file, edit, Save, `os.Chtimes`, check external changes → unchanged; the
       same for an untitled document saved as "hello" with no newline; and a BOM file through Save As, edit, Save →
       still starts with EF BB BF and the metadata reports a BOM. Export a byte classifier from `internal/file`, use
       it for every committed write, take the BOM from the encoder outcome and delete
