@@ -1004,3 +1004,36 @@ void test('pruning without a runs folder succeeds', () => {
         rmSync(root, { recursive: true, force: true });
     }
 });
+
+void test('extracts diagnostic paths without stalling on long slash tokens', () => {
+    const runDirectory = fixtureDirectory();
+    try {
+        const log = join(runDirectory, 'lint.log');
+        const output = join(runDirectory, 'lint.json');
+        writeFileSync(
+            log,
+            [
+                'error src/foo.tsx:12:3 failure',
+                'error a/file.go.more.js:8 failure',
+                'error no recognized path',
+                `error ${'a/'.repeat(30000)}missing`,
+            ].join('\n'),
+        );
+        const result = spawnSync(
+            process.execPath,
+            [resultsScript, 'stage', '--name', 'lint', '--exit-code', '1', '--log', log, '--output', output],
+            {
+                cwd: repoRoot,
+                encoding: 'utf8',
+                timeout: 2000,
+            },
+        );
+        assert.equal(result.status, 1, result.error?.message || result.stderr);
+        const outputText = readFileSync(output, 'utf8');
+        for (const location of ['src/foo.tsx', 'a/file.go.more.js', 'lint']) {
+            assert.ok(outputText.includes(`"location": "${location}"`));
+        }
+    } finally {
+        rmSync(runDirectory, { recursive: true, force: true });
+    }
+});

@@ -229,9 +229,27 @@ function commandTool(line) {
     return null;
 }
 
+/** @param {string} token */
+function locationInToken(token) {
+    const extensions = ['go', 'tsx', 'ts', 'js', 'mjs', 'css', 'sh', 'md', 'json', 'yml', 'yaml'];
+    let matchEnd = -1;
+    for (let index = 1; index < token.length; index += 1) {
+        if (token[index] !== '.') continue;
+        const extension = extensions.find((value) => token.startsWith(value, index + 1));
+        if (extension) matchEnd = index + 1 + extension.length;
+    }
+    return matchEnd === -1 ? null : token.slice(0, matchEnd);
+}
+
+/**
+ * @param {string} stage
+ * @param {string} line
+ */
 function findingLocation(stage, line) {
-    const match = line.match(/((?:[^\s:]+\/)*[^\s:]+\.(?:go|tsx|ts|js|mjs|css|sh|md|json|yml|yaml))(?::\d+(?::\d+)?)?/);
-    if (match) return match[1];
+    for (const token of line.split(/[\s:]/)) {
+        const location = locationInToken(token);
+        if (location !== null) return location;
+    }
     return stage;
 }
 

@@ -199,8 +199,8 @@ func (service *AppModelService) AuthorizeKeepMine(ctx context.Context, documentI
 	}
 	authorization := &keepMineAuthorization{token: token, documentID: documentID, contentRevision: contentRevision, path: canonicalPath, version: queued.version, rawHash: queued.rawHash, characteristics: queued.read.Characteristics}
 	if document.normalization != nil && document.normalization.accepted && document.normalization.contentRevision == contentRevision {
-		copy := *document.normalization
-		authorization.normalization = &copy
+		normalization := *document.normalization
+		authorization.normalization = &normalization
 	}
 	document.keepMine[token] = authorization
 	return apperr.ConflictResult{Status: apperr.ConflictStatusAuthorized, DocumentID: documentID, DocumentRevision: contentRevision, DecisionToken: token, Preview: &queued.preview}
@@ -278,36 +278,9 @@ func (service *AppModelService) inspectDocument(ctx context.Context, documentID 
 	}
 
 	if decisionToken != "" {
-		currentVersion, versionErr := service.currentDiskVersion(path)
-		service.mu.Lock()
-		currentDocument := service.state.documents[documentID]
-		var authorization *keepMineAuthorization
-		if currentDocument != nil {
-			authorization = currentDocument.keepMine[decisionToken]
+		if inspection := service.consumeKeepMine(ctx, documentID, expectedRevision, decisionToken, path, documentSnapshot.metadata); inspection != nil {
+			return *inspection
 		}
-		authorized := authorization != nil
-		if authorized && authorization.documentID == documentID && authorization.contentRevision == expectedRevision && authorization.path == path && versionErr == nil && currentVersion.Equal(authorization.version) {
-			delete(currentDocument.keepMine, decisionToken)
-			if authorization.normalization != nil {
-				copy := *authorization.normalization
-				copy.token = decisionToken
-				currentDocument.normalization = &copy
-			}
-			before := service.snapshotLocked()
-			currentDocument.baselineVersion = authorization.version
-			currentDocument.baselineRawHash = authorization.rawHash
-			currentDocument.baselineCharacteristics = authorization.characteristics
-			currentDocument.detached = false
-			service.removeConflictLocked(documentID)
-			patch := service.documentPatchLocked(documentID)
-			if err := service.publishLocked(ctx, before, patch); err != nil {
-				service.mu.Unlock()
-				return diskInspection{classified: bridge.ClassifiedWithID(apperr.ClassifiedIOFailure, documentLabelFromMetadata(documentSnapshot.metadata), "The external-change decision could not be published.", apperr.RemediationRetry, documentID)}
-			}
-			service.mu.Unlock()
-			return diskInspection{kind: diskAuthorized, version: authorization.version, rawHash: authorization.rawHash, characteristics: authorization.characteristics}
-		}
-		service.mu.Unlock()
 	}
 
 	current, err := service.currentDiskVersion(path)
@@ -344,6 +317,38 @@ func (service *AppModelService) inspectDocument(ctx context.Context, documentID 
 		return diskInspection{classified: bridge.ClassifiedWithID(apperr.ClassifiedConflict, service.documentLabel(documentID), "The external-change decision could not be queued.", apperr.RemediationRetry, documentID)}
 	}
 	return diskInspection{kind: diskConflict, version: stable.Version, rawHash: stable.RawHash, characteristics: stable.Read.Characteristics, preview: &preview}
+}
+
+// consumeKeepMine adopts the authorized baseline only while its disk version remains current.
+func (service *AppModelService) consumeKeepMine(ctx context.Context, documentID string, expectedRevision uint64, decisionToken, path string, metadata apperr.DocumentMetadata) *diskInspection {
+	currentVersion, versionErr := service.currentDiskVersion(path)
+	service.mu.Lock()
+	defer service.mu.Unlock()
+	currentDocument := service.state.documents[documentID]
+	if currentDocument == nil {
+		return nil
+	}
+	authorization := currentDocument.keepMine[decisionToken]
+	if authorization == nil || authorization.documentID != documentID || authorization.contentRevision != expectedRevision || authorization.path != path || versionErr != nil || !currentVersion.Equal(authorization.version) {
+		return nil
+	}
+	delete(currentDocument.keepMine, decisionToken)
+	if authorization.normalization != nil {
+		normalization := *authorization.normalization
+		normalization.token = decisionToken
+		currentDocument.normalization = &normalization
+	}
+	before := service.snapshotLocked()
+	currentDocument.baselineVersion = authorization.version
+	currentDocument.baselineRawHash = authorization.rawHash
+	currentDocument.baselineCharacteristics = authorization.characteristics
+	currentDocument.detached = false
+	service.removeConflictLocked(documentID)
+	patch := service.documentPatchLocked(documentID)
+	if err := service.publishLocked(ctx, before, patch); err != nil {
+		return &diskInspection{classified: bridge.ClassifiedWithID(apperr.ClassifiedIOFailure, documentLabelFromMetadata(metadata), "The external-change decision could not be published.", apperr.RemediationRetry, documentID)}
+	}
+	return &diskInspection{kind: diskAuthorized, version: authorization.version, rawHash: authorization.rawHash, characteristics: authorization.characteristics}
 }
 
 func (service *AppModelService) prepareWriteDisk(ctx context.Context, documentID string, expectedRevision uint64, decisionToken string) apperr.WriteResult {
