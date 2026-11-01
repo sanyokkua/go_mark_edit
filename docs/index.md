@@ -243,6 +243,26 @@ On Windows, `scripts/build` also builds the NSIS installer when `makensis` is on
 
 Use `scripts/build setup --with-browser` to install Chromium for E2E verification. Linux desktop builds require GTK 3 and WebKit2GTK 4.1 development headers. Each verification run keeps only the 10 newest folders under `.local_tmp_files/runs/` and shares tool caches in `.local_tmp_files/cache/`. See [the E2E performance note](e2e-performance.md) for harness behavior.
 
+### Local SonarQube analysis
+
+Install the project prerequisites, Playwright Chromium (`scripts/build setup --with-browser`) and SonarScanner CLI, and start an existing SonarQube server. Set `SONAR_HOST_URL` and `SONAR_TOKEN` in the shell; keep the token out of the repository and shell history. From the repository root, run:
+
+```bash
+scripts/sonar
+```
+
+This explicit command runs the normal build and all test tiers, generates fresh cross-package Go coverage and combined frontend Jest coverage, then scans only if the preceding steps succeed and both reports contain covered code. The reports are `.local_tmp_files/sonar/coverage/go.out` and `.local_tmp_files/sonar/coverage/frontend/lcov.info`; scanner state is under `.local_tmp_files/sonar/scannerwork`. They are local, ignored artifacts. The command waits for server processing and the Quality Gate; a failed gate can make the command fail even when analysis was uploaded successfully.
+
+Open `$SONAR_HOST_URL/dashboard?id=local%3Ago-mark-edit` in a browser to inspect findings, coverage and the Quality Gate. To export the first page of issues after processing completes, run:
+
+```bash
+curl --fail --silent --show-error -H "Authorization: Bearer $SONAR_TOKEN" --get \
+  "$SONAR_HOST_URL/api/issues/search" --data-urlencode 'componentKeys=local:go-mark-edit' \
+  --data-urlencode 'ps=100' --data-urlencode 'p=1' > .local_tmp_files/sonar/issues-page-1.json
+```
+
+Increase `p` to retrieve remaining pages; consult the server's `/web_api` for the API version and pagination limits. Normal build, test, verification, CI and hook workflows do not invoke SonarQube or require its server.
+
 ### 10.3 CI and Release
 
 - `.github/workflows/push.yml` runs Go package tests on macOS and Windows, builds Go packages, and runs the verification stages as parallel Ubuntu 24.04 jobs (static checks, unit and integration tests, and E2E as four parallel shards plus one serial job). A push that changes only documentation, agent, OpenSpec or tooling-configuration files (the `paths-ignore` list in `push.yml`) skips it; any other changed file, including test fixtures, scripts and workflows, runs it. Tag releases always run.

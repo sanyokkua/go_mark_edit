@@ -1,0 +1,52 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$ROOT"
+
+if [[ $# -ne 0 ]]; then
+	printf 'Usage: scripts/sonar\n' >&2
+	exit 2
+fi
+: "${SONAR_HOST_URL:?Set SONAR_HOST_URL to the existing SonarQube server URL}"
+: "${SONAR_TOKEN:?Set SONAR_TOKEN to a SonarQube token}"
+command -v sonar-scanner >/dev/null || {
+	printf 'sonar-scanner is required\n' >&2
+	exit 1
+}
+
+coverage_dir="$ROOT/.local_tmp_files/sonar/coverage"
+rm -rf "$coverage_dir"
+mkdir -p "$coverage_dir"
+
+# Always run the complete default browser suite, regardless of inherited CI selectors.
+unset E2E_SHARD E2E_PROJECTS E2E_SUBSET
+scripts/build
+scripts/test all
+
+go test -race -coverpkg=./... -coverprofile="$coverage_dir/go.out" \
+	./tests/go/unit/... ./tests/go/integration/... ./internal/...
+(
+	cd frontend
+	./node_modules/.bin/jest --ci --runInBand --config jest.config.mjs \
+		--selectProjects unit integration --coverage \
+		'--collectCoverageFrom=src/**/*.{js,jsx,ts,tsx}' \
+		'--collectCoverageFrom=!src/**/*.d.ts' \
+		'--collectCoverageFrom=!src/logic/theme/generatedEditorThemes.ts' \
+		--coverageReporters=lcov --coverageDirectory="$coverage_dir/frontend"
+)
+
+# Jest writes paths relative to frontend; the scanner resolves them from the repository root.
+sed 's|^SF:src/|SF:frontend/src/|' "$coverage_dir/frontend/lcov.info" >"$coverage_dir/frontend/lcov.root.info"
+mv "$coverage_dir/frontend/lcov.root.info" "$coverage_dir/frontend/lcov.info"
+
+awk 'NR > 1 && $NF > 0 { found = 1 } END { exit !found }' "$coverage_dir/go.out" || {
+	printf 'Go coverage is empty or has no covered statements; refusing to scan\n' >&2
+	exit 1
+}
+awk -F: '$1 == "LH" && $2 > 0 { found = 1 } END { exit !found }' "$coverage_dir/frontend/lcov.info" || {
+	printf 'Frontend LCOV is empty or has no covered lines; refusing to scan\n' >&2
+	exit 1
+}
+
+sonar-scanner -Dsonar.qualitygate.wait=true
