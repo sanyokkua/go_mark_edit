@@ -17,6 +17,68 @@ const view: DocumentView = {
     scroll: { editor: 0, preview: 0 },
 };
 
+it('ignores a missing editor selection and preserves the last selection for synchronization', () => {
+    const updates: unknown[] = [];
+    const adapter: EditorSynchronizationAdapter = {
+        flushBuffer: async () => undefined,
+        flushDocView: async () => undefined,
+        updateBuffer: async () => undefined,
+        updateDocView: async (_documentId, nextView) => {
+            updates.push(nextView);
+        },
+    };
+    const { result } = renderHook(() => useSyncedBuffer('document-1', view, adapter));
+
+    act(() => {
+        result.current.onSelectionChange({
+            start: { lineNumber: 2, column: 3 },
+            end: { lineNumber: 4, column: 5 },
+        });
+    });
+    updates.length = 0;
+
+    act(() => result.current.onSelectionChange(null));
+    expect(updates).toEqual([]);
+
+    act(() => result.current.onEditorScrollChange(30));
+    expect(updates).toEqual([
+        expect.objectContaining({
+            selection: { start: { line: 2, column: 3 }, end: { line: 4, column: 5 } },
+            scroll: { editor: 30, preview: 0 },
+        }),
+    ]);
+});
+
+it('ignores editor events retained after the session unmounts', async () => {
+    const writes: string[] = [];
+    const adapter: EditorSynchronizationAdapter = {
+        flushBuffer: async () => {
+            writes.push('flush buffer');
+        },
+        flushDocView: async () => {
+            writes.push('flush view');
+        },
+        updateBuffer: async () => {
+            writes.push('buffer');
+        },
+        updateDocView: async () => {
+            writes.push('view');
+        },
+    };
+    const { result, unmount } = renderHook(() => useSyncedBuffer('document-1', view, adapter));
+    const callbacks = result.current;
+    unmount();
+
+    await act(async () => {
+        callbacks.onChange('late edit');
+        callbacks.onEditorScrollChange(50);
+        callbacks.onBlur();
+        await Promise.resolve();
+    });
+
+    expect(writes).toEqual([]);
+});
+
 it('separates live cursor display from restorable view synchronization', async () => {
     jest.useFakeTimers();
     const setDocView = jest.fn((documentId: string, view: unknown): Promise<object> => {
