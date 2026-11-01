@@ -257,6 +257,7 @@ class PlaywrightE2EAppHarness implements E2EAppHarness {
 
     async relaunch(): Promise<void> {
         const started = performance.now();
+        await this.page.goto('about:blank');
         await this.stopDevProcess();
         await this.launch(this.launchArgs);
         console.log(`[e2e] relaunchMs=${Math.round(performance.now() - started)}`);
