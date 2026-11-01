@@ -505,6 +505,66 @@ test('installs foreground reload content in the existing active editor', async (
     expect(await activeBufferContent(app.page)).toBe('# Reloaded editor content\n');
 });
 
+test('keeps reloaded disk content after autosave and switching tabs', async ({ app }) => {
+    const external = '# Reloaded from disk\n';
+    const source = await app.writeDocument('reload-autosave.md', '# Original\n');
+    const other = await app.writeDocument('reload-other.md', '# Other\n');
+    await app.seedRecents([source, other]);
+    await app.launch();
+    await openRecentFromLauncher(app.page, 'reload-autosave.md');
+    await openRecentFromFileMenu(app.page, 'reload-other.md');
+    await app.page.getByRole('tab', { name: 'reload-autosave.md' }).click();
+    await app.page.getByRole('button', { name: 'Settings', exact: true }).click();
+    const settings = app.page.getByRole('menu', { name: 'Settings menu' });
+    const autosave = settings.getByRole('menuitemcheckbox', { name: 'Autosave' });
+    if (!(await autosave.isChecked())) await settings.locator('[data-settings-toggle="Autosave"]').click();
+    await expect(autosave).toBeChecked();
+    await app.page.keyboard.press('Escape');
+    await editDocument(app.page, '# Unsaved editor version\n');
+    await writeFile(source, external, 'utf8');
+    await app.page.evaluate(() => window.dispatchEvent(new Event('focus')));
+    const conflict = app.page.getByRole('dialog', { name: 'File changed on disk' });
+    await conflict.getByRole('button', { name: 'Reload from disk' }).click();
+    await expect(conflict).toHaveCount(0);
+    await app.page.getByRole('tab', { name: 'reload-other.md' }).click();
+    await app.page.getByRole('tab', { name: 'reload-autosave.md' }).click();
+    await app.page.waitForTimeout(2_000);
+    await expect(app.page.locator('[data-editor-surface] .view-lines').first()).toContainText('Reloaded from disk');
+    await expect.poll(() => activeBufferContent(app.page)).toBe(external);
+    expect(await readFile(source, 'utf8')).toBe(external);
+    await expect(
+        app.page.getByRole('tab', { name: 'reload-autosave.md' }).locator('..').getByLabel('Modified'),
+    ).toHaveCount(0);
+});
+
+test('keeps reloaded disk content when saved immediately', async ({ app }) => {
+    const external = '# Reloaded for immediate save\n';
+    const source = await app.writeDocument('reload-save.md', '# Original\n');
+    const other = await app.writeDocument('reload-save-other.md', '# Other\n');
+    await app.seedRecents([source, other]);
+    await app.launch();
+    await openRecentFromLauncher(app.page, 'reload-save.md');
+    await openRecentFromFileMenu(app.page, 'reload-save-other.md');
+    await app.page.getByRole('tab', { name: 'reload-save.md' }).click();
+    await disableAutosave(app.page);
+    await editDocument(app.page, '# Unsaved editor version\n');
+    await writeFile(source, external, 'utf8');
+    await app.page.evaluate(() => window.dispatchEvent(new Event('focus')));
+    const conflict = app.page.getByRole('dialog', { name: 'File changed on disk' });
+    await conflict.getByRole('button', { name: 'Reload from disk' }).click();
+    await expect(conflict).toHaveCount(0);
+    await app.page.keyboard.press('ControlOrMeta+S');
+    await expect(app.page.locator('[data-notification-code="save-success"]')).toHaveCount(1);
+    await expect(app.page.locator('[data-editor-surface] .view-lines').first()).toContainText(
+        'Reloaded for immediate save',
+    );
+    await expect.poll(() => activeBufferContent(app.page)).toBe(external);
+    expect(await readFile(source, 'utf8')).toBe(external);
+    await expect(
+        app.page.getByRole('tab', { name: 'reload-save.md' }).locator('..').getByLabel('Modified'),
+    ).toHaveCount(0);
+});
+
 test('retries a failed multi-tab close at a fresh revision with only its original targets', async ({ app }) => {
     const first = await app.writeDocument('close-first.md', '# First original\n');
     const second = await app.writeDocument('close-second.md', '# Second original\n');

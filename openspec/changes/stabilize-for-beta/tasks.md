@@ -44,7 +44,7 @@ Spec: external-change-conflict "Reload is not undone by a later write". Design Â
       send the pre-reload text. Then make adoption key on the activation token and reset content, cursor,
       selection, scroll and view refs from props; verify the test passes and the existing hook and `closeWorkflow`
       integration tests stay green.
-- [ ] 2.2 Add an e2e test in `real-files.test.ts` for the scenarios "Tab switch after reload with autosave on" and
+- [x] 2.2 Add an e2e test in `real-files.test.ts` for the scenarios "Tab switch after reload with autosave on" and
       "Save right after reload". Verify it fails on the pre-fix code path (revert locally) and passes with the fix;
       exercise the same sequence in the real app.
 
