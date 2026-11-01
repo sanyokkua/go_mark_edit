@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs';
+import { createRef } from 'react';
 import { resolve } from 'node:path';
 
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
@@ -1332,4 +1333,65 @@ it('disposes an inactive document model when its tab closes while another remain
     rerender(<CodeEditor documentId="B" initialValue="beta" activationId="B1" openDocumentIds={['B']} />);
     expect(first.dispose).toHaveBeenCalledTimes(1);
     expect(second.dispose).not.toHaveBeenCalled();
+});
+
+it('rebinds activation state when returning to a retained model', async () => {
+    mockUseModelPaths = true;
+    const ref = createRef<CodeEditorHandle>();
+    const onScrollPortReady = jest.fn<void, [EditorScrollPort | null]>();
+    const marker = {
+        startLine: 1,
+        startColumn: 1,
+        endLine: 1,
+        endColumn: 2,
+        severity: 'warning' as const,
+        message: 'old',
+    };
+    const editorFor = (id: string, activationId: string): React.JSX.Element => (
+        <CodeEditor
+            ref={ref}
+            documentId={id}
+            activationId={activationId}
+            initialValue={id}
+            openDocumentIds={['A', 'B']}
+            onScrollPortReady={onScrollPortReady}
+        />
+    );
+    const { rerender } = render(editorFor('A', 'a1'));
+    await waitFor(() => expect(registerEditorLinkModel).toHaveBeenCalledTimes(1));
+    const modelA = mockRuntime.model;
+    const portA = onScrollPortReady.mock.lastCall?.[0];
+    if (!portA) throw new Error('expected A port');
+    const scroll = jest.fn();
+    const geometry = jest.fn();
+    portA.onScroll(scroll);
+    portA.onGeometryChange(geometry);
+    const eventsA = mockRuntime.events;
+    ref.current?.setMarkers(Array.from({ length: 501 }, () => marker));
+    const linkA = jest.mocked(registerEditorLinkModel).mock.results[0].value;
+    installMockEditor();
+    rerender(editorFor('B', 'b1'));
+    await waitFor(() => expect(registerEditorLinkModel).toHaveBeenCalledTimes(2));
+    expect(linkA.dispose).toHaveBeenCalled();
+    expect(setModelMarkers).toHaveBeenCalledWith(modelA, 'gme-lint', []);
+    expect(clearLintDecorations).toHaveBeenCalled();
+    eventsA.scroll.fire(scrollEvent({ scrollTopChanged: true }));
+    eventsA.layout.fire({} as editor.EditorLayoutInfo);
+    expect(scroll).not.toHaveBeenCalled();
+    expect(geometry).not.toHaveBeenCalled();
+    const modelB = mockRuntime.model;
+    const linkB = jest.mocked(registerEditorLinkModel).mock.results[1].value;
+    installMockEditor();
+    rerender(editorFor('A', 'a2'));
+    await waitFor(() => expect(registerEditorLinkModel).toHaveBeenCalledTimes(3));
+    expect(mockRuntime.model).toBe(modelA);
+    expect(linkB.dispose).toHaveBeenCalled();
+    expect(setModelMarkers).toHaveBeenCalledWith(modelB, 'gme-lint', []);
+    const port = onScrollPortReady.mock.lastCall?.[0];
+    expect(port).not.toBe(portA);
+    port?.setScrollTop(80);
+    expect(port?.getScrollTop()).toBe(80);
+    ref.current?.setMarkers([{ ...marker, message: 'fresh' }]);
+    expect(setModelMarkers.mock.lastCall?.[0]).toBe(modelA);
+    expect(setModelMarkers.mock.lastCall?.[2][0].message).toBe('fresh');
 });

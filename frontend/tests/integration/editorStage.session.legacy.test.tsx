@@ -368,6 +368,33 @@ it('rejects active-tab and stale-identity mismatch', async () => {
     expect(mockEditorHandle.getSelection).not.toHaveBeenCalled();
     expect(mockEditorHandle.replaceRange).not.toHaveBeenCalled();
     expect(mockEditorHandle.replaceAll).not.toHaveBeenCalled();
+
+    const commandsForB = requireDocumentCommands(capturedCommands);
+    act((): void => {
+        store.dispatch(
+            hydrateProjection({
+                revision: 3,
+                documents: { [documentA.documentId]: documentA },
+                activeDocumentId: documentA.documentId,
+                ui: {},
+            }),
+        );
+    });
+    rendered.rerender(
+        <Provider store={store}>
+            <EditorSessionProvider activeBuffer={{ documentId: 'document-1', content: '# A' }}>
+                <DocumentCommandCapture
+                    onCommands={(commands): void => {
+                        capturedCommands = commands;
+                    }}
+                />
+                <EditorView adapter={adapter} />
+            </EditorSessionProvider>
+        </Provider>,
+    );
+    await waitFor(() => expect(capturedCommands?.getContent()).toEqual({ status: 'available', value: '# Buffer' }));
+    expect(commandsForB.replaceAll('stale')).toEqual({ status: 'document-mismatch' });
+    expect(commandsForA.replaceAll('stale')).toEqual({ status: 'document-mismatch' });
 });
 
 // alone, not the wiring that calls it. A green run here says nothing about

@@ -64,7 +64,7 @@ Depends on group 2 (activation token adoption). Owners: `frontend/src/app/useDoc
       `frontend/tests/unit/components/CodeEditor.test.tsx` (`:252-289`) a path-to-model map and change the disposal
       assertions (`:699-700`, `:1080-1081`) to the new contract: disposed on close and on reload, kept on tab
       switch, replaced when the backend text differs. Verify the component and `useDocumentSession` tests pass.
-- [ ] 3.2 Rebind the per-activation state to the kept model on every activation: link provider registration, lint
+- [x] 3.2 Rebind the per-activation state to the kept model on every activation: link provider registration, lint
       decorations, the scroll port and `attachEditor` with the new activation token. Add component tests that after
       A → B → A the links, lint markers and scroll restore work on A and none of B's registrations remain; verify
       they pass with the existing `CodeEditor` and `EditorStage` tests.

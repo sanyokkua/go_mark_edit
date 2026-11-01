@@ -170,7 +170,7 @@ jest.mock('@monaco-editor/react', () => {
             mockRuntime.props = props;
             const finishMount = (): void =>
                 props.onMount?.(editorInstance, {
-                    editor: { ScrollType: { Immediate: 1 } },
+                    editor: { ScrollType: { Immediate: 1 }, setModelMarkers: jest.fn() },
                     KeyCode: { Enter: 3 },
                 } as unknown as Parameters<NonNullable<EditorProps['onMount']>>[1]);
             if (mockRuntime.deferMount) mockRuntime.finishMount = finishMount;

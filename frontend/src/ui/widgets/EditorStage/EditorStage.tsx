@@ -485,6 +485,13 @@ const EditorStage = forwardRef<EditorStageHandle, EditorStageProps>(function Edi
     }, []);
     const scrollSyncEnabled = useEditorSettings().settings.scrollSync;
     const [editorPort, setEditorPort] = useState<EditorScrollPort | null>(null);
+    const registerEditorPort = useCallback(
+        (port: EditorScrollPort | null): void => {
+            if (port !== null) port.setScrollTop(view.scroll.editor);
+            setEditorPort(port);
+        },
+        [view.scroll.editor],
+    );
     const [previewContainer, setPreviewContainer] = useState<HTMLElement | null>(null);
     const scrollSyncActive = useScrollSync({
         enabled: scrollSyncEnabled,
@@ -555,7 +562,7 @@ const EditorStage = forwardRef<EditorStageHandle, EditorStageProps>(function Edi
                             onOpenLink={onOpenLink}
                             onPreviewWarning={onPreviewWarning}
                             onPreviewScrollHandler={registerPreviewScrollHandler}
-                            onScrollPortReady={setEditorPort}
+                            onScrollPortReady={registerEditorPort}
                         />
                     </EditorContextMenu>
                 }

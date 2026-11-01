@@ -55,15 +55,17 @@ jest.mock('@monaco-editor/react', () => {
                 restoreViewState: runtime.restoreViewState,
                 setPosition: runtime.setPosition,
                 setSelection: jest.fn(),
+                setScrollTop: jest.fn(),
                 revealLineInCenter: jest.fn(),
                 updateOptions: jest.fn(),
             };
             const mount = (): void =>
                 onMountRef.current?.(
                     instance as unknown as editor.IStandaloneCodeEditor,
-                    { editor: { ScrollType: { Immediate: 1 } }, KeyCode: { Enter: 3 } } as unknown as Parameters<
-                        NonNullable<EditorProps['onMount']>
-                    >[1],
+                    {
+                        editor: { ScrollType: { Immediate: 1 }, setModelMarkers: jest.fn() },
+                        KeyCode: { Enter: 3 },
+                    } as unknown as Parameters<NonNullable<EditorProps['onMount']>>[1],
                 );
             if (mockDeferMonacoMount) mockPendingMonacoMounts.push(mount);
             else mount();

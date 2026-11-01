@@ -295,7 +295,7 @@ function createEditorScrollPort(
         onScroll: (listener: (scrollTop: number) => void): (() => void) =>
             subscribe(() => [
                 editorInstance.onDidScrollChange((event): void => {
-                    if (event.scrollTopChanged) {
+                    if (isMounted() && event.scrollTopChanged) {
                         // Read at delivery, so a listener always hears where the pane is now.
                         listener(editorInstance.getScrollTop());
                     }
@@ -305,7 +305,7 @@ function createEditorScrollPort(
             const report =
                 (change: ScrollGeometryChange): (() => void) =>
                 (): void => {
-                    listener(change);
+                    if (isMounted()) listener(change);
                 };
 
             return subscribe(() => [
@@ -383,6 +383,7 @@ const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(function CodeEd
     const onScrollPortReadyRef = useRef(onScrollPortReady);
     /** The Monaco editor that owns the scroll port currently published through `onScrollPortReady`. */
     const scrollPortEditorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
+    const scrollPortTokenRef = useRef<object | null>(null);
     const restoreViewStateFrameRef = useRef<number | undefined>(undefined);
     const viewStateRef = useRef<editor.ICodeEditorViewState | null>(null);
     const wasVisibleRef = useRef(visible);
@@ -446,9 +447,11 @@ const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(function CodeEd
             lintDecorationsRef.current = null;
             if (scrollPortEditorRef.current !== null) {
                 scrollPortEditorRef.current = null;
+                scrollPortTokenRef.current = null;
                 onScrollPortReadyRef.current?.(null);
             }
             const model = editorRef.current?.getModel();
+            if (model !== null && model !== undefined) monacoRef.current?.editor.setModelMarkers(model, 'gme-lint', []);
             if (readOnly && typeof model?.dispose === 'function') {
                 model.dispose();
             }
@@ -703,8 +706,10 @@ const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(function CodeEd
         }
         if (scrollPortEditorRef.current !== editorInstance) {
             scrollPortEditorRef.current = editorInstance;
+            const token = {};
+            scrollPortTokenRef.current = token;
             onScrollPortReadyRef.current?.(
-                createEditorScrollPort(editorInstance, (): boolean => editorRef.current === editorInstance),
+                createEditorScrollPort(editorInstance, (): boolean => scrollPortTokenRef.current === token),
             );
         }
         if (!readOnly && model !== null) retainedModels.set(path, { documentId, model });

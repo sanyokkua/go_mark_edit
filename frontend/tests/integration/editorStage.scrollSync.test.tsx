@@ -30,18 +30,25 @@ interface MockEditor {
     userScroll(scrollTop: number): void;
 }
 
-const mockMonaco: { instances: MockEditor[] } = { instances: [] };
+const mockMonaco: {
+    instances: MockEditor[];
+    models: Map<string, { dispose: jest.Mock; getLineCount: () => number; getValue: () => string }>;
+} = { instances: [], models: new Map() };
 
 /** Monaco laying out 20 px lines under 12 px of padding in a 300 px viewport, so 99 lines end at 2004 px. */
-function mockCreateEditor(content: string): MockEditor {
+function mockCreateEditor(content: string, path: string): MockEditor {
     const lineCount = content.split('\n').length;
     const scrollListeners = new Set<(event: IScrollEvent) => void>();
     let scrollTop = 0;
-    const model = {
-        dispose: jest.fn(),
-        getLineCount: (): number => lineCount,
-        getValue: (): string => content,
-    };
+    let model = mockMonaco.models.get(path);
+    if (!model) {
+        model = {
+            dispose: jest.fn(() => mockMonaco.models.delete(path)),
+            getLineCount: () => lineCount,
+            getValue: () => content,
+        };
+        mockMonaco.models.set(path, model);
+    }
     const report = (): void => {
         for (const listener of [...scrollListeners]) {
             listener({ scrollTop, scrollTopChanged: true } as IScrollEvent);
@@ -105,12 +112,12 @@ jest.mock('@monaco-editor/react', () => {
     const MockMonacoEditor = (props: EditorProps): React.JSX.Element => {
         const { defaultValue, onMount } = props;
         // A distinct editor per activation, as Monaco creates one editor per mount.
-        const [mounted] = React.useState(() => mockCreateEditor(defaultValue ?? ''));
+        const [mounted] = React.useState(() => mockCreateEditor(defaultValue ?? '', props.path ?? ''));
 
         React.useEffect((): void => {
             mockMonaco.instances.push(mounted);
             onMount?.(mounted.instance, {
-                editor: { ScrollType: { Immediate: 1 } },
+                editor: { ScrollType: { Immediate: 1 }, setModelMarkers: jest.fn() },
                 KeyCode: { Enter: 3 },
             } as unknown as Parameters<NonNullable<EditorProps['onMount']>>[1]);
         }, [mounted]);
@@ -289,6 +296,7 @@ beforeEach((): void => {
     store.dispatch(hydrateSettings(loadedMarkdownSettings));
     jest.useFakeTimers();
     mockMonaco.instances.length = 0;
+    mockMonaco.models.clear();
     stubPreviewGeometry();
 });
 
@@ -378,5 +386,46 @@ it('leaves both panes independent when synchronized scrolling is off', async () 
     fireEvent.scroll(preview);
     await advanceFrames(1);
 
+    expect(currentEditor().scrollTop).toBe(812);
+});
+
+it('restores the saved editor scroll when returning to a retained document', async () => {
+    store.dispatch(acknowledgeEditorSettings({ ...defaultEditorSettings, scrollSync: false }));
+    const a = documentMetadata(0);
+    a.view.scroll.editor = 812;
+    const b = { ...documentMetadata(0), documentId: 'document-2' };
+    const adapter = createAdapter();
+    const stage = (document: DocumentMetadata): React.JSX.Element => {
+        const buffer = { documentId: document.documentId, content: DOCUMENT_CONTENT };
+        return (
+            <Provider store={store}>
+                <EditorSessionProvider activeBuffer={buffer}>
+                    <EditorStage
+                        activeBuffer={buffer}
+                        activeDocument={document}
+                        adapter={adapter}
+                        editorVisible
+                        previewVisible={false}
+                        openDocumentIds={[a.documentId, b.documentId]}
+                        readOnly={false}
+                        view={document.view}
+                        onLiveCursorChange={jest.fn()}
+                        onPreviewWarning={jest.fn()}
+                    />
+                </EditorSessionProvider>
+            </Provider>
+        );
+    };
+    const rendered = render(stage(a));
+    await screen.findByLabelText('Markdown source');
+    await advanceFrames(3);
+    const modelA = currentEditor().instance.getModel();
+    expect(currentEditor().scrollTop).toBe(812);
+    rendered.rerender(stage(b));
+    await advanceFrames(3);
+    expect(currentEditor().instance.getModel()).not.toBe(modelA);
+    rendered.rerender(stage(a));
+    await advanceFrames(3);
+    expect(currentEditor().instance.getModel()).toBe(modelA);
     expect(currentEditor().scrollTop).toBe(812);
 });
