@@ -38,7 +38,7 @@ No spec change (test isolation). Design §11. Owners: `main.go`, `internal/appli
 Spec: external-change-conflict "Reload is not undone by a later write". Design §1. Owner:
 `frontend/src/logic/hooks/useSyncedBuffer.ts` (`adoptDocument` `:119-129`, activation token `:94-103`).
 
-- [ ] 2.1 Write a failing hook test in `frontend/tests/unit/hooks/useSyncedBuffer.test.ts` (reuse the plain
+- [x] 2.1 Write a failing hook test in `frontend/tests/unit/hooks/useSyncedBuffer.test.ts` (reuse the plain
       `EditorSynchronizationAdapter` from "never flushes the outgoing document text or caret into the incoming
       document", `:247`): edit, rerender with a new external epoch and the reloaded text, flush; the flush must not
       send the pre-reload text. Then make adoption key on the activation token and reset content, cursor,

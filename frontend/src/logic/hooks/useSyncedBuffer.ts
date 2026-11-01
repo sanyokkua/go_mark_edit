@@ -90,7 +90,6 @@ export function useSyncedBuffer(
 ): SyncedBufferCallbacks {
     const viewRef = useRef(view);
     const cursorRef = useRef(toEditorPosition(view.cursor.line, view.cursor.column));
-    const currentDocumentRef = useRef(documentId);
     const activation = useMemo(
         () => ({
             documentId,
@@ -101,6 +100,7 @@ export function useSyncedBuffer(
         }),
         [documentId, externalEpoch],
     );
+    const currentActivationRef = useRef(activation.token);
     const contentRef = useRef(initialContent);
     const selectionRef = useRef(view.selection);
     const scrollRef = useRef(view.scroll);
@@ -110,23 +110,23 @@ export function useSyncedBuffer(
     );
 
     /*
-     * The session refs belong to one document. The editor surface outlives a
+     * The session refs belong to one activation. The editor surface outlives a
      * document switch, and the outgoing Monaco instance can report a blur while
      * React commits the incoming document, before any passive effect runs. Every
      * callback therefore adopts its own render's document first, so it never
      * captures the outgoing document's text or caret under the incoming identity.
      */
     const adoptDocument = useCallback((): void => {
-        if (currentDocumentRef.current === documentId) return;
+        if (currentActivationRef.current === activation.token) return;
         const cursor = toEditorPosition(view.cursor.line, view.cursor.column);
-        currentDocumentRef.current = documentId;
+        currentActivationRef.current = activation.token;
         viewRef.current = view;
         contentRef.current = initialContent;
         cursorRef.current = cursor;
         selectionRef.current = view.selection;
         scrollRef.current = view.scroll;
         setLiveCursor(cursor);
-    }, [documentId, initialContent, view]);
+    }, [activation.token, initialContent, view]);
 
     useEffect((): void => {
         viewRef.current = view;

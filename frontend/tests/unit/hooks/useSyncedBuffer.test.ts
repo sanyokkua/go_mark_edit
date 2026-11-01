@@ -290,3 +290,44 @@ it('never flushes the outgoing document text or caret into the incoming document
         expect([documentId, (docView as { cursor: unknown }).cursor]).toEqual(['b', { line: 1, column: 1 }]);
     }
 });
+
+it('captures replacement content and view when the same document starts a new session', async () => {
+    const adapter: EditorSynchronizationAdapter = {
+        flushBuffer: async () => undefined,
+        flushDocView: async () => undefined,
+        updateBuffer: async () => undefined,
+        updateDocView: async () => undefined,
+    };
+    const replacementView: DocumentView = {
+        ...view,
+        cursor: { line: 3, column: 2 },
+        selection: { start: { line: 2, column: 1 }, end: { line: 3, column: 2 } },
+        scroll: { editor: 40, preview: 80 },
+    };
+    const { result, rerender } = renderHook(
+        ({ content, currentView, epoch }) => useSyncedBuffer('document-1', currentView, adapter, content, epoch),
+        { initialProps: { content: 'original', currentView: view, epoch: 0 } },
+    );
+    act(() => {
+        result.current.onChange('local edit');
+        result.current.onCursorPositionChange({ lineNumber: 9, column: 4 });
+        result.current.onEditorScrollChange(200);
+        result.current.onPreviewScrollChange(300);
+    });
+
+    rerender({ content: 'replacement', currentView: replacementView, epoch: 1 });
+    let capture;
+    await act(async () => {
+        capture = await result.current.flushActiveSession('document-1', result.current.activationToken);
+    });
+
+    expect(capture).toMatchObject({
+        content: 'replacement',
+        view: {
+            cursor: { line: 3, column: 2 },
+            selection: { start: { line: 2, column: 1 }, end: { line: 3, column: 2 } },
+            scroll: { editor: 40, preview: 80 },
+        },
+    });
+    expect(result.current.liveCursor).toEqual({ lineNumber: 3, column: 2 });
+});
