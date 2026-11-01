@@ -1,5 +1,5 @@
 import { spawn, type ChildProcessByStdio } from 'node:child_process';
-import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, isAbsolute, join, relative, resolve } from 'node:path';
 import type { Readable } from 'node:stream';
@@ -60,6 +60,7 @@ export interface E2EAppHarness {
     readonly documentDirectory: string;
     readonly repositoryDirectory: string;
     readonly appChildPid: number | undefined;
+    recordedCalls(kind: 'reveal' | 'clipboard'): Promise<string[]>;
     writeDocument(relativePath: string, contents: string): Promise<string>;
     seedRecents(items: readonly (string | { path: string; kind: 'file' | 'folder' })[]): Promise<void>;
     openWorkspace(folderPath: string): Promise<'opened' | 'unchanged'>;
@@ -135,6 +136,26 @@ class PlaywrightE2EAppHarness implements E2EAppHarness {
         const documentDirectory = await mkdtemp(join(tmpdir(), 'gomarkedit-e2e-docs-'));
         const repositoryDirectory = selectedRepository();
         return new PlaywrightE2EAppHarness(page, tempDirectory, documentDirectory, repositoryDirectory, frontendAssets);
+    }
+
+    async recordedCalls(kind: 'reveal' | 'clipboard'): Promise<string[]> {
+        let contents: string;
+        try {
+            contents = await readFile(join(this.profileDirectory, `e2e-${kind}.jsonl`), 'utf8');
+        } catch (error) {
+            if ((error as NodeJS.ErrnoException).code === 'ENOENT') return [];
+            throw error;
+        }
+        if (contents === '') return [];
+        if (!contents.endsWith('\n')) throw new Error('Incomplete recorded call');
+        return contents
+            .slice(0, -1)
+            .split('\n')
+            .map((line) => {
+                const value: unknown = JSON.parse(line);
+                if (typeof value !== 'string') throw new Error('Recorded call must be a string');
+                return value;
+            });
     }
 
     async writeDocument(relativePath: string, contents: string): Promise<string> {

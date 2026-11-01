@@ -18,7 +18,7 @@ No spec change (test isolation). Design §11. Owners: `main.go`, `internal/appli
       headless-flag uses (hidden window, recording ports) as ADR-0041 in `docs/architecture.md`. Verify with a Go
       unit test of the recorders, a Go integration test that the headless option set replaces the platform ports,
       and `scripts/verify lint` (referenced-path rules).
-- [ ] 1.2 Add a harness helper that reads the recorded calls from the isolated e2e profile (`harness.ts:40-54` sets
+- [x] 1.2 Add a harness helper that reads the recorded calls from the isolated e2e profile (`harness.ts:40-54` sets
       `HOME` on macOS and `XDG_CONFIG_HOME` elsewhere); change `real-files.test.ts` (Copy path, `:184`; Reveal,
       `:156,180`) to assert the recorded path and drop its `@native-clipboard` tag (`:140`); `preview-links.test.ts`
       keeps asserting `recordLinkBridge` (`:223-260`), whose passthrough now reaches the recorder. Verify both files
