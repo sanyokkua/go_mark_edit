@@ -5,6 +5,7 @@ import (
 	"embed"
 	"fmt"
 	"os"
+	"path/filepath"
 	goruntime "runtime"
 	"strings"
 	"unicode"
@@ -101,8 +102,20 @@ func main() {
 		})
 		return result == "Overwrite", err
 	})
+	modelOptions := []appmodel.AppModelOption{appmodel.WithDialogs(dialogs, dialogs)}
+	if application.E2EHeadlessEnabled() {
+		configDir, err := fileUtils.GetAppConfigDir()
+		if err != nil {
+			bootstrapLogger.Error().Err(err).Msg("resolve headless recording directory")
+			os.Exit(1)
+		}
+		modelOptions = append(modelOptions,
+			appmodel.WithRevealPort(file.NewRecordingRevealPort(filepath.Join(configDir, "e2e-reveal.jsonl"))),
+			appmodel.WithClipboardWriter(file.NewRecordingClipboardWriter(filepath.Join(configDir, "e2e-clipboard.jsonl"))),
+		)
+	}
 	applicationContext := application.NewApplicationContextHolderWithOptions(fileUtils, appLogger, application.ApplicationContextOptions{
-		AppModelOptions:   []appmodel.AppModelOption{appmodel.WithDialogs(dialogs, dialogs)},
+		AppModelOptions:   modelOptions,
 		NewWindowLauncher: application.NewOSNewWindowLauncher(appLogger),
 		StartupArgs:       os.Args[1:],
 		WindowRegistry:    application.NewDefaultWindowRegistry(),

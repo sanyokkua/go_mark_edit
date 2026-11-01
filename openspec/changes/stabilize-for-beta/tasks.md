@@ -12,7 +12,7 @@ No spec change (test isolation). Design §11. Owners: `main.go`, `internal/appli
 (`WithRevealPort`, `WithClipboardWriter`), `frontend/playwright.config.ts`, `frontend/tests/support/`
 (`harness.ts`, `nativeClipboard.ts`), `.github/workflows/push.yml` and `release.yml`.
 
-- [ ] 1.1 Add recording implementations of `file.RevealPort` and `file.ClipboardWriter` in `internal/file` that append
+- [x] 1.1 Add recording implementations of `file.RevealPort` and `file.ClipboardWriter` in `internal/file` that append
       one line per call to a file in the application configuration folder, and add them through
       `options.AppModelOptions` in `main.go` only when `application.E2EHeadlessEnabled()` is true. Record the two
       headless-flag uses (hidden window, recording ports) as ADR-0041 in `docs/architecture.md`. Verify with a Go
@@ -282,4 +282,3 @@ No spec change. Owners: `frontend/tests/integration/*.legacy.test.tsx` (nine fil
       (`:103-110`) to advance past the frontend's 10-second stuck-command notice (`boundMs`,
       `frontend/src/logic/adapter/command.ts:75`) instead of waiting 10 seconds of real time, stopping the lock helper right after Retry or Cancel; verify the test
       passes and its duration drops.
-
