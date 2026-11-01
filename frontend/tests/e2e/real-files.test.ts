@@ -505,6 +505,78 @@ test('installs foreground reload content in the existing active editor', async (
     expect(await activeBufferContent(app.page)).toBe('# Reloaded editor content\n');
 });
 
+test('keeps each tab’s undo history when switching documents', async ({ app }) => {
+    const first = await app.writeDocument('undo-a.md', 'Alpha');
+    const second = await app.writeDocument('undo-b.md', 'Beta');
+    await app.seedRecents([first, second]);
+    await app.launch();
+    const { page } = app;
+    await openRecentFromLauncher(page, 'undo-a.md');
+    await openRecentFromFileMenu(page, 'undo-b.md');
+    await disableAutosave(page);
+    await page.getByRole('tab', { name: 'undo-a.md' }).click();
+    await expect(page.locator('[data-editor-surface] .view-lines').first()).toHaveText('Alpha');
+    const editor = page.locator('[data-editor-surface] textarea').first();
+    await page.locator('[data-editor-surface] .view-lines').first().click();
+    await expect(editor).toBeFocused();
+    await editor.press('End');
+    await page.keyboard.insertText('abc');
+    await expect.poll(() => activeBufferContent(page)).toBe('Alphaabc');
+    await page.getByRole('tab', { name: 'undo-b.md' }).click();
+    await expect.poll(() => activeBufferContent(page)).toBe('Beta');
+    await expect(page.locator('[data-editor-surface] .view-lines').first()).toHaveText('Beta');
+    await page.getByRole('tab', { name: 'undo-a.md' }).click();
+    await expect.poll(() => activeBufferContent(page)).toBe('Alphaabc');
+    await expect(page.locator('[data-editor-surface] .view-lines').first()).toHaveText('Alphaabc');
+    await page.locator('[data-editor-surface] .view-lines').first().click();
+    await editor.press(`${await editorModifier(page)}+z`);
+    await expect.poll(() => activeBufferContent(page)).toBe('Alpha');
+    await expect(page.locator('[data-editor-surface] .view-lines').first()).toHaveText('Alpha');
+    await page.getByRole('tab', { name: 'undo-b.md' }).click();
+    await expect.poll(() => activeBufferContent(page)).toBe('Beta');
+    await expect(page.locator('[data-editor-surface] .view-lines').first()).toHaveText('Beta');
+    expect(await readFile(first, 'utf8')).toBe('Alpha');
+    expect(await readFile(second, 'utf8')).toBe('Beta');
+});
+
+test('reload clears only the reloaded document’s undo history', async ({ app }) => {
+    const first = await app.writeDocument('reload-undo-a.md', 'Alpha');
+    const second = await app.writeDocument('reload-undo-b.md', 'Beta');
+    await app.seedRecents([first, second]);
+    await app.launch();
+    const { page } = app;
+    await openRecentFromLauncher(page, 'reload-undo-a.md');
+    await openRecentFromFileMenu(page, 'reload-undo-b.md');
+    await disableAutosave(page);
+    await expect.poll(() => activeBufferContent(page)).toBe('Beta');
+    await editDocument(page, 'Beta edited');
+    await page.getByRole('tab', { name: 'reload-undo-a.md' }).click();
+    await expect.poll(() => activeBufferContent(page)).toBe('Alpha');
+    await editDocument(page, 'Alpha edited');
+    await writeFile(first, 'Alpha external', 'utf8');
+    await page.evaluate(() => window.dispatchEvent(new Event('focus')));
+    const conflict = page.getByRole('dialog', { name: 'File changed on disk' });
+    await conflict.getByRole('button', { name: 'Reload from disk' }).click();
+    await expect(conflict).toHaveCount(0);
+    const editor = page.locator('[data-editor-surface] textarea').first();
+    await expect.poll(() => activeBufferContent(page)).toBe('Alpha external');
+    await expect(page.locator('[data-editor-surface] .view-lines').first()).toHaveText('Alpha external');
+    await page.locator('[data-editor-surface] .view-lines').first().click();
+    await expect(editor).toBeFocused();
+    await editor.press(`${await editorModifier(page)}+z`);
+    await expect.poll(() => activeBufferContent(page)).toBe('Alpha external');
+    await expect(page.locator('[data-editor-surface] .view-lines').first()).toHaveText('Alpha external');
+    await page.getByRole('tab', { name: 'reload-undo-b.md' }).click();
+    await expect.poll(() => activeBufferContent(page)).toBe('Beta edited');
+    await expect(page.locator('[data-editor-surface] .view-lines').first()).toHaveText('Beta edited');
+    await page.locator('[data-editor-surface] .view-lines').first().click();
+    await editor.press(`${await editorModifier(page)}+z`);
+    await expect.poll(() => activeBufferContent(page)).toBe('Beta');
+    await expect(page.locator('[data-editor-surface] .view-lines').first()).toHaveText('Beta');
+    expect(await readFile(first, 'utf8')).toBe('Alpha external');
+    expect(await readFile(second, 'utf8')).toBe('Beta');
+});
+
 test('keeps reloaded disk content after autosave and switching tabs', async ({ app }) => {
     const external = '# Reloaded from disk\n';
     const source = await app.writeDocument('reload-autosave.md', '# Original\n');

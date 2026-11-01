@@ -68,7 +68,7 @@ Depends on group 2 (activation token adoption). Owners: `frontend/src/app/useDoc
       decorations, the scroll port and `attachEditor` with the new activation token. Add component tests that after
       A → B → A the links, lint markers and scroll restore work on A and none of B's registrations remain; verify
       they pass with the existing `CodeEditor` and `EditorStage` tests.
-- [ ] 3.3 Add an e2e test for "Switch tabs" and "Undo after reload". Record the refinement of ADR-0014 as ADR-0040 in
+- [x] 3.3 Add an e2e test for "Switch tabs" and "Undo after reload". Record the refinement of ADR-0014 as ADR-0040 in
       `docs/architecture.md`; verify the e2e test passes and the behaviour in the real app.
 
 ## 4. Keep mine works on mixed-line-ending files
