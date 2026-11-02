@@ -4,6 +4,7 @@ import { dispatchAction, type ActionDispatchContext, type ActionResult } from '.
 import { getActionAvailability, type ActionId } from './actionRegistry';
 import { dispatchShellAction, type ShellAction } from './shellActions';
 import { currentPlatform, shortcutForKeyEvent } from './shortcutRegistry';
+import { isEditorTextInput } from './editorTextInput';
 
 export interface ShortcutAction {
     id: ActionId;
@@ -29,7 +30,7 @@ function isShellAction(action: ShellShortcutAction): action is ShellAction {
 
 export function useShellShortcuts(actions: readonly ShellShortcutAction[]): void {
     useEffect((): (() => void) => {
-        const onKeyDown = (event: KeyboardEvent): void => {
+        const dispatchKeyDown = (event: KeyboardEvent, capturing: boolean): void => {
             if (event.defaultPrevented) {
                 return;
             }
@@ -42,7 +43,7 @@ export function useShellShortcuts(actions: readonly ShellShortcutAction[]): void
                         (candidate.shortcut === eventBinding ||
                             (!isShellAction(candidate) && candidate.shortcutAliases?.includes(eventBinding) === true))),
             );
-            if (action?.id === 'export-pdf') {
+            if (action?.id === 'export-pdf' && !capturing) {
                 // The webview's own print must never run, whether or not Export is available.
                 event.preventDefault();
             }
@@ -57,6 +58,7 @@ export function useShellShortcuts(actions: readonly ShellShortcutAction[]): void
                 return;
             }
             event.preventDefault();
+            if (isEditorTextInput(event.target)) event.stopPropagation();
             if (isShellAction(action)) {
                 void dispatchShellAction(action);
                 return;
@@ -66,7 +68,15 @@ export function useShellShortcuts(actions: readonly ShellShortcutAction[]): void
                 invoke: action.invoke,
             }).then((result): void => action.onResult?.(result));
         };
+        const captureEditor = (event: KeyboardEvent): void => {
+            if (isEditorTextInput(event.target)) dispatchKeyDown(event, true);
+        };
+        const onKeyDown = (event: KeyboardEvent): void => dispatchKeyDown(event, false);
+        window.addEventListener('keydown', captureEditor, true);
         window.addEventListener('keydown', onKeyDown);
-        return (): void => window.removeEventListener('keydown', onKeyDown);
+        return (): void => {
+            window.removeEventListener('keydown', captureEditor, true);
+            window.removeEventListener('keydown', onKeyDown);
+        };
     }, [actions]);
 }

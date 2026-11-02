@@ -159,7 +159,7 @@ area"; editor "Text navigation and line editing keys". Design §7. Owners:
 (`:484-546`), `frontend/src/logic/actions/useShellShortcuts.ts`, `frontend/src/logic/actions/actionRegistry.ts`
 (`:441-448`), `shortcutRegistry.ts`, `frontend/src/ui/components/monacoSetup.ts`.
 
-- [ ] 8.1 Register the executor, tab and shell listeners in the capture phase for events targeted at the editor text
+- [x] 8.1 Register the executor, tab and shell listeners in the capture phase for events targeted at the editor text
       area, stopping propagation when an available command matches; leave Find/Replace inputs on the bubble path.
       Add e2e tests for "Link in the editor", "Inline code on macOS", "Previous tab from the editor", "Catalogue
       shortcut wins over an editor key", and that "Key handled by the Find input" (`reading-mode.test.ts:128`) still

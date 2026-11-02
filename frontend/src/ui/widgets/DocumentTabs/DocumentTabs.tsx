@@ -16,6 +16,7 @@ import {
     type ProjectedActionState,
 } from '../../../logic/actions/actionRegistry';
 import { currentPlatform, shortcutForKeyEvent } from '../../../logic/actions/shortcutRegistry';
+import { isEditorTextInput } from '../../../logic/actions/editorTextInput';
 import { t } from '../../../i18n';
 import LiveRegion from '../../primitives/LiveRegion';
 import type { PopupAnchor } from '../../components/Popup';
@@ -525,6 +526,7 @@ const DocumentTabs: React.FC<DocumentTabsProps> = ({
                     return;
                 }
                 event.preventDefault();
+                if (isEditorTextInput(event.target)) event.stopPropagation();
                 void handleTabAction(action.id, active, targetIndex);
                 return;
             }
@@ -537,12 +539,20 @@ const DocumentTabs: React.FC<DocumentTabsProps> = ({
                 return;
             }
             event.preventDefault();
+            if (isEditorTextInput(event.target)) event.stopPropagation();
             const offset = action.id === 'next-tab' ? 1 : -1;
             const target = orderedDocuments[(current + offset + orderedDocuments.length) % orderedDocuments.length];
             if (target !== undefined) void activateDocument(target.documentId);
         };
+        const captureEditor = (event: KeyboardEvent): void => {
+            if (isEditorTextInput(event.target)) navigate(event);
+        };
+        window.addEventListener('keydown', captureEditor, true);
         window.addEventListener('keydown', navigate);
-        return (): void => window.removeEventListener('keydown', navigate);
+        return (): void => {
+            window.removeEventListener('keydown', captureEditor, true);
+            window.removeEventListener('keydown', navigate);
+        };
     }, [activateDocument, activeDocumentId, actionProjection, handleTabAction, modalOpen, orderedDocuments]);
 
     const contextAdapter: TabContextAdapter = adapter;
