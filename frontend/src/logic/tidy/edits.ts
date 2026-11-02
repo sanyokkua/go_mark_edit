@@ -12,6 +12,7 @@ import {
     hardBreakRanges,
     inlineMarkerRanges,
     protectedRanges,
+    trailingHorizontalWhitespaceStart,
     unorderedMarkerAt,
     type BulletMarker,
 } from './rules';
@@ -63,13 +64,14 @@ export function compactEdits(source: string, tree: Root): TextEdit[] {
         } else {
             blanks = 0;
         }
-        const whitespace = /[ \t]+$/u.exec(line.value);
-        if (whitespace === null) continue;
-        const from = line.end - whitespace[0].length;
+        const index = trailingHorizontalWhitespaceStart(line.value);
+        if (index === line.value.length) continue;
+        const whitespace = line.value.slice(index);
+        const from = line.from + index;
         if (protectedSpans.some((span) => span.from < line.end && span.to > from)) continue;
         const hardBreak =
-            whitespace[0].length >= 2 &&
-            /^ +$/u.test(whitespace[0]) &&
+            whitespace.length >= 2 &&
+            /^ +$/u.test(whitespace) &&
             breaks.some((span) => span.from <= from && span.to > line.end);
         if (!hardBreak) edits.push({ from, to: line.end, text: '' });
     }
@@ -100,12 +102,13 @@ function blockGapEdits(source: string, tree: Root): TextEdit[] {
 function formatLineEdits(source: string, tree: Root, finalChunk: boolean): TextEdit[] {
     const edits = compactEdits(source, tree);
     if (!finalChunk) return edits.concat(blockGapEdits(source, tree));
-    const tail = /[ \t\n]+$/u.exec(source);
-    if (tail !== null) {
-        const from = source.length - tail[0].length;
+    let from = source.length;
+    while (from > 0 && (source[from - 1] === ' ' || source[from - 1] === '\t' || source[from - 1] === '\n')) from--;
+    if (from < source.length) {
+        const tail = source.slice(from);
         const safe = !protectedRanges(tree, source).some((span) => span.from < source.length && span.to > from);
         if (safe) {
-            if (tail[0] !== '\n') {
+            if (tail !== '\n') {
                 for (let index = edits.length - 1; index >= 0; index--) {
                     if (edits[index].to > from || edits[index].from >= from) edits.splice(index, 1);
                 }
@@ -208,9 +211,20 @@ export function headingReplacement(
         return depth === heading.depth ? `${'#'.repeat(depth)} ${lines[0]}` : null;
     }
     if (preferred !== 'setext' || heading.depth > 2 || current.includes('\n')) return null;
-    const atx = /^(#{1,6})(?:[ \t]+(.*))?$/u.exec(current);
+    const atx = /^(#{1,6})(?=[ \t]|$)/u.exec(current);
     if (atx === null || atx[1].length !== heading.depth) return null;
-    const content = (atx[2] ?? '').replace(/[ \t]+#+[ \t]*$/u, '').trimEnd();
+    let start = atx[1].length;
+    while (current[start] === ' ' || current[start] === '\t') start++;
+    let rawContent = current.slice(start);
+    if (/[\r\n\u2028\u2029]/u.test(rawContent)) return null;
+    let end = trailingHorizontalWhitespaceStart(rawContent);
+    const afterHashes = end;
+    while (end > 0 && rawContent[end - 1] === '#') end--;
+    if (end < afterHashes && end > 0 && (rawContent[end - 1] === ' ' || rawContent[end - 1] === '\t')) {
+        while (end > 0 && (rawContent[end - 1] === ' ' || rawContent[end - 1] === '\t')) end--;
+        rawContent = rawContent.slice(0, end);
+    }
+    const content = rawContent.trimEnd();
     if (content === '') return null;
     const underlineText = (heading.depth === 1 ? '=' : '-').repeat(Math.max(3, displayWidth(toString(heading))));
     const candidate = `${content}\n${continuation}${underlineText}`;

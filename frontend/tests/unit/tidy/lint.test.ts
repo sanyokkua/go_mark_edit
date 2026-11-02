@@ -168,3 +168,28 @@ test('when Format succeeds, Lint reports only rules Format does not fix', () => 
     const formatted = applyEdits(source, outcome.edits);
     expect(lint(formatted).map((finding) => finding.rule)).toEqual(['single-h1', 'fence-language']);
 });
+
+test('Lint reports only trailing ASCII horizontal whitespace with exact columns', () => {
+    expect(rule('x\u00a0 \t\n', 'trailing-space')).toMatchObject([
+        { startLine: 1, startColumn: 3, endLine: 1, endColumn: 5 },
+    ]);
+    expect(rule('x \u00a0\n', 'trailing-space')).toEqual([]);
+    for (const suffix of ['\r', '\u2028', '\u2029']) {
+        const source = `x ${suffix}\n`;
+        expect(
+            lintFindings(source, parseFull(source), prefs, { h1Count: 0 }, true).filter(
+                (item) => item.rule === 'trailing-space',
+            ),
+        ).toEqual([]);
+    }
+});
+
+test('Lint handles long interior whitespace without repeated suffix scans', () => {
+    const source = 'x' + ' '.repeat(40_000) + 'x\n';
+    const tree = parseFull(source);
+    const start = performance.now();
+    const findings = lintFindings(source, tree, prefs, { h1Count: 0 }, true);
+    const elapsed = performance.now() - start;
+    expect(findings).toEqual([]);
+    expect(elapsed).toBeLessThan(1200);
+});

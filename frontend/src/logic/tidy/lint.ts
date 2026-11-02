@@ -10,6 +10,7 @@ import {
     hardBreakRanges,
     inlineMarkerRanges,
     protectedRanges,
+    trailingHorizontalWhitespaceStart,
     unorderedMarkerAt,
     type BulletMarker,
     type SourceRange,
@@ -165,12 +166,13 @@ function lintLines(source: string, tree: Root, add: (rule: LintRule, from: numbe
             blanks++;
             if (blanks === 2) add('blank-lines', from, after);
         } else blanks = 0;
-        const whitespace = /[ \t]+$/u.exec(value);
-        if (whitespace !== null) {
-            const start = end - whitespace[0].length;
+        const index = trailingHorizontalWhitespaceStart(value);
+        if (index < value.length) {
+            const whitespace = value.slice(index);
+            const start = from + index;
             const hardBreak =
-                whitespace[0].length >= 2 &&
-                /^ +$/u.test(whitespace[0]) &&
+                whitespace.length >= 2 &&
+                /^ +$/u.test(whitespace) &&
                 breaks.some((span) => span.from <= start && span.to > end);
             if (!overlaps(protectedSpans, start, end) && !hardBreak) add('trailing-space', start, end);
         }

@@ -153,3 +153,10 @@ export function hardBreakRanges(tree: Root): SourceRange[] {
     });
     return ranges;
 }
+
+/** Return the beginning of a trailing run of ASCII spaces and tabs. */
+export function trailingHorizontalWhitespaceStart(value: string): number {
+    let index = value.length;
+    while (index > 0 && (value[index - 1] === ' ' || value[index - 1] === '\t')) index--;
+    return index;
+}

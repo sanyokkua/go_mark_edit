@@ -335,3 +335,38 @@ test('when a document contains both a nested fence and a reference definition, F
     expect(links).toEqual(['*x*']);
     expect(runOnText('format', source, prefs)).toEqual({ kind: 'refused', reason: 'render-differs' });
 });
+
+test('chunking handles a long malformed math opener without repeated scans', () => {
+    const prefix = '$$' + ' '.repeat(40_000) + '$\n\n';
+    const source = prefix + '# real\n' + 'x'.repeat(256 * 1024);
+    const start = performance.now();
+    const chunks = splitIntoChunks(source);
+    const elapsed = performance.now() - start;
+    expect(chunks.map((chunk) => chunk.offset)).toEqual([0, prefix.length]);
+    expect(chunks.map((chunk) => chunk.text).join('')).toBe(source);
+    expect(elapsed).toBeLessThan(1200);
+});
+
+test.each([
+    ['$$', '$$', true],
+    ['$$$', '$$$', true],
+    ['$$$$ text', '$$$$', true],
+    ['$$ text', '$$', true],
+    ['   $$ text', '$$', true],
+    ['$$ text \u2028', '$$', true],
+    ['$$ text $', '$$', false],
+    ['    $$ text', '$$', false],
+    ['\t$$ text', '$$', false],
+])('chunking respects the math opener %s', (opener, close, opensMath) => {
+    const before = `${opener}\n\n`;
+    const inside = '# inside\n';
+    const middle = `${opensMath ? close : 'ordinary text'}\n\n${'x'.repeat(256 * 1024)}\n\n`;
+    const after = '# after\nend\n';
+    const source = before + inside + middle + after;
+    const chunks = splitIntoChunks(source);
+    const expectedOffsets = opensMath
+        ? [0, before.length + inside.length + middle.length]
+        : [0, before.length, before.length + inside.length + middle.length];
+    expect(chunks.map((chunk) => chunk.offset)).toEqual(expectedOffsets);
+    expect(chunks.map((chunk) => chunk.text).join('')).toBe(source);
+});

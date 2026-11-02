@@ -134,7 +134,7 @@ export function splitIntoChunks(source: string): TidyChunk[] {
                         if (codeRanges === null && open !== null)
                             fence = { marker: open[1][0], length: open[1].length };
                         else {
-                            const mathOpen = /^ {0,3}(\${2,})(?:[ \t]*[^$]*)?$/u.exec(line);
+                            const mathOpen = /^ {0,3}(\${2,})[^$]*$/u.exec(line);
                             if (mathOpen !== null) math = mathOpen[1].length;
                         }
                     }
