@@ -1,5 +1,4 @@
 const forbidden = new Set(['script', 'foreignobject', 'img', 'image', 'use']);
-const urlPattern = /url\s*\(\s*(?:(['"])(.*?)\1|([^)]*))\s*\)/gi;
 const safeFunctions = new Set([
     'rgb',
     'rgba',
@@ -36,8 +35,19 @@ const safeFunctions = new Set([
 ]);
 
 function decodeCssEscapes(value: string): string {
-    return value
-        .replace(/\/\*[\s\S]*?\*\//g, '')
+    const parts: string[] = [];
+    let cursor = 0;
+    while (true) {
+        const open = value.indexOf('/*', cursor);
+        if (open < 0) break;
+        const close = value.indexOf('*/', open + 2);
+        if (close < 0) break;
+        parts.push(value.slice(cursor, open));
+        cursor = close + 2;
+    }
+    parts.push(value.slice(cursor));
+    return parts
+        .join('')
         .replace(
             /\\([0-9a-f]{1,6})(?:\r\n|[\t\n\f\r ])?|\\([^\n\f\r])/gi,
             (_match, hex: string | undefined, escaped: string | undefined) => {
@@ -116,11 +126,53 @@ function safeDeclaration(segment: string): string {
 }
 
 function canonicalLocalUrls(value: string): string {
-    return value.replace(
-        urlPattern,
-        (_match, _quote, quoted: string | undefined, bare: string | undefined) =>
-            `url(${(quoted ?? bare ?? '').trim()})`,
-    );
+    return rewriteCssUrls(value, (target) => `url(${target})`);
+}
+
+/** Match the existing URL syntax without repeatedly scanning malformed suffixes. */
+function rewriteCssUrls(value: string, replace: (target: string, original: string) => string): string {
+    const closings: Record<string, number[]> = { "'": [], '"': [] };
+    const lineEnds: number[] = [];
+    for (let index = 0; index < value.length; index++) {
+        const character = value[index];
+        if (character === '\n' || character === '\r' || character === '\u2028' || character === '\u2029') {
+            lineEnds.push(index);
+        }
+        if (character !== "'" && character !== '"') continue;
+        let after = index + 1;
+        while (after < value.length && /\s/.test(value[after])) after++;
+        if (value[after] === ')') closings[character].push(index);
+    }
+    const positions: Record<string, number> = { "'": 0, '"': 0 };
+    let linePosition = 0;
+    const prefix = /url\s*\(\s*/gi;
+    const parts: string[] = [];
+    let cursor = 0;
+    let match: RegExpExecArray | null;
+    while ((match = prefix.exec(value))) {
+        const content = prefix.lastIndex;
+        const bareEnd = value.indexOf(')', content);
+        if (bareEnd < 0) break;
+        let end = bareEnd;
+        let target = value.slice(content, end);
+        const quote = value[content];
+        if (quote === "'" || quote === '"') {
+            const candidates = closings[quote];
+            while (positions[quote] < candidates.length && candidates[positions[quote]] <= content) positions[quote]++;
+            while (linePosition < lineEnds.length && lineEnds[linePosition] <= content) linePosition++;
+            const close = candidates[positions[quote]];
+            if (close !== undefined && (linePosition === lineEnds.length || close < lineEnds[linePosition])) {
+                target = value.slice(content + 1, close);
+                end = value.indexOf(')', close + 1);
+            }
+        }
+        const original = value.slice(match.index, end + 1);
+        parts.push(value.slice(cursor, match.index), replace(target.trim(), original));
+        cursor = end + 1;
+        prefix.lastIndex = cursor;
+    }
+    parts.push(value.slice(cursor));
+    return parts.join('');
 }
 
 function sanitizeCss(css: string, stylesheet: boolean): string {
@@ -207,25 +259,29 @@ function escapePattern(value: string): string {
 }
 
 function namespaceCss(css: string, ids: Map<string, string>): string {
-    const withUrls = css.replace(
-        urlPattern,
-        (match, _quote: string | undefined, quoted: string | undefined, bare: string | undefined) => {
-            const target = (quoted ?? bare ?? '').trim();
-            return target.startsWith('#') && ids.has(target.slice(1)) ? `url(#${ids.get(target.slice(1))})` : match;
-        },
+    const withUrls = rewriteCssUrls(css, (target, match) =>
+        target.startsWith('#') && ids.has(target.slice(1)) ? `url(#${ids.get(target.slice(1))})` : match,
     );
     const sortedIds = [...ids.keys()].sort((a, b) => b.length - a.length);
-    return withUrls.replace(/([^{}]+)\{/g, (match, selector: string) => {
-        if (selector.trimStart().startsWith('@')) return match;
+    const parts: string[] = [];
+    let start = 0;
+    for (let index = 0; index < withUrls.length; index++) {
+        if (withUrls[index] !== '{' && withUrls[index] !== '}') continue;
+        const selector = withUrls.slice(start, index);
         let rewritten = selector;
-        for (const old of sortedIds) {
-            rewritten = rewritten.replace(
-                new RegExp(`#${escapePattern(old)}(?![A-Za-z0-9_-])`, 'g'),
-                `#${ids.get(old)}`,
-            );
+        if (withUrls[index] === '{' && !selector.trimStart().startsWith('@')) {
+            for (const old of sortedIds) {
+                rewritten = rewritten.replace(
+                    new RegExp(`#${escapePattern(old)}(?![A-Za-z0-9_-])`, 'g'),
+                    `#${ids.get(old)}`,
+                );
+            }
         }
-        return `${rewritten}{`;
-    });
+        parts.push(rewritten, withUrls[index]);
+        start = index + 1;
+    }
+    parts.push(withUrls.slice(start));
+    return parts.join('');
 }
 
 /** Cached SVG needs fresh IDs when identical diagrams appear more than once. */
@@ -253,14 +309,8 @@ export function namespaceMermaidSvg(svg: string, namespace: string): string {
                     .map((id) => ids.get(id) ?? id)
                     .join(' ');
             } else {
-                attribute.value = attribute.value.replace(
-                    urlPattern,
-                    (match, _quote: string | undefined, quoted: string | undefined, bare: string | undefined) => {
-                        const target = (quoted ?? bare ?? '').trim();
-                        return target.startsWith('#') && ids.has(target.slice(1))
-                            ? `url(#${ids.get(target.slice(1))})`
-                            : match;
-                    },
+                attribute.value = rewriteCssUrls(attribute.value, (target, match) =>
+                    target.startsWith('#') && ids.has(target.slice(1)) ? `url(#${ids.get(target.slice(1))})` : match,
                 );
             }
         }

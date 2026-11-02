@@ -122,3 +122,71 @@ it('drops CSS declarations with newlines inside quoted strings before browser CS
     expect(css).toBe('');
     expect(inline).toBe('');
 });
+
+it('preserves URL matching and selector boundaries while namespacing', () => {
+    const source = `<svg xmlns="http://www.w3.org/2000/svg"><style>@media x {#paint, #p {fill:#paint;stroke:URL( '#paint' )}} #paint-x{fill:red}</style><defs><linearGradient id="paint"/><linearGradient id="p"/></defs><rect data-value="noturl(#paint) url(&quot;a)b&quot;) url(&quot;x)y&quot; z) url(#unknown)"/></svg>`;
+    const diagram = svg(namespaceMermaidSvg(source, 'd'));
+    expect(diagram.querySelector('style')?.textContent).toBe(
+        '@media x {#d-paint, #d-p {fill:#paint;stroke:url(#d-paint)}} #paint-x{fill:red}',
+    );
+    expect(diagram.querySelector('rect')?.getAttribute('data-value')).toBe(
+        'noturl(#d-paint) url("a)b") url("x)y" z) url(#unknown)',
+    );
+});
+
+it('uses the quoted URL branch across a closing parenthesis and preserves bare fallback', () => {
+    const source = `<svg xmlns="http://www.w3.org/2000/svg"><g id="a)b"/><rect data-value="url(&quot;#a)b&quot;) url(&quot;#a)b&quot; extra)"/></svg>`;
+    expect(svg(namespaceMermaidSvg(source, 'd')).querySelector('rect')?.getAttribute('data-value')).toBe(
+        'url(#d-a)b) url("#a)b" extra)',
+    );
+});
+
+it.each([
+    ['LF', '&#10;', '\n'],
+    ['CR', '&#13;', '\r'],
+    ['line separator', '&#8232;', '\u2028'],
+    ['paragraph separator', '&#8233;', '\u2029'],
+])('preserves bare URL fallback after a quoted %s', (_name, entity, separator) => {
+    const source = `<svg xmlns="http://www.w3.org/2000/svg"><g id="a${entity})b"/><g id="paint"/><rect data-value="url(&quot;#a${entity})b&quot;) URL(&#160;'#paint'&#160;)"/></svg>`;
+    expect(svg(namespaceMermaidSvg(source, 'd')).querySelector('rect')?.getAttribute('data-value')).toBe(
+        `url("#a${separator})b") url(#d-paint)`,
+    );
+});
+
+it('removes closed comments even inside quoted CSS and retains unterminated comments', () => {
+    const source = `<svg xmlns="http://www.w3.org/2000/svg"><rect style="font-family:'a/*one*/b/*two*/c/*open';fill:red"/></svg>`;
+    expect(svg(scrubMermaidSvg(source)).querySelector('rect')?.getAttribute('style')).toBe(
+        "font-family:'abc/*open';fill:red",
+    );
+});
+
+it('handles long malformed URL text in safe quoted CSS without quadratic work', () => {
+    const value = 'url('.repeat(20000);
+    const source = `<svg xmlns="http://www.w3.org/2000/svg"><rect style="font-family:'${value}';fill:red"/></svg>`;
+    const start = performance.now();
+    const result = svg(scrubMermaidSvg(source)).querySelector('rect')?.getAttribute('style');
+    const elapsed = performance.now() - start;
+    expect(result).toBe(`font-family:'${value}';fill:red`);
+    expect(elapsed).toBeLessThan(1200);
+});
+
+it('handles a long malformed stylesheet selector without quadratic work', () => {
+    const value = 'x'.repeat(40000);
+    const source = `<svg xmlns="http://www.w3.org/2000/svg"><style>${value}</style><g id="x"/><rect fill="url(#x)"/></svg>`;
+    const start = performance.now();
+    const result = svg(namespaceMermaidSvg(source, 'd'));
+    const elapsed = performance.now() - start;
+    expect(result.querySelector('style')?.textContent).toBe(value);
+    expect(result.querySelector('rect')?.getAttribute('fill')).toBe('url(#d-x)');
+    expect(elapsed).toBeLessThan(1200);
+});
+
+it('handles long unterminated CSS comments without quadratic work', () => {
+    const value = '/*a'.repeat(60000);
+    const source = `<svg xmlns="http://www.w3.org/2000/svg"><rect style="font-family:'${value}';fill:red"/></svg>`;
+    const start = performance.now();
+    const result = svg(scrubMermaidSvg(source)).querySelector('rect')?.getAttribute('style');
+    const elapsed = performance.now() - start;
+    expect(result).toBe(`font-family:'${value}';fill:red`);
+    expect(elapsed).toBeLessThan(1200);
+});
