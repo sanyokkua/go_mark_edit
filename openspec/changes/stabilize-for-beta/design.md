@@ -205,8 +205,9 @@ contribution, which is not loaded, so Option+arrows do nothing. Import the `word
 contributions there. Their overlaps with the catalogue are Mod+Enter (insert line below versus Distraction-free
 reading) and the Mod+K chord (Mod+K Mod+X trim whitespace, beside hover's Mod+K Mod+I); the capture-phase dispatch
 above runs the catalogue command first, so neither chord can start. `monacoLanguages.test.ts` mocks each Monaco
-import, so the two new imports get mocks there. Monaco's read-only mode already refuses
-the line edits.
+import, so the two new imports get mocks there. Monaco's Linux Copy Line Down default differs from the specified
+Shift+Alt+Down; register that binding in the same setup owner for editable editor focus, replacing Monaco's Linux
+default. Monaco's read-only mode already refuses the line edits.
 
 - Rejected: importing `editor.all`. It also brings suggest, folding, code actions and more, works against the bundle
   goal in §12, and adds bindings that would need their own conflict review.

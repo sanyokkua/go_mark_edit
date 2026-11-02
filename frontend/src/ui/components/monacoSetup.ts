@@ -1,5 +1,7 @@
 import * as monaco from 'monaco-editor/esm/vs/editor/editor.api';
 import 'monaco-editor/esm/vs/editor/browser/coreCommands';
+import 'monaco-editor/esm/vs/editor/contrib/wordOperations/browser/wordOperations';
+import 'monaco-editor/esm/vs/editor/contrib/linesOperations/browser/linesOperations';
 import 'monaco-editor/esm/vs/basic-languages/markdown/markdown.contribution';
 import 'monaco-editor/esm/vs/basic-languages/javascript/javascript.contribution';
 import 'monaco-editor/esm/vs/basic-languages/typescript/typescript.contribution';
@@ -35,6 +37,23 @@ import { language as jsonLanguage } from './monaco/json';
 import { language as diffLanguage } from './monaco/diff';
 import { language as makefileLanguage } from './monaco/makefile';
 import { language as mermaidLanguage } from './monaco/mermaid';
+
+export function configureLineKeybindings(platform: string): void {
+    if (!/^Linux/iu.test(platform)) return;
+    monaco.editor.addKeybindingRules([
+        {
+            keybinding: monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyMod.Alt | monaco.KeyCode.DownArrow,
+            command: '-editor.action.copyLinesDownAction',
+        },
+        {
+            keybinding: monaco.KeyMod.Shift | monaco.KeyMod.Alt | monaco.KeyCode.DownArrow,
+            command: 'editor.action.copyLinesDownAction',
+            when: 'editorTextFocus && !editorReadonly',
+        },
+    ]);
+}
+
+configureLineKeybindings(navigator.platform);
 
 const grammarAliases: ReadonlyArray<[string, () => Promise<{ language: monaco.languages.IMonarchLanguage }>]> = [
     ['jsx', () => import('monaco-editor/esm/vs/basic-languages/javascript/javascript')],

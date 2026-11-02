@@ -11,7 +11,7 @@ const shard = shardMatch === null ? undefined : { current: Number(shardMatch[1])
 // Files that exercise behaviour tied to the platform the product ships on. The release
 // workflow sets E2E_SUBSET=macos to run only these plus the @native-clipboard tests, serially.
 const macosSubset = process.env.E2E_SUBSET === 'macos';
-const macosFiles = /(?:pdf-export|launch-target|menus|editor-format-shortcuts)\.test\.ts$/u;
+const macosFiles = /(?:pdf-export|launch-target|menus|editor-format-shortcuts|editor-line-keys)\.test\.ts$/u;
 
 // E2E_PROJECTS='<name>,<name>' keeps only those projects so CI jobs can run the parallel and the
 // serial groups apart. Playwright runs every dependency of a selected project in full on every
@@ -55,7 +55,7 @@ export default defineConfig({
                       grepInvert: /@native-clipboard/u,
                       fullyParallel: false,
                       workers: 1,
-                      use: { ...devices['Desktop Chrome'] },
+                      use: { ...devices['Desktop Chrome'], userAgent: undefined },
                   },
                   {
                       name: 'chromium-native',
@@ -63,14 +63,14 @@ export default defineConfig({
                       dependencies: ['chromium-macos'],
                       fullyParallel: false,
                       workers: 1,
-                      use: { ...devices['Desktop Chrome'] },
+                      use: { ...devices['Desktop Chrome'], userAgent: undefined },
                   },
               ]
             : [
                   {
                       name: 'chromium',
                       grepInvert: /@native-clipboard|@perf/u,
-                      use: { ...devices['Desktop Chrome'] },
+                      use: { ...devices['Desktop Chrome'], userAgent: undefined },
                   },
                   {
                       name: 'chromium-serial',
@@ -79,7 +79,7 @@ export default defineConfig({
                       dependencies: ['chromium'],
                       fullyParallel: false,
                       workers: 1,
-                      use: { ...devices['Desktop Chrome'] },
+                      use: { ...devices['Desktop Chrome'], userAgent: undefined },
                   },
                   ...(process.env.E2E_NATIVE_CLIPBOARD === '1'
                       ? [
@@ -89,7 +89,7 @@ export default defineConfig({
                                 dependencies: ['chromium-serial'],
                                 fullyParallel: false,
                                 workers: 1,
-                                use: { ...devices['Desktop Chrome'] },
+                                use: { ...devices['Desktop Chrome'], userAgent: undefined },
                             },
                         ]
                       : []),

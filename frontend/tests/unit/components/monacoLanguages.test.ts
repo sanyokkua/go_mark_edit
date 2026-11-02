@@ -5,9 +5,12 @@ const registerTokensProviderFactory = jest.fn();
 const setMonarchTokensProvider = jest.fn();
 const onLanguageEncountered = jest.fn();
 const loadJavascriptGrammar = jest.fn();
+const addKeybindingRules = jest.fn();
 
 jest.mock('monaco-editor/esm/vs/editor/editor.api', () => ({
-    editor: { defineTheme: jest.fn(), setTheme: jest.fn() },
+    editor: { defineTheme: jest.fn(), setTheme: jest.fn(), addKeybindingRules },
+    KeyMod: { CtrlCmd: 2048, Shift: 1024, Alt: 512 },
+    KeyCode: { DownArrow: 18 },
     languages: { register, registerTokensProviderFactory, setMonarchTokensProvider, onLanguageEncountered },
 }));
 jest.mock('monaco-editor/esm/vs/basic-languages/_.contribution', () => ({
@@ -17,6 +20,8 @@ jest.mock('monaco-editor/esm/vs/basic-languages/_.contribution', () => ({
     },
 }));
 jest.mock('monaco-editor/esm/vs/editor/browser/coreCommands', () => ({}));
+jest.mock('monaco-editor/esm/vs/editor/contrib/wordOperations/browser/wordOperations', () => ({}));
+jest.mock('monaco-editor/esm/vs/editor/contrib/linesOperations/browser/linesOperations', () => ({}));
 jest.mock('monaco-editor/esm/vs/editor/contrib/hover/browser/hoverContribution', () => ({}));
 jest.mock('monaco-editor/esm/vs/editor/contrib/links/browser/links', () => ({}));
 jest.mock('monaco-editor/esm/vs/editor/editor.worker?worker', () => jest.fn(), { virtual: true });
@@ -195,4 +200,21 @@ test('loading Monaco setup registers each fenced language id with its tokenizer'
     ]) {
         expect(firstMatch(mermaid, input)?.text).toBe(input);
     }
+});
+
+test('configures Copy Line Down only for Linux and removes its old Linux binding', async () => {
+    const { configureLineKeybindings } = await import('../../../src/ui/components/monacoSetup');
+    addKeybindingRules.mockClear();
+    configureLineKeybindings('darwin');
+    configureLineKeybindings('win32');
+    expect(addKeybindingRules).not.toHaveBeenCalled();
+    configureLineKeybindings('linux');
+    expect(addKeybindingRules).toHaveBeenCalledWith([
+        { keybinding: 2048 | 1024 | 512 | 18, command: '-editor.action.copyLinesDownAction' },
+        {
+            keybinding: 1024 | 512 | 18,
+            command: 'editor.action.copyLinesDownAction',
+            when: 'editorTextFocus && !editorReadonly',
+        },
+    ]);
 });

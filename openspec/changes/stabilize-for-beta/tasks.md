@@ -168,7 +168,8 @@ area"; editor "Text navigation and line editing keys". Design §7. Owners:
       PageDown/PageUp stay aliases), and teach `formatShortcut` ⌃, ⇥ and PageUp/PageDown on macOS and their names
       elsewhere; update the shortcuts dialog and menu hints. Add `shortcutForKeyEvent` and formatting unit tests for
       darwin and other platforms; verify them, and check Control+Tab and Cmd+K/Cmd+E in the real app.
-- [ ] 8.3 Load Monaco's `wordOperations` and `linesOperations` contributions in `monacoSetup.ts` and add their mocks in
+- [x] 8.3 Load Monaco's `wordOperations` and `linesOperations` contributions in `monacoSetup.ts`, configure the
+      specified Linux Copy Line Down binding, and add their mocks in
       `frontend/tests/unit/components/monacoLanguages.test.ts`, with a unit test that the word and line commands are
       registered. Add an e2e test covering the scenarios of "Text navigation and line editing keys" (word move,
       select and delete, line start/end, document start/end, line operations, read-only document) using the running
