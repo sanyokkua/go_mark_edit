@@ -519,7 +519,7 @@ function formatInlineLine(line: string, pair: InlinePair): string {
     const prefix = inlinePrefix(line);
     const remainder = line.slice(prefix.length);
     const leading = remainder.match(/^\s*/)?.[0] ?? '';
-    const trailing = remainder.match(/\s*$/)?.[0] ?? '';
+    const trailing = remainder.slice(remainder.trimEnd().length);
     const content = remainder.slice(leading.length, remainder.length - trailing.length);
     return content.length === 0 ? line : prefix + leading + pair.open + content + pair.close + trailing;
 }
@@ -534,7 +534,7 @@ function inlineContentBounds(
     const prefix = inlinePrefix(line);
     const remainder = line.slice(prefix.length);
     const leading = remainder.match(/^\s*/)?.[0] ?? '';
-    const trailing = remainder.match(/\s*$/)?.[0] ?? '';
+    const trailing = remainder.slice(remainder.trimEnd().length);
     return {
         start: prefix.length + leading.length + pair.open.length,
         end: line.length - trailing.length - pair.close.length,
@@ -572,7 +572,9 @@ interface QuotedLine {
 }
 
 export function parseQuoteLine(line: string): QuotedLine {
-    const match = line.match(/^(\s*)(>\s?)?(.*)$/);
+    // Capture whitespace in a lookahead so a later line terminator cannot make
+    // the engine retry the same prefix once for every whitespace character.
+    const match = line.match(/^(?=(\s*))\1(>\s?)?(.*)$/);
     return {
         indent: match?.[1] ?? '',
         quote: match?.[2] ?? '',
@@ -581,24 +583,24 @@ export function parseQuoteLine(line: string): QuotedLine {
 }
 
 function removeHeading(line: string): string {
-    const match = line.match(/^(\s*)#{1,6}(?:\s+|$)(.*)$/);
-    return match === null ? line : (match[1] ?? '') + (match[2] ?? '');
+    const match = line.match(/^(?=(\s*))\1#{1,6}(?:(?=(\s+))\2|$)(.*)$/);
+    return match === null ? line : (match[1] ?? '') + (match[3] ?? '');
 }
 
 export function parseListLine(line: string): ParsedLine {
     const indent = line.match(/^\s*/)?.[0] ?? '';
     const rest = line.slice(indent.length);
-    const task = rest.match(/^[-+*]\s+\[[ xX]\]\s*(.*)$/);
+    const task = rest.match(/^[-+*]\s+\[[ xX]\](?=(\s*))\1(.*)$/);
     if (task !== null) {
-        return { indent, kind: 'task-list', content: task[1] ?? '' };
+        return { indent, kind: 'task-list', content: task[2] ?? '' };
     }
-    const numbered = rest.match(/^\d+[.)]\s+(.*)$/);
+    const numbered = rest.match(/^\d+[.)](?=(\s+))\1(.*)$/);
     if (numbered !== null) {
-        return { indent, kind: 'numbered-list', content: numbered[1] ?? '' };
+        return { indent, kind: 'numbered-list', content: numbered[2] ?? '' };
     }
-    const bullet = rest.match(/^[-+*]\s*(.*)$/);
+    const bullet = rest.match(/^[-+*](?=(\s*))\1(.*)$/);
     if (bullet !== null) {
-        return { indent, kind: 'bullet-list', content: bullet[1] ?? '' };
+        return { indent, kind: 'bullet-list', content: bullet[2] ?? '' };
     }
     return { indent, kind: null, content: rest };
 }
@@ -702,15 +704,15 @@ function headingLine(line: string, level: number): string {
     const quoted = parseQuoteLine(line);
     const parsed = parseListLine(quoted.content);
     const candidate = parsed.kind === null ? quoted.content : parsed.indent + parsed.content;
-    const match = candidate.match(/^(\s*)(#{1,6})(?:\s+|$)(.*)$/);
+    const match = candidate.match(/^(?=(\s*))\1(#{1,6})(?:(?=(\s+))\3|$)(.*)$/);
     if (match === null) {
         const indent = candidate.match(/^\s*/)?.[0] ?? '';
         return quoted.indent + quoted.quote + indent + '#'.repeat(level) + ' ' + candidate.slice(indent.length);
     }
     if (match[2]?.length === level) {
-        return quoted.indent + quoted.quote + (match[1] ?? '') + (match[3] ?? '');
+        return quoted.indent + quoted.quote + (match[1] ?? '') + (match[4] ?? '');
     }
-    return quoted.indent + quoted.quote + (match[1] ?? '') + '#'.repeat(level) + ' ' + (match[3] ?? '');
+    return quoted.indent + quoted.quote + (match[1] ?? '') + '#'.repeat(level) + ' ' + (match[4] ?? '');
 }
 
 function quoteEdit(request: FormatRequest): FormatEdit {
@@ -732,19 +734,32 @@ function linkEdit(request: FormatRequest): FormatEdit {
     const lineEnd = lineEndIndex === -1 ? source.length : lineEndIndex;
     const line = source.substring(lineStart, lineEnd);
     const caretInLine = start - lineStart;
-    const link = /\[([^\]]*)\]\(([^)]*)\)/g;
-    let match: RegExpExecArray | null;
-    while ((match = link.exec(line)) !== null) {
-        const matchStart = match.index;
-        const matchEnd = matchStart + match[0].length;
+    let searchFrom = 0;
+    while (searchFrom < line.length) {
+        const matchStart = line.indexOf('[', searchFrom);
+        if (matchStart === -1) break;
+        const labelEnd = line.indexOf(']', matchStart + 1);
+        if (labelEnd === -1) break;
+        searchFrom = labelEnd + 1;
+        if (line.charAt(searchFrom) !== '(') continue;
+        const urlEndInLine = line.indexOf(')', searchFrom + 1);
+        if (urlEndInLine === -1) break;
+        const matchEnd = urlEndInLine + 1;
         if (caretInLine >= matchStart && caretInLine <= matchEnd) {
-            const urlStart = lineStart + matchStart + (match[1] ?? '').length + 3;
-            const urlEnd = urlStart + (match[2] ?? '').length;
-            return editForOffsets(source, lineStart + matchStart, lineStart + matchEnd, match[0], {
-                start: positionAt(source, urlStart),
-                end: positionAt(source, urlEnd),
-            });
+            const urlStart = lineStart + labelEnd + 2;
+            const urlEnd = lineStart + urlEndInLine;
+            return editForOffsets(
+                source,
+                lineStart + matchStart,
+                lineStart + matchEnd,
+                line.slice(matchStart, matchEnd),
+                {
+                    start: positionAt(source, urlStart),
+                    end: positionAt(source, urlEnd),
+                },
+            );
         }
+        searchFrom = matchEnd;
     }
     if (start === end) {
         return editForOffsets(source, start, end, '[](url)', {

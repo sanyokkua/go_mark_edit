@@ -1,4 +1,10 @@
-import { applyFormatEdit, formatMarkdown, type FormatRequest } from '../../../src/logic/format/formatting';
+import {
+    applyFormatEdit,
+    formatMarkdown,
+    parseQuoteLine,
+    parseListLine,
+    type FormatRequest,
+} from '../../../src/logic/format/formatting';
 import type { DocumentCommandAPI } from '../../../src/logic/hooks/useDocumentCommands';
 
 const selection = (
@@ -576,4 +582,48 @@ describe('Numbered list numbering', () => {
         expect(edit.text).toBe('1. a');
         expect(edit.range.end.lineNumber).toBe(1);
     });
+});
+
+it('handles long malformed link labels without blocking formatting', () => {
+    const source = '['.repeat(40_000);
+    const started = performance.now();
+    const result = formatMarkdown(request('link', source, selection(1, 1)));
+    expect(result.text).toBe('[](url)');
+    expect(performance.now() - started).toBeLessThan(1200);
+});
+
+it('formats multiline text with long interior whitespace without blocking', () => {
+    const source = `a${' '.repeat(40_000)}b\nc`;
+    const started = performance.now();
+    const result = formatMarkdown(request('bold', source, selection(1, 1, 2, 2)));
+    expect(result.text).toBe(`**a${' '.repeat(40_000)}b**\n**c**`);
+    expect(performance.now() - started).toBeLessThan(1200);
+});
+
+it.each(['quote', 'bullet-list', 'heading-1'] as const)(
+    'handles long whitespace before a line separator during %s formatting',
+    (actionId) => {
+        const source = `${' '.repeat(40_000)}x\u2028y`;
+        const started = performance.now();
+        formatMarkdown(request(actionId, source, selection(1, 1)));
+        expect(performance.now() - started).toBeLessThan(1200);
+    },
+);
+
+it('preserves link matching around malformed and nested labels at both caret bounds', () => {
+    const source = '[bad]x [a[b](target)';
+    for (const column of [8, 21]) {
+        const result = formatMarkdown(request('link', source, selection(1, column)));
+        expect(result.text).toBe('[a[b](target)');
+        expect(result.range).toEqual({ start: { lineNumber: 1, column: 8 }, end: { lineNumber: 1, column: 21 } });
+        expect(result.selection).toEqual({ start: { lineNumber: 1, column: 14 }, end: { lineNumber: 1, column: 20 } });
+    }
+});
+
+it('preserves whitespace and line-separator parsing in formatting', () => {
+    expect(parseQuoteLine(' \t>\u00a0hello')).toEqual({ indent: ' \t', quote: '>\u00a0', content: 'hello' });
+    expect(parseQuoteLine('  x\u2028y')).toEqual({ indent: '', quote: '', content: '' });
+    expect(parseQuoteLine('>\u2028x')).toEqual({ indent: '', quote: '>\u2028', content: 'x' });
+    expect(parseListLine('\r- x')).toEqual({ indent: '\r', kind: 'bullet-list', content: 'x' });
+    expect(parseListLine('- \u2029x')).toEqual({ indent: '', kind: 'bullet-list', content: 'x' });
 });
