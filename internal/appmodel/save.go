@@ -345,6 +345,9 @@ func (service *AppModelService) executeWrite(ctx context.Context, snapshot write
 	ctx = service.runtimeContextOr(ctx)
 	encoded, err := encodeWrite(snapshot, origin, service.normalizationEndingFor(snapshot.documentID))
 	if err != nil {
+		if errors.Is(err, file.ErrCodecInvalidUTF8) || errors.Is(err, file.ErrCodecNULByte) || errors.Is(err, file.ErrCodecLoneCR) || errors.Is(err, file.ErrCodecMixedLineEndings) || errors.Is(err, file.ErrCodecUnsupportedEncoding) {
+			return bridge.Refused[apperr.WriteResult](documentLabelFromMetadata(snapshot.metadata), snapshot.documentID, apperr.ClassifiedUnsupportedInput, "The document could not be encoded for saving: "+err.Error()+".", apperr.RemediationNone)
+		}
 		return bridge.Refused[apperr.WriteResult](documentLabelFromMetadata(snapshot.metadata), snapshot.documentID, apperr.ClassifiedIOFailure, "The document could not be encoded for saving.", apperr.RemediationRetry)
 	}
 	if !service.setWriteInFlight(ctx, snapshot.documentID, true) {
@@ -488,9 +491,12 @@ func (service *AppModelService) executeWrite(ctx context.Context, snapshot write
 		CommittedProjectionRevision: projectionRevision, TargetPath: snapshot.path,
 		TargetPathAdopted: snapshot.targetPathAdopted, LineEndingOutcome: encoded.lineEndingOutcome,
 		BOMOutcome: encoded.bomOutcome, ResyncRequired: resyncRequired,
-	}, Error: promotionWarning}
-	if metadataWarning != nil {
-		result.Error = metadataWarning
+	}, Error: metadataWarning}
+	if promotionWarning != nil {
+		result.Error = promotionWarning
+	}
+	if replaceErr != nil {
+		result.Error = bridge.ClassifiedWithID(apperr.ClassifiedPersistenceWarning, snapshot.path, "The document was saved, but the save could not be confirmed on disk.", apperr.RemediationNone, snapshot.documentID)
 	}
 	result.Failure = bridge.FailureFromClassified(result.Error)
 	return result

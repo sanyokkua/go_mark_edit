@@ -139,11 +139,12 @@ Spec: file-lifecycle "Save outcome reporting" and "Editor changes that cannot be
 `internal/appmodel/save.go` (`:311-313, 427-457`), `frontend/src/app/useDocumentWrites.ts` (`:72-79, 196-235`),
 `frontend/src/logic/adapter/appModelAdapter.ts` (`:551-555, 575, 905`), `ApplicationMenubar.tsx` (`:164-168`).
 
-- [ ] 7.1 Choose the committed-save warning by the precedence in design §6 (durability, Recent Items, view state) in
+- [x] 7.1 Choose the committed-save warning by the precedence in design §6 (durability, Recent Items, view state) in
       `save.go`; map codec
       encode failures to `unsupported-input` with no remediation; add Go tests for "Recent Items cannot be stored",
       "Durability not confirmed", "Two accompanying failures", "Durability and Recent Items both fail" and
-      "Unencodable text"; verify they pass.
+      "Unencodable text". Cover the private committed-write error in the existing white-box
+      `internal/appmodel/save_identity_test.go`; verify the tests pass.
 - [ ] 7.2 Show the committed-save warning in `useDocumentWrites` with new notification codes and catalogue strings;
       add `subscribeBufferSyncErrors` to the adapter (first failure reported, silent until a send succeeds) and show
       it through `notifyError` from `AppWorkflows`; handle a rejected full-screen toggle. Add frontend integration
