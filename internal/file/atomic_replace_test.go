@@ -6,6 +6,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/sanyokkua/go_mark_edit/internal/apperr"
@@ -243,4 +244,22 @@ func mustCurrentDiskVersion(t *testing.T, path string) DiskVersion {
 		t.Fatal(err)
 	}
 	return version
+}
+
+func TestAtomicReplaceNewTargetChmodFailureCleansTemporary(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("new-target chmod applies only on Unix")
+	}
+	root := t.TempDir()
+	target := filepath.Join(root, "new.md")
+	temp := &atomicReplaceTestTemp{name: filepath.Join(root, ".temporary"), chmodErr: errors.New("chmod failed")}
+	ops, removed := testAtomicReplaceOps(temp, DiskVersion{})
+	result, err := atomicReplaceWithOps(AtomicReplaceRequest{TargetPath: target, Data: []byte("content")}, ops)
+	assertAtomicReplaceFailure(t, err, false, apperr.ClassifiedIOFailure)
+	if result.Committed || !*removed {
+		t.Fatalf("result = %+v, temporary removed = %v", result, *removed)
+	}
+	if _, err := os.Stat(target); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("target stat error = %v, want not exist", err)
+	}
 }

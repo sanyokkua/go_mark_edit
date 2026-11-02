@@ -133,7 +133,7 @@ the OR of content ≠ baseline, `ContentRevision > committedRevision`, detached,
 ### 5. File permissions
 
 - New target: `atomic_replace.go` only copies the mode when the target exists (`:174-178`), so `os.CreateTemp`'s 0600
-  (`:111`) survives. When the target does not exist, chmod the temporary file to `0666 &^ umask` before the rename, so
+  (`:111`) survives. When the target does not exist, chmod the temporary file to `0644 &^ umask` before the rename, so
   the mode recorded by §4's classifier equals the file on disk and no false permission conflict follows. The umask is
   read once at process start on Unix (the only portable read sets and restores it, which is safe before any goroutine
   creates files); Windows has no umask and the mode stays as Go reports it.

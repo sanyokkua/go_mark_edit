@@ -117,8 +117,8 @@ decision `:239-255`), `internal/appmodel/save.go` (`:116-118, 281-283`), `intern
 `frontend/src/ui/components/readOnlyReason.ts`, the Save As availability rule in
 `frontend/src/logic/actions/actionRegistry.ts`, the frontend catalogue.
 
-- [ ] 6.1 Chmod a newly created target's temporary file to `0666 &^ umask` before the rename (umask read once at start
-      on Unix); assert the mode in "new target uses normal creation semantics" (`internal/file/atomic_replace_test.go:91`)
+- [x] 6.1 Chmod a newly created target's temporary file to `0644 &^ umask` before the rename (umask read once at start
+      on Unix); assert capped creation permissions under permissive and restrictive masks (`internal/file/atomic_replace_test.go:91`)
       and add appmodel integration tests for Save As to a new path and Save after an external delete, each followed
       by a focus check that raises no conflict; verify they pass.
 - [ ] 6.2 Add the `write-protected-read-only` capability for files without the owner-write bit, map it in

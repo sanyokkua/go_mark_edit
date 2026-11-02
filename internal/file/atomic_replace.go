@@ -171,8 +171,9 @@ func atomicReplaceWithOps(request AtomicReplaceRequest, ops atomicReplaceOps) (A
 			return failBeforeCommit(apperr.ClassifiedIOFailure, io.ErrNoProgress)
 		}
 	}
-	if expected.Exists {
-		if err := ops.chmod(temporary, expected.Mode); err != nil {
+	mode, setMode := atomicReplacementMode(expected)
+	if setMode {
+		if err := ops.chmod(temporary, mode); err != nil {
 			return failBeforeCommit(classifyAtomicReplaceCause(err), err)
 		}
 	}

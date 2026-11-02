@@ -77,13 +77,18 @@ availability for such a document is defined in actions-shortcuts "Read-only docu
 ### Requirement: Permissions of new files
 
 WHEN a save creates a file that did not exist (Save As to a new path, the first save of an untitled document, or
-Save after the file was deleted), the system SHALL give it the permissions a newly created file normally has: read and
-write for the owner and read for everyone else (0644), reduced by the user's file-creation mask.
+Save after the file was deleted), the system SHALL give it read and write permission for the owner and read permission
+for everyone else (0644), reduced by the user's file-creation mask.
 
 #### Scenario: Save As to a new path
 
 - **WHEN** the user saves an Untitled document as "new.md" on macOS or Linux with a file-creation mask of 022
 - **THEN** "new.md" has mode 0644
+
+#### Scenario: Permissive creation mask
+
+- **WHEN** the user saves a new file on macOS or Linux with a file-creation mask of 000
+- **THEN** the file has mode 0644
 
 #### Scenario: Recreated file
 

@@ -2,7 +2,25 @@
 
 package file
 
-import "os"
+import (
+	"io/fs"
+	"os"
+	"syscall"
+)
+
+// Capture the inherited mask once before application goroutines start.
+var startupUmask = func() int {
+	mask := syscall.Umask(0)
+	syscall.Umask(mask)
+	return mask
+}()
+
+func atomicReplacementMode(expected DiskVersion) (fs.FileMode, bool) {
+	if expected.Exists {
+		return expected.Mode, true
+	}
+	return 0o644 &^ fs.FileMode(startupUmask), true
+}
 
 func replaceAtomicFile(temporary, target string) error {
 	return os.Rename(temporary, target)

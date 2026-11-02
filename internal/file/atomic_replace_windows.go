@@ -93,3 +93,7 @@ func moveAtomicFile(temporaryPath, targetPath string) error {
 func syncParentDirectory(_ string) error {
 	return nil
 }
+
+func atomicReplacementMode(expected DiskVersion) (fs.FileMode, bool) {
+	return expected.Mode, expected.Exists
+}
