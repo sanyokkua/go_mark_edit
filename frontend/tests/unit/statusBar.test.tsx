@@ -59,3 +59,11 @@ it('sorts status facts by priority and keeps dropped facts in document details',
         });
     }
 });
+
+it('shows why a write-protected document is read-only', () => {
+    render(<StatusBar status="read-only" capability="write-protected-read-only" />);
+    fireEvent.click(within(screen.getByRole('status')).getByRole('button', { name: 'Document details' }));
+    expect(screen.getByRole('region', { name: 'Document details' })).toHaveTextContent(
+        'Read-only · The file is write-protected.',
+    );
+});

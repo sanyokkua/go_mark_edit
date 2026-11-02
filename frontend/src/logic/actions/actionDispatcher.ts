@@ -206,6 +206,7 @@ export async function dispatchAction(actionId: ActionId, context: ActionDispatch
         !tabActionIds.has(actionId) &&
         !tidyActionIds.has(actionId) &&
         actionId !== 'export-pdf' &&
+        !(actionId === 'save-as' && getActionAvailability(actionId, context).kind === 'available') &&
         context.writable !== true &&
         !projectedDocumentIsWritable(context)
     ) {

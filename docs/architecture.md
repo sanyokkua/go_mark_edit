@@ -577,8 +577,11 @@ metadata and identity from the same handle, opened without content access and sh
 and delete access. It follows symlinks and normalizes relative and long drive/UNC paths before
 opening the handle. Identity acquisition failures remain errors; only a missing candidate may use
 a path identity. Disk versions serialize the same filesystem identity so a replacement with matching
-size, timestamp and permissions remains detectable. Invalid UTF-8 or NUL-bearing input becomes clearly read-only and is never converted.
-UTF-8 BOM, uniform LF/CRLF and the original bytes remain stable. Mixed endings are editable but require
+size, timestamp and permissions remains detectable. Invalid UTF-8, NUL-bearing input or a lone carriage
+return opens read-only, as does a file over the writable size limit. These classifications take precedence
+over permissions. Otherwise, a file without the owner-write bit opens with the `write-protected-read-only`
+capability. Reload reclassifies the current disk content and permissions. UTF-8 BOM, uniform LF/CRLF and
+the original bytes remain stable. Mixed endings are editable but require
 the one-time, revision-bound normalization authorization before any write.
 
 The file owner also decodes local Markdown link targets and exposes the same filesystem identity for
@@ -628,7 +631,14 @@ does not repeat the write. `useDocumentWrites` repairs the Redux projection from
 snapshot; it does not reinstall editor content or advance activation generations.
 
 External changes are classified before saving. Editable conflicts offer Reload or one exact-version
-Keep mine authorization. Read-only conflicts offer Reload only. Close plans gather all required choices
+Keep mine authorization. A conflict is read-only if either the open document or the current disk version
+is read-only; it offers Reload and Cancel, and cannot authorize Keep mine. Save and autosave refuse a
+write-protected document, but Save As may copy it to a different file. Save As also permits unsaved edits
+to be copied when a writable document's source has become write-protected: it checks the current disk
+state even after Cancel dismisses the conflict. Source identity checks reject the source itself, including
+symlinks and hardlinks, and recheck the target after the native dialogs; the atomic write verifies its disk
+version, including permissions, before replacement. Mixed-ending normalization and BOM preservation still
+apply to the copy. Close plans gather all required choices
 and normalization authorizations before writing, save in authoritative tab order, stop at the first
 failure, and close tabs only after all requested saves succeed.
 

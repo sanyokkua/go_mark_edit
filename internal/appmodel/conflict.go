@@ -543,7 +543,7 @@ func buildConflictPreview(documentID string, document *openDocument, read file.C
 	onDiskBytes := version.Size
 	onDisk := conflictSide(read.Content, &onDiskBytes, "")
 	yours := expectedSavedConflictSide(document)
-	return apperr.ConflictPreview{DocumentID: documentID, Path: document.metadata.Path, DisplayName: document.metadata.DisplayName, ContentRevision: document.metadata.ContentRevision, DetectedDiskVersion: diskVersionFromWire(version), OnDisk: onDisk, Yours: yours, MetadataDifferences: differences, ReadOnly: document.metadata.Capability != string(file.CapabilityWritable)}
+	return apperr.ConflictPreview{DocumentID: documentID, Path: document.metadata.Path, DisplayName: document.metadata.DisplayName, ContentRevision: document.metadata.ContentRevision, DetectedDiskVersion: diskVersionFromWire(version), OnDisk: onDisk, Yours: yours, MetadataDifferences: differences, ReadOnly: document.metadata.Capability != string(file.CapabilityWritable) || read.Capability != file.CapabilityWritable}
 }
 
 func conflictSide(content string, byteCount *int64, reason apperr.ConflictByteCountUnavailableReason) apperr.ConflictPreviewSide {

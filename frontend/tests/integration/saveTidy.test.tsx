@@ -813,3 +813,37 @@ it('does not resume close after a committed write needs recovery', async () => {
     expect(outcome).toEqual({ status: 'recovery' });
     expect(tidy.run).toHaveBeenCalledTimes(1);
 });
+
+it('skips Format with a read-only reason when saving a protected document as a copy', async () => {
+    const protectedDocument = {
+        ...documentFixture('one', 1),
+        status: 'read-only' as const,
+        capability: 'write-protected-read-only',
+    };
+    store.dispatch(
+        hydrateProjection({
+            revision: 2,
+            activeDocumentId: 'one',
+            orderedDocumentIds: ['one'],
+            documents: { one: protectedDocument },
+            ui: {},
+        }),
+    );
+    const tidy: TidyCommands = {
+        run: jest.fn().mockResolvedValue(nonEditOutcomes.failed),
+        cancel: jest.fn(),
+        documentChanged: jest.fn(),
+    };
+    (appModelAdapter.flushActiveSession as jest.Mock).mockResolvedValue(undefined);
+    (appModelAdapter.getState as jest.Mock).mockResolvedValue(stableState());
+    (documentWriteAdapter.saveAs as jest.Mock).mockResolvedValue({ status: 'cancelled' });
+    const owner = setup(tidy);
+    await act(async () => {
+        await owner.result.current.onSaveAs();
+    });
+    expect(tidy.run).not.toHaveBeenCalled();
+    expect(documentWriteAdapter.saveAs).toHaveBeenCalledWith('one', 1, '');
+    expect(
+        store.getState().notifications.items.find((notice) => notice.code === 'format-on-save-skipped')?.message,
+    ).toContain('the document is read-only');
+});

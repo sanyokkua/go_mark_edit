@@ -19,8 +19,8 @@ import (
 func TestAutosaveFailureEpisodeShowsNewCategoriesOnceAndClearsOnSuccess(t *testing.T) {
 	root := t.TempDir()
 	path := filepath.Join(root, "notes.md")
-	if err := os.WriteFile(path, []byte("initial\n"), 0o400); err != nil {
-		t.Fatalf("write unwritable fixture: %v", err)
+	if err := os.WriteFile(path, []byte("initial\n"), 0o644); err != nil {
+		t.Fatalf("write fixture: %v", err)
 	}
 	clock := &manualAutosaveFactory{}
 	recorder := &autosaveErrorRecorder{}
@@ -101,8 +101,8 @@ func TestAutosaveFailureReporterLogsWhenEventDeliveryIsUnavailableOrFails(t *tes
 		t.Run(name, func(t *testing.T) {
 			root := t.TempDir()
 			path := filepath.Join(root, "notes.md")
-			if err := os.WriteFile(path, []byte("initial\n"), 0o400); err != nil {
-				t.Fatalf("write unwritable fixture: %v", err)
+			if err := os.WriteFile(path, []byte("initial\n"), 0o644); err != nil {
+				t.Fatalf("write fixture: %v", err)
 			}
 			clock := &manualAutosaveFactory{}
 			var logs bytes.Buffer

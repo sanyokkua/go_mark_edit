@@ -607,13 +607,14 @@ export function getActionAvailability(
     }
 
     if (id === 'save' || id === 'save-as') {
-        if (context.writable === false) {
+        const protectedSaveAs = id === 'save-as' && document?.capability === 'write-protected-read-only';
+        if (context.writable === false && !protectedSaveAs) {
             return { kind: 'unavailable', reason: 'no-document' };
         }
         if (hasProjectedDocument === false) {
             return { kind: 'unavailable', reason: 'no-document' };
         }
-        if (document?.capability !== undefined && document.capability !== 'writable') {
+        if (document?.capability !== undefined && document.capability !== 'writable' && !protectedSaveAs) {
             return { kind: 'unavailable', reason: 'no-document' };
         }
     }

@@ -23,10 +23,11 @@ const (
 type ReadCapability string
 
 const (
-	CapabilityWritable       ReadCapability = "writable"
-	CapabilityUnsafeReadOnly ReadCapability = "unsafe-read-only"
-	CapabilityLargeReadOnly  ReadCapability = "large-read-only"
-	CapabilityRefused        ReadCapability = "refused"
+	CapabilityWritable               ReadCapability = "writable"
+	CapabilityWriteProtectedReadOnly ReadCapability = "write-protected-read-only"
+	CapabilityUnsafeReadOnly         ReadCapability = "unsafe-read-only"
+	CapabilityLargeReadOnly          ReadCapability = "large-read-only"
+	CapabilityRefused                ReadCapability = "refused"
 )
 
 type readOutcome string
@@ -260,9 +261,11 @@ func ClassifyDocumentBytes(raw []byte, mode os.FileMode) ClassifiedRead {
 	} else if int64(len(raw)) > MaxWritableDocumentBytes {
 		capability = CapabilityLargeReadOnly
 		warning = WarningLargeFile
+	} else if mode.Perm()&0o200 == 0 {
+		capability = CapabilityWriteProtectedReadOnly
 	}
 	content := tolerantDisplay(payload)
-	if capability == CapabilityWritable || capability == CapabilityLargeReadOnly {
+	if capability == CapabilityWritable || capability == CapabilityLargeReadOnly || capability == CapabilityWriteProtectedReadOnly {
 		content = normalizeCRLF(content)
 	}
 	return ClassifiedRead{

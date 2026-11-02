@@ -475,6 +475,7 @@ const Menubar: React.FC<MenubarProps> = ({
             applicationFocused: true,
             documentId,
             invoke,
+            projectedState,
             sessionDocumentId,
             writable,
         }).then((result): void => onActionResult?.(result));

@@ -293,56 +293,85 @@ async function clickEditorText(
     await expect(line).toBeVisible();
     if (modifier && linked) await expect(line.locator('.detected-link').first()).toBeVisible();
     if (modifier && !linked) await expect(line.locator('.detected-link')).toHaveCount(0);
-    let point!: { x: number; y: number };
-    await expect
-        .poll(async () => {
-            const candidate = await line.evaluate((element, needle) => {
-                if (!element.isConnected) return null;
-                const source = element.textContent ?? '';
-                const start = source.indexOf(needle);
-                if (start < 0) throw new Error(`Editor text not found: ${needle}`);
-                const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
-                let node = walker.nextNode();
-                let offset = 0;
-                let first: Text | null = null;
-                let last: Text | null = null;
-                let firstOffset = 0;
-                let lastOffset = 0;
-                while (node !== null) {
-                    const length = node.textContent?.length ?? 0;
-                    if (first === null && start < offset + length) {
-                        first = node as Text;
-                        firstOffset = start - offset;
-                    }
-                    if (start + needle.length <= offset + length) {
-                        last = node as Text;
-                        lastOffset = start + needle.length - offset;
-                        break;
-                    }
-                    offset += length;
-                    node = walker.nextNode();
-                }
-                if (first === null || last === null) throw new Error(`Editor range not found: ${needle}`);
-                const range = document.createRange();
-                range.setStart(first, firstOffset);
-                range.setEnd(last, lastOffset);
-                const rect = range.getBoundingClientRect();
-                const lineRect = element.getBoundingClientRect();
-                if (rect.width === 0 || rect.height === 0 || lineRect.width === 0 || lineRect.height === 0) return null;
-                return {
-                    x: rect.left - lineRect.left + rect.width / 2,
-                    y: rect.top - lineRect.top + rect.height / 2,
-                };
-            }, text);
-            if (candidate === null) return false;
-            point = candidate;
-            return true;
-        })
-        .toBe(true);
     const key = await page.evaluate((): 'Meta' | 'Control' =>
         navigator.userAgent.includes('Macintosh') ? 'Meta' : 'Control',
     );
-    await line.click({ position: point, modifiers: modifier ? [key] : [] });
+    const measure = async (): Promise<{ x: number; y: number } | null> =>
+        line.evaluate((element, needle) => {
+            if (!element.isConnected) return null;
+            const source = element.textContent ?? '';
+            const start = source.indexOf(needle);
+            if (start < 0) throw new Error(`Editor text not found: ${needle}`);
+            const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
+            let node = walker.nextNode();
+            let offset = 0;
+            let first: Text | null = null;
+            let last: Text | null = null;
+            let firstOffset = 0;
+            let lastOffset = 0;
+            while (node !== null) {
+                const length = node.textContent?.length ?? 0;
+                if (first === null && start < offset + length) {
+                    first = node as Text;
+                    firstOffset = start - offset;
+                }
+                if (start + needle.length <= offset + length) {
+                    last = node as Text;
+                    lastOffset = start + needle.length - offset;
+                    break;
+                }
+                offset += length;
+                node = walker.nextNode();
+            }
+            if (first === null || last === null) throw new Error(`Editor range not found: ${needle}`);
+            const range = document.createRange();
+            range.setStart(first, firstOffset);
+            range.setEnd(last, lastOffset);
+            const rect = range.getBoundingClientRect();
+            const lineRect = element.getBoundingClientRect();
+            if (rect.width === 0 || rect.height === 0 || lineRect.width === 0 || lineRect.height === 0) return null;
+            return {
+                x: rect.left - lineRect.left + rect.width / 2,
+                y: rect.top - lineRect.top + rect.height / 2,
+            };
+        }, text);
+
+    if (modifier) await page.keyboard.down(key);
+    try {
+        // A trial never activates the link, so a detached or intercepted virtual line
+        // can be re-resolved and remeasured before the one real click.
+        let clickPoint!: { x: number; y: number };
+        await expect
+            .poll(
+                async () => {
+                    try {
+                        await line.scrollIntoViewIfNeeded({ timeout: 1_000 });
+                        const point = await measure();
+                        if (point === null) return false;
+                        await line.click({ position: point, trial: true, timeout: 1_000 });
+                        const current = await measure();
+                        if (current === null) return false;
+                        clickPoint = current;
+                        return true;
+                    } catch (error) {
+                        if (
+                            error instanceof Error &&
+                            /intercepts pointer events|detached from the DOM|not attached to the DOM/u.test(
+                                error.message,
+                            )
+                        ) {
+                            return false;
+                        }
+                        throw error;
+                    }
+                },
+                { timeout: 10_000 },
+            )
+            .toBe(true);
+        await line.click({ position: clickPoint, timeout: 10_000 });
+    } finally {
+        if (modifier) await page.keyboard.up(key);
+    }
 }
 
 test('editor links follow the preview path only when clicked with the platform modifier', async ({ app }) => {

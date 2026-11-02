@@ -146,13 +146,15 @@ the OR of content ≠ baseline, `ContentRevision > committedRevision`, detached,
   registry allows Save As when the capability is `write-protected-read-only`, and the backend gates that refuse every
   non-writable capability today (`SaveAs` at `save.go:116-118`, `snapshotForWrite` at `save.go:281-283`) let that
   capability through for Save As only; Save, autosave and the close plan's Save keep refusing it. After Save As the
-  target is classified afresh by §4's classifier, so the tab becomes writable.
+  target is classified afresh by §4's classifier, so the tab becomes writable. If format-on-save is enabled for a
+  protected source, skip formatting with the read-only reason and write the unchanged buffer to the new target.
 - Conflict choices: the comparison preview's `ReadOnly` (`conflict.go:521`) is computed from the open document's
   capability or the disk read's capability, so a file that became write-protected on disk offers only Reload from disk
   and Cancel (external-change-conflict "Choices for a read-only document"). Keep mine can therefore never replace a
-  write-protected file. So that unsaved edits are not trapped, `SaveAs` skips the source-path conflict check
-  (`save.go:140-144`) when the document's queued conflict has a write-protected disk side: the source file is not
-  written, so the conflict does not concern the target. Save and the close plan's Save still stop at the conflict.
+  write-protected file. So that unsaved edits are not trapped, `SaveAs` inspects the current source when necessary,
+  including after Cancel has cleared the queued conflict, and permits saving to a distinct target if the stable disk
+  version is write-protected. It refuses the source itself, including aliases, as the target. Save and the close
+  plan's Save still stop at the conflict; other source conflicts keep their existing behavior.
 - Permission changes on disk already raise a conflict (`DiskVersion.Equal` and `characteristicsEqual` compare the
   mode); the spec now states this, and Reload from disk re-reads, so it re-evaluates the capability.
 

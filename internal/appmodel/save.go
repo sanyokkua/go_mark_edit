@@ -114,7 +114,7 @@ func (service *AppModelService) SaveAs(ctx context.Context, documentID string, e
 		service.mu.RUnlock()
 		return bridge.Refused[apperr.WriteResult](service.documentLabel(documentID), documentID, apperr.ClassifiedConflict, "The document changed before it could be saved.", apperr.RemediationRetry)
 	}
-	if document.metadata.Capability != string(file.CapabilityWritable) {
+	if document.metadata.Capability != string(file.CapabilityWritable) && document.metadata.Capability != string(file.CapabilityWriteProtectedReadOnly) {
 		service.mu.RUnlock()
 		return bridge.Refused[apperr.WriteResult](service.documentLabel(documentID), documentID, apperr.ClassifiedPermissionDenied, "The document is read-only and cannot be saved.", apperr.RemediationNone)
 	}
@@ -126,6 +126,8 @@ func (service *AppModelService) SaveAs(ctx context.Context, documentID string, e
 		}
 	}
 	sourcePath := document.metadata.Path
+	sourceIdentity := document.identity
+	protectedSource := document.metadata.Capability == string(file.CapabilityWriteProtectedReadOnly)
 	dialog := service.saveDialog
 	defaultFilename := document.metadata.DisplayName
 	defaultDirectory := filepath.Dir(document.metadata.Path)
@@ -138,7 +140,12 @@ func (service *AppModelService) SaveAs(ctx context.Context, documentID string, e
 		defaultDirectory = ""
 	}
 	service.mu.RUnlock()
-	if sourcePath != "" {
+	if sourcePath != "" && !protectedSource {
+		if read, err := service.readStable(sourcePath); err == nil && read.Version.Exists && read.Read.Capability == file.CapabilityWriteProtectedReadOnly {
+			protectedSource = true
+		}
+	}
+	if sourcePath != "" && !protectedSource {
 		if result := service.prepareWriteDisk(ctx, documentID, expectedContentRevision, decisionToken); result.Status != "" {
 			return result
 		}
@@ -162,6 +169,15 @@ func (service *AppModelService) SaveAs(ctx context.Context, documentID string, e
 	candidate, err := file.CanonicalizeCandidateDocumentPath(selected)
 	if err != nil {
 		return bridge.Refused[apperr.WriteResult](service.documentLabel(documentID), documentID, apperr.ClassifiedIOFailure, "The Save As target could not be resolved.", apperr.RemediationRetry)
+	}
+
+	if protectedSource {
+		if currentSource, err := file.CanonicalizeDocumentPath(sourcePath); err == nil {
+			sourceIdentity = currentSource.Identity
+		}
+	}
+	if protectedSource && sourceIdentity.Equal(candidate.Identity) {
+		return bridge.Refused[apperr.WriteResult](service.documentLabel(documentID), documentID, apperr.ClassifiedPermissionDenied, "The write-protected source cannot be overwritten.", apperr.RemediationNone)
 	}
 
 	reservationID, conflict := service.reserveSaveTarget(documentID, candidate)
@@ -193,6 +209,24 @@ func (service *AppModelService) SaveAs(ctx context.Context, documentID string, e
 				return bridge.Conflict[apperr.WriteResult](service.documentLabel(documentID), documentID, apperr.ClassifiedConflict, "The Save As target changed after confirmation.", apperr.RemediationNone)
 			}
 			return bridge.Refused[apperr.WriteResult](service.documentLabel(documentID), documentID, apperr.ClassifiedIOFailure, "The Save As target could not be read.", apperr.RemediationRetry)
+		}
+	}
+
+	// The source may become protected while either native dialog is open.
+	// Compare the current source identity with the inspected target and use the
+	// target version's mode: that same version is checked again by the atomic
+	// replacement, so a subsequent permission change invalidates the write.
+	if sourcePath != "" && expectedVersion.Exists && expectedVersion.Mode.Perm()&0o200 == 0 {
+		currentSource, sourceErr := file.CanonicalizeDocumentPath(sourcePath)
+		if sourceErr != nil {
+			return bridge.Refused[apperr.WriteResult](service.documentLabel(documentID), documentID, apperr.ClassifiedIOFailure, "The Save As source could not be inspected.", apperr.RemediationRetry)
+		}
+		currentTarget, targetErr := file.CanonicalizeDocumentPath(candidate.Path)
+		if targetErr != nil {
+			return bridge.Refused[apperr.WriteResult](service.documentLabel(documentID), documentID, apperr.ClassifiedIOFailure, "The Save As target could not be inspected.", apperr.RemediationRetry)
+		}
+		if currentSource.Identity.Equal(currentTarget.Identity) {
+			return bridge.Refused[apperr.WriteResult](service.documentLabel(documentID), documentID, apperr.ClassifiedPermissionDenied, "The write-protected source cannot be overwritten.", apperr.RemediationNone)
 		}
 	}
 
@@ -275,7 +309,7 @@ func (service *AppModelService) snapshotForWrite(documentID string, expectedCont
 	if document.metadata.ContentRevision != expectedContentRevision {
 		return writeSnapshot{}, bridge.Refused[apperr.WriteResult](service.safeDocumentLabelLocked(documentID), documentID, apperr.ClassifiedConflict, "The document changed before it could be saved.", apperr.RemediationRetry)
 	}
-	if document.metadata.Capability != string(file.CapabilityWritable) {
+	if document.metadata.Capability != string(file.CapabilityWritable) && (!targetPathAdopted || document.metadata.Capability != string(file.CapabilityWriteProtectedReadOnly)) {
 		return writeSnapshot{}, bridge.Refused[apperr.WriteResult](service.safeDocumentLabelLocked(documentID), documentID, apperr.ClassifiedPermissionDenied, "The document is read-only and cannot be saved.", apperr.RemediationNone)
 	}
 	if !targetPathAdopted && document.metadata.Path != targetPath {

@@ -1,4 +1,5 @@
-import { spawn, type ChildProcessByStdio } from 'node:child_process';
+import { execFile, spawn, type ChildProcessByStdio } from 'node:child_process';
+import { promisify } from 'node:util';
 import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, isAbsolute, join, relative, resolve } from 'node:path';
@@ -64,6 +65,7 @@ export interface E2EAppHarness {
     writeDocument(relativePath: string, contents: string): Promise<string>;
     seedRecents(items: readonly (string | { path: string; kind: 'file' | 'folder' })[]): Promise<void>;
     openWorkspace(folderPath: string): Promise<'opened' | 'unchanged'>;
+    useSaveDialog(target: string): Promise<void>;
     launch(args?: readonly string[]): Promise<void>;
     relaunch(): Promise<void>;
     expectNoForeignRequests(): void;
@@ -80,6 +82,8 @@ class PlaywrightE2EAppHarness implements E2EAppHarness {
     appChildPid: number | undefined;
 
     private devProcess: AppProcess | null = null;
+    private saveDialogExecutable: string | undefined;
+    private saveDialogPath: string | undefined;
     private devOutput = '';
     private port: number | undefined;
     private hasLaunched = false;
@@ -200,6 +204,56 @@ class PlaywrightE2EAppHarness implements E2EAppHarness {
         return result.status;
     }
 
+    // Build an isolated test executable that replaces only the native picker; all other
+    // tests continue to launch the normally prepared application.
+    async useSaveDialog(target: string): Promise<void> {
+        if (this.devProcess !== null) throw new Error('configure the save picker before launch');
+        const sourcePath = join(this.repositoryDirectory, 'main.go');
+        const source = await readFile(sourcePath, 'utf8');
+        const start = source.indexOf('\tdialogs.SetSaveFilePicker(');
+        const end = source.indexOf('\n\tdialogs.SetOverwriteConfirmer(', start);
+        if (start < 0 || end < 0) throw new Error('could not locate the native save picker adapter');
+        const replacement = `\tdialogs.SetSaveFilePicker(func(ctx context.Context, request appmodel.SaveDialogRequest) (string, error) {
+            data, err := os.ReadFile(os.Getenv("GOMARKEDIT_E2E_SAVE_PATH_FILE"))
+            if err != nil { return "", err }
+            return string(data), nil
+        })`;
+        const overlaySource = join(this.tempDirectory, 'main.go');
+        const overlay = join(this.tempDirectory, 'overlay.json');
+        const executable = join(this.tempDirectory, 'GoMarkEdit-save-picker');
+        this.saveDialogPath = join(this.tempDirectory, 'save-dialog-target');
+        await Promise.all([
+            writeFile(overlaySource, source.slice(0, start) + replacement + source.slice(end)),
+            writeFile(overlay, JSON.stringify({ Replace: { [sourcePath]: overlaySource } })),
+            writeFile(this.saveDialogPath, target),
+        ]);
+        const environment: NodeJS.ProcessEnv = { ...process.env, CGO_ENABLED: '1' };
+        const tags = ['dev', 'devtools'];
+        if (process.platform === 'darwin') {
+            environment.CGO_CFLAGS = `${environment.CGO_CFLAGS ?? ''} -mmacosx-version-min=10.13`.trim();
+            environment.CGO_LDFLAGS =
+                `${environment.CGO_LDFLAGS ?? ''} -framework UniformTypeIdentifiers -mmacosx-version-min=10.13`.trim();
+        } else tags.push('webkit2_41');
+        await promisify(execFile)(
+            process.env.GO_BIN ?? 'go',
+            [
+                'build',
+                '-overlay',
+                overlay,
+                '-buildvcs=false',
+                '-gcflags',
+                'all=-N -l',
+                '-tags',
+                tags.join(','),
+                '-o',
+                executable,
+                '.',
+            ],
+            { cwd: this.repositoryDirectory, env: environment },
+        );
+        this.saveDialogExecutable = executable;
+    }
+
     async launch(args: readonly string[] = []): Promise<void> {
         const started = performance.now();
         this.launchArgs = args;
@@ -211,10 +265,13 @@ class PlaywrightE2EAppHarness implements E2EAppHarness {
             if (this.port === undefined) this.port = await availableLocalPort();
             const origin = `http://127.0.0.1:${this.port}`;
             this.backendOrigin = origin;
-            const child = spawn(preparedPaths().executable, [...this.launchArgs], {
+            const child = spawn(this.saveDialogExecutable ?? preparedPaths().executable, [...this.launchArgs], {
                 cwd: this.repositoryDirectory,
                 detached: process.platform !== 'win32',
-                env: childEnvironment(this.tempDirectory, this.frontendURL, this.port),
+                env: {
+                    ...childEnvironment(this.tempDirectory, this.frontendURL, this.port),
+                    GOMARKEDIT_E2E_SAVE_PATH_FILE: this.saveDialogPath,
+                },
                 stdio: ['ignore', 'pipe', 'pipe'],
             });
             this.devProcess = child;

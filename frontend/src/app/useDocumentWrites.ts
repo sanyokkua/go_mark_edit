@@ -42,6 +42,7 @@ export function useDocumentWrites(session: DocumentSession, conflicts: ConflictC
     const dispatch = useAppDispatch();
     const tidy = useContext(TidyCommandsContext);
     const markdownSettings = useAppSelector((state) => state.settings.markdown);
+    const formatOnSave = markdownSettings?.formatOnSave;
     const [prompt, updatePrompt] = useState<WritePrompt>({ phase: 'idle' });
     const [closeSavePending, setCloseSavePending] = useState(false);
     const [validationFailed, setValidationFailed] = useState(false);
@@ -82,13 +83,13 @@ export function useDocumentWrites(session: DocumentSession, conflicts: ConflictC
     );
     const notifyInactiveFormatSkipped = useCallback(
         (documentId: string): void => {
-            if (markdownSettings?.formatOnSave) showFormatSkip(documentId, 'notActive');
+            if (formatOnSave) showFormatSkip(documentId, 'notActive');
         },
-        [markdownSettings?.formatOnSave, showFormatSkip],
+        [formatOnSave, showFormatSkip],
     );
     const formatBeforeSave = useCallback(
         async (documentId: string, isActive: boolean): Promise<void> => {
-            if (!markdownSettings?.formatOnSave) return;
+            if (!formatOnSave) return;
             if (!isActive) {
                 notifyInactiveFormatSkipped(documentId);
                 return;
@@ -102,7 +103,7 @@ export function useDocumentWrites(session: DocumentSession, conflicts: ConflictC
             if (outcome.kind === 'edits') return;
             showFormatSkip(documentId, outcome.kind === 'stale' ? 'changed' : outcome.kind);
         },
-        [markdownSettings?.formatOnSave, notifyInactiveFormatSkipped, showFormatSkip, tidy],
+        [formatOnSave, notifyInactiveFormatSkipped, showFormatSkip, tidy],
     );
     const lintAfterSave = useCallback(
         async (documentId: string): Promise<void> => {
@@ -257,8 +258,9 @@ export function useDocumentWrites(session: DocumentSession, conflicts: ConflictC
                 const target = documentsById[documentId];
                 if (target === undefined) return undefined;
                 if (
-                    target?.status === 'read-only' ||
-                    (target?.capability !== undefined && target.capability !== 'writable')
+                    !(kind === 'save-as' && target.capability === 'write-protected-read-only') &&
+                    (target.status === 'read-only' ||
+                        (target.capability !== undefined && target.capability !== 'writable'))
                 ) {
                     reportWriteError(
                         {
@@ -290,7 +292,11 @@ export function useDocumentWrites(session: DocumentSession, conflicts: ConflictC
                         safeFilename(target),
                     );
                 }
-                await formatBeforeSave(documentId, true);
+                if (kind === 'save-as' && target.capability === 'write-protected-read-only') {
+                    if (formatOnSave) showFormatSkip(documentId, 'readOnly');
+                } else {
+                    await formatBeforeSave(documentId, true);
+                }
                 await appModelAdapter.flushActiveSession?.(documentId);
                 const state = await appModelAdapter.getState();
                 if (!mounted.current || operation !== operationRef.current) return undefined;
@@ -327,7 +333,16 @@ export function useDocumentWrites(session: DocumentSession, conflicts: ConflictC
                 if (operation === operationRef.current) inFlight.current = false;
             }
         },
-        [activeBuffer, activeDocument, documentsById, finishWrite, formatBeforeSave, reportWriteError],
+        [
+            activeBuffer,
+            activeDocument,
+            documentsById,
+            finishWrite,
+            formatBeforeSave,
+            formatOnSave,
+            reportWriteError,
+            showFormatSkip,
+        ],
     );
 
     const saveForClose = useCallback(

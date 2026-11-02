@@ -803,3 +803,58 @@ for (const dismissFirst of [false, true]) {
         }
     });
 }
+
+test('Save As copies an opened write-protected file and makes the copy editable', async ({ app }) => {
+    const original = '# Protected\n\n- item\n';
+    const source = await app.writeDocument('locked.md', original);
+    const target = `${app.documentDirectory}/copy.md`;
+    await chmod(source, 0o444);
+    await app.seedRecents([source]);
+    await app.useSaveDialog(target);
+    await app.launch();
+    await openRecentFromLauncher(app.page, 'locked.md');
+    await app.page.getByRole('button', { name: 'Settings', exact: true }).click();
+    const settings = app.page.getByRole('menu', { name: 'Settings menu' });
+    const formatOnSave = settings.getByRole('menuitemcheckbox', { name: 'Format on save' });
+    if (!(await formatOnSave.isChecked())) await formatOnSave.click();
+    if (await settings.isVisible()) await app.page.keyboard.press('Escape');
+    await app.page.getByRole('button', { name: 'File', exact: true }).click();
+    const menu = app.page.getByRole('menu', { name: 'File' });
+    await expect(menu.getByRole('menuitem', { name: 'Save', exact: true })).toBeDisabled();
+    await expect(menu.getByRole('menuitem', { name: 'Save As', exact: true })).toBeEnabled();
+    await menu.getByRole('menuitem', { name: 'Save As', exact: true }).click();
+    await expect(app.page.getByRole('tab', { name: 'copy.md' })).toBeVisible();
+    expect(await readFile(source, 'utf8')).toBe(original);
+    expect(await readFile(target, 'utf8')).toBe(original);
+    await expect(app.page.locator('[data-notification-code="format-on-save-skipped"]')).toContainText(
+        'the document is read-only',
+    );
+    await editDocument(app.page, '# Editable copy\n');
+    await expect.poll(() => activeBufferContent(app.page)).toBe('# Editable copy\n');
+});
+
+test('Save As preserves unsaved edits after cancelling a write-protection conflict', async ({ app }) => {
+    const original = '# Original\n';
+    const edited = '# Unsaved user text\n';
+    const source = await app.writeDocument('changed-permissions.md', original);
+    const target = `${app.documentDirectory}/copy.md`;
+    await app.seedRecents([source]);
+    await app.useSaveDialog(target);
+    await app.launch();
+    await openRecentFromLauncher(app.page, 'changed-permissions.md');
+    await disableAutosave(app.page);
+    await editDocument(app.page, edited);
+    await chmod(source, 0o444);
+    await app.page.evaluate(() => window.dispatchEvent(new Event('focus')));
+    const prompt = app.page.getByRole('dialog', { name: 'File changed on disk' });
+    await expect(prompt).toBeVisible();
+    await expect(prompt.getByRole('button', { name: 'Keep mine' })).toHaveCount(0);
+    await expect(prompt.getByRole('button', { name: 'Skip' })).toHaveCount(0);
+    await prompt.getByRole('button', { name: 'Cancel', exact: true }).click();
+    await app.page.getByRole('button', { name: 'File', exact: true }).click();
+    await app.page.getByRole('menu', { name: 'File' }).getByRole('menuitem', { name: 'Save As', exact: true }).click();
+    await expect(app.page.getByRole('tab', { name: 'copy.md' })).toBeVisible();
+    expect(await readFile(source, 'utf8')).toBe(original);
+    expect(await readFile(target, 'utf8')).toBe(edited);
+    await editDocument(app.page, '# Editable copy\n');
+});

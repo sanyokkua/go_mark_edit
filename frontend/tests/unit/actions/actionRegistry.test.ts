@@ -529,3 +529,10 @@ describe('editor formatting availability', () => {
         expect(t(actionUnavailableLabelKey('editor-hidden'))).toBe('Show the editor to use formatting.');
     });
 });
+
+it('allows Save As for a write-protected document while Save remains unavailable', () => {
+    const projectedState = { activeDocumentId: 'doc', documents: { doc: { capability: 'write-protected-read-only' } } };
+    const context = { projectedState, writable: false };
+    expect(getActionAvailability('save-as', context)).toEqual({ kind: 'available' });
+    expect(getActionAvailability('save', context)).toEqual({ kind: 'unavailable', reason: 'no-document' });
+});
