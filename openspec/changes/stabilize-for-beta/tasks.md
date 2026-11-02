@@ -164,7 +164,7 @@ area"; editor "Text navigation and line editing keys". Design §7. Owners:
       Add e2e tests for "Link in the editor", "Inline code on macOS", "Previous tab from the editor", "Catalogue
       shortcut wins over an editor key", and that "Key handled by the Find input" (`reading-mode.test.ts:128`) still
       passes; verify they pass.
-- [ ] 8.2 Replace Mod+Tab with physical Ctrl+Tab / Ctrl+Shift+Tab as the displayed bindings on every platform (Ctrl+
+- [x] 8.2 Replace Mod+Tab with physical Ctrl+Tab / Ctrl+Shift+Tab as the displayed bindings on every platform (Ctrl+
       PageDown/PageUp stay aliases), and teach `formatShortcut` ⌃, ⇥ and PageUp/PageDown on macOS and their names
       elsewhere; update the shortcuts dialog and menu hints. Add `shortcutForKeyEvent` and formatting unit tests for
       darwin and other platforms; verify them, and check Control+Tab and Cmd+K/Cmd+E in the real app.

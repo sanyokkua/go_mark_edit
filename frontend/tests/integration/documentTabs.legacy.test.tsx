@@ -119,6 +119,14 @@ it('Move tab actions sit between close and path groups', () => {
     });
 
     fireEvent.contextMenu(screen.getByRole('tab', { name: /one\.md/ }));
+    expect(screen.getByRole('menuitem', { name: 'Move tab left' })).toHaveAttribute(
+        'aria-keyshortcuts',
+        expect.stringMatching(/^(Ctrl\+Shift\+PageUp|⌘⇧⇞)$/),
+    );
+    expect(screen.getByRole('menuitem', { name: 'Move tab right' })).toHaveAttribute(
+        'aria-keyshortcuts',
+        expect.stringMatching(/^(Ctrl\+Shift\+PageDown|⌘⇧⇟)$/),
+    );
     expect(
         screen.getAllByRole('menuitem').map((item) => item.querySelector('span')?.textContent ?? item.textContent),
     ).toEqual([

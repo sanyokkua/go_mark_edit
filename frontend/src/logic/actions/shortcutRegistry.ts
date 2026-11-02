@@ -29,6 +29,10 @@ export function formatShortcut(binding: string, platform: Platform): string {
         .split('+')
         .map((part) => {
             if (part === 'Mod') return platform === 'darwin' ? '⌘' : 'Ctrl';
+            if (part === 'Ctrl') return platform === 'darwin' ? '⌃' : 'Ctrl';
+            if (part === 'Tab') return platform === 'darwin' ? '⇥' : 'Tab';
+            if (part === 'PageUp') return platform === 'darwin' ? '⇞' : 'PageUp';
+            if (part === 'PageDown') return platform === 'darwin' ? '⇟' : 'PageDown';
             if (part === 'Alt') return platform === 'darwin' ? '⌥' : 'Alt';
             if (part === 'Shift') return platform === 'darwin' ? '⇧' : 'Shift';
             if (part === 'Enter') return platform === 'darwin' ? '↩' : 'Enter';
@@ -92,11 +96,12 @@ export function shortcutForKeyEvent(event: KeyboardLikeEvent, platform: Platform
     for (const candidate of candidates) {
         const direct = registered.find((binding) => binding === candidate);
         if (direct !== undefined) return direct;
-        // Ctrl+PageUp/PageDown are physical Control bindings on every platform;
-        // Mod is the platform-neutral spelling used by the registry primary map.
-        const controlBinding = candidate.replace(/^Mod\+/, 'Ctrl+');
-        const control = registered.find((binding) => binding === controlBinding);
-        if (control !== undefined) return control;
+        // Outside macOS, Mod and physical Ctrl name the same modifier.
+        if (platform !== 'darwin') {
+            const controlBinding = candidate.replace(/^Mod\+/, 'Ctrl+');
+            const control = registered.find((binding) => binding === controlBinding);
+            if (control !== undefined) return control;
+        }
     }
     return undefined;
 }

@@ -103,6 +103,12 @@ test('Previous tab from the editor uses the Control+PageUp alias', async ({ app 
     await page.locator('[data-editor-surface] .view-lines').first().click();
     await page.keyboard.press('Control+PageUp');
     await expect(page.getByRole('tab', { name: 'previous-one.md' })).toHaveAttribute('aria-selected', 'true');
+    await page.locator('[data-editor-surface] .view-lines').first().click();
+    await page.keyboard.press('Control+Tab');
+    await expect(page.getByRole('tab', { name: 'previous-two.md' })).toHaveAttribute('aria-selected', 'true');
+    await page.locator('[data-editor-surface] .view-lines').first().click();
+    await page.keyboard.press('Control+Shift+Tab');
+    await expect(page.getByRole('tab', { name: 'previous-one.md' })).toHaveAttribute('aria-selected', 'true');
 });
 
 test('Catalogue shortcut wins over an editor key', async ({ app }) => {

@@ -68,3 +68,11 @@ it('closes the modal on a backdrop pointer interaction', () => {
     fireEvent.pointerDown(document.querySelector('[aria-hidden="true"]')!);
     expect(onOpenChange).toHaveBeenCalledWith(false);
 });
+
+it('shows physical Control tab bindings in the shortcuts dialog', () => {
+    render(<ShortcutsDialog open onOpenChange={jest.fn()} />);
+    const next = screen.getByText('Next tab').closest('[data-action-id="next-tab"]');
+    const previous = screen.getByText('Previous tab').closest('[data-action-id="previous-tab"]');
+    expect(next?.querySelector('kbd')).toHaveTextContent(/^(Ctrl\+Tab|⌃⇥)$/);
+    expect(previous?.querySelector('kbd')).toHaveTextContent(/^(Ctrl\+Shift\+Tab|⌃⇧⇥)$/);
+});

@@ -84,7 +84,7 @@ test('Ctrl+Tab still switches documents while Reading mode is active', async ({ 
     await expectReading(page);
     await expect(page.locator(PREVIEW)).toContainText('Second document text.');
 
-    await page.keyboard.press('ControlOrMeta+Tab');
+    await page.keyboard.press('Control+Tab');
     await expectReading(page);
     await expect(page.locator(PREVIEW)).toContainText('First document text.');
     await expect(page.locator(PREVIEW)).not.toContainText('Second document text.');

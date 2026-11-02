@@ -439,11 +439,11 @@ export const actionRegistry: readonly ActionEntry[] = Object.freeze([
         separatorBefore: ['context'],
     }),
     entry('next-tab', 'window', ['shortcuts'], {
-        shortcut: 'Mod+Tab',
+        shortcut: 'Ctrl+Tab',
         shortcutAliases: ['Ctrl+PageDown'],
     }),
     entry('previous-tab', 'window', ['shortcuts'], {
-        shortcut: 'Mod+Shift+Tab',
+        shortcut: 'Ctrl+Shift+Tab',
         shortcutAliases: ['Ctrl+PageUp'],
     }),
 ]);
