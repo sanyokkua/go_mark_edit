@@ -533,6 +533,7 @@ test('when a folder is empty or closed, the sidebar explains its state and honor
     await savePrompt.getByRole('button', { name: 'Save all', exact: true }).click();
     await expect(app.page.getByText('No folder open')).toBeHidden();
     await expect(app.page.getByRole('tab', { name: 'one.md' })).toHaveCount(0);
+    await expect(app.page.getByRole('treeitem', { name: basename(root), exact: true })).toHaveCount(0);
     expect(await readFile(file, 'utf8')).toContain('Edited before closing');
     await app.openWorkspace(root);
     await rename(root, `${root}-moved`);
