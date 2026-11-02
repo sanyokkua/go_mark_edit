@@ -488,11 +488,21 @@ const (
 	WriteStatusRefused            WriteStatus = "refused"
 )
 
+// WriteWarning identifies which accompanying operation failed after a committed write.
+type WriteWarning string
+
+const (
+	WriteWarningDurability  WriteWarning = "durability"
+	WriteWarningRecentItems WriteWarning = "recent-items"
+	WriteWarningViewState   WriteWarning = "view-state"
+)
+
 // WriteResult distinguishes a committed disk replacement from a cancelled,
 // authorization, conflict, or classified refusal outcome.
 type WriteResult struct {
 	Failure
 	Status           WriteStatus            `json:"status"`
+	Warning          WriteWarning           `json:"warning,omitempty"`
 	Data             *CommittedWriteOutcome `json:"data,omitempty"`
 	DecisionToken    string                 `json:"decisionToken,omitempty"`
 	ProposedEnding   string                 `json:"proposedEnding,omitempty"`

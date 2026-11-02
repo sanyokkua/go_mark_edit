@@ -492,14 +492,29 @@ func (service *AppModelService) executeWrite(ctx context.Context, snapshot write
 		TargetPathAdopted: snapshot.targetPathAdopted, LineEndingOutcome: encoded.lineEndingOutcome,
 		BOMOutcome: encoded.bomOutcome, ResyncRequired: resyncRequired,
 	}, Error: metadataWarning}
+	if metadataWarning != nil {
+		result.Warning = apperr.WriteWarningViewState
+	}
 	if promotionWarning != nil {
 		result.Error = promotionWarning
+		result.Warning = apperr.WriteWarningRecentItems
 	}
 	if replaceErr != nil {
+		result.Warning = apperr.WriteWarningDurability
 		result.Error = bridge.ClassifiedWithID(apperr.ClassifiedPersistenceWarning, snapshot.path, "The document was saved, but the save could not be confirmed on disk.", apperr.RemediationNone, snapshot.documentID)
 	}
 	result.Failure = bridge.FailureFromClassified(result.Error)
 	return result
+}
+
+// emitCommittedSaveWarning surfaces warnings when the caller cannot return the write result.
+func (service *AppModelService) emitCommittedSaveWarning(ctx context.Context, result apperr.WriteResult) {
+	if result.Status != apperr.WriteStatusCommitted || result.Error == nil || result.Warning == "" {
+		return
+	}
+	wire := apperr.ClassifiedToWire(result.Error)
+	wire.Details["saveWarning"] = string(result.Warning)
+	service.emitAsyncError(ctx, wire, "committed save warning could not be surfaced")
 }
 
 func (service *AppModelService) setWriteInFlight(ctx context.Context, documentID string, inFlight bool) bool {

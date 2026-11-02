@@ -628,7 +628,13 @@ written.
 leaves disk and the old baseline unchanged. After it commits, the model records the exact written
 baseline even if patch delivery fails; the adapter rehydrates before accepting further mutations and
 does not repeat the write. `useDocumentWrites` repairs the Redux projection from the recovered
-snapshot; it does not reinstall editor content or advance activation generations.
+snapshot; it does not reinstall editor content or advance activation generations. A committed `WriteResult`
+may include a typed `warning` value (`durability`, `recent-items` or `view-state`) alongside its classified
+error. When several accompanying operations fail, the selected warning follows that order of precedence;
+the error retains its existing identity and deduplication key. Ordinary saves present the warning while the window
+remains open. A committed-save warning does not delay a successful Quit: shutdown continues immediately after the save
+commits, without waiting for the warning to be acknowledged or displayed. The application does not guarantee warning
+visibility before process exit.
 
 External changes are classified before saving. Editable conflicts offer Reload or one exact-version
 Keep mine authorization. A conflict is read-only if either the open document or the current disk version

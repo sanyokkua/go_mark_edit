@@ -9,6 +9,7 @@ import type {
     WorkspaceResult,
 } from '../../../src/logic/store/appModelTypes';
 import type { WireError } from '../../../src/logic/utils/parseError';
+import { isBufferSyncError } from '../../../src/logic/utils/bufferSyncError';
 import {
     VIEW_SYNC_MS,
     createAppModelAdapter,
@@ -1369,4 +1370,83 @@ it('When workspace refusals omit remediations, the adapter provides an empty lis
     await expect(adapter.closeWorkspace?.()).resolves.toMatchObject({
         error: { remediations: [] },
     });
+});
+
+it('reports the first buffer delivery failure until a successful delivery rearms reporting', async () => {
+    const failure: WireError = {
+        code: 'io',
+        title: 'Sync failed',
+        message: 'Could not sync',
+        retryable: true,
+        details: { subject: 'notes.md' },
+    };
+    const updateBuffer = jest
+        .fn((id: string, content: string): Promise<VoidResult> => {
+            void id;
+            void content;
+            return Promise.resolve({});
+        })
+        .mockResolvedValueOnce({ error: failure })
+        .mockRejectedValueOnce(new Error('offline'))
+        .mockResolvedValueOnce({})
+        .mockResolvedValueOnce({ error: failure });
+    const adapter = createAppModelAdapter(
+        {
+            getState: () => Promise.resolve({ data: state }),
+            updateBuffer,
+            setDocView: () => Promise.resolve({}),
+            setUILayout: () => Promise.resolve({}),
+        },
+        { eventsOn: () => () => undefined },
+    );
+    const errors = jest.fn();
+    const unsubscribe = adapter.subscribeBufferSyncErrors(errors);
+    await adapter.updateBuffer('one', 'first');
+    const firstFailure = adapter.flushBuffer('one');
+    await expect(firstFailure).rejects.toBeInstanceOf(Error);
+    await expect(firstFailure).rejects.toMatchObject(failure);
+    expect(isBufferSyncError(await firstFailure.catch((error: unknown) => error))).toBe(true);
+    await adapter.updateBuffer('one', 'latest');
+    await expect(adapter.flushBuffer('one')).rejects.toMatchObject({ code: 'internal', message: 'offline' });
+    expect(errors).toHaveBeenCalledTimes(1);
+    expect(errors).toHaveBeenCalledWith(failure);
+    expect(store.getState().notifications.items).toHaveLength(0);
+    await adapter.flushBuffer('one');
+    expect(updateBuffer).toHaveBeenLastCalledWith('one', 'latest');
+    await adapter.updateBuffer('two', 'other');
+    await expect(adapter.flushBuffer('two')).rejects.toMatchObject(failure);
+    expect(errors).toHaveBeenCalledTimes(2);
+    unsubscribe();
+});
+
+it('keeps newer buffer text when an older in-flight delivery fails', async () => {
+    const first = deferred<VoidResult>();
+    const failure: WireError = { code: 'io', title: 'Sync failed', message: 'Could not sync', retryable: true };
+    const updateBuffer = jest
+        .fn((id: string, content: string): Promise<VoidResult> => {
+            void id;
+            void content;
+            return Promise.resolve({});
+        })
+        .mockReturnValueOnce(first.promise);
+    const adapter = createAppModelAdapter(
+        {
+            getState: () => Promise.resolve({ data: state }),
+            updateBuffer,
+            setDocView: () => Promise.resolve({}),
+            setUILayout: () => Promise.resolve({}),
+        },
+        { eventsOn: () => () => undefined },
+    );
+    const errors = jest.fn();
+    adapter.subscribeBufferSyncErrors(errors);
+    await adapter.updateBuffer('one', 'older');
+    const failedFlush = adapter.flushBuffer('one');
+    await Promise.resolve();
+    await adapter.updateBuffer('one', 'newer');
+    first.resolve({ error: failure });
+    await expect(failedFlush).rejects.toMatchObject(failure);
+    await adapter.flushBuffer('one');
+    expect(updateBuffer.mock.calls.map(([, content]) => content)).toEqual(['older', 'newer']);
+    expect(errors).toHaveBeenCalledTimes(1);
 });

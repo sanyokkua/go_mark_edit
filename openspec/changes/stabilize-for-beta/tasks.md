@@ -145,11 +145,16 @@ Spec: file-lifecycle "Save outcome reporting" and "Editor changes that cannot be
       "Durability not confirmed", "Two accompanying failures", "Durability and Recent Items both fail" and
       "Unencodable text". Cover the private committed-write error in the existing white-box
       `internal/appmodel/save_identity_test.go`; verify the tests pass.
-- [ ] 7.2 Show the committed-save warning in `useDocumentWrites` with new notification codes and catalogue strings;
+- [x] 7.2 Add a typed optional committed-save warning value to `WriteResult`, select it with the existing error and
+      normalize it through the adapter; regenerate bindings. Show the committed-save warning in `useDocumentWrites`
+      with new notification codes and catalogue strings;
       add `subscribeBufferSyncErrors` to the adapter (first failure reported, silent until a send succeeds) and show
-      it through `notifyError` from `AppWorkflows`; handle a rejected full-screen toggle. Add frontend integration
+      it through `notifyError` from `AppWorkflows`; surface committed close-plan and autosave warnings through the
+      existing asynchronous error event and shared warning presentation; handle a rejected full-screen toggle. Add frontend integration
       tests using the existing adapter fakes for each, including "Delivery fails" and "Delivery recovers" (the
-      pending text is sent with the next edit); verify they pass.
+      pending text is sent with the next edit); verify ordinary saves show warnings while the window remains open and
+      a successful Quit continues immediately after a committed-save warning without waiting for acknowledgement or
+      visibility.
 
 ## 8. Shortcuts work while the editor has focus
 

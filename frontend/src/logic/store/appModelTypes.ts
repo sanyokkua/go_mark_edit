@@ -166,7 +166,10 @@ export interface CommittedWriteOutcome {
 
 export type WriteStatus = 'committed' | 'cancelled' | 'needs-normalization' | 'conflict' | 'refused';
 
+export type CommittedWriteWarning = 'durability' | 'recent-items' | 'view-state';
+
 export interface WriteResult {
+    warning?: CommittedWriteWarning;
     status: WriteStatus;
     data?: CommittedWriteOutcome;
     decisionToken?: string;

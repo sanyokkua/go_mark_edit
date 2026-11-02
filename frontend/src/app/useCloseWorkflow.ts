@@ -1,3 +1,4 @@
+import { isBufferSyncError } from '../logic/utils/bufferSyncError';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { t } from '../i18n';
@@ -129,10 +130,12 @@ export function useCloseWorkflow({ session, shutdown, conflicts, recoverySurface
     const fail = useCallback(
         async (error: ClassifiedError | unknown, context: CloseContext): Promise<void> => {
             if (!isCurrent(context.origin)) return;
-            if (typeof error === 'object' && error !== null && 'category' in error && 'dedupKey' in error) {
-                reportError(error as ClassifiedError, context.origin);
-            } else {
-                reportUnknownError(error);
+            if (!isBufferSyncError(error)) {
+                if (typeof error === 'object' && error !== null && 'category' in error && 'dedupKey' in error) {
+                    reportError(error as ClassifiedError, context.origin);
+                } else {
+                    reportUnknownError(error);
+                }
             }
             publish({ ...context, phase: 'failed' });
             settleWindowClose(context.origin, 'refused');

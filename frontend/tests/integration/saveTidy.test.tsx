@@ -847,3 +847,71 @@ it('skips Format with a read-only reason when saving a protected document as a c
         store.getState().notifications.items.find((notice) => notice.code === 'format-on-save-skipped')?.message,
     ).toContain('the document is read-only');
 });
+
+it.each([
+    ['durability', 'save-warning-durability'],
+    ['recent-items', 'save-warning-recent-items'],
+    ['view-state', 'save-warning-view-state'],
+] as const)('reports a committed %s warning while keeping save success', async (warning, code) => {
+    const tidy: TidyCommands = {
+        run: jest.fn().mockResolvedValue({ kind: 'edits', edits: [] }),
+        cancel: jest.fn(),
+        documentChanged: jest.fn(),
+    };
+    (appModelAdapter.flushActiveSession as jest.Mock).mockResolvedValue(undefined);
+    (appModelAdapter.getState as jest.Mock).mockResolvedValue(stableState());
+    (documentWriteAdapter.save as jest.Mock).mockResolvedValue({ ...committed, warning });
+    (appModelAdapter.reconcileCommittedWrite as jest.Mock).mockResolvedValue({ snapshot: stableState().snapshot });
+    const owner = setup(tidy);
+    await act(async () => {
+        await owner.result.current.onSave();
+    });
+    const notices = store.getState().notifications.items;
+    expect(notices.find((notice) => notice.code === code)).toMatchObject({ severity: 'warning' });
+    expect(notices.find((notice) => notice.code === 'save-success')).toBeDefined();
+});
+
+it('aborts repeated saves on buffer sync failure without adding save error notices', async () => {
+    const { markBufferSyncError } = await import('../../src/logic/utils/bufferSyncError');
+    const error = markBufferSyncError({ code: 'io', title: 'Sync', message: 'Failed', retryable: true });
+    const tidy: TidyCommands = {
+        run: jest.fn().mockResolvedValue({ kind: 'edits', edits: [] }),
+        cancel: jest.fn(),
+        documentChanged: jest.fn(),
+    };
+    (appModelAdapter.flushActiveSession as jest.Mock).mockRejectedValue(error);
+    const owner = setup(tidy);
+    await act(async () => {
+        await owner.result.current.onSave();
+        await owner.result.current.onSave();
+    });
+    expect(documentWriteAdapter.save).not.toHaveBeenCalled();
+    expect(store.getState().notifications.items).toHaveLength(0);
+});
+
+it('keeps a conflict choice open without a duplicate error when buffer delivery fails', async () => {
+    const { markBufferSyncError } = await import('../../src/logic/utils/bufferSyncError');
+    const error = markBufferSyncError({ code: 'io', title: 'Sync', message: 'Failed', retryable: true });
+    const tidy: TidyCommands = {
+        run: jest.fn().mockResolvedValue({ kind: 'edits', edits: [] }),
+        cancel: jest.fn(),
+        documentChanged: jest.fn(),
+    };
+    (appModelAdapter.flushActiveSession as jest.Mock).mockResolvedValueOnce(undefined).mockRejectedValue(error);
+    (appModelAdapter.getState as jest.Mock).mockResolvedValue(stableState());
+    (documentWriteAdapter.save as jest.Mock).mockResolvedValue({
+        status: 'conflict',
+        conflict: conflictFixture('one', 1),
+    });
+    const execute = jest.fn();
+    const owner = setup(tidy, execute);
+    await act(async () => {
+        await owner.result.current.onSave();
+    });
+    expect(owner.result.current.prompt.phase).toBe('conflict');
+    await act(async () => {
+        await owner.result.current.conflict?.onDecision('reload');
+    });
+    expect(execute).not.toHaveBeenCalled();
+    expect(store.getState().notifications.items).toHaveLength(0);
+});

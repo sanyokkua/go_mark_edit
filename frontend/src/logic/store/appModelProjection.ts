@@ -1,6 +1,7 @@
 import type { AppModelAdapter } from '../adapter/appModelAdapter';
 import { isWireError, parseError } from '../utils/parseError';
 import { notifyError } from './notificationsSlice';
+import { parseSaveWarning, saveWarningNotification } from './saveWarning';
 
 import { applyStatePatch, hydrateProjection, resetProjection } from './appModelProjectionActions';
 import type { ActiveBuffer, AppStatePatch } from './appModelTypes';
@@ -59,7 +60,12 @@ async function initializeProjection(appModelAdapter: AppModelAdapter): Promise<A
             if (activeAttempt !== attempt) {
                 return;
             }
-            store.dispatch(notifyError(error));
+            const warning = parseSaveWarning(error.details?.saveWarning);
+            if (warning === undefined) store.dispatch(notifyError(error));
+            else
+                store.dispatch(
+                    saveWarningNotification(warning, error.details?.dedupKey ?? error.details?.subject ?? warning),
+                );
         });
         attempt.disposeStatePatches = appModelAdapter.subscribeStatePatches((patch: AppStatePatch): void => {
             if (activeAttempt !== attempt) {

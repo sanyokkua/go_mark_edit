@@ -1539,6 +1539,7 @@ export namespace apperr {
 	    remediation?: string;
 	    id?: string;
 	    status: string;
+	    warning?: string;
 	    data?: CommittedWriteOutcome;
 	    decisionToken?: string;
 	    proposedEnding?: string;
@@ -1558,6 +1559,7 @@ export namespace apperr {
 	        this.remediation = source["remediation"];
 	        this.id = source["id"];
 	        this.status = source["status"];
+	        this.warning = source["warning"];
 	        this.data = this.convertValues(source["data"], CommittedWriteOutcome);
 	        this.decisionToken = source["decisionToken"];
 	        this.proposedEnding = source["proposedEnding"];

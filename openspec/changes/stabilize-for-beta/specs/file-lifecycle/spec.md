@@ -97,9 +97,10 @@ for everyone else (0644), reduced by the user's file-creation mask.
 
 ### Requirement: Save outcome reporting
 
-WHEN a save writes the file but something that accompanies it fails (adding the Recent Item, storing the view state,
-or confirming the write reached the disk), the system SHALL keep the document saved and show one warning naming what
-failed; when several fail, the warning names the first of: durability not confirmed, Recent Items, view state. WHEN the text cannot be encoded for writing, the system SHALL report the reason without offering Retry.
+WHEN a committed save has an accompanying failure, the system SHALL keep the document saved and show one warning while
+the window remains open. The warning SHALL identify the highest-priority failure: durability, Recent Items, then view
+state. A committed-save warning SHALL NOT delay a successful Quit; the system does not guarantee that it is acknowledged
+or visible before exit. Unencodable text SHALL be reported without offering Retry.
 
 #### Scenario: Recent Items cannot be stored
 
@@ -120,6 +121,21 @@ failed; when several fail, the warning names the first of: durability not confir
 
 - **WHEN** a save is written, confirming it reached the disk fails and the Recent Items update fails
 - **THEN** one warning is shown, and it says the save could not be confirmed on disk
+
+#### Scenario: Close-plan save warning
+
+- **WHEN** a close-plan save commits and its Recent Items update fails
+- **THEN** the close operation continues; while the window remains open, a warning says Recent Items could not be updated
+
+#### Scenario: Quit continues after committed-save warning
+
+- **WHEN** a successful Quit commits a close-plan save but confirming that the write reached the disk fails
+- **THEN** Quit continues immediately without waiting for warning acknowledgement or visibility, and the warning may not be seen before exit
+
+#### Scenario: Autosave durability warning
+
+- **WHEN** an autosave replaces the file but confirming that the write reached the disk fails
+- **THEN** the document is saved and a warning says the save could not be confirmed on disk
 
 #### Scenario: Unencodable text
 

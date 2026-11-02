@@ -31,8 +31,9 @@ Data integrity
 Visible failures
 
 - Warnings that accompany a committed save (recent-items or view-state not stored, durability not confirmed) are
-  shown instead of dropped; an unencodable buffer is reported without a Retry that cannot succeed; a failed
-  background buffer sync is reported.
+  shown while the window remains open; they do not delay a successful Quit, and the application does not guarantee
+  that a warning is acknowledged or visible before exit. An unencodable buffer is reported without a Retry that cannot
+  succeed; a failed background buffer sync is reported.
 - If the interface never reports ready, the window is shown anyway 12 seconds after the window size was restored, so
   the startup failure screen is visible.
 - An unexpected rendering error shows a recoverable "Something went wrong" screen instead of a blank window, with
@@ -104,8 +105,8 @@ None.
 - Backend: `internal/appmodel` (save, conflict, lifecycle, close plan, autosave, layout drain), `internal/file`
   (atomic replace, document reader), `internal/application` (native window, `application_context_holder.go` port
   wiring), `main.go` (headless test ports).
-- Bridge: one new read-capability value for write-protected files (generated bindings regenerate); no bound method
-  signature changes.
+- Bridge: a read-capability value for write-protected files and a typed committed-save warning value (generated
+  bindings regenerate); no bound method signature changes.
 - Frontend: `useSyncedBuffer`, `useDocumentSession`, `CodeEditor`, `EditorStage`, `monacoSetup`,
   `useEditorActionExecutor`, `useShellShortcuts`, shortcut registry, `DocumentTabs`, `readOnlyReason`,
   `useDocumentWrites`, adapter error reporting, the root error boundary in `App`, `MarkdownView`/`useLivePreview`, `useWindowGeometry`, `Menubar`,

@@ -1,3 +1,4 @@
+import { isBufferSyncError } from '../utils/bufferSyncError';
 import type { AppDispatch } from './index';
 import type { ClassifiedError, ClosePlanKind, RecentItemKind } from './appModelTypes';
 import { notifyToast, type NotificationRemediation, type NotificationRemediationIntent } from './notificationsSlice';
@@ -46,7 +47,7 @@ export function reportClassifiedError(
     fallback: string,
     options: ClassifiedReportOptions = {},
 ): void {
-    if (error === undefined) return;
+    if (error === undefined || isBufferSyncError(error)) return;
     dispatch(
         notifyToast({
             code: classifiedErrorCode(error.category),

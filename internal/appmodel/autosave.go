@@ -239,6 +239,7 @@ func (service *AppModelService) finishAutosave(ctx context.Context, documentID s
 			document.autosaveFailureCategory = ""
 		}
 		service.mu.Unlock()
+		service.emitCommittedSaveWarning(ctx, result)
 		return
 	}
 	if result.Error == nil {

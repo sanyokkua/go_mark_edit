@@ -8,7 +8,7 @@ import {
     type AcceptedBuffer,
 } from '../../../src/logic/adapter/appModelAdapter';
 import { store } from '../../../src/logic/store';
-import { dismissNotification } from '../../../src/logic/store/notificationsSlice';
+import { dismissNotification, notifyError } from '../../../src/logic/store/notificationsSlice';
 import type { AppModelState } from '../../../src/logic/store/appModelTypes';
 import type { WireError } from '../../../src/logic/utils/parseError';
 import {
@@ -67,9 +67,16 @@ it('keeps the last accepted preview on sync failure', async () => {
         attempt += 1;
         return attempt === 1 ? {} : { error: wireError };
     });
-    const { result } = renderHook(() =>
-        useLivePreview({ documentId: 'document-1', content: '# Bootstrap preview' }, adapter),
-    );
+    const { result } = renderHook(() => {
+        useEffect(
+            () =>
+                adapter.subscribeBufferSyncErrors((error) => {
+                    store.dispatch(notifyError(error));
+                }),
+            [adapter],
+        );
+        return useLivePreview({ documentId: 'document-1', content: '# Bootstrap preview' }, adapter);
+    });
 
     await act(async (): Promise<void> => {
         await adapter.updateBuffer('document-1', '# Last accepted preview');

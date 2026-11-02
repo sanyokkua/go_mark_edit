@@ -1,4 +1,5 @@
 import { guardArity } from './bridgeGuard';
+import { BufferSyncError } from '../utils/bufferSyncError';
 import { unwrapPromise } from './envelope';
 import { createDocumentLifecycleAdapter } from './services';
 import type { RegisteredLifecycleSession } from '../hooks/useLifecycleBarrier';
@@ -26,7 +27,7 @@ import type {
     FolderChoiceResult,
     FolderChoiceResultWire,
 } from '../store/appModelTypes';
-import { isWireError, type WireError } from '../utils/parseError';
+import { isWireError, parseError, type WireError } from '../utils/parseError';
 import { t } from '../../i18n';
 import { EVENTS } from './events';
 
@@ -129,6 +130,7 @@ export interface AppModelAdapter {
     setUILayout: (layout: UILayout) => Promise<void>;
     reconcileCommittedWrite: (outcome: CommittedWriteOutcome) => Promise<AppModelState | RecoverySurface>;
     subscribeAsyncErrors?: (onError: (error: WireError) => void) => () => void;
+    subscribeBufferSyncErrors: (onError: (error: WireError) => void) => () => void;
     subscribeStatePatches: (onPatch: (patch: AppStatePatch) => void) => () => void;
 }
 
@@ -426,6 +428,8 @@ export function createAppModelAdapter(bindings: AppModelBindings, runtime: AppMo
     let disposeStatePatches: (() => void) | undefined;
     const statePatchListeners = new Set<(patch: AppStatePatch) => void>();
     const acceptedBufferListeners = new Set<(buffer: AcceptedBuffer) => void>();
+    const bufferSyncErrorListeners = new Set<(error: WireError) => void>();
+    let bufferSyncFailed = false;
     const bufferRecords = new Map<string, BufferRecord>();
     const viewRecords = new Map<string, ViewRecord>();
     let greatestProjectionRevision = 0;
@@ -534,8 +538,11 @@ export function createAppModelAdapter(bindings: AppModelBindings, runtime: AppMo
         }
         record.pending = undefined;
 
-        const inFlight = unwrapPromise<void>(updateBuffer(documentId, snapshot.content))
-            .then((): void => {
+        const inFlight = Promise.resolve()
+            .then(() => updateBuffer(documentId, snapshot.content))
+            .then((result): void => {
+                if (result.error !== undefined) throw new BufferSyncError(result.error);
+                bufferSyncFailed = false;
                 if (snapshot.generation <= record.acceptedGeneration) {
                     return;
                 }
@@ -552,7 +559,19 @@ export function createAppModelAdapter(bindings: AppModelBindings, runtime: AppMo
                 if (record.pending === undefined || record.pending.generation < snapshot.generation) {
                     record.pending = snapshot;
                 }
-                throw error;
+                const parsed = parseError(error);
+                const normalized: WireError = {
+                    code: parsed.code,
+                    title: parsed.title,
+                    message: parsed.message,
+                    retryable: parsed.retryable,
+                    ...(parsed.details === undefined ? {} : { details: parsed.details }),
+                };
+                if (!bufferSyncFailed) {
+                    bufferSyncFailed = true;
+                    for (const listener of bufferSyncErrorListeners) listener(normalized);
+                }
+                throw new BufferSyncError(normalized);
             });
         const completed = inFlight.finally((): void => {
             if (record.inFlight === completed) {
@@ -901,6 +920,12 @@ export function createAppModelAdapter(bindings: AppModelBindings, runtime: AppMo
                 recoveryPromise = undefined;
             });
             return recoveryPromise;
+        },
+        subscribeBufferSyncErrors(onError: (error: WireError) => void): () => void {
+            bufferSyncErrorListeners.add(onError);
+            return (): void => {
+                bufferSyncErrorListeners.delete(onError);
+            };
         },
         subscribeAsyncErrors(onError: (error: WireError) => void): () => void {
             return runtime.eventsOn(EVENTS.stateError, (payload: unknown) => {

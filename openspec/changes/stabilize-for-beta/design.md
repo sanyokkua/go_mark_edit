@@ -19,8 +19,8 @@ lives today. Constraints that shape the approach:
 **Goals:**
 
 - Fix each defect inside its existing owner, with a regression test that fails before the fix.
-- Keep the Wails wire contract unchanged unless a defect cannot be fixed otherwise. One change is needed: a new
-  read-capability value for write-protected files (§5). No bound method signature changes.
+- Keep the Wails wire contract unchanged unless a defect cannot be fixed otherwise. The change adds a read-capability
+  value for write-protected files (§5) and a typed committed-save warning value (§6). No bound method signatures change.
 - Make a full local `scripts/verify` faster and free of desktop side effects except app focus.
 
 **Non-Goals:**
@@ -169,11 +169,23 @@ the OR of content ≠ baseline, `ContentRevision > committedRevision`, detached,
   (`frontend/src/logic/store/classifiedNotification.ts:179`).
 - The committed branch of `finishWrite` (`frontend/src/app/useDocumentWrites.ts:196-235`) ignores `result.error`;
   show it with the existing `notifyToast({severity: 'warning'})` pattern (`useDocumentWrites.ts:72-79`) under new
-  notification codes and catalogue strings for Recent Items, view state and durability.
+  notification codes and catalogue strings for Recent Items, view state and durability. Add an optional typed warning
+  value to `WriteResult` (`durability`, `recent-items`, or `view-state`) alongside the selected existing error. The
+  existing error fields cannot distinguish durability from view state without parsing user-facing English; retain their
+  current identities and deduplication keys. Normalize the value through the adapter and regenerate bindings.
+- Close-plan execution and autosave consume committed write results without returning them to `finishWrite`. Emit
+  their selected warnings through the existing `state:error` event with `details.saveWarning` carrying the typed value.
+  The frontend validates that value and uses the same warning presentation as explicit saves while the window remains
+  open; other asynchronous errors retain their existing error presentation. Explicit saves do not emit a duplicate
+  event. A committed-save warning never vetoes a successful Quit: after the requested saves commit, Quit continues
+  immediately, even when durability, Recent Items or view-state persistence failed. The application makes no guarantee
+  that such a warning is acknowledged or becomes visible before process exit. An ordinary save while the window stays
+  open still presents its warning.
 - Buffer sync: `appModelAdapter.ts:575` swallows `sendPendingBuffer` failures; a failed snapshot is already kept as
   pending (`:551-555`) and is sent with the next edit, flush or save. Add one adapter listener API,
   `subscribeBufferSyncErrors(listener)` next to `subscribeAsyncErrors` (`:905`), that reports the first failure and
-  stays silent until a send succeeds. `AppWorkflows` subscribes and shows it through `notifyError`.
+  stays silent until a send succeeds. Buffer sends use side-effect-free envelope inspection so `unwrapPromise` does
+  not independently notify every failure. `AppWorkflows` subscribes and shows it through `notifyError`.
 - `ApplicationMenubar.tsx:164-168` (`onFullscreen`) gets a rejection handler that reports through `notifyError`, as
   `ApplicationMenubar.tsx:195` already does.
 

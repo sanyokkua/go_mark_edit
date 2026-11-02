@@ -1,3 +1,4 @@
+import { isBufferSyncError, markBufferSyncError } from '../../logic/utils/bufferSyncError';
 import type { ClassifiedError } from '../../logic/store/appModelTypes';
 
 /**
@@ -62,7 +63,8 @@ export async function flushOutgoingDocument(
     try {
         await flush(outgoingDocumentId);
         return undefined;
-    } catch {
-        return outgoingFlushRefusal();
+    } catch (error) {
+        const refusal = outgoingFlushRefusal();
+        return isBufferSyncError(error) ? markBufferSyncError(refusal) : refusal;
     }
 }

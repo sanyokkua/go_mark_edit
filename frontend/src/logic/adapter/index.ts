@@ -100,6 +100,7 @@ import type {
     WriteResult,
 } from '../store/appModelTypes';
 import { store } from '../store';
+import { parseSaveWarning } from '../store/saveWarning';
 import { dismissStuckCommand, notifyStuckCommand } from '../store/notificationsSlice';
 import { createCommandInvoker, getBootstrapStatus, type CommandBindOptions } from './command';
 import { EVENTS } from './events';
@@ -318,6 +319,7 @@ function normalizePathCommandResult(result: apperr.PathCommandResult): PathComma
 function normalizeWriteResult(result: apperr.WriteResult): WriteResult {
     return {
         status: result.status as WriteResult['status'],
+        warning: parseSaveWarning(result.warning),
         data:
             result.data === undefined
                 ? undefined

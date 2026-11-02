@@ -315,6 +315,9 @@ func (service *AppModelService) ExecuteClosePlan(ctx context.Context, planID str
 		} else {
 			result = service.Save(ctx, target.documentID, target.contentRevision, target.normalizationToken)
 		}
+		if result.Status == apperr.WriteStatusCommitted {
+			service.emitCommittedSaveWarning(ctx, result)
+		}
 		if result.Status != apperr.WriteStatusCommitted {
 			service.mu.Lock()
 			if current := service.closePlans[planID]; current != nil {

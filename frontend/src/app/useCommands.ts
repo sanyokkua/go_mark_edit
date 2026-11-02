@@ -1,3 +1,4 @@
+import { isBufferSyncError } from '../logic/utils/bufferSyncError';
 import { useCallback, useRef, useState } from 'react';
 
 import { t } from '../i18n';
@@ -62,9 +63,15 @@ export function useCommands(
         pendingWorkspaceReads.current = Math.max(0, pendingWorkspaceReads.current - 1);
         if (pendingWorkspaceReads.current === 0) dispatch(setWorkspaceReading(false));
     }, [dispatch]);
-    const flushActiveDocument = useCallback(async (): Promise<void> => {
-        if (activeBufferDocumentId === undefined) return;
-        await appModelAdapter.flushActiveSession?.(activeBufferDocumentId);
+    const flushActiveDocument = useCallback(async (): Promise<boolean> => {
+        if (activeBufferDocumentId === undefined) return true;
+        try {
+            await appModelAdapter.flushActiveSession?.(activeBufferDocumentId);
+            return true;
+        } catch (error) {
+            if (isBufferSyncError(error)) return false;
+            throw error;
+        }
     }, [activeBufferDocumentId]);
 
     const reportEntryError = useCallback(
@@ -128,7 +135,7 @@ export function useCommands(
     const openLink = useCallback(
         async (target: Extract<LinkTarget, { kind: 'localDocument' }>, sourceDocumentId: string): Promise<void> => {
             try {
-                await flushActiveDocument();
+                if (!(await flushActiveDocument())) return;
                 const generation = activation.begin();
                 const result = await appModelAdapter.openPreviewLink?.(sourceDocumentId, target.href);
                 if (result === undefined || !activation.isCurrent(generation)) return;
@@ -167,7 +174,7 @@ export function useCommands(
                     }
                 }
             } catch (error) {
-                dispatch(notifyError(parseError(error)));
+                if (!isBufferSyncError(error)) dispatch(notifyError(parseError(error)));
             }
         },
         [activation, dispatch, enterReadingForOpen, flushActiveDocument, onFocusedDocumentOpen, reportEntryError],
@@ -175,7 +182,7 @@ export function useCommands(
 
     const onNewDocument = useCallback(
         async (expectedTabSetRevision: number): Promise<EntryCommandOutcome | undefined> => {
-            await flushActiveDocument();
+            if (!(await flushActiveDocument())) return undefined;
             const generation = activation.begin();
             const result = await appModelAdapter.newDocument?.(expectedTabSetRevision);
             activation.acknowledge(generation, result?.data);
@@ -188,7 +195,7 @@ export function useCommands(
 
     const onOpenDocument = useCallback(
         async (expectedTabSetRevision: number): Promise<EntryCommandOutcome | undefined> => {
-            await flushActiveDocument();
+            if (!(await flushActiveDocument())) return undefined;
             const generation = activation.begin();
             const result = await appModelAdapter.openDocument?.(expectedTabSetRevision);
             activation.acknowledge(generation, result?.activeBuffer);
@@ -207,7 +214,7 @@ export function useCommands(
             suppressCapacityNotice = false,
             enterReadingOnOpen = true,
         ): Promise<EntryCommandOutcome | undefined> => {
-            await flushActiveDocument();
+            if (!(await flushActiveDocument())) return undefined;
             const generation = activation.begin();
             const result = await appModelAdapter.openRecentFile?.(path, expectedTabSetRevision);
             activation.acknowledge(generation, result?.activeBuffer);
@@ -324,7 +331,7 @@ export function useCommands(
 
     const onReopenLastFile = useCallback(
         async (expectedTabSetRevision: number): Promise<EntryCommandOutcome | undefined> => {
-            await flushActiveDocument();
+            if (!(await flushActiveDocument())) return undefined;
             const generation = activation.begin();
             const result = await appModelAdapter.reopenLastFile?.(expectedTabSetRevision);
             if (result?.status !== 'folder-target') activation.acknowledge(generation, result?.activeBuffer);

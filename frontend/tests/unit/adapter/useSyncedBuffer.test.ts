@@ -1,5 +1,5 @@
 import { store } from '../../../src/logic/store';
-import { dismissNotification } from '../../../src/logic/store/notificationsSlice';
+import { dismissNotification, notifyError } from '../../../src/logic/store/notificationsSlice';
 import type { AppModelState, DocViewInput } from '../../../src/logic/store/appModelTypes';
 import type { WireError } from '../../../src/logic/utils/parseError';
 import {
@@ -223,6 +223,9 @@ it('retains the working copy after synchronization failure', async () => {
     );
     const accepted = jest.fn();
     adapter.subscribeAcceptedBuffers(accepted);
+    adapter.subscribeBufferSyncErrors((error) => {
+        store.dispatch(notifyError(error));
+    });
 
     await adapter.updateBuffer('document-1', 'local working copy');
     await jest.advanceTimersByTimeAsync(BUFFER_SYNC_MS);

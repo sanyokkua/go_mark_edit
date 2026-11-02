@@ -1,7 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Provider } from 'react-redux';
 
-import { store } from '../logic/store';
+import { store, useAppDispatch } from '../logic/store';
+import { appModelAdapter } from '../logic/adapter';
+import { notifyError } from '../logic/store/notificationsSlice';
 import { ApplicationMenuRequestContext } from '../ui/widgets/applicationMenuRequest';
 import { InsertTableRequestContext } from '../ui/widgets/insertTableRequest';
 import { EditorSessionProvider } from '../ui/widgets/editorSession';
@@ -37,6 +39,14 @@ const AppWorkflows = ({
     shutdown: ReturnType<typeof useShutdown>;
 }): React.JSX.Element => {
     const [problemsOpen, setProblemsOpen] = useState(false);
+    const dispatch = useAppDispatch();
+    useEffect(
+        () =>
+            appModelAdapter.subscribeBufferSyncErrors((error) => {
+                dispatch(notifyError(error));
+            }),
+        [dispatch],
+    );
     const conflicts = useConflictCommands(session.activation);
     const writes = useDocumentWrites(session, conflicts);
     const close = useCloseWorkflow({ session, shutdown, conflicts, recoverySurface: writes.recoverySurface, writes });

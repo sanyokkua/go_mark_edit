@@ -87,6 +87,7 @@ function createAdapter(getState: () => Promise<AppModelState>): AppModelAdapter 
         flushDocView: jest.fn<Promise<void>, [string]>(),
         setUILayout: jest.fn(),
         reconcileCommittedWrite: jest.fn(),
+        subscribeBufferSyncErrors: jest.fn(() => jest.fn()),
         subscribeAsyncErrors(callback): () => void {
             errorListeners.push(callback);
             return jest.fn();
@@ -735,4 +736,35 @@ it('When disposal precedes a recovery failure, the old attempt cannot notify a n
     await Promise.resolve();
     expect(store.getState().documents.revision).toBe(2);
     expect(store.getState().notifications.items).toHaveLength(0);
+});
+
+it.each(['durability', 'recent-items', 'view-state'] as const)(
+    'shows an async committed %s warning with the save warning copy',
+    async (warning) => {
+        const adapter = createAdapter(() => Promise.resolve(appState(3)));
+        await bootstrapAppModelProjection(adapter);
+        adapter.emitError({
+            code: 'io',
+            title: 'saved',
+            message: 'warning',
+            retryable: false,
+            details: { saveWarning: warning },
+        });
+        expect(store.getState().notifications.items).toEqual([
+            expect.objectContaining({ code: `save-warning-${warning}`, severity: 'warning' }),
+        ]);
+    },
+);
+
+it('keeps unknown async save warning kinds as ordinary errors', async () => {
+    const adapter = createAdapter(() => Promise.resolve(appState(3)));
+    await bootstrapAppModelProjection(adapter);
+    adapter.emitError({
+        code: 'io',
+        title: 'error',
+        message: 'error',
+        retryable: false,
+        details: { saveWarning: 'unknown' },
+    });
+    expect(store.getState().notifications.items).toEqual([expect.objectContaining({ code: 'io', severity: 'error' })]);
 });

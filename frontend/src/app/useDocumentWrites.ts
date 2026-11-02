@@ -2,11 +2,13 @@ import { useCallback, useContext, useEffect, useRef, useState } from 'react';
 
 import { t } from '../i18n';
 import { appModelAdapter, documentConflictAdapter, documentWriteAdapter } from '../logic/adapter';
+import { isBufferSyncError } from '../logic/utils/bufferSyncError';
 import { useAppDispatch, useAppSelector } from '../logic/store';
 import { hydrateProjection } from '../logic/store/appModelProjectionActions';
 import { reportClassifiedError } from '../logic/store/classifiedNotification';
 import type { ClassifiedError, DocumentMetadata, RecoverySurface, WriteResult } from '../logic/store/appModelTypes';
 import { notifyCondition, notifyToast, type NotificationRemediationIntent } from '../logic/store/notificationsSlice';
+import { saveWarningNotification } from '../logic/store/saveWarning';
 import type { ExternalChangeDecision } from '../ui/widgets/dialogs/ExternalChangePrompt';
 import { TidyCommandsContext, type TidyCommandOutcome } from '../ui/widgets/tidyCommandsContext';
 import type { DocumentSession } from './useDocumentSession';
@@ -219,6 +221,9 @@ export function useDocumentWrites(session: DocumentSession, conflicts: ConflictC
                         writtenContentRevision: result.data.writtenContentRevision,
                     });
                 }
+                if (result.warning !== undefined) {
+                    dispatch(saveWarningNotification(result.warning, documentId));
+                }
                 const writtenDocument = documentsById[documentId] ?? activeDocument;
                 const safeName = safeFilename(writtenDocument, result.data.targetPath ?? filename);
                 dispatch(
@@ -321,8 +326,8 @@ export function useDocumentWrites(session: DocumentSession, conflicts: ConflictC
                     ? (state.activeBuffer?.documentRevision ?? latestDocument.contentRevision ?? 0)
                     : (latestDocument.contentRevision ?? 0);
                 return await finishWrite(kind, documentId, revision, '', safeFilename(target), stillActive);
-            } catch {
-                if (mounted.current && operation === operationRef.current)
+            } catch (error) {
+                if (!isBufferSyncError(error) && mounted.current && operation === operationRef.current)
                     reportWriteError(
                         undefined,
                         targetDocumentId ?? activeDocument?.documentId ?? activeBuffer?.documentId ?? '',
@@ -403,9 +408,9 @@ export function useDocumentWrites(session: DocumentSession, conflicts: ConflictC
                     request.filename,
                     true,
                 );
-            } catch {
+            } catch (error) {
                 if (mounted.current && operation === operationRef.current) {
-                    reportWriteError(undefined, request.documentId, request.kind);
+                    if (!isBufferSyncError(error)) reportWriteError(undefined, request.documentId, request.kind);
                     settleCloseSave(request.documentId, { status: 'refused' });
                 }
             } finally {
@@ -514,9 +519,9 @@ export function useDocumentWrites(session: DocumentSession, conflicts: ConflictC
                             : { status: 'refused' },
                     );
                 }
-            } catch {
+            } catch (error) {
                 if (mounted.current && operation === operationRef.current) {
-                    reportWriteError(undefined, request.documentId, request.kind);
+                    if (!isBufferSyncError(error)) reportWriteError(undefined, request.documentId, request.kind);
                     settleCloseSave(request.documentId, { status: 'refused' });
                 }
             } finally {
@@ -571,8 +576,9 @@ export function useDocumentWrites(session: DocumentSession, conflicts: ConflictC
                         if (activeBuffer?.documentId === documentId)
                             await appModelAdapter.flushActiveSession?.(documentId);
                         return await revalidatePrompt();
-                    } catch {
-                        reportWriteError(undefined, current.request.documentId, current.request.kind);
+                    } catch (error) {
+                        if (!isBufferSyncError(error))
+                            reportWriteError(undefined, current.request.documentId, current.request.kind);
                         return false;
                     } finally {
                         if (operation === operationRef.current) inFlight.current = false;

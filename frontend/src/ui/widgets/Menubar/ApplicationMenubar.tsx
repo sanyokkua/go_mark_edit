@@ -162,9 +162,11 @@ export default function ApplicationMenubar({
                     dispatch(toggleReading());
                 },
                 onFullscreen: (): void => {
-                    void import('../../../logic/adapter').then(({ windowAdapter }) => {
-                        void windowAdapter.toggleFullscreen();
-                    });
+                    void import('../../../logic/adapter')
+                        .then(({ windowAdapter }) => windowAdapter.toggleFullscreen())
+                        .catch((error: unknown) => {
+                            dispatch(notifyError(parseError(error)));
+                        });
                 },
                 onLineNumbersChange: (enabled): void => {
                     void editorSettings.update({ lineNumbers: enabled });

@@ -9,7 +9,10 @@ jest.mock('../../src/logic/adapter', () => ({
 
 import { appModelAdapter, closePlanAdapter, type NativeLifecycleAdapter } from '../../src/logic/adapter';
 import { store } from '../../src/logic/store';
+import { resetNotifications } from '../../src/logic/store/notificationsSlice';
 import { hydrateProjection, resetProjection } from '../../src/logic/store/appModelProjectionActions';
+import { bootstrapAppModelProjection, disposeAppModelProjection } from '../../src/logic/store/appModelProjection';
+import type { WireError } from '../../src/logic/utils/parseError';
 import { useDocumentSession } from '../../src/app/useDocumentSession';
 import { useCloseWorkflow } from '../../src/app/useCloseWorkflow';
 import { useConflictCommands } from '../../src/app/useConflictCommands';
@@ -57,7 +60,9 @@ beforeEach(() => {
     );
 });
 afterEach(() => {
+    disposeAppModelProjection();
     store.dispatch(resetProjection());
+    store.dispatch(resetNotifications());
     jest.resetAllMocks();
 });
 
@@ -576,99 +581,176 @@ it('settles a pending window close when the owner unmounts', async () => {
     await expect(outcome).resolves.toBe('refused');
 });
 
-it('keeps a native close identity pending through active Save and authorizes only after fresh execution', async () => {
-    const runtime = nativeRecorder();
-    const authorize = jest.fn(async () => undefined);
-    runtime.native.authorizeQuit = authorize;
-    const original = {
-        id: 'old-native',
-        kind: 'quit',
-        status: 'collecting',
-        tabSetRevision: 0,
-        targets: [{ documentId: 'one', title: 'one.md', contentRevision: 0, dirty: true }],
-    };
-    const fresh = {
-        id: 'fresh-native',
-        kind: 'quit',
-        status: 'collecting',
-        tabSetRevision: 1,
-        targets: [{ documentId: 'one', title: 'one.md', contentRevision: 2, dirty: false }],
-    };
-    (appModelAdapter.flushActiveSession as jest.Mock).mockResolvedValue(undefined);
-    (appModelAdapter.getState as jest.Mock)
-        .mockResolvedValueOnce({
+it.each(['durability', 'recent-items', 'view-state'] as const)(
+    'authorizes native Quit without acknowledging an asynchronous %s save warning',
+    async (warning) => {
+        let emitWarning!: (error: WireError) => void;
+        await bootstrapAppModelProjection({
+            ...appModelAdapter,
+            getState: async () => ({
+                activeBuffer: null,
+                snapshot: {
+                    revision: 1,
+                    applicationVersion: 'test',
+                    activeDocumentId: 'one',
+                    orderedDocumentIds: ['one'],
+                    documents: { one: documentFixture('one', 0) },
+                    ui: {},
+                },
+            }),
+            subscribeStatePatches: () => () => undefined,
+            subscribeAsyncErrors: (listener) => {
+                emitWarning = listener;
+                return () => undefined;
+            },
+        });
+        const runtime = nativeRecorder();
+        const authorize = jest.fn(async () => undefined);
+        runtime.native.authorizeQuit = authorize;
+        const original = {
+            id: 'old-native',
+            kind: 'quit',
+            status: 'collecting',
+            tabSetRevision: 0,
+            targets: [{ documentId: 'one', title: 'one.md', contentRevision: 0, dirty: true }],
+        };
+        const fresh = {
+            id: 'fresh-native',
+            kind: 'quit',
+            status: 'collecting',
+            tabSetRevision: 1,
+            targets: [{ documentId: 'one', title: 'one.md', contentRevision: 2, dirty: false }],
+        };
+        (appModelAdapter.flushActiveSession as jest.Mock).mockResolvedValue(undefined);
+        (appModelAdapter.getState as jest.Mock)
+            .mockResolvedValueOnce({
+                activeBuffer: null,
+                snapshot: {
+                    revision: 1,
+                    tabSetRevision: 0,
+                    activeDocumentId: 'one',
+                    orderedDocumentIds: ['one'],
+                    documents: { one: documentFixture('one', 0) },
+                    ui: {},
+                },
+            })
+            .mockResolvedValueOnce({
+                activeBuffer: null,
+                snapshot: {
+                    revision: 2,
+                    tabSetRevision: 1,
+                    activeDocumentId: 'one',
+                    orderedDocumentIds: ['one'],
+                    documents: { one: { ...documentFixture('one', 2), dirty: false } },
+                    ui: {},
+                },
+            })
+            .mockResolvedValue({
+                activeBuffer: null,
+                snapshot: { revision: 3, orderedDocumentIds: [], documents: {}, ui: {} },
+            });
+        (closePlanAdapter.prepareClose as jest.Mock)
+            .mockResolvedValueOnce({ data: original })
+            .mockResolvedValueOnce({ data: fresh });
+        (closePlanAdapter.resolveClosePlan as jest.Mock).mockImplementation(async (id: string) => ({
+            data: id === original.id ? { ...original, status: 'cancelled' } : { ...fresh, status: 'ready' },
+        }));
+        (closePlanAdapter.executeClosePlan as jest.Mock).mockResolvedValue({
+            status: 'closed',
+            orderedDocumentIds: [],
+        });
+        let finishSave!: (result: { status: 'saved'; writtenContentRevision: number }) => void;
+        const writes = {
+            saveForClose: jest.fn(
+                () =>
+                    new Promise<{ status: 'saved'; writtenContentRevision: number }>((resolve) => {
+                        finishSave = resolve;
+                    }),
+            ),
+            notifyInactiveFormatSkipped: jest.fn(),
+        };
+        const owner = renderHook(
+            () => {
+                const session = useDocumentSession();
+                const shutdown = useShutdown({
+                    bootstrapStatus: 'ready',
+                    hydratedPendingCloseId: null,
+                    dependencies: { native: runtime.native },
+                });
+                const close = useCloseWorkflow({
+                    session,
+                    shutdown,
+                    conflicts: useConflictCommands(session.activation),
+                    recoverySurface: null,
+                    writes,
+                });
+                return { close, shutdown };
+            },
+            { wrapper },
+        );
+        act(() => runtime.emit('native-save-close'));
+        await waitFor(() => expect(owner.result.current.close.state.phase).toBe('collecting'));
+        act(() => void owner.result.current.close.choose('save'));
+        await waitFor(() => expect(owner.result.current.close.state.phase).toBe('saving-active'));
+        expect(owner.result.current.shutdown.pendingClose).toBe('native-save-close');
+        expect(authorize).not.toHaveBeenCalled();
+        act(() =>
+            emitWarning({
+                code: 'io',
+                title: 'Saved',
+                message: 'Warning',
+                retryable: false,
+                details: { saveWarning: warning },
+            }),
+        );
+        expect(store.getState().notifications.items).toEqual([
+            expect.objectContaining({ code: `save-warning-${warning}`, severity: 'warning' }),
+        ]);
+        await act(async () => finishSave({ status: 'saved', writtenContentRevision: 2 }));
+        await waitFor(() => expect(authorize).toHaveBeenCalledWith('native-save-close'));
+        expect(closePlanAdapter.prepareClose).toHaveBeenNthCalledWith(2, 'quit', ['one'], 1);
+        expect(closePlanAdapter.executeClosePlan).toHaveBeenCalledWith('fresh-native');
+        await waitFor(() => expect(owner.result.current.shutdown.pendingClose).toBeNull());
+        expect(owner.result.current.close.state.phase).toBe('idle');
+    },
+);
+
+it('shows an asynchronous save warning while the application remains open', async () => {
+    let emitWarning!: (error: WireError) => void;
+    await bootstrapAppModelProjection({
+        ...appModelAdapter,
+        getState: async () => ({
             activeBuffer: null,
             snapshot: {
                 revision: 1,
-                tabSetRevision: 0,
+                applicationVersion: 'test',
                 activeDocumentId: 'one',
                 orderedDocumentIds: ['one'],
                 documents: { one: documentFixture('one', 0) },
                 ui: {},
             },
-        })
-        .mockResolvedValueOnce({
-            activeBuffer: null,
-            snapshot: {
-                revision: 2,
-                tabSetRevision: 1,
-                activeDocumentId: 'one',
-                orderedDocumentIds: ['one'],
-                documents: { one: { ...documentFixture('one', 2), dirty: false } },
-                ui: {},
-            },
-        })
-        .mockResolvedValue({
-            activeBuffer: null,
-            snapshot: { revision: 3, orderedDocumentIds: [], documents: {}, ui: {} },
-        });
-    (closePlanAdapter.prepareClose as jest.Mock)
-        .mockResolvedValueOnce({ data: original })
-        .mockResolvedValueOnce({ data: fresh });
-    (closePlanAdapter.resolveClosePlan as jest.Mock).mockImplementation(async (id: string) => ({
-        data: id === original.id ? { ...original, status: 'cancelled' } : { ...fresh, status: 'ready' },
-    }));
-    (closePlanAdapter.executeClosePlan as jest.Mock).mockResolvedValue({ status: 'closed', orderedDocumentIds: [] });
-    let finishSave!: (result: { status: 'saved'; writtenContentRevision: number }) => void;
-    const writes = {
-        saveForClose: jest.fn(
-            () =>
-                new Promise<{ status: 'saved'; writtenContentRevision: number }>((resolve) => {
-                    finishSave = resolve;
-                }),
-        ),
-        notifyInactiveFormatSkipped: jest.fn(),
-    };
-    const owner = renderHook(
-        () => {
-            const session = useDocumentSession();
-            const shutdown = useShutdown({
-                bootstrapStatus: 'ready',
-                hydratedPendingCloseId: null,
-                dependencies: { native: runtime.native },
-            });
-            const close = useCloseWorkflow({
-                session,
-                shutdown,
-                conflicts: useConflictCommands(session.activation),
-                recoverySurface: null,
-                writes,
-            });
-            return { close, shutdown };
+        }),
+        subscribeStatePatches: () => () => undefined,
+        subscribeAsyncErrors: (listener) => {
+            emitWarning = listener;
+            return () => undefined;
         },
-        { wrapper },
+    });
+    const owner = renderCloseWorkflow();
+    act(() =>
+        emitWarning({
+            code: 'io',
+            title: 'Saved',
+            message: 'Warning',
+            retryable: false,
+            details: { saveWarning: 'durability' },
+        }),
     );
-    act(() => runtime.emit('native-save-close'));
-    await waitFor(() => expect(owner.result.current.close.state.phase).toBe('collecting'));
-    act(() => void owner.result.current.close.choose('save'));
-    await waitFor(() => expect(owner.result.current.close.state.phase).toBe('saving-active'));
-    expect(owner.result.current.shutdown.pendingClose).toBe('native-save-close');
-    expect(authorize).not.toHaveBeenCalled();
-    await act(async () => finishSave({ status: 'saved', writtenContentRevision: 2 }));
-    await waitFor(() => expect(authorize).toHaveBeenCalledWith('native-save-close'));
-    expect(closePlanAdapter.prepareClose).toHaveBeenNthCalledWith(2, 'quit', ['one'], 1);
-    expect(closePlanAdapter.executeClosePlan).toHaveBeenCalledWith('fresh-native');
-    await waitFor(() => expect(owner.result.current.shutdown.pendingClose).toBeNull());
+    expect(store.getState().notifications.items).toEqual([
+        expect.objectContaining({ code: 'save-warning-durability', severity: 'warning' }),
+    ]);
+    expect(store.getState().documents.orderedIds).toEqual(['one']);
+    expect(owner.result.current.state.phase).toBe('idle');
 });
 
 it('cancels the terminal result when a target disappears during its save prompt', async () => {
@@ -843,3 +925,43 @@ it.each([false, true])(
         );
     },
 );
+
+it('refuses repeated closes on buffer sync failure without duplicate operation errors', async () => {
+    store.dispatch(resetNotifications());
+    const { markBufferSyncError } = await import('../../src/logic/utils/bufferSyncError');
+    const error = markBufferSyncError({ code: 'io', title: 'Sync', message: 'Failed', retryable: true });
+    (appModelAdapter.flushActiveSession as jest.Mock).mockRejectedValue(error);
+    const runtime = nativeRecorder();
+    const owner = renderHook(
+        () => {
+            const session = useDocumentSession();
+            const shutdown = useShutdown({
+                bootstrapStatus: 'ready',
+                hydratedPendingCloseId: null,
+                dependencies: { native: runtime.native },
+            });
+            const close = useCloseWorkflow({
+                session,
+                shutdown,
+                conflicts: useConflictCommands(session.activation),
+                recoverySurface: null,
+                writes: unusedWrites,
+            });
+            return { session, close };
+        },
+        { wrapper },
+    );
+    act(() =>
+        owner.result.current.session.onBootstrapReady({
+            status: 'ready',
+            applicationVersion: 'test',
+            activeBuffer: { documentId: 'one', content: 'draft' },
+        }),
+    );
+    await act(async () => {
+        expect((await owner.result.current.close.onCloseDocument('one', 0)).status).toBe('refused');
+        expect((await owner.result.current.close.onCloseDocument('one', 0)).status).toBe('refused');
+    });
+    expect(closePlanAdapter.prepareClose).not.toHaveBeenCalled();
+    expect(store.getState().notifications.items).toHaveLength(0);
+});
