@@ -72,11 +72,11 @@ export function useShellShortcuts(actions: readonly ShellShortcutAction[]): void
             if (isEditorTextInput(event.target)) dispatchKeyDown(event, true);
         };
         const onKeyDown = (event: KeyboardEvent): void => dispatchKeyDown(event, false);
-        window.addEventListener('keydown', captureEditor, true);
-        window.addEventListener('keydown', onKeyDown);
+        globalThis.addEventListener('keydown', captureEditor, true);
+        globalThis.addEventListener('keydown', onKeyDown);
         return (): void => {
-            window.removeEventListener('keydown', captureEditor, true);
-            window.removeEventListener('keydown', onKeyDown);
+            globalThis.removeEventListener('keydown', captureEditor, true);
+            globalThis.removeEventListener('keydown', onKeyDown);
         };
     }, [actions]);
 }

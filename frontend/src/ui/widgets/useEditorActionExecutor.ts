@@ -127,11 +127,11 @@ export function useEditorActionExecutor(
         const captureEditor = (event: KeyboardEvent): void => {
             if (isEditorTextInput(event.target)) onKeyDown(event);
         };
-        window.addEventListener('keydown', captureEditor, true);
-        window.addEventListener('keydown', onKeyDown);
+        globalThis.addEventListener('keydown', captureEditor, true);
+        globalThis.addEventListener('keydown', onKeyDown);
         return (): void => {
-            window.removeEventListener('keydown', captureEditor, true);
-            window.removeEventListener('keydown', onKeyDown);
+            globalThis.removeEventListener('keydown', captureEditor, true);
+            globalThis.removeEventListener('keydown', onKeyDown);
         };
     }, [
         activeBuffer,

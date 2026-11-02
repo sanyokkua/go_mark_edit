@@ -70,21 +70,22 @@ test('Link in the editor wins over Monaco’s chord', async ({ app }) => {
     const { page } = app;
     await page.getByTestId('document-launcher').getByRole('button', { name: 'link-shortcut.md', exact: true }).click();
     await page.locator('[data-editor-surface] .view-lines').first().click();
+    await expect(page.locator('[data-editor-surface] textarea.inputarea').first()).toBeFocused();
     await page.keyboard.press('ControlOrMeta+a');
     await page.keyboard.press('ControlOrMeta+k');
     await expect.poll(() => activeBufferContent(page)).toContain('[hello](');
 });
 
-test('Inline code on macOS works from the editor', async ({ app }) => {
-    test.skip(process.platform !== 'darwin', 'The Monaco binding conflict is macOS-specific');
+test('Inline code works from the editor with the platform modifier', async ({ app }) => {
     const source = await app.writeDocument('code-shortcut.md', 'hello');
     await app.seedRecents([source]);
     await app.launch();
     const { page } = app;
     await page.getByTestId('document-launcher').getByRole('button', { name: 'code-shortcut.md', exact: true }).click();
     await page.locator('[data-editor-surface] .view-lines').first().click();
-    await page.keyboard.press('Meta+a');
-    await page.keyboard.press('Meta+e');
+    await expect(page.locator('[data-editor-surface] textarea.inputarea').first()).toBeFocused();
+    await page.keyboard.press('ControlOrMeta+a');
+    await page.keyboard.press('ControlOrMeta+e');
     await expect.poll(() => activeBufferContent(page)).toBe('`hello`');
 });
 

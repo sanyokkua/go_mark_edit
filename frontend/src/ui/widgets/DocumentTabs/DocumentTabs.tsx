@@ -170,8 +170,8 @@ const DocumentTabs: React.FC<DocumentTabsProps> = ({
 
     const announce = useCallback((message: string): void => {
         setAnnouncement('');
-        window.setTimeout((): void => setAnnouncement(message), 0);
-        window.setTimeout((): void => setAnnouncement(''), 3000);
+        globalThis.setTimeout((): void => setAnnouncement(message), 0);
+        globalThis.setTimeout((): void => setAnnouncement(''), 3000);
     }, []);
 
     const handleTabReorder = useCallback(
@@ -547,11 +547,11 @@ const DocumentTabs: React.FC<DocumentTabsProps> = ({
         const captureEditor = (event: KeyboardEvent): void => {
             if (isEditorTextInput(event.target)) navigate(event);
         };
-        window.addEventListener('keydown', captureEditor, true);
-        window.addEventListener('keydown', navigate);
+        globalThis.addEventListener('keydown', captureEditor, true);
+        globalThis.addEventListener('keydown', navigate);
         return (): void => {
-            window.removeEventListener('keydown', captureEditor, true);
-            window.removeEventListener('keydown', navigate);
+            globalThis.removeEventListener('keydown', captureEditor, true);
+            globalThis.removeEventListener('keydown', navigate);
         };
     }, [activateDocument, activeDocumentId, actionProjection, handleTabAction, modalOpen, orderedDocuments]);
 

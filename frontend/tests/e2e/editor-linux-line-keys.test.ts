@@ -10,6 +10,7 @@ test('Linux Copy Line Down uses Shift+Alt+Down and replaces the Monaco default',
     const { page } = app;
     await page.getByTestId('document-launcher').getByRole('button', { name: 'linux-lines.md', exact: true }).click();
     await page.locator('[data-editor-surface] .view-lines').first().click();
+    await expect(page.locator('[data-editor-surface] textarea.inputarea').first()).toBeFocused();
     const editor = async () =>
         page.evaluate(async () => {
             const path = '/src/ui/components/monacoSetup.ts';

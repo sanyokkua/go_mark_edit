@@ -28,6 +28,7 @@ test('word and document navigation and line editing use platform keys', async ({
     const { page } = app;
     await page.getByTestId('document-launcher').getByRole('button', { name: 'navigation.md', exact: true }).click();
     await page.locator('[data-editor-surface] .view-lines').first().click();
+    await expect(page.locator('[data-editor-surface] textarea.inputarea').first()).toBeFocused();
     const mac = process.platform === 'darwin';
     const word = mac ? 'Alt' : 'Control';
     const mod = mac ? 'Meta' : 'Control';
