@@ -413,11 +413,14 @@ type E2EFixtures = {
 
 type E2EOptions = {
     frontendAssets: 'development' | 'production';
+    installClock: boolean;
 };
 
 export const test = base.extend<E2EFixtures & E2EOptions>({
     frontendAssets: ['development', { option: true }],
-    app: async ({ page, frontendAssets }, use, testInfo: TestInfo) => {
+    installClock: [false, { option: true }],
+    app: async ({ page, frontendAssets, installClock }, use, testInfo: TestInfo) => {
+        if (installClock) await page.clock.install();
         testInfo.setTimeout(Math.max(testInfo.timeout, 180_000));
         const app = await PlaywrightE2EAppHarness.create(page, frontendAssets);
         try {

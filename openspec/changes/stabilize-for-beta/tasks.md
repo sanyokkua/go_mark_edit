@@ -312,10 +312,11 @@ No spec change. Owners: the nine renamed `frontend/tests/integration/` suites,
       375/376/377 and 768/769 px, toolbar gap and wrapping, popup position and shadow, menu label ellipsis, and
       foreign requests. `editor-split-resize.test.ts` already covers narrow Split geometry. Computed CSS checks verify
       rendered presentation; token guards do not enforce particular CSS values or variable names.
-- [ ] 15.2 Let the harness install Playwright's clock before navigation and use it in `late-completion.test.ts`
+- [x] 15.2 Let the harness install Playwright's clock before navigation and use it in `late-completion.test.ts`
       (`:103-110`) to advance past the frontend's 10-second stuck-command notice (`boundMs`,
       `frontend/src/logic/adapter/command.ts:75`) instead of waiting 10 seconds of real time, stopping the lock helper right after Retry or Cancel; verify the test
-      passes and its duration drops.
+      passes and its duration drops. The measured serial run fell from 32.8 seconds to 5.2 seconds; five repeated
+      runs passed with the real SQLite lock and backend bridge.
 
 ## 16. Minimum-window Split repair
 
