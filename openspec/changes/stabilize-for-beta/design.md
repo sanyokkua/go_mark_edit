@@ -382,6 +382,14 @@ are dominated by in-test loops, so the gain does not justify cross-test state.
 - Real-app checks (computer use) for Reload then tab switch, undo across tabs, Cmd+K/Cmd+E/Ctrl+Tab in the editor on
   macOS, the watchdog-shown failure screen, and Quit from the "Something went wrong" screen.
 
+### Minimum-window Split repair
+
+The editor specification already requires both Split panes stacked at widths up to 376 CSS pixels. `EditorStage`
+provides the vertical layout and hides its divider at that breakpoint, but `EditorView` currently suppresses preview.
+Use the document visibility flags at every width (and retain Reading mode's preview-only override), so resizing does
+not write an arrangement or ratio. Integration tests cover both minimum widths and a wide–narrow–wide transition;
+real-backend browser checks cover geometry at 375, 376 and 377 px, the divider, persisted ratio and overflow.
+
 ## Risks / Trade-offs
 
 - [Cached models raise memory use with many large open documents] → only writable documents (≤ 10 MiB) are cached

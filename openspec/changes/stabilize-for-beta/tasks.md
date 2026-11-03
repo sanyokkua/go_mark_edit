@@ -309,3 +309,11 @@ No spec change. Owners: `frontend/tests/integration/*.legacy.test.tsx` (nine fil
       (`:103-110`) to advance past the frontend's 10-second stuck-command notice (`boundMs`,
       `frontend/src/logic/adapter/command.ts:75`) instead of waiting 10 seconds of real time, stopping the lock helper right after Retry or Cancel; verify the test
       passes and its duration drops.
+
+## 16. Minimum-window Split repair
+
+Existing spec: editor "View arrangements". Owner: `frontend/src/ui/widgets/EditorView.tsx`.
+
+- [x] 16.1 Keep both panes visible in Split at CSS widths of 375 and 376 px, with the existing vertical layout and no
+      divider, without changing the stored arrangement or split ratio. Cover resize across 376/377 px with integration
+      and real-backend browser geometry tests, and preserve Editor, Preview and Reading behavior.

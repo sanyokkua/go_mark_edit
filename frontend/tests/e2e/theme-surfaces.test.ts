@@ -261,10 +261,7 @@ for (const palette of palettes) {
                             expect(shadow).not.toContain('70px');
                         }
                     }
-                    // The minimum-width presentation keeps Split's stored choice
-                    // while showing only the editor; Preview remains selectable.
-                    if (arrangement === 'Editor' || (width === 375 && arrangement === 'Split'))
-                        await expect(preview).toHaveCount(0);
+                    if (arrangement === 'Editor') await expect(preview).toHaveCount(0);
                     else {
                         await expect(preview).toBeVisible();
                         await expect(preview).toHaveCSS('background-color', palette.pane);

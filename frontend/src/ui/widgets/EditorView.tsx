@@ -29,7 +29,6 @@ import EditorStage, {
 } from './EditorStage/EditorStage';
 import ProblemsPanel from './ProblemsPanel/ProblemsPanel';
 import { EDITOR_TABPANEL_ID, tabElementId } from './editorTabPanel';
-import { useMinimumWindow } from './minimumWindow';
 import styles from './EditorView.module.css';
 import { t } from '../../i18n';
 import { useModalState } from './modalStateContext';
@@ -102,7 +101,6 @@ const EditorView: React.FC<EditorViewProps> = ({
     const activeBuffer = useContext(EditorSessionContext);
     const openDocumentIds = useAppSelector((state) => state.documents.orderedIds);
     useEffect(() => reconcileEditorModels(openDocumentIds), [openDocumentIds]);
-    const minimumWindow = useMinimumWindow();
     const reading = useAppSelector((state) => state.reading.active);
     const tabsShown = useAppSelector((state) => state.reading.tabsShown);
     const readingWidth = useAppSelector((state) => state.settings.readingWidth);
@@ -230,9 +228,8 @@ const EditorView: React.FC<EditorViewProps> = ({
     }
 
     const view = activeDocument?.view ?? fallbackView();
-    const previewVisible =
-        reading || (minimumWindow ? view.previewVisible && !view.editorVisible : view.previewVisible);
-    const editorVisible = !reading && (minimumWindow ? !previewVisible : view.editorVisible);
+    const previewVisible = reading || view.previewVisible;
+    const editorVisible = !reading && view.editorVisible;
     const arrangement = arrangementFor(view);
 
     return (

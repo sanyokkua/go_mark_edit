@@ -264,35 +264,13 @@ it('keeps only the viewer at the minimum window in Preview mode', async () => {
     }
 });
 
-it('collapses Split to the editor at the minimum window and removes the preview', () => {
-    setViewportWidth(375);
+it.each([375, 376])('keeps both Split panes at %i px', (width) => {
+    setViewportWidth(width);
     try {
         renderEditorView('split');
-
-        const editorPane = screen.getByLabelText('Editor pane');
-        expect(editorPane).toHaveClass('pane');
-        expect(editorPane).not.toHaveClass('paneHidden');
-        expect(editorPane).toHaveAttribute('aria-hidden', 'false');
-        /*
-         * Removed from the tree, not merely zero-width: a preview that is still
-         * rendered still costs a render pass and can still be reached by a
-         * screen reader, and the region is supposed to carry one pane.
-         */
-        expect(screen.queryAllByLabelText('Preview pane')).toHaveLength(0);
-        expect(editorPane.parentElement?.children).toHaveLength(1);
-
-        /*
-         * The surviving pane fills the region: it is the only child of the pane
-         * row, and `.pane` is a fully flexible item.
-         */
-        const paneStyles = readSource('src/ui/components/Pane/Pane.module.css');
-        expect(paneStyles).toMatch(/\.pane\s*\{[^}]*flex:\s*1 1 0;/s);
-        expect(paneStyles).toMatch(/\.paneHidden\s*\{[^}]*display:\s*none;/s);
-
-        /*
-         * The recorded mode is still Split. The collapse is a presentation of the
-         * current width, so the toolbar keeps reporting what the document stores.
-         */
+        expect(screen.getByLabelText('Editor pane')).not.toHaveClass('paneHidden');
+        expect(screen.getByLabelText('Preview pane')).toBeInTheDocument();
+        expect(screen.queryByRole('separator', { name: 'Resize editor and preview panes' })).not.toBeInTheDocument();
         expect(screen.getByRole('radio', { name: 'Split' })).toBeChecked();
     } finally {
         setViewportWidth(1024);
@@ -309,7 +287,8 @@ it('restores Split when the window widens again without writing an arrangement',
 
         minimumWindowQuery.emit(true);
         expect(screen.getByLabelText('Editor pane')).not.toHaveClass('paneHidden');
-        expect(screen.queryAllByLabelText('Preview pane')).toHaveLength(0);
+        expect(screen.getByLabelText('Preview pane')).toBeInTheDocument();
+        expect(screen.queryByRole('separator', { name: 'Resize editor and preview panes' })).not.toBeInTheDocument();
 
         // No user action in between — only the window got wider again.
         minimumWindowQuery.emit(false);

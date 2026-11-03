@@ -113,8 +113,25 @@ test('dragging and keyboard resizing change real pane widths without losing edit
     await expect(divider).toHaveCount(0);
     await split(page);
     await expect(divider).toHaveAttribute('aria-valuenow', '80');
-    await page.setViewportSize({ width: 375, height: 600 });
-    await expect(divider).toHaveCount(0);
+    for (const width of [375, 376, 377]) {
+        await page.setViewportSize({ width, height: 600 });
+        const editorPane = page.getByRole('region', { name: 'Editor pane' });
+        const previewPane = page.getByRole('region', { name: 'Preview pane' });
+        await expect(editorPane).toBeVisible();
+        await expect(previewPane).toBeVisible();
+        const editorBox = await editorPane.boundingBox();
+        const previewBox = await previewPane.boundingBox();
+        if (editorBox === null || previewBox === null) throw new Error('panes are not measurable');
+        if (width <= 376) {
+            await expect(divider).toHaveCount(0);
+            expect(previewBox.y).toBeGreaterThanOrEqual(editorBox.y + editorBox.height);
+        } else {
+            await expect(divider).toBeVisible();
+            expect(previewBox.x).toBeGreaterThanOrEqual(editorBox.x + editorBox.width);
+        }
+        expect(await currentRatio(page)).toBe(0.8);
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    }
     await page.setViewportSize({ width: 1280, height: 720 });
     await expect(divider).toHaveAttribute('aria-valuenow', '80');
 });
