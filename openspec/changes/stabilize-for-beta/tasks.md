@@ -257,7 +257,7 @@ No spec change. Owners: `frontend/src/ui/primitives/Toast.module.css`, `frontend
 
 - [x] 12.1 Give the success toast the success stripe (matching `Banner.module.css`) and remove the unreachable `stuck`
       selector; add a component test of the save-success toast's computed border colour; verify it passes.
-- [ ] 12.2 Remove the overridden declarations and merge duplicate selectors in `tokens.css`, and enable stylelint
+- [x] 12.2 Remove the overridden declarations and merge duplicate selectors in `tokens.css`, and enable stylelint
       `no-duplicate-selectors` for it; verify regenerated `generatedEditorThemes.ts` and `generatedHighlight.css` are
       byte-identical and `scripts/verify lint` passes.
 - [ ] 12.3 Extract the File and About menu item lists in `Menubar.tsx` into local render helpers shared by the narrow

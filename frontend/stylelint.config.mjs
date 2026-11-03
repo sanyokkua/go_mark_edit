@@ -21,6 +21,7 @@ export default {
             rules: {
                 'declaration-property-value-disallowed-list': null,
                 'selector-disallowed-list': null,
+                'no-duplicate-selectors': true,
             },
         },
         {
