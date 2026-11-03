@@ -504,6 +504,85 @@ const Menubar: React.FC<MenubarProps> = ({
         setAboutOpen(false);
         void dispatchShellAction(selected);
     };
+    const renderFileMenuItems = (): React.JSX.Element => (
+        <>
+            {fileActions
+                .filter((item) => item.id !== 'clear-recent')
+                .map((item) => (
+                    <Fragment key={item.id}>
+                        {menuDecoration(item.id)}
+                        {item.id === 'open-recent' ? (
+                            noRecentItems ? (
+                                recentEmptyMessage(styles.subItem)
+                            ) : (
+                                displayedRecentItems.map((item) => (
+                                    <MenuItem
+                                        className={styles.subItem}
+                                        icon={
+                                            <Icon aria-hidden="true" className={styles.subItemIcon} name={item.kind} />
+                                        }
+                                        key={'recent-' + item.path}
+                                        label={
+                                            <span className={styles.subItemLabel}>{safeRecentLabel(item.path)}</span>
+                                        }
+                                        title={item.path}
+                                        onSelect={(): void => dispatchRecentItem(item)}
+                                    />
+                                ))
+                            )
+                        ) : item.id === 'reopen' ? (
+                            <MenuItem
+                                aria-label={t(item.labelKey)}
+                                className={styles.subItem}
+                                accelerator={shortcutForMenuItem(item.shortcut)}
+                                disabled={fileActionDisabled(item.id)}
+                                label={<span className={styles.subItemLabel}>{'↺ ' + fileActionLabel(item)}</span>}
+                                onSelect={(): void => dispatchFileAction(item.id)}
+                            />
+                        ) : (
+                            <MenuItem
+                                aria-label={t(item.labelKey)}
+                                accelerator={shortcutForMenuItem(item.shortcut)}
+                                disabled={fileActionDisabled(item.id)}
+                                label={fileActionLabel(item)}
+                                onSelect={(): void => dispatchFileAction(item.id)}
+                            />
+                        )}
+                        {item.id === 'open-recent' ? (
+                            <MenuItem
+                                className={styles.subItem}
+                                disabled={noRecentItems || onClearRecentItems === undefined}
+                                label={t('action.clear-recent.label')}
+                                onSelect={(): void => {
+                                    setFileOpen(false);
+                                    setConfirmClearRecent(true);
+                                }}
+                            />
+                        ) : null}
+                    </Fragment>
+                ))}
+        </>
+    );
+    const renderAboutMenuItems = (): React.JSX.Element => (
+        <>
+            {aboutActions.map((item) => (
+                <Fragment key={item.id}>
+                    {aboutMenuSeparators.has(item.id) ? <PopupSeparator /> : null}
+                    <MenuItem
+                        accelerator={shortcutForMenuItem(item.shortcut)}
+                        disabled={
+                            getActionAvailability(item.id, {
+                                modalOpen,
+                                projectedState,
+                            }).kind !== 'available'
+                        }
+                        label={t(item.labelKey)}
+                        onSelect={(): void => selectAboutAction(item.id)}
+                    />
+                </Fragment>
+            ))}
+        </>
+    );
     return (
         <nav ref={menuRowRef} aria-label={t('shell.menuLabel')} className={styles.row}>
             <Bar
@@ -581,71 +660,7 @@ const Menubar: React.FC<MenubarProps> = ({
                                     size="menu"
                                     onOpenChange={setFileOpen}
                                 >
-                                    {fileActions
-                                        .filter((item) => item.id !== 'clear-recent')
-                                        .map((item) => (
-                                            <Fragment key={item.id}>
-                                                {menuDecoration(item.id)}
-                                                {item.id === 'open-recent' ? (
-                                                    noRecentItems ? (
-                                                        recentEmptyMessage(styles.subItem)
-                                                    ) : (
-                                                        displayedRecentItems.map((item) => (
-                                                            <MenuItem
-                                                                className={styles.subItem}
-                                                                icon={
-                                                                    <Icon
-                                                                        aria-hidden="true"
-                                                                        className={styles.subItemIcon}
-                                                                        name={item.kind}
-                                                                    />
-                                                                }
-                                                                key={'recent-' + item.path}
-                                                                label={
-                                                                    <span className={styles.subItemLabel}>
-                                                                        {safeRecentLabel(item.path)}
-                                                                    </span>
-                                                                }
-                                                                title={item.path}
-                                                                onSelect={(): void => dispatchRecentItem(item)}
-                                                            />
-                                                        ))
-                                                    )
-                                                ) : item.id === 'reopen' ? (
-                                                    <MenuItem
-                                                        aria-label={t(item.labelKey)}
-                                                        className={styles.subItem}
-                                                        accelerator={shortcutForMenuItem(item.shortcut)}
-                                                        disabled={fileActionDisabled(item.id)}
-                                                        label={
-                                                            <span className={styles.subItemLabel}>
-                                                                {'↺ ' + fileActionLabel(item)}
-                                                            </span>
-                                                        }
-                                                        onSelect={(): void => dispatchFileAction(item.id)}
-                                                    />
-                                                ) : (
-                                                    <MenuItem
-                                                        aria-label={t(item.labelKey)}
-                                                        accelerator={shortcutForMenuItem(item.shortcut)}
-                                                        disabled={fileActionDisabled(item.id)}
-                                                        label={fileActionLabel(item)}
-                                                        onSelect={(): void => dispatchFileAction(item.id)}
-                                                    />
-                                                )}
-                                                {item.id === 'open-recent' ? (
-                                                    <MenuItem
-                                                        className={styles.subItem}
-                                                        disabled={noRecentItems || onClearRecentItems === undefined}
-                                                        label={t('action.clear-recent.label')}
-                                                        onSelect={(): void => {
-                                                            setFileOpen(false);
-                                                            setConfirmClearRecent(true);
-                                                        }}
-                                                    />
-                                                ) : null}
-                                            </Fragment>
-                                        ))}
+                                    {renderFileMenuItems()}
                                 </Popup>
 
                                 <Popup
@@ -660,22 +675,7 @@ const Menubar: React.FC<MenubarProps> = ({
                                     size="menu"
                                     onOpenChange={setAboutOpen}
                                 >
-                                    {aboutActions.map((item) => (
-                                        <Fragment key={item.id}>
-                                            {aboutMenuSeparators.has(item.id) ? <PopupSeparator /> : null}
-                                            <MenuItem
-                                                accelerator={shortcutForMenuItem(item.shortcut)}
-                                                disabled={
-                                                    getActionAvailability(item.id, {
-                                                        modalOpen,
-                                                        projectedState,
-                                                    }).kind !== 'available'
-                                                }
-                                                label={t(item.labelKey)}
-                                                onSelect={(): void => selectAboutAction(item.id)}
-                                            />
-                                        </Fragment>
-                                    ))}
+                                    {renderAboutMenuItems()}
                                 </Popup>
 
                                 <SettingsMenu
@@ -757,71 +757,7 @@ const Menubar: React.FC<MenubarProps> = ({
                                     size="menu"
                                     onOpenChange={setFileOpen}
                                 >
-                                    {fileActions
-                                        .filter((item) => item.id !== 'clear-recent')
-                                        .map((item) => (
-                                            <Fragment key={item.id}>
-                                                {menuDecoration(item.id)}
-                                                {item.id === 'open-recent' ? (
-                                                    noRecentItems ? (
-                                                        recentEmptyMessage(styles.subItem)
-                                                    ) : (
-                                                        displayedRecentItems.map((item) => (
-                                                            <MenuItem
-                                                                className={styles.subItem}
-                                                                icon={
-                                                                    <Icon
-                                                                        aria-hidden="true"
-                                                                        className={styles.subItemIcon}
-                                                                        name={item.kind}
-                                                                    />
-                                                                }
-                                                                key={'recent-' + item.path}
-                                                                label={
-                                                                    <span className={styles.subItemLabel}>
-                                                                        {safeRecentLabel(item.path)}
-                                                                    </span>
-                                                                }
-                                                                title={item.path}
-                                                                onSelect={(): void => dispatchRecentItem(item)}
-                                                            />
-                                                        ))
-                                                    )
-                                                ) : item.id === 'reopen' ? (
-                                                    <MenuItem
-                                                        aria-label={t(item.labelKey)}
-                                                        className={styles.subItem}
-                                                        accelerator={shortcutForMenuItem(item.shortcut)}
-                                                        disabled={fileActionDisabled(item.id)}
-                                                        label={
-                                                            <span className={styles.subItemLabel}>
-                                                                {'↺ ' + fileActionLabel(item)}
-                                                            </span>
-                                                        }
-                                                        onSelect={(): void => dispatchFileAction(item.id)}
-                                                    />
-                                                ) : (
-                                                    <MenuItem
-                                                        aria-label={t(item.labelKey)}
-                                                        accelerator={shortcutForMenuItem(item.shortcut)}
-                                                        disabled={fileActionDisabled(item.id)}
-                                                        label={fileActionLabel(item)}
-                                                        onSelect={(): void => dispatchFileAction(item.id)}
-                                                    />
-                                                )}
-                                                {item.id === 'open-recent' ? (
-                                                    <MenuItem
-                                                        className={styles.subItem}
-                                                        disabled={noRecentItems || onClearRecentItems === undefined}
-                                                        label={t('action.clear-recent.label')}
-                                                        onSelect={(): void => {
-                                                            setFileOpen(false);
-                                                            setConfirmClearRecent(true);
-                                                        }}
-                                                    />
-                                                ) : null}
-                                            </Fragment>
-                                        ))}
+                                    {renderFileMenuItems()}
                                 </Popup>
 
                                 <MarkdownMenu
@@ -903,22 +839,7 @@ const Menubar: React.FC<MenubarProps> = ({
                                     size="menu"
                                     onOpenChange={setAboutOpen}
                                 >
-                                    {aboutActions.map((item) => (
-                                        <Fragment key={item.id}>
-                                            {aboutMenuSeparators.has(item.id) ? <PopupSeparator /> : null}
-                                            <MenuItem
-                                                accelerator={shortcutForMenuItem(item.shortcut)}
-                                                disabled={
-                                                    getActionAvailability(item.id, {
-                                                        modalOpen,
-                                                        projectedState,
-                                                    }).kind !== 'available'
-                                                }
-                                                label={t(item.labelKey)}
-                                                onSelect={(): void => selectAboutAction(item.id)}
-                                            />
-                                        </Fragment>
-                                    ))}
+                                    {renderAboutMenuItems()}
                                 </Popup>
                             </div>
                         )}

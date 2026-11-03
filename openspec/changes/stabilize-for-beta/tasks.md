@@ -260,7 +260,7 @@ No spec change. Owners: `frontend/src/ui/primitives/Toast.module.css`, `frontend
 - [x] 12.2 Remove the overridden declarations and merge duplicate selectors in `tokens.css`, and enable stylelint
       `no-duplicate-selectors` for it; verify regenerated `generatedEditorThemes.ts` and `generatedHighlight.css` are
       byte-identical and `scripts/verify lint` passes.
-- [ ] 12.3 Extract the File and About menu item lists in `Menubar.tsx` into local render helpers shared by the narrow
+- [x] 12.3 Extract the File and About menu item lists in `Menubar.tsx` into local render helpers shared by the narrow
       and wide branches; verify the menubar integration and e2e menu tests pass unchanged.
 
 ## 13. Faster build and verification, real product metadata
