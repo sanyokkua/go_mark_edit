@@ -296,15 +296,22 @@ No spec change. Design §12. Owners: `frontend/src/logic/markdown/highlight.ts`,
 
 ## 15. Test hygiene
 
-No spec change. Owners: `frontend/tests/integration/*.legacy.test.tsx` (nine files),
-`frontend/tests/unit/settings/settingsCommands.legacy.test.ts`,
+No spec change. Owners: the nine renamed `frontend/tests/integration/` suites,
+`frontend/tests/unit/settings/settingsCommands.acknowledgement.test.ts`,
 `frontend/tests/e2e/late-completion.test.ts`, `frontend/tests/support/harness.ts`.
 
-- [ ] 15.1 Rename the ten `*.legacy` test files by feature, drop the retired parity-harness comments (`appShell`,
+- [x] 15.1 Rename the ten `*.legacy` test files by feature, drop the retired parity-harness comments (`appShell`,
       `editorStage`, `editorStage.view`, `formattingToolbar`), and replace the source-text and regex assertions
       (`appShell`, `editorStage`, `formattingToolbar`, `menubar`) with the existing lint, token and bundle guards
       (confirm each guard covers the case it replaces); verify the unit and integration test counts are unchanged
       apart from the removed source-grep cases.
+      Coverage map: Stylelint guards literal colours; existing ESLint ownership and localization rules guard
+      shared roles, labels and portals; the scoped shell ESLint restriction guards the five network API names and
+      remote URL literals, and bundle-scan guards production assets. Runtime label, absence, popup ownership and
+      interaction assertions remain in the renamed suites. Real-backend browser checks cover workspace tracks at
+      375/376/377 and 768/769 px, toolbar gap and wrapping, popup position and shadow, menu label ellipsis, and
+      foreign requests. `editor-split-resize.test.ts` already covers narrow Split geometry. Computed CSS checks verify
+      rendered presentation; token guards do not enforce particular CSS values or variable names.
 - [ ] 15.2 Let the harness install Playwright's clock before navigation and use it in `late-completion.test.ts`
       (`:103-110`) to advance past the frontend's 10-second stuck-command notice (`boundMs`,
       `frontend/src/logic/adapter/command.ts:75`) instead of waiting 10 seconds of real time, stopping the lock helper right after Retry or Cancel; verify the test

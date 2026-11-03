@@ -1,6 +1,3 @@
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
-
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { useAppSelector } from '../../src/logic/store';
@@ -58,8 +55,6 @@ import AppShell from '../../src/ui/widgets/AppShell';
 import EditorView from '../../src/ui/widgets/EditorView';
 import { EditorSessionContext, EditorSessionEpochContext } from '../../src/ui/widgets/editorSession';
 import { WorkspaceTreeTestProvider } from '../support/WorkspaceTreeTestProvider';
-
-const readSource = (relativePath: string): string => readFileSync(resolve(process.cwd(), relativePath), 'utf8');
 
 function documentFor(arrangement: ViewArrangement): DocumentMetadata {
     return {
@@ -391,10 +386,6 @@ it('matches the split-view structure', () => {
     const previewPane = screen.getByLabelText('Preview pane');
     expect(within(previewPane).getByText('● Preview · live')).toBeVisible();
     expect(within(previewPane).getByText('Full')).toBeVisible();
-
-    const segmentedStyles = readSource('src/ui/primitives/Segmented/Segmented.module.css');
-    expect(segmentedStyles).toMatch(/var\(--segmented-[\w-]+\)/);
-    expect(segmentedStyles).not.toMatch(/#[\da-f]{3,8}\b|rgba?\(|hsla?\(/i);
 });
 
 it('shows each acknowledged Markdown standard in the preview header and status bar without remounting', () => {
@@ -564,36 +555,3 @@ it('shows no Markdown standard in the preview header or status bar before settin
         screen.getByRole('status', { name: 'Document status' }).querySelector('[data-status-item="standard-kind"]'),
     ).toBeNull();
 });
-
-/*
- * . Three `` cases were removed here with the five CSS rules they
- * described: the paused-pane overflow, the preview's transparent background,
- * the two `.gme-preview` line-height overrides, and the `toolbar-overflow`
- * editor transform.
- *
- * Each read `EditorView.module.css` as text and asserted a declaration appeared
- * in it. That is only worth doing if the declaration does something, and  * measured that it does not: those selectors match only when the parity harness
- * puts `data-parity-shell` on the application frame, and neutralising all five
- * leaves `[parity accounting]` at 147/147 with the suite green. A rule that
- * moves no compared pixel has nothing for a test to prove, so the assertions
- * pinned their own text and no behaviour.
- *
- * The same measurement gave the opposite verdict for
- * `FormattingToolbar.module.css`'s 34 rules — those move an attributed residual
- * from 181 to 184 pixels and stay.
- */
-/*
- * . `presents the reviewed selection metadata on the parity editor
- * route` was removed with the readout it described.
- *
- * The design's pane header carries a selection word-count readout and Feature 003
- * builds no selection readout, so `EditorView` rendered a hardcoded copy of it
- * on `?parity-case` to make the two sides agree. The 2026-08-13 clarification
- * recorded against this exact region requires the opposite: out-of-scope
- * reference content is "removed from the reference rather than manufactured in
- * production", which is how the deferred rich-rendering widgets are handled.
- *
- * The readout is now stripped from the reference by
- * `adaptEditorPaneSelection`, and the pane header and its metadata remain fully
- * compared — the clarification's other half.
- */

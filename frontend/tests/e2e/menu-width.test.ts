@@ -20,6 +20,11 @@ test('a very long recent file name does not widen the File menu beyond the popup
     const row = popup.getByRole('menuitem', { name: new RegExp(longName.slice(0, 20), 'u') });
     await expect(row).toBeVisible();
     await expect(row).toHaveAttribute('title', new RegExp(`${longName}$`, 'u'));
+    const labelStyle = await row.locator('[class*="subItemLabel"]').evaluate((element) => {
+        const style = getComputedStyle(element);
+        return { overflow: style.overflow, textOverflow: style.textOverflow, whiteSpace: style.whiteSpace };
+    });
+    expect(labelStyle).toEqual({ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' });
     const rowBox = (await row.boundingBox())!;
     expect(rowBox.x + rowBox.width).toBeLessThanOrEqual(box.x + box.width);
     app.expectNoForeignRequests();

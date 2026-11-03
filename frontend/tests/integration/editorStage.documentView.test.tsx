@@ -2105,28 +2105,6 @@ it('does not re-apply the saved preview scroll when the content changes', async 
     expect(contentOf().scrollTop).toBe(10);
 });
 
-/*
- * — 's scale clause: "Across **repeated switches among 40
- * distinct documents**, 100% of named cases restore the correct content
- * identity, caret, selection, scroll, and arrangement".
- *
- * The restoration tests used **two** documents and one round trip. Every other
- * 40 in the tree is the *cap* rather than a switch population —
- * `file_lifecycle_test.go:110`'s forty-first refusal, the e2e equivalent,
- * `DocumentTabs.test.tsx:895` — and the `[parity states] 40/40` line printed by
- * `just e2e-test` counts visual-parity states and is an unrelated 40. A reader
- * who takes any of them for this clause is wrong.
- *
- * Level: jsdom, deliberately. What it proves is that the application resolves
- * **each document's own** view and hands it to the editor across a switch
- * storm, and that no document inherits a neighbour's. What it cannot prove is
- * that Monaco itself paints that caret and selection, because the editor is
- * mocked here — that half belongs to real-browser coverage and is not claimed.
- *
- * Preview scroll is deliberately excluded: restores it once per
- * activation, and asserting it here would duplicate that test rather than
- * extend it.
- */
 // arrangement, caret, selection and editor scroll as the application resolves
 // them. Monaco's own painting of caret and selection is NOT proved here — the
 // editor is mocked. Preview scroll is 's.)

@@ -59,6 +59,31 @@ test('opening a folder shows the tree, and Ctrl+Backslash with no folder explain
     await app.openWorkspace(root);
     await expectSidebar(page, true);
     await expect(page.getByRole('treeitem', { name: 'shown-note.md', exact: true })).toBeVisible();
+    for (const [width, workspaceWidth] of [
+        [769, 260],
+        [768, 46],
+        [377, 46],
+        [376, 0],
+        [375, 0],
+    ] as const) {
+        await page.setViewportSize({ width, height: 720 });
+        const tracks = await page.locator(SHELL).evaluate((element) => {
+            const columns = getComputedStyle(element).gridTemplateColumns.split(' ').map(parseFloat);
+            const document = element.querySelector<HTMLElement>('main');
+            if (document === null) throw new Error('document area missing');
+            const shell = element.getBoundingClientRect();
+            const area = document.getBoundingClientRect();
+            return { columns, shellWidth: shell.width, documentRight: area.right, shellRight: shell.right };
+        });
+        if (width === 769) expect(tracks.columns[0]).toBeGreaterThan(46);
+        else expect(tracks.columns[0]).toBe(workspaceWidth);
+        expect(tracks.columns[2]).toBe(0);
+        expect(tracks.documentRight).toBeCloseTo(tracks.shellRight, 0);
+        expect(tracks.columns.reduce((sum, track) => sum + track, 0)).toBeCloseTo(tracks.shellWidth, 0);
+        if (width <= 376) await expect(page.getByRole('complementary', { name: 'Sidebar' })).toHaveCount(0);
+        else await expect(page.getByRole('complementary', { name: 'Sidebar' })).toBeVisible();
+    }
+    app.expectNoForeignRequests();
 });
 
 test('a hidden sidebar is shown again by replacing the folder or re-opening the same folder', async ({ app }) => {

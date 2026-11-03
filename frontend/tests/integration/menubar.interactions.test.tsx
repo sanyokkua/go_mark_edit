@@ -1,6 +1,4 @@
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
 
 import { t } from '../../src/i18n';
 import englishCatalog from '../../src/i18n/locales/en.json';
@@ -537,16 +535,6 @@ it('repositions a narrow File popup from the overflow anchor after a resize', as
 });
 
 it('delegates shell popup lifecycle and viewport positioning to Popup', () => {
-    const shellSource = readFileSync(resolve(process.cwd(), 'src/ui/widgets/Menubar/Menubar.tsx'), 'utf8');
-    const popupStyles = readFileSync(resolve(process.cwd(), 'src/ui/components/Popup/Popup.module.css'), 'utf8');
-
-    expect(shellSource).toContain('<Popup');
-    expect(shellSource).toContain('onOpenChange={setFileOpen}');
-    expect(shellSource).toContain('onOpenChange={setAboutOpen}');
-    expect(shellSource).not.toContain('DropdownMenu');
-    expect(popupStyles).toContain('position: fixed');
-    expect(popupStyles).toContain('box-shadow: var(--win-shadow)');
-
     render(<Menubar modalOpen={false} onAbout={jest.fn()} settingsMenuProps={settingsMenuProps} />);
     fireEvent.click(screen.getByRole('button', { name: 'File' }));
     expect(screen.getByRole('menu', { name: 'File' }).parentElement).toBe(document.body);
@@ -591,14 +579,11 @@ it('switches to the keyboard-reachable overflow only at the 375-pixel state', ()
 });
 
 it('keeps a localized short About trigger separate from the long catalogue label', () => {
-    const shellSource = readFileSync(resolve(process.cwd(), 'src/ui/widgets/Menubar/Menubar.tsx'), 'utf8');
-    const shellStyles = readFileSync(resolve(process.cwd(), 'src/ui/widgets/Menubar/Menubar.module.css'), 'utf8');
-
-    expect(shellSource).toContain("{t('shell.about')}");
-    expect(shellSource).not.toContain(".replace(' GoMarkEdit', '')");
     expect(t('shell.about')).toBe('About');
     expect(t('action.about.label')).toBe('About GoMarkEdit');
-    expect(shellStyles).toMatch(/text-overflow:\s*ellipsis/);
+    render(<Menubar modalOpen={false} onAbout={jest.fn()} settingsMenuProps={settingsMenuProps} />);
+    fireEvent.click(screen.getByRole('button', { name: /^About$/u }));
+    expect(screen.getByRole('menuitem', { name: 'About GoMarkEdit' })).toBeInTheDocument();
 });
 
 it('keeps the implemented desktop menubar grouped and keyboard-reachable', () => {
@@ -921,7 +906,6 @@ it('disables the File menu Close Tab row when no close callback is bound', () =>
     fireEvent.click(screen.getByRole('button', { name: 'File' }));
     const row = within(screen.getByRole('menu', { name: 'File' })).getByRole('menuitem', { name: 'Close Tab' });
 
-    // The same triple the parity harness reads, so the two instruments agree.
     expect(
         row.hasAttribute('disabled') ||
             row.getAttribute('aria-disabled') === 'true' ||
