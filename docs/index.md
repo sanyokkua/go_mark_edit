@@ -232,6 +232,8 @@ scripts/                      Canonical setup, build, test and verification entr
 
 Prerequisites: Go version from `go.mod`, Node version from `.nvmrc`, npm, Wails system prerequisites, and `just` only if using the aliases.
 
+Use the pinned Node release (for example, `nvm install && nvm use`). The pin includes the V8 fix for a [Node 24.21 Jest crash](https://github.com/nodejs/node/issues/62393) shipped in [Node 24.22.0](https://nodejs.org/en/blog/release/v24.22.0). The Unit and Integration stages run Jest with half the available workers.
+
 ```bash
 scripts/build setup
 scripts/build dev

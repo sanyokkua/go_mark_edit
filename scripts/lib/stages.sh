@@ -42,7 +42,7 @@ run_build_stage() {
 run_unit_stage() {
     local failed=0
     run_reported_command 'Go backend unit tests' go-test "$RUN_DIR/reports/go-unit.jsonl" go test -race -json ./tests/go/unit/... || failed=1
-    (cd "$REPO_ROOT/frontend" && run_command 'Jest frontend unit tests' "$REPO_ROOT/frontend/node_modules/.bin/jest" --ci --json --outputFile "$RUN_DIR/frontend-unit-jest.json" --cacheDirectory "$REPO_ROOT/.local_tmp_files/cache/jest-unit" --runInBand --config jest.config.mjs --selectProjects unit) || failed=1
+    (cd "$REPO_ROOT/frontend" && run_command 'Jest frontend unit tests' "$REPO_ROOT/frontend/node_modules/.bin/jest" --ci --json --outputFile "$RUN_DIR/frontend-unit-jest.json" --cacheDirectory "$REPO_ROOT/.local_tmp_files/cache/jest-unit" --maxWorkers=50% --config jest.config.mjs --selectProjects unit) || failed=1
     run_command 'Node verification tool tests' node --test tools/verify/results.test.mjs || failed=1
     return "$failed"
 }
@@ -50,7 +50,7 @@ run_unit_stage() {
 run_integration_stage() {
     local failed=0
     run_reported_command 'Go backend integration tests' go-test "$RUN_DIR/reports/go-integration.jsonl" go test -race -json ./tests/go/integration/... ./internal/... || failed=1
-    (cd "$REPO_ROOT/frontend" && run_command 'Jest frontend integration tests' "$REPO_ROOT/frontend/node_modules/.bin/jest" --ci --json --outputFile "$RUN_DIR/frontend-integration-jest.json" --cacheDirectory "$REPO_ROOT/.local_tmp_files/cache/jest-integration" --runInBand --config jest.config.mjs --selectProjects integration) || failed=1
+    (cd "$REPO_ROOT/frontend" && run_command 'Jest frontend integration tests' "$REPO_ROOT/frontend/node_modules/.bin/jest" --ci --json --outputFile "$RUN_DIR/frontend-integration-jest.json" --cacheDirectory "$REPO_ROOT/.local_tmp_files/cache/jest-integration" --maxWorkers=50% --config jest.config.mjs --selectProjects integration) || failed=1
     return "$failed"
 }
 

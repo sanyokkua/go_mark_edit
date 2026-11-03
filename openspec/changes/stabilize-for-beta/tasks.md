@@ -273,7 +273,7 @@ No spec change. Design §12. Owners: `scripts/build`, `scripts/verify`, `scripts
       the e2e binary (`prepare.ts:243`), and give golangci-lint (`stages.sh:9`) a package list that excludes
       `frontend/node_modules`; verify a full `scripts/verify` passes and compare stage times with
       `scripts/baseline --compare` (the branch baseline is recorded before the change's first edit).
-- [ ] 13.2 Run both Jest stages with `--maxWorkers=50%`; verify two consecutive green runs of unit and integration and
+- [x] 13.2 Run both Jest stages with `--maxWorkers=50%`; verify two consecutive green runs of unit and integration and
       fix any test that depends on order.
 - [ ] 13.3 Build the versioned release app once in `release.yml` (today `scripts/verify` at `:135`/`:140` and
       `scripts/build --version` at `:164-166`) and verify against it; verify with
