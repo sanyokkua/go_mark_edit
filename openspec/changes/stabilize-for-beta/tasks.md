@@ -255,7 +255,7 @@ Spec: app-shell "Quitting is not blocked by layout storage". Design §10. Owners
 No spec change. Owners: `frontend/src/ui/primitives/Toast.module.css`, `frontend/src/ui/styles/tokens.css`,
 `frontend/stylelint.config.mjs`, `frontend/src/ui/widgets/Menubar/Menubar.tsx`.
 
-- [ ] 12.1 Give the success toast the success stripe (matching `Banner.module.css`) and remove the unreachable `stuck`
+- [x] 12.1 Give the success toast the success stripe (matching `Banner.module.css`) and remove the unreachable `stuck`
       selector; add a component test of the save-success toast's computed border colour; verify it passes.
 - [ ] 12.2 Remove the overridden declarations and merge duplicate selectors in `tokens.css`, and enable stylelint
       `no-duplicate-selectors` for it; verify regenerated `generatedEditorThemes.ts` and `generatedHighlight.css` are

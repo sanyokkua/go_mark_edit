@@ -214,6 +214,10 @@ it('renders one explicit save confirmation with its localized safe filename', ()
         'data-notification-code',
         'save-success',
     );
+    expect(document.querySelector('[data-notification-code="save-success"]')).toHaveAttribute(
+        'data-severity',
+        'success',
+    );
 });
 
 /*

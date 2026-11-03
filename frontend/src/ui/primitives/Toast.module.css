@@ -26,15 +26,12 @@
     transition: opacity var(--dur-base) var(--ease-out);
 }
 
-.toast[data-severity='info'] {
+.toast[data-severity='info'],
+.toast[data-severity='success'] {
     border-inline-start-color: var(--accent);
 }
 
 .toast[data-severity='warning'] {
-    border-inline-start-color: var(--warn);
-}
-
-.toast[data-severity='stuck'] {
     border-inline-start-color: var(--warn);
 }
 

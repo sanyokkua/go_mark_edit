@@ -120,7 +120,30 @@ test('creates a document, opens Recents, saves once, moves tabs, and restores sa
     await disableAutosave(app.page);
     await editDocument(app.page, saved);
     await app.page.keyboard.press('ControlOrMeta+S');
-    await expect(app.page.locator('[data-notification-code="save-success"]')).toHaveCount(1);
+    const successToast = app.page.locator('[data-notification-code="save-success"]');
+    await expect(successToast).toHaveCount(1);
+    await expect(successToast).toHaveAttribute('data-severity', 'success');
+    const stripe = await successToast.evaluate((toast) => {
+        const style = getComputedStyle(toast);
+        const accent = style.getPropertyValue('--accent').trim();
+        const probe = document.createElement('span');
+        probe.setAttribute('aria-hidden', 'true');
+        probe.style.color = 'var(--accent)';
+        toast.append(probe);
+        try {
+            return {
+                accent,
+                expected: getComputedStyle(probe).color,
+                color: style.borderInlineStartColor,
+                width: style.borderInlineStartWidth,
+            };
+        } finally {
+            probe.remove();
+        }
+    });
+    expect(stripe.accent).not.toBe('');
+    expect(stripe.width).toBe('3px');
+    expect(stripe.color).toBe(stripe.expected);
     await expect(app.page.locator('[aria-label="Document identity"]')).toContainText('Saved');
     expect(await readFile(first, 'utf8')).toBe(saved);
 
