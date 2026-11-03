@@ -2,6 +2,7 @@ package appmodel_test
 
 import (
 	"context"
+	"sync"
 	"testing"
 	"time"
 
@@ -135,4 +136,107 @@ func (repository *layoutRecordingRepository) Write(_ context.Context, field stri
 
 func (*layoutRecordingRepository) Read(context.Context, string) (VersionedLayoutValue, bool, error) {
 	return VersionedLayoutValue{}, false, nil
+}
+
+func TestWindowResizeLayoutsDeferRepositoryWrites(t *testing.T) {
+	timer := &layoutManualTimer{}
+	repository := &layoutRecordingRepository{}
+	service := NewAppModelServiceForHost(WithEmitter(&recordingEmitter{}), AppModelOption{Clock: timer}, AppModelOption{LayoutRepository: repository})
+	maximized := false
+	if err := service.SetUILayout(context.Background(), apperr.UILayout{WindowMaximized: &maximized}); err != nil {
+		t.Fatal(err)
+	}
+	repository.writes = nil
+	for i := 0; i < 12; i++ {
+		width, height := 800+i, 600+i
+		if err := service.SetUILayout(context.Background(), apperr.UILayout{WindowWidth: &width, WindowHeight: &height}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if len(repository.writes) != 0 {
+		t.Fatalf("resize wrote before debounce: %+v", repository.writes)
+	}
+	timer.fire()
+	if len(repository.writes) != 2 || repository.writes[0].field != LayoutWindowWidth || repository.writes[0].value.Value != 811 || repository.writes[1].field != LayoutWindowHeight || repository.writes[1].value.Value != 611 {
+		t.Fatalf("flushed resize = %+v; want final width and height", repository.writes)
+	}
+	state, err := service.GetState(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if state.Snapshot.UI.WindowWidth == nil || *state.Snapshot.UI.WindowWidth != 811 || state.Snapshot.UI.WindowHeight == nil || *state.Snapshot.UI.WindowHeight != 611 {
+		t.Fatalf("projected resize = %+v", state.Snapshot.UI)
+	}
+}
+
+type concurrentLayoutRepository struct {
+	mu     sync.Mutex
+	writes []layoutRecordedWrite
+}
+
+func (r *concurrentLayoutRepository) Write(_ context.Context, field string, value VersionedLayoutValue) (LayoutWriteResult, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.writes = append(r.writes, layoutRecordedWrite{field: field, value: value})
+	return LayoutWriteResult{Applied: true, Value: value}, nil
+}
+func (*concurrentLayoutRepository) Read(context.Context, string) (VersionedLayoutValue, bool, error) {
+	return VersionedLayoutValue{}, false, nil
+}
+
+type idleLayoutTimer struct{}
+
+func (idleLayoutTimer) AfterFunc(time.Duration, func()) {}
+
+func TestConcurrentSetUILayoutAllocatesUniqueSequences(t *testing.T) {
+	repository := &concurrentLayoutRepository{}
+	service := NewAppModelServiceForHost(WithEmitter(&recordingEmitter{}), AppModelOption{Clock: idleLayoutTimer{}}, AppModelOption{LayoutRepository: repository})
+	const workers = 24
+	const rounds = 20
+	start := make(chan struct{})
+	errors := make(chan error, workers*rounds)
+	var wg sync.WaitGroup
+	for worker := 0; worker < workers; worker++ {
+		wg.Add(1)
+		go func(worker int) {
+			defer wg.Done()
+			<-start
+			for i := 0; i < rounds; i++ {
+				var layout apperr.UILayout
+				if worker == 0 {
+					maximized := i%2 == 0
+					layout.WindowMaximized = &maximized
+				} else {
+					width := 800 + i
+					height := 600 + i
+					layout.WindowWidth = &width
+					layout.WindowHeight = &height
+				}
+				if err := service.SetUILayout(context.Background(), layout); err != nil {
+					errors <- err
+				}
+			}
+		}(worker)
+	}
+	close(start)
+	wg.Wait()
+	close(errors)
+	for err := range errors {
+		t.Errorf("SetUILayout: %v", err)
+	}
+	if err := service.FlushPendingUILayout(); err != nil {
+		t.Fatal(err)
+	}
+	repository.mu.Lock()
+	defer repository.mu.Unlock()
+	seen := make(map[uint64]bool)
+	for _, write := range repository.writes {
+		if write.value.Sequence == 0 || seen[write.value.Sequence] {
+			t.Errorf("invalid or duplicate layout sequence: %+v", write)
+		}
+		seen[write.value.Sequence] = true
+	}
+	if len(repository.writes) != rounds+2 {
+		t.Fatalf("writes = %d; want %d", len(repository.writes), rounds+2)
+	}
 }

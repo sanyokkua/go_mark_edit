@@ -241,7 +241,7 @@ Spec: markdown-preview "Live update and degradation" (behaviour unchanged). Desi
 Spec: app-shell "Quitting is not blocked by layout storage". Design §10. Owners: `frontend/src/app/useWindowGeometry.ts`,
 `internal/appmodel/service.go`, `internal/appmodel/close_drain.go`.
 
-- [ ] 11.1 Send `windowMaximized` only when it changes and add a hook test that N resize events with an unchanged
+- [x] 11.1 Send `windowMaximized` only when it changes and add a hook test that N resize events with an unchanged
       maximized state send it once (width and height stay debounced in the backend, `service.go:478-500`), plus a
       backend test that resizes cause no immediate layout repository write; increment the layout sequence under the service lock and add a concurrent `SetUILayout` test under
       `-race`; verify both pass.

@@ -636,8 +636,10 @@ func (service *AppModelService) persistLayout(ctx context.Context, layout apperr
 		}
 		candidate, exists := values[field.name]
 		if !exists {
+			service.mu.Lock()
 			service.sequence++
 			candidate = VersionedLayoutValue{Version: 1, Value: dereferenceLayoutValue(field.value), ChangedAtUnixNano: time.Now().UnixNano(), WriterID: service.writerID, Sequence: service.sequence}
+			service.mu.Unlock()
 		}
 		result, err := service.layout.Write(ctx, field.name, candidate)
 		if err != nil {
