@@ -279,7 +279,7 @@ No spec change. Design §12. Owners: `scripts/build`, `scripts/verify`, `scripts
       `scripts/build --version` at `:164-166`) and verify against it; verify with
       `go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.7 .github/workflows/release.yml` and a read of the job
       graph.
-- [ ] 13.4 Add the `info` block to `wails.json` with a numeric `X.Y.Z` `productVersion`, and set the bundle identifier
+- [x] 13.4 Add the `info` block to `wails.json` with a numeric `X.Y.Z` `productVersion`, and set the bundle identifier
       `io.github.sanyokkua.gomarkedit` in `build/darwin/Info.plist:11`, `build/darwin/Info.dev.plist:11` and
       `build/windows/wails.exe.manifest:3`; verify with `plutil -p` on the built `Info.plist`, check the rendered
       Windows manifest version is four numeric parts, and update "10.3 CI and Release" in `docs/index.md`.
