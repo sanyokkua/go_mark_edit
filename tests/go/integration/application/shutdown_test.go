@@ -461,7 +461,7 @@ func TestRecoveryDiscardRefusalRestoresDecisionAndAllowsRetry(t *testing.T) {
 }
 
 func TestNativeFallbackDrainRefusalReopensAdmissionForFreshRequest(t *testing.T) {
-	model := &shutdownModel{discardRefusal: &apperr.ClassifiedError{Message: "layout unavailable"}}
+	model := &shutdownModel{discardRefusal: &apperr.ClassifiedError{Message: "document write unavailable"}}
 	clock := &shutdownClock{now: time.Unix(850, 0)}
 	quit := make(chan struct{}, 1)
 	owner := application.NewShutdownOwner(model, application.ShutdownOption{Clock: clock}, application.WithNativeQuit(func(context.Context) { quit <- struct{}{} }))

@@ -1,15 +1,12 @@
 package appmodel
 
-import (
-	"github.com/sanyokkua/go_mark_edit/internal/apperr"
-	"github.com/sanyokkua/go_mark_edit/internal/bridge"
-)
+import "github.com/sanyokkua/go_mark_edit/internal/apperr"
 
 /*
  * DrainBeforeClose finishes accepted autosave, editor, and layout work before a
  * one-use native close permit can exist. Pending debounced work is flushed,
- * in-flight writes are awaited, and ineligible work is cancelled. A failure is
- * classified for the user and prevents creation of the close permit.
+ * in-flight writes are awaited, and ineligible work is cancelled. Layout is
+ * flushed when possible; a layout failure is logged and does not block close.
  */
 func (service *AppModelService) DrainBeforeClose() *apperr.ClassifiedError {
 	for _, documentID := range service.openDocumentIDs() {
@@ -32,8 +29,19 @@ func (service *AppModelService) DrainDiscardBeforeClose() *apperr.ClassifiedErro
 }
 
 func (service *AppModelService) drainCloseLayout() *apperr.ClassifiedError {
+	service.mu.Lock()
+	service.layoutCloseDrains++
+	service.mu.Unlock()
+	defer func() {
+		service.mu.Lock()
+		service.layoutCloseDrains--
+		service.mu.Unlock()
+	}()
 	if err := service.FlushPendingUILayout(); err != nil {
-		return bridge.ClassifiedWithID(apperr.ClassifiedIOFailure, "native close", "The application could not finish saving pending work before closing.", apperr.RemediationRetry, "")
+		service.mu.Lock()
+		service.pending = nil
+		service.mu.Unlock()
+		service.logger.Error().Err(err).Msg("layout persistence failed during close; pending layout discarded")
 	}
 	return nil
 }

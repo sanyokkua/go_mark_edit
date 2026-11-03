@@ -245,7 +245,7 @@ Spec: app-shell "Quitting is not blocked by layout storage". Design §10. Owners
       maximized state send it once (width and height stay debounced in the backend, `service.go:478-500`), plus a
       backend test that resizes cause no immediate layout repository write; increment the layout sequence under the service lock and add a concurrent `SetUILayout` test under
       `-race`; verify both pass.
-- [ ] 11.2 Make close drain log and drop a failing layout flush; add a `close_drain_test.go` case with a failing layout
+- [x] 11.2 Make close drain log and drop a failing layout flush; add a `close_drain_test.go` case with a failing layout
       repository asserting the drain succeeds (replacing `TestDrainBeforeCloseClassifiesALayoutFailure`), keep the
       existing document-write-failure case fatal; update ADR-0013's wording in `docs/architecture.md` (`:871`) to
       "flushed on close when possible"; verify the tests pass.

@@ -1,6 +1,7 @@
 package application_test
 
 import (
+	"bytes"
 	"context"
 	"os"
 	"path/filepath"
@@ -8,10 +9,56 @@ import (
 	"testing"
 	"time"
 
+	"github.com/rs/zerolog"
 	"github.com/sanyokkua/go_mark_edit/internal/apperr"
 	"github.com/sanyokkua/go_mark_edit/internal/application"
 	"github.com/sanyokkua/go_mark_edit/internal/appmodel"
 )
+
+type failingCloseLayout struct{}
+
+func (failingCloseLayout) Read(context.Context, string) (appmodel.VersionedLayoutValue, bool, error) {
+	return appmodel.VersionedLayoutValue{}, false, nil
+}
+func (failingCloseLayout) Write(context.Context, string, appmodel.VersionedLayoutValue) (appmodel.LayoutWriteResult, error) {
+	return appmodel.LayoutWriteResult{}, os.ErrPermission
+}
+
+type stalledCloseLayoutTimer struct{}
+
+func (stalledCloseLayoutTimer) AfterFunc(time.Duration, func()) {}
+
+func TestShutdownAuthorizationsAllowLayoutFailure(t *testing.T) {
+	for _, discard := range []bool{false, true} {
+		t.Run(map[bool]string{false: "normal", true: "discard"}[discard], func(t *testing.T) {
+			var logs bytes.Buffer
+			model := appmodel.NewAppModelServiceForHost(appmodel.WithEmitter(discardingLifecycleEmitter{}), appmodel.WithLogger(zerolog.New(&logs)), appmodel.AppModelOption{LayoutRepository: failingCloseLayout{}, Clock: stalledCloseLayoutTimer{}})
+			width := 1200
+			if err := model.SetUILayout(context.Background(), apperr.UILayout{WindowWidth: &width}); err != nil {
+				t.Fatal(err)
+			}
+			quit := 0
+			owner := application.NewShutdownOwner(model, application.WithNativeQuit(func(context.Context) { quit++ }))
+			owner.WindowReady(context.Background())
+			if !owner.BeforeClose(context.Background()) {
+				t.Fatal("ready close should await authorization")
+			}
+			id := owner.Snapshot().Request.ID
+			var refusal *apperr.ClassifiedError
+			if discard {
+				refusal = owner.DiscardAndAuthorizeQuit(context.Background(), id)
+			} else {
+				refusal = owner.AuthorizeQuit(context.Background(), id)
+			}
+			if refusal != nil || quit != 1 {
+				t.Fatalf("refusal = %+v, quits = %d", refusal, quit)
+			}
+			if !bytes.Contains(logs.Bytes(), []byte("layout persistence failed during close")) {
+				t.Fatalf("missing close log: %s", logs.String())
+			}
+		})
+	}
+}
 
 type recoveryAutosaveClock struct {
 	mu     sync.Mutex

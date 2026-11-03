@@ -35,6 +35,7 @@ type AppModelService struct {
 	autosaveEnabled                bool
 	pending                        *pendingLayout
 	pendingFlushDone               chan struct{}
+	layoutCloseDrains              int
 	startupErr                     error
 	pendingClose                   *apperr.PendingClose
 	reservations                   map[string]*openReservation
@@ -757,7 +758,18 @@ func (service *AppModelService) completePendingLayoutFlush(pending *pendingLayou
 	}
 	defer service.finishPendingLayoutFlush(flushDone)
 	if err := service.applyAcknowledgedLayoutWithValues(pending.ctx, pending.layout, pending.values); err != nil {
-		service.restorePendingLayout(pending)
+		service.mu.Lock()
+		closing := service.shutdownDraining || service.layoutCloseDrains > 0
+		if closing {
+			service.pending = nil
+		} else {
+			service.restorePendingLayoutLocked(pending)
+		}
+		service.mu.Unlock()
+		if closing {
+			service.logger.Error().Err(err).Msg("layout persistence failed during close; pending layout discarded")
+			return nil
+		}
 		return err
 	}
 	return nil
@@ -779,12 +791,11 @@ func (service *AppModelService) takePendingLayout(generation uint64) (*pendingLa
 	return pending, flushDone
 }
 
-func (service *AppModelService) restorePendingLayout(pending *pendingLayout) {
+// restorePendingLayoutLocked restores failed work while the caller holds service.mu.
+func (service *AppModelService) restorePendingLayoutLocked(pending *pendingLayout) {
 	if pending == nil {
 		return
 	}
-	service.mu.Lock()
-	defer service.mu.Unlock()
 	if service.pending == nil {
 		service.pending = pending
 		return

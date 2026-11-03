@@ -268,7 +268,7 @@ default. Monaco's read-only mode already refuses the line edits.
   the retained intent with the latest eligible revision but cannot arm a timer. Cancel/refusal clears the fence and
   rearms only current retained entries through the existing autosave owner and generation/pointer installation
   checks; successful exit never rearms them. Discard drain waits already admitted writes and flushes layout without
-  flushing scheduled documents. Layout failure retains its current fatal handling until task 11.2.
+  flushing scheduled documents. Layout failure is logged and dropped without blocking close.
 - Every successful write admission increments a per-document count under the model lock; projected `writeInFlight`
   is derived from count > 0. Every terminal path releases exactly one count, including committed-warning paths.
   This replaces the current boolean-only admission, which can miss a second accepted operation paused before
