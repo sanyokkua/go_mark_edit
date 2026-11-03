@@ -131,18 +131,39 @@ jobs:
             - name: Full verify (requested)
               if: steps.branch-guard.outputs.on_master == 'true' && steps.gate.outputs.full == 'true'
               env:
-                  GOMARKEDIT_E2E_REUSE_DIST: '1'
                   E2E_NATIVE_CLIPBOARD: '1'
-              run: scripts/verify
+                  RELEASE_VERSION: ${{ steps.version.outputs.version }}
+              run: scripts/verify --version "$RELEASE_VERSION"
+            - name: Build versioned release for subset
+              if: steps.branch-guard.outputs.on_master == 'true' && steps.gate.outputs.full != 'true'
+              env:
+                  RELEASE_VERSION: ${{ steps.version.outputs.version }}
+              run: scripts/verify build --version "$RELEASE_VERSION"
             - name: macOS E2E subset
               if: steps.branch-guard.outputs.on_master == 'true' && steps.gate.outputs.full != 'true'
               env:
                   E2E_SUBSET: macos
                   E2E_NATIVE_CLIPBOARD: '1'
+                  GOMARKEDIT_E2E_REUSE_DIST: '1'
               run: scripts/verify e2e
             - name: Stage timings
               if: always() && steps.branch-guard.outputs.on_master == 'true'
               run: node tools/verify/stage-timings.mjs >> "$GITHUB_STEP_SUMMARY"
+            - name: Smoke exact release app
+              if: steps.branch-guard.outputs.on_master == 'true'
+              env:
+                  RELEASE_VERSION: ${{ steps.version.outputs.version }}
+              run: |
+                  node tools/verify/release-smoke.mjs --check-startup-failure build/bin/GoMarkEdit.app --version "$RELEASE_VERSION"
+                  node tools/verify/release-smoke.mjs --bundle build/bin/GoMarkEdit.app --version "$RELEASE_VERSION" --receipt .local_tmp_files/release-smoke-receipt.json
+            - name: Package app
+              if: steps.branch-guard.outputs.on_master == 'true'
+              run: ditto -c -k --keepParent build/bin/GoMarkEdit.app "GoMarkEdit-${{ steps.version.outputs.version }}-macos-arm64.zip"
+            - name: Verify packaged app
+              if: steps.branch-guard.outputs.on_master == 'true'
+              env:
+                  RELEASE_VERSION: ${{ steps.version.outputs.version }}
+              run: node tools/verify/release-smoke.mjs --check-package "GoMarkEdit-$RELEASE_VERSION-macos-arm64.zip" --receipt .local_tmp_files/release-smoke-receipt.json
             - name: Upload verification artifacts on failure
               if: failure() && steps.branch-guard.outputs.on_master == 'true'
               uses: actions/upload-artifact@v7
@@ -161,14 +182,9 @@ jobs:
                       .local_tmp_files/runs/**/*.stderr
                       .local_tmp_files/runs/**/frontend-*.json
                       .local_tmp_files/runs/**/frontend-e2e-results/**
+                      .local_tmp_files/release-smoke-*/process.log
                   include-hidden-files: true
                   if-no-files-found: ignore
-            - name: Build release
-              if: steps.branch-guard.outputs.on_master == 'true'
-              run: scripts/build --version "${{ steps.version.outputs.version }}"
-            - name: Package app
-              if: steps.branch-guard.outputs.on_master == 'true'
-              run: ditto -c -k --keepParent build/bin/GoMarkEdit.app "GoMarkEdit-${{ steps.version.outputs.version }}-macos-arm64.zip"
             - name: Create GitHub Release
               if: steps.branch-guard.outputs.on_master == 'true' && github.event_name == 'push'
               env:

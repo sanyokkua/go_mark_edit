@@ -7,12 +7,13 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 usage() {
     cat <<'EOF'
-Usage: scripts/verify [lint|format|build|unit|integration|e2e] [--skip e2e]
+Usage: scripts/verify [lint|format|build|unit|integration|e2e] [--skip e2e] [--version X.Y.Z[{-alpha.N|-beta.N}]]
 EOF
 }
 
 selected='all'
 skip_e2e=false
+version=''
 while [[ $# -gt 0 ]]; do
     case "$1" in
         -h | --help)
@@ -25,6 +26,11 @@ while [[ $# -gt 0 ]]; do
             skip_e2e=true
             shift 2
             ;;
+        --version)
+            [[ $# -ge 2 && -z "$version" && -n "$2" ]] || usage_error '--version requires one release version'
+            version="$2"
+            shift 2
+            ;;
         lint | format | build | unit | integration | e2e)
             [[ "$selected" == all ]] || usage_error 'only one stage may be selected'
             selected="$1"
@@ -35,6 +41,11 @@ while [[ $# -gt 0 ]]; do
 done
 
 [[ "$selected" == e2e && "$skip_e2e" == true ]] && usage_error 'cannot select and skip e2e together'
+if [[ -n "$version" ]]; then
+    [[ "$selected" == all || "$selected" == build ]] || usage_error '--version requires all stages or build'
+    . "$SCRIPT_DIR/lib/release_version.sh"
+    parse_release_version "$version" || exit 2
+fi
 
 new_run_dir verify >/dev/null
 printf '[gomarkedit] artifacts: %s\n' "$RUN_DIR"
@@ -46,7 +57,11 @@ run_named() {
         lint) capture_stage lint 'scripts/verify lint' run_lint_stage || return 1 ;;
         format) capture_stage format 'scripts/verify format' run_format_stage || return 1 ;;
         build)
-            capture_stage build 'scripts/verify build' run_build_stage || return 1
+            if [[ -n "$version" ]]; then
+                capture_stage build "scripts/verify build --version $version" run_build_stage --version "$version" || return 1
+            else
+                capture_stage build 'scripts/verify build' run_build_stage || return 1
+            fi
             build_passed=true
             ;;
         unit) capture_stage unit 'scripts/verify unit' run_unit_stage || return 1 ;;

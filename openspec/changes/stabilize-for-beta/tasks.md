@@ -275,7 +275,7 @@ No spec change. Design §12. Owners: `scripts/build`, `scripts/verify`, `scripts
       `scripts/baseline --compare` (the branch baseline is recorded before the change's first edit).
 - [x] 13.2 Run both Jest stages with `--maxWorkers=50%`; verify two consecutive green runs of unit and integration and
       fix any test that depends on order.
-- [ ] 13.3 Build the versioned release app once in `release.yml` (today `scripts/verify` at `:135`/`:140` and
+- [x] 13.3 Build the versioned release app once in `release.yml` (today `scripts/verify` at `:135`/`:140` and
       `scripts/build --version` at `:164-166`) and verify against it; verify with
       `go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.7 .github/workflows/release.yml` and a read of the job
       graph.

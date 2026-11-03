@@ -201,21 +201,7 @@ func TestConcurrentSetUILayoutAllocatesUniqueSequences(t *testing.T) {
 		go func(worker int) {
 			defer wg.Done()
 			<-start
-			for i := 0; i < rounds; i++ {
-				var layout apperr.UILayout
-				if worker == 0 {
-					maximized := i%2 == 0
-					layout.WindowMaximized = &maximized
-				} else {
-					width := 800 + i
-					height := 600 + i
-					layout.WindowWidth = &width
-					layout.WindowHeight = &height
-				}
-				if err := service.SetUILayout(context.Background(), layout); err != nil {
-					errors <- err
-				}
-			}
+			runConcurrentLayoutWorker(service, worker, rounds, errors)
 		}(worker)
 	}
 	close(start)
@@ -238,5 +224,23 @@ func TestConcurrentSetUILayoutAllocatesUniqueSequences(t *testing.T) {
 	}
 	if len(repository.writes) != rounds+2 {
 		t.Fatalf("writes = %d; want %d", len(repository.writes), rounds+2)
+	}
+}
+
+func runConcurrentLayoutWorker(service *AppModelService, worker, rounds int, errors chan<- error) {
+	for i := 0; i < rounds; i++ {
+		var layout apperr.UILayout
+		if worker == 0 {
+			maximized := i%2 == 0
+			layout.WindowMaximized = &maximized
+		} else {
+			width := 800 + i
+			height := 600 + i
+			layout.WindowWidth = &width
+			layout.WindowHeight = &height
+		}
+		if err := service.SetUILayout(context.Background(), layout); err != nil {
+			errors <- err
+		}
 	}
 }

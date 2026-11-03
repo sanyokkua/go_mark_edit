@@ -31,6 +31,10 @@ function fixture(fail = '') {
         'bin/sonar-scanner',
         'grep -q "^SF:frontend/src/" .local_tmp_files/sonar/coverage/frontend/lcov.info; echo scanner >> "$TRACE"',
     );
+    write(
+        'bin/node',
+        'echo node >> "$TRACE"; [[ "${FAIL:-}" != node ]] || exit 1; for arg in "$@"; do case "$arg" in --test-reporter-destination=*.info) out="${arg#*=}";; esac; done; mkdir -p "$(dirname "$out")"; if [[ "${FAIL:-}" == empty-node ]]; then printf "SF:tools/file.mjs\\nLF:1\\nLH:0\\n" > "$out"; else printf "SF:tools/file.mjs\\nLF:1\\nLH:1\\nend_of_record\\n" > "$out"; fi',
+    );
     const trace = join(root, 'trace');
     const result = spawnSync('bash', [join(root, 'scripts/sonar')], {
         cwd: root,
@@ -57,10 +61,10 @@ function fixture(fail = '') {
 void test('runs build and all tests before fresh coverage and scanner', () => {
     const { result, calls } = fixture();
     assert.equal(result.status, 0, result.stderr);
-    assert.deepEqual(calls, ['build', 'test', 'go', 'jest', 'scanner']);
+    assert.deepEqual(calls, ['build', 'test', 'go', 'jest', 'node', 'scanner']);
 });
 void test('does not publish if a prerequisite fails', () => {
-    for (const fail of ['build', 'test', 'go', 'jest']) {
+    for (const fail of ['build', 'test', 'go', 'jest', 'node']) {
         const { result, calls } = fixture(fail);
         assert.notEqual(result.status, 0, fail);
         assert.ok(calls.includes(fail), fail);
@@ -69,10 +73,15 @@ void test('does not publish if a prerequisite fails', () => {
 });
 
 void test('rejects empty coverage before scanning', () => {
-    for (const fail of ['empty-go', 'empty-jest']) {
+    for (const fail of ['empty-go', 'empty-jest', 'empty-node']) {
         const { result, calls } = fixture(fail);
         assert.notEqual(result.status, 0, fail);
         assert.ok(calls.includes('jest'), fail);
         assert.ok(!calls.includes('scanner'), fail);
     }
+});
+
+void test('imports both frontend and tooling LCOV reports', () => {
+    const properties = readFileSync('sonar-project.properties', 'utf8');
+    assert.match(properties, /sonar\.javascript\.lcov\.reportPaths=.*frontend\/lcov\.info,.*tools\/lcov\.info/);
 });

@@ -36,7 +36,7 @@ run_format_stage() {
 }
 
 run_build_stage() {
-    "$REPO_ROOT/scripts/build"
+    "$REPO_ROOT/scripts/build" "$@"
 }
 
 run_unit_stage() {

@@ -7,16 +7,169 @@ import {
     readdirSync,
     rmSync,
     statSync,
+    chmodSync,
+    symlinkSync,
     utimesSync,
     writeFileSync,
 } from 'node:fs';
 import test from 'node:test';
 import { join, resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
+import {
+    bundleFingerprint,
+    inspectReleaseLog,
+    observeReleaseProcess,
+    validateBundleMetadata,
+} from './release-smoke.mjs';
 
 const repoRoot = resolve(import.meta.dirname, '../..');
 const resultsScript = join(repoRoot, 'tools/verify/results.mjs');
 const commonScript = join(repoRoot, 'scripts/lib/common.sh');
+
+void test('release fingerprints cover bundle contents and names', () => {
+    const root = fixtureDirectory();
+    try {
+        const app = join(root, 'app');
+        mkdirSync(join(app, 'Contents'), { recursive: true });
+        const file = join(app, 'Contents', 'file');
+        writeFileSync(file, 'one', { mode: 0o644 });
+        const original = bundleFingerprint(app);
+        writeFileSync(file, 'two');
+        assert.notEqual(bundleFingerprint(app), original);
+        writeFileSync(file, 'one');
+        writeFileSync(join(app, 'Contents', 'extra'), 'x');
+        assert.notEqual(bundleFingerprint(app), original);
+        rmSync(join(app, 'Contents', 'extra'));
+        assert.equal(bundleFingerprint(app), original);
+    } finally {
+        rmSync(root, { recursive: true, force: true });
+    }
+});
+
+void test('release fingerprints include Unix modes and symlink targets', { skip: process.platform === 'win32' }, () => {
+    const root = fixtureDirectory();
+    try {
+        const file = join(root, 'file');
+        const link = join(root, 'link');
+        writeFileSync(file, 'one', { mode: 0o644 });
+        symlinkSync('file', link);
+        const original = bundleFingerprint(root);
+        chmodSync(file, 0o755);
+        assert.notEqual(bundleFingerprint(root), original);
+        chmodSync(file, 0o644);
+        rmSync(link);
+        symlinkSync('../outside', link);
+        assert.notEqual(bundleFingerprint(root), original);
+    } finally {
+        rmSync(root, { recursive: true, force: true });
+    }
+});
+
+void test(
+    'hung release observer times out and cleans up its owned process without a receipt',
+    { skip: process.platform === 'win32' },
+    async () => {
+        const root = fixtureDirectory();
+        try {
+            const observer = join(root, 'observer');
+            const pidFile = join(root, 'pid');
+            const receipt = join(root, 'receipt.json');
+            writeFileSync(observer, `#!/bin/sh\nprintf '%s' "$1" > ${shellQuote(pidFile)}\nexec sleep 10\n`, {
+                mode: 0o755,
+            });
+            await assert.rejects(async () => {
+                await observeReleaseProcess({
+                    executable: process.execPath,
+                    args: ['-e', 'setInterval(() => {}, 1000)'],
+                    env: process.env,
+                    observer,
+                    log: join(root, 'missing.log'),
+                    run: root,
+                    deadlineMs: 2000,
+                });
+                writeFileSync(receipt, 'success');
+            }, /timed out|ETIMEDOUT/);
+            assert.equal(readdirSync(root).includes('receipt.json'), false);
+            const pid = Number(readFileSync(pidFile, 'utf8'));
+            assert.throws(() => process.kill(pid, 0), { code: 'ESRCH' });
+        } finally {
+            rmSync(root, { recursive: true, force: true });
+        }
+    },
+);
+
+void test(
+    'release observation handles real child lifecycle and startup logs',
+    { skip: process.platform === 'win32' },
+    async () => {
+        for (const scenario of ['visible', 'early-exit', 'never-visible', 'fatal-log', 'malformed-log']) {
+            const root = fixtureDirectory();
+            try {
+                const observer = join(root, 'observer');
+                const pidFile = join(root, 'pid');
+                const log = join(root, 'startup.log');
+                let logWrite = ':';
+                if (scenario === 'fatal-log')
+                    logWrite = `printf '%s\\n' '{"level":"error","message":"failure"}' > ${shellQuote(log)}`;
+                else if (scenario === 'malformed-log') logWrite = `printf '%s\\n' 'not-json' > ${shellQuote(log)}`;
+                writeFileSync(
+                    observer,
+                    `#!/bin/sh\nprintf '%s' "$1" > ${shellQuote(pidFile)}\n${logWrite}\necho ${scenario === 'never-visible' ? 'hidden' : 'visible'}\n`,
+                    { mode: 0o755 },
+                );
+                const options = {
+                    executable: process.execPath,
+                    args: ['-e', scenario === 'early-exit' ? 'process.exit(0)' : 'setInterval(() => {}, 1000)'],
+                    env: process.env,
+                    observer,
+                    log,
+                    run: root,
+                    deadlineMs: 700,
+                };
+                if (scenario === 'visible') {
+                    const result = await observeReleaseProcess(options);
+                    assert.throws(() => process.kill(result.pid, 0), { code: 'ESRCH' });
+                } else {
+                    await assert.rejects(observeReleaseProcess(options));
+                    if (readdirSync(root).includes('pid')) {
+                        assert.throws(() => process.kill(Number(readFileSync(pidFile, 'utf8')), 0), { code: 'ESRCH' });
+                    }
+                }
+                assert.equal(readdirSync(root).includes('receipt.json'), false);
+            } finally {
+                rmSync(root, { recursive: true, force: true });
+            }
+        }
+    },
+);
+
+void test('release metadata and startup logs reject invalid evidence', () => {
+    const root = fixtureDirectory();
+    try {
+        const log = join(root, 'log');
+        inspectReleaseLog(log);
+        writeFileSync(log, '{"level":"warn","message":"warning"}\n');
+        inspectReleaseLog(log);
+        writeFileSync(log, '{"level":"error","message":"failure"}\n');
+        assert.throws(() => inspectReleaseLog(log));
+        writeFileSync(log, 'not json\n');
+        assert.throws(() => inspectReleaseLog(log));
+        const app = join(root, 'app');
+        mkdirSync(join(app, 'Contents/MacOS'), { recursive: true });
+        writeFileSync(join(app, 'Contents/MacOS/GoMarkEdit'), 'x', { mode: 0o755 });
+        const metadata = {
+            CFBundleExecutable: 'GoMarkEdit',
+            CFBundleVersion: '1.2.3',
+            CFBundleShortVersionString: '1.2.3',
+        };
+        assert.equal(validateBundleMetadata(app, metadata, '1.2.3'), join(app, 'Contents/MacOS/GoMarkEdit'));
+        assert.throws(() => validateBundleMetadata(app, metadata, '1.2.4'));
+        assert.throws(() => validateBundleMetadata(app, { ...metadata, CFBundleExecutable: '../escape' }, '1.2.3'));
+        assert.throws(() => validateBundleMetadata(app, { ...metadata, CFBundleExecutable: 'missing' }, '1.2.3'));
+    } finally {
+        rmSync(root, { recursive: true, force: true });
+    }
+});
 
 void test('only restores generated tree timestamps when its complete contents are unchanged', () => {
     const root = fixtureDirectory();
@@ -108,6 +261,86 @@ void test('verification and baseline pass fresh build reuse only to the same-run
         assert.ok(!run('verify', [], 'build').calls.some((line) => line.startsWith('e2e:')));
         assert.equal(run('baseline', ['--compare']).calls.at(-1), 'e2e:1');
         assert.equal(run('baseline', ['--compare'], 'build').calls.at(-1), 'e2e:unset');
+    } finally {
+        rmSync(root, { recursive: true, force: true });
+    }
+});
+
+void test('verify forwards a validated version only to its single build stage', () => {
+    const root = fixtureDirectory();
+    try {
+        mkdirSync(join(root, 'scripts/lib'), { recursive: true });
+        mkdirSync(join(root, 'bin'), { recursive: true });
+        copyFileSync(join(repoRoot, 'scripts/verify'), join(root, 'scripts/verify'));
+        copyFileSync(join(repoRoot, 'scripts/lib/release_version.sh'), join(root, 'scripts/lib/release_version.sh'));
+        writeFileSync(
+            join(root, 'scripts/lib/common.sh'),
+            `REPO_ROOT=${shellQuote(root)}\nnew_run_dir() { RUN_DIR="$REPO_ROOT/run"; mkdir -p "$RUN_DIR"; }\nwrite_skipped_stage() { :; }\nusage_error() { exit 2; }\ncapture_stage() { shift 2; "$@"; }\n`,
+        );
+        writeFileSync(
+            join(root, 'scripts/lib/stages.sh'),
+            `record() { printf '%s:%s:%s\\n' "$1" "\${2:-}" "\${GOMARKEDIT_E2E_REUSE_DIST:-unset}" >> "$REPO_ROOT/calls"; [[ "$1" != "\${FAIL_STAGE:-}" ]]; }\nrun_lint_stage() { record lint "$*"; }\nrun_format_stage() { record format "$*"; }\nrun_build_stage() { record build "$*"; }\nrun_unit_stage() { record unit "$*"; }\nrun_integration_stage() { record integration "$*"; }\nrun_e2e_stage() { record e2e "$*"; }\n`,
+        );
+        writeFileSync(join(root, 'bin/node'), '#!/bin/sh\nexit 0\n', { mode: 0o755 });
+        const run = (args, fail = '') => {
+            rmSync(join(root, 'calls'), { force: true });
+            const result = spawnSync('bash', [join(root, 'scripts/verify'), ...args], {
+                cwd: root,
+                env: { ...process.env, PATH: `${join(root, 'bin')}:${process.env.PATH}`, FAIL_STAGE: fail },
+                encoding: 'utf8',
+            });
+            let calls = [];
+            try {
+                calls = readFileSync(join(root, 'calls'), 'utf8').trim().split('\n');
+            } catch {
+                /* no stages */
+            }
+            return { result, calls };
+        };
+        const full = run(['--version', '1.2.3-beta.2']);
+        assert.equal(full.result.status, 0);
+        assert.deepEqual(full.calls, [
+            'lint::unset',
+            'format::unset',
+            'build:--version 1.2.3-beta.2:unset',
+            'unit::unset',
+            'integration::unset',
+            'e2e::1',
+        ]);
+        assert.deepEqual(run(['build', '--version', '1.2.3']).calls, ['build:--version 1.2.3:unset']);
+        assert.ok(!run(['--version', '1.2.3'], 'build').calls.some((call) => call.startsWith('e2e:')));
+        for (const args of [
+            ['--version'],
+            ['--version', 'bad'],
+            ['--version', '1.2.3', '--version', '1.2.4'],
+            ['e2e', '--version', '1.2.3'],
+        ]) {
+            const invalid = run(args);
+            assert.notEqual(invalid.result.status, 0);
+            assert.deepEqual(invalid.calls, []);
+        }
+    } finally {
+        rmSync(root, { recursive: true, force: true });
+    }
+});
+
+void test('build stage forwards its version arguments to scripts/build', () => {
+    const root = fixtureDirectory();
+    try {
+        mkdirSync(join(root, 'scripts'), { recursive: true });
+        writeFileSync(join(root, 'scripts/build'), '#!/bin/sh\nprintf "%s\\n" "$@" > "$REPO_ROOT/arguments"\n', {
+            mode: 0o755,
+        });
+        const result = spawnSync(
+            'bash',
+            [
+                '-c',
+                `export REPO_ROOT=${shellQuote(root)}; source ${shellQuote(join(repoRoot, 'scripts/lib/stages.sh'))}; run_build_stage --version 1.2.3-beta.2`,
+            ],
+            { encoding: 'utf8' },
+        );
+        assert.equal(result.status, 0, result.stderr);
+        assert.equal(readFileSync(join(root, 'arguments'), 'utf8'), '--version\n1.2.3-beta.2\n');
     } finally {
         rmSync(root, { recursive: true, force: true });
     }

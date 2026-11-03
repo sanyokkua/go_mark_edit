@@ -357,34 +357,39 @@ func TestDrainBeforeCloseCancelsWorkThatCanNoLongerRun(t *testing.T) {
 func TestCloseDrainDropsFailedLayout(t *testing.T) {
 	for _, discard := range []bool{false, true} {
 		t.Run(map[bool]string{false: "normal", true: "discard"}[discard], func(t *testing.T) {
-			var logs bytes.Buffer
-			timer := &manualLayoutTimer{}
-			repository := &drainLayoutRepository{}
-			service := NewAppModelServiceForHost(WithEmitter(&recordingEmitter{}), WithLogger(zerolog.New(&logs)), AppModelOption{LayoutRepository: repository, Clock: timer})
-			width := 1200
-			if err := service.SetUILayout(context.Background(), apperr.UILayout{WindowWidth: &width}); err != nil {
-				t.Fatal(err)
-			}
-			var result *apperr.ClassifiedError
-			if discard {
-				result = service.DrainDiscardBeforeClose()
-			} else {
-				result = drainBeforeCloseWithin(t, service, 5*time.Second)
-			}
-			if result != nil {
-				t.Fatalf("drain should tolerate layout failure: %+v", result)
-			}
-			if err := service.FlushPendingUILayout(); err != nil {
-				t.Fatalf("failed layout was retained: %v", err)
-			}
-			timer.fire()
-			if got := repository.writes.Load(); got != 1 {
-				t.Fatalf("writes = %d, want 1", got)
-			}
-			if !bytes.Contains(logs.Bytes(), []byte("layout persistence failed during close")) {
-				t.Fatalf("missing close log: %s", logs.String())
-			}
+			checkCloseDrainDropsFailedLayout(t, discard)
 		})
+	}
+}
+
+func checkCloseDrainDropsFailedLayout(t *testing.T, discard bool) {
+	t.Helper()
+	var logs bytes.Buffer
+	timer := &manualLayoutTimer{}
+	repository := &drainLayoutRepository{}
+	service := NewAppModelServiceForHost(WithEmitter(&recordingEmitter{}), WithLogger(zerolog.New(&logs)), AppModelOption{LayoutRepository: repository, Clock: timer})
+	width := 1200
+	if err := service.SetUILayout(context.Background(), apperr.UILayout{WindowWidth: &width}); err != nil {
+		t.Fatal(err)
+	}
+	var result *apperr.ClassifiedError
+	if discard {
+		result = service.DrainDiscardBeforeClose()
+	} else {
+		result = drainBeforeCloseWithin(t, service, 5*time.Second)
+	}
+	if result != nil {
+		t.Fatalf("drain should tolerate layout failure: %+v", result)
+	}
+	if err := service.FlushPendingUILayout(); err != nil {
+		t.Fatalf("failed layout was retained: %v", err)
+	}
+	timer.fire()
+	if got := repository.writes.Load(); got != 1 {
+		t.Fatalf("writes = %d, want 1", got)
+	}
+	if !bytes.Contains(logs.Bytes(), []byte("layout persistence failed during close")) {
+		t.Fatalf("missing close log: %s", logs.String())
 	}
 }
 
@@ -417,74 +422,76 @@ func (r *blockingDrainLayoutRepository) Write(context.Context, string, Versioned
 func TestCloseDrainDropsActiveDebounceFailureBeforeWake(t *testing.T) {
 	for _, discard := range []bool{false, true} {
 		t.Run(map[bool]string{false: "normal", true: "discard"}[discard], func(t *testing.T) {
-			var logs bytes.Buffer
-			timer := &manualLayoutTimer{}
-			repository := &blockingDrainLayoutRepository{entered: make(chan struct{}), release: make(chan struct{})}
-			service := NewAppModelServiceForHost(WithEmitter(&recordingEmitter{}), WithLogger(zerolog.New(&logs)), AppModelOption{LayoutRepository: repository, Clock: timer})
-			width := 1200
-			if err := service.SetUILayout(context.Background(), apperr.UILayout{WindowWidth: &width}); err != nil {
-				t.Fatal(err)
-			}
-			first := make(chan struct{})
-			go func() { timer.fire(); close(first) }()
-			select {
-			case <-repository.entered:
-			case <-time.After(5 * time.Second):
-				t.Fatal("layout write did not start")
-			}
-			width = 1300
-			if err := service.SetUILayout(context.Background(), apperr.UILayout{WindowWidth: &width}); err != nil {
-				t.Fatal(err)
-			}
-			if discard {
-				service.BeginShutdownDiscard()
-			} else {
-				service.BeginShutdownDrain()
-			}
-			drained := make(chan *apperr.ClassifiedError, 1)
-			go func() {
-				if discard {
-					drained <- service.DrainDiscardBeforeClose()
-				} else {
-					drained <- service.DrainBeforeClose()
-				}
-			}()
-			second := make(chan struct{})
-			go func() { timer.fire(); close(second) }()
-			select {
-			case <-second:
-				t.Fatal("callback returned before the active flush completed")
-			case <-time.After(50 * time.Millisecond):
-			}
-			close(repository.release)
-			select {
-			case <-first:
-			case <-time.After(5 * time.Second):
-				t.Fatal("callback did not finish")
-			}
-			select {
-			case <-second:
-			case <-time.After(5 * time.Second):
-				t.Fatal("waiting callback did not finish")
-			}
-			select {
-			case got := <-drained:
-				if got != nil {
-					t.Fatalf("drain = %+v", got)
-				}
-			case <-time.After(5 * time.Second):
-				t.Fatal("drain did not finish")
-			}
-			if err := service.FlushPendingUILayout(); err != nil {
-				t.Fatalf("layout retained: %v", err)
-			}
-			if got := repository.writes.Load(); got != 1 {
-				t.Fatalf("writes = %d, want 1", got)
-			}
-			if got := bytes.Count(logs.Bytes(), []byte("layout persistence failed during close")); got != 1 {
-				t.Fatalf("close logs = %d, want 1: %s", got, logs.String())
-			}
+			checkCloseDrainDropsActiveDebounceFailureBeforeWake(t, discard)
 		})
+	}
+}
+
+func checkCloseDrainDropsActiveDebounceFailureBeforeWake(t *testing.T, discard bool) {
+	t.Helper()
+	var logs bytes.Buffer
+	timer := &manualLayoutTimer{}
+	repository := &blockingDrainLayoutRepository{entered: make(chan struct{}), release: make(chan struct{})}
+	service := NewAppModelServiceForHost(WithEmitter(&recordingEmitter{}), WithLogger(zerolog.New(&logs)), AppModelOption{LayoutRepository: repository, Clock: timer})
+	width := 1200
+	if err := service.SetUILayout(context.Background(), apperr.UILayout{WindowWidth: &width}); err != nil {
+		t.Fatal(err)
+	}
+	first := make(chan struct{})
+	go func() { timer.fire(); close(first) }()
+	waitForLayoutTestSignal(t, repository.entered, "layout write did not start")
+	width = 1300
+	if err := service.SetUILayout(context.Background(), apperr.UILayout{WindowWidth: &width}); err != nil {
+		t.Fatal(err)
+	}
+	if discard {
+		service.BeginShutdownDiscard()
+	} else {
+		service.BeginShutdownDrain()
+	}
+	drained := make(chan *apperr.ClassifiedError, 1)
+	go func() {
+		if discard {
+			drained <- service.DrainDiscardBeforeClose()
+		} else {
+			drained <- service.DrainBeforeClose()
+		}
+	}()
+	second := make(chan struct{})
+	go func() { timer.fire(); close(second) }()
+	select {
+	case <-second:
+		t.Fatal("callback returned before the active flush completed")
+	case <-time.After(50 * time.Millisecond):
+	}
+	close(repository.release)
+	waitForLayoutTestSignal(t, first, "callback did not finish")
+	waitForLayoutTestSignal(t, second, "waiting callback did not finish")
+	select {
+	case got := <-drained:
+		if got != nil {
+			t.Fatalf("drain = %+v", got)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("drain did not finish")
+	}
+	if err := service.FlushPendingUILayout(); err != nil {
+		t.Fatalf("layout retained: %v", err)
+	}
+	if got := repository.writes.Load(); got != 1 {
+		t.Fatalf("writes = %d, want 1", got)
+	}
+	if got := bytes.Count(logs.Bytes(), []byte("layout persistence failed during close")); got != 1 {
+		t.Fatalf("close logs = %d, want 1: %s", got, logs.String())
+	}
+}
+
+func waitForLayoutTestSignal(t *testing.T, signal <-chan struct{}, message string) {
+	t.Helper()
+	select {
+	case <-signal:
+	case <-time.After(5 * time.Second):
+		t.Fatal(message)
 	}
 }
 

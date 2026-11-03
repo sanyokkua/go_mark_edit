@@ -36,6 +36,14 @@ go test -race -coverpkg=./... -coverprofile="$coverage_dir/go.out" \
 		--coverageReporters=lcov --coverageDirectory="$coverage_dir/frontend"
 )
 
+mkdir -p "$coverage_dir/tools"
+node --test --experimental-test-coverage \
+	--test-coverage-include='tools/**/*.mjs' \
+	--test-coverage-exclude='tools/**/*.test.mjs' \
+	--test-reporter=spec --test-reporter=lcov \
+	--test-reporter-destination=stdout --test-reporter-destination="$coverage_dir/tools/lcov.info" \
+	tools/verify/*.test.mjs
+
 # Jest writes paths relative to frontend; the scanner resolves them from the repository root.
 sed 's|^SF:src/|SF:frontend/src/|' "$coverage_dir/frontend/lcov.info" >"$coverage_dir/frontend/lcov.root.info"
 mv "$coverage_dir/frontend/lcov.root.info" "$coverage_dir/frontend/lcov.info"
@@ -46,6 +54,10 @@ awk 'NR > 1 && $NF > 0 { found = 1 } END { exit !found }' "$coverage_dir/go.out"
 }
 awk -F: '$1 == "LH" && $2 > 0 { found = 1 } END { exit !found }' "$coverage_dir/frontend/lcov.info" || {
 	printf 'Frontend LCOV is empty or has no covered lines; refusing to scan\n' >&2
+	exit 1
+}
+awk -F: '$1 == "LH" && $2 > 0 { found = 1 } END { exit !found }' "$coverage_dir/tools/lcov.info" || {
+	printf 'Tooling LCOV is empty or has no covered lines; refusing to scan\n' >&2
 	exit 1
 }
 
