@@ -35,7 +35,7 @@ const sourceSyntaxRestrictions = [
         message: 'Only Popup may own global popup-dismiss listeners.',
     },
     {
-        selector: "CallExpression[callee.property.name='querySelector'] > Literal[value=/\\.application-frame/]",
+        selector: String.raw`CallExpression[callee.property.name='querySelector'] > Literal[value=/\.application-frame/]`,
         message: 'Only Popup may resolve the application frame.',
     },
     {

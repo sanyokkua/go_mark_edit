@@ -71,33 +71,38 @@ func TestRenderedBundlesCarryProductMetadata(t *testing.T) {
 		})
 	}
 	t.Run("Windows", func(t *testing.T) {
-		info := renderPackageTemplate(t, filepath.Join(root, "build", "windows", "info.json"), project)
-		var resource struct {
-			Info map[string]map[string]string `json:"info"`
-		}
-		if err := json.Unmarshal(info, &resource); err != nil {
-			t.Fatal(err)
-		}
-		for key, want := range map[string]string{"CompanyName": "Oleksandr Kostenko", "ProductName": "GoMarkEdit", "LegalCopyright": "Copyright (c) 2026 Oleksandr Kostenko"} {
-			if got := resource.Info["0000"][key]; got != want {
-				t.Errorf("%s = %q, want %q", key, got, want)
-			}
-		}
-		rendered := renderPackageTemplate(t, filepath.Join(root, "build", "windows", "wails.exe.manifest"), project)
-		var manifest struct {
-			Identity struct {
-				Name    string `xml:"name,attr"`
-				Version string `xml:"version,attr"`
-			} `xml:"assemblyIdentity"`
-		}
-		if err := xml.Unmarshal(rendered, &manifest); err != nil {
-			t.Fatal(err)
-		}
-		if manifest.Identity.Name != "io.github.sanyokkua.gomarkedit" {
-			t.Errorf("identity = %q", manifest.Identity.Name)
-		}
-		if !regexp.MustCompile(`^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$`).MatchString(manifest.Identity.Version) {
-			t.Errorf("Windows version = %q, want four numeric parts", manifest.Identity.Version)
-		}
+		testWindowsMetadata(t, root, project)
 	})
+}
+
+func testWindowsMetadata(t *testing.T, root string, project packageProject) {
+	t.Helper()
+	info := renderPackageTemplate(t, filepath.Join(root, "build", "windows", "info.json"), project)
+	var resource struct {
+		Info map[string]map[string]string `json:"info"`
+	}
+	if err := json.Unmarshal(info, &resource); err != nil {
+		t.Fatal(err)
+	}
+	for key, want := range map[string]string{"CompanyName": "Oleksandr Kostenko", "ProductName": "GoMarkEdit", "LegalCopyright": "Copyright (c) 2026 Oleksandr Kostenko"} {
+		if got := resource.Info["0000"][key]; got != want {
+			t.Errorf("%s = %q, want %q", key, got, want)
+		}
+	}
+	rendered := renderPackageTemplate(t, filepath.Join(root, "build", "windows", "wails.exe.manifest"), project)
+	var manifest struct {
+		Identity struct {
+			Name    string `xml:"name,attr"`
+			Version string `xml:"version,attr"`
+		} `xml:"assemblyIdentity"`
+	}
+	if err := xml.Unmarshal(rendered, &manifest); err != nil {
+		t.Fatal(err)
+	}
+	if manifest.Identity.Name != "io.github.sanyokkua.gomarkedit" {
+		t.Errorf("identity = %q", manifest.Identity.Name)
+	}
+	if !regexp.MustCompile(`^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$`).MatchString(manifest.Identity.Version) {
+		t.Errorf("Windows version = %q, want four numeric parts", manifest.Identity.Version)
+	}
 }
