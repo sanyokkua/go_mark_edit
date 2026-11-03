@@ -231,7 +231,7 @@ Spec: markdown-preview "Live update and degradation" (behaviour unchanged). Desi
 `frontend/src/logic/hooks/useLivePreview.ts` (`:32-39, 114`), `EditorStage.tsx` (`:307, 385`),
 `frontend/src/app/useTidyCommands.ts` (`:162`), `frontend/src/logic/tidy/chunking.ts` (`:40`).
 
-- [ ] 10.1 Add one UTF-8 byte-length helper in `frontend/src/logic/` (unit-tested with ASCII, multi-byte and surrogate
+- [x] 10.1 Add one UTF-8 byte-length helper in `frontend/src/logic/` (unit-tested with ASCII, multi-byte and surrogate
       pairs) and use it in all three places; give `useLivePreview` a `visible` input that skips the measurement while
       hidden and memoize it on content; verify the existing preview, 2 MiB pause and tidy tests pass and a hook test
       shows no measurement while hidden.

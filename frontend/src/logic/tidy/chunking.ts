@@ -1,6 +1,7 @@
 import type { Root } from 'mdast';
 import { EXIT, visit } from 'unist-util-visit';
 
+import { utf8ByteLength } from '../utils/utf8ByteLength';
 import { parseFull } from './parser';
 import type { SourceRange } from './rules';
 
@@ -37,7 +38,7 @@ function hasGlobalReference(tree: Root): boolean {
 
 /** Split only at top-level, blank-line-separated headings. Offsets remain UTF-16. */
 export function splitIntoChunks(source: string): TidyChunk[] {
-    if (new Blob([source]).size <= chunkBytes) return [{ offset: 0, text: source }];
+    if (utf8ByteLength(source) <= chunkBytes) return [{ offset: 0, text: source }];
 
     const boundaries: number[] = [0];
     let yaml = false;

@@ -309,7 +309,7 @@ const LivePreview: React.FC<LivePreviewProps> = ({
     const storedStandard = markdownSettings?.standard;
     const standard = storedStandard !== undefined && isMarkdownStandard(storedStandard) ? storedStandard : undefined;
     const settingsLoaded = standard !== undefined;
-    const accepted = useLivePreviewSnapshot(activeBuffer, adapter);
+    const accepted = useLivePreviewSnapshot(activeBuffer, visible, adapter);
     const contentRef = useRef<HTMLDivElement | null>(null);
     const [committedPreview, setCommittedPreview] = useState<CommittedMarkdownPreview | null>(null);
     const onPreviewCommitted = useCallback((preview: CommittedMarkdownPreview): void => {

@@ -10,6 +10,7 @@ import { notifyToast } from '../logic/store/notificationsSlice';
 import type { TidyPreferences } from '../logic/tidy/prefs';
 import type { LintFinding, TidyOutcome } from '../logic/tidy/protocol';
 import { runTidy } from '../logic/tidy/runTidy';
+import { utf8ByteLength } from '../logic/utils/utf8ByteLength';
 import type { EditorMarker } from '../ui/components/CodeEditor';
 import { DocumentCommandContext, EditorSessionContext, EditorSessionEpochContext } from '../ui/widgets/editorSession';
 import type { TidyCommands } from '../ui/widgets/tidyCommandsContext';
@@ -159,7 +160,7 @@ export function useTidyCommands(): TidyCommands {
             }
             if (content.status !== 'available') return { kind: 'failed' };
             const text = normalize(content.value);
-            const handle = acquire(op, { documentId, size: new Blob([text]).size });
+            const handle = acquire(op, { documentId, size: utf8ByteLength(text) });
             if (handle === null) return { kind: 'busy' };
             const captured: ActiveRun = {
                 handle,

@@ -13,6 +13,7 @@ import {
     type AppModelRuntime,
 } from '../../src/logic/adapter/appModelAdapter';
 import type { WireError } from '../../src/logic/utils/parseError';
+import * as utf8 from '../../src/logic/utils/utf8ByteLength';
 import { WorkspaceTreeTestProvider } from '../support/WorkspaceTreeTestProvider';
 
 const mockSetDocView = jest.fn(async (): Promise<void> => undefined);
@@ -542,6 +543,46 @@ function createRenderedEditorAdapter(): EditorViewAdapter {
         updateDocView: async (): Promise<void> => undefined,
     };
 }
+
+it('measures the latest accepted text only when the preview becomes visible', async () => {
+    let accepted: ((buffer: AcceptedBuffer) => void) | undefined;
+    const adapter: EditorViewAdapter = {
+        ...createRenderedEditorAdapter(),
+        subscribeAcceptedBuffers(listener) {
+            accepted = listener;
+            return () => undefined;
+        },
+    };
+    const measure = jest.spyOn(utf8, 'utf8ByteLength');
+    const initial = statusDocument();
+    const hidden = {
+        ...initial,
+        view: { ...initial.view, arrangement: 'editor' as const, editorVisible: true, previewVisible: false },
+    };
+    const content = 'é'.repeat(1_048_577);
+    try {
+        renderLivePreviewEditor('initial', adapter, hidden);
+        act(() => accepted?.({ documentId: 'document-1', content, generation: 1 }));
+        expect(measure).not.toHaveBeenCalled();
+
+        act(() => {
+            store.dispatch(
+                hydrateProjection({
+                    revision: 2,
+                    documents: { 'document-1': initial },
+                    activeDocumentId: 'document-1',
+                    ui: {},
+                }),
+            );
+        });
+        expect(await screen.findByText(/live preview is paused/i)).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Refresh preview' })).toBeEnabled();
+        expect(measure).toHaveBeenCalledTimes(1);
+        expect(measure).toHaveBeenCalledWith(content);
+    } finally {
+        measure.mockRestore();
+    }
+});
 
 const CommittedWriteHarness: React.FC<{
     adapter: EditorViewAdapter;
