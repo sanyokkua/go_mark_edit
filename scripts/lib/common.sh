@@ -18,6 +18,18 @@ log() {
     printf '[gomarkedit] %s\n' "$*"
 }
 
+# Restore timestamps after a generator rewrites an identical regular-file tree.
+# A changed tree must retain its new timestamps for E2E freshness checks.
+restore_unchanged_tree_times() {
+    local before="$1" after="$2" path
+    [[ -d "$before" && -d "$after" ]] || return 0
+    [[ -z "$(find "$before" "$after" ! -type f ! -type d -print -quit)" ]] || return 0
+    diff -qr "$before" "$after" >/dev/null || return 0
+    while IFS= read -r -d '' path; do
+        touch -r "$before${path#"$after"}" "$path"
+    done < <(find "$after" -depth -print0)
+}
+
 usage_error() {
     printf 'error: %s\n' "$*" >&2
     exit 2

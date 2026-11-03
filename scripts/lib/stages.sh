@@ -6,7 +6,7 @@ run_lint_stage() {
     local failed=0
     local frontend_bin="$REPO_ROOT/frontend/node_modules/.bin"
 
-    run_reported_command 'golangci-lint' golangci-lint "$RUN_DIR/reports/golangci-lint.json" env GOLANGCI_LINT_CACHE="$REPO_ROOT/.local_tmp_files/cache/golangci" golangci-lint run ./... --output.json.path stdout || failed=1
+    run_reported_command 'golangci-lint' golangci-lint "$RUN_DIR/reports/golangci-lint.json" env GOLANGCI_LINT_CACHE="$REPO_ROOT/.local_tmp_files/cache/golangci" golangci-lint run . ./internal/... ./pkg/... ./tests/go/... ./tools/... --output.json.path stdout || failed=1
     run_command 'Go architecture checks' go run ./tools/archlint || failed=1
     run_command 'CGO-free Go build' env CGO_ENABLED=0 go build ./internal/... ./tools/... || failed=1
     (cd "$REPO_ROOT/frontend" && run_command 'TypeScript source check' "$frontend_bin/tsc" --noEmit -p tsconfig.json) || failed=1

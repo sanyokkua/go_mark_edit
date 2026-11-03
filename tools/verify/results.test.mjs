@@ -1,5 +1,15 @@
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, readFileSync, readdirSync, rmSync, utimesSync, writeFileSync } from 'node:fs';
+import {
+    copyFileSync,
+    mkdtempSync,
+    mkdirSync,
+    readFileSync,
+    readdirSync,
+    rmSync,
+    statSync,
+    utimesSync,
+    writeFileSync,
+} from 'node:fs';
 import test from 'node:test';
 import { join, resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -7,6 +17,101 @@ import { spawnSync } from 'node:child_process';
 const repoRoot = resolve(import.meta.dirname, '../..');
 const resultsScript = join(repoRoot, 'tools/verify/results.mjs');
 const commonScript = join(repoRoot, 'scripts/lib/common.sh');
+
+void test('only restores generated tree timestamps when its complete contents are unchanged', () => {
+    const root = fixtureDirectory();
+    try {
+        const before = join(root, 'before');
+        const after = join(root, 'after');
+        const old = new Date('2020-01-01T00:00:00Z');
+        const newer = new Date('2022-01-01T00:00:00Z');
+        const reset = () => {
+            rmSync(before, { recursive: true, force: true });
+            rmSync(after, { recursive: true, force: true });
+            for (const path of [before, after]) {
+                mkdirSync(join(path, 'runtime'), { recursive: true });
+                writeFileSync(join(path, 'runtime', 'runtime.js'), 'same');
+                for (const entry of [join(path, 'runtime', 'runtime.js'), join(path, 'runtime'), path]) {
+                    const time = path === before ? old : newer;
+                    utimesSync(entry, time, time);
+                }
+            }
+        };
+        const restore = () => {
+            const result = spawnSync(
+                'bash',
+                [
+                    '-c',
+                    `source ${shellQuote(commonScript)}; restore_unchanged_tree_times ${shellQuote(before)} ${shellQuote(after)}`,
+                ],
+                { encoding: 'utf8' },
+            );
+            assert.equal(result.status, 0, result.stderr);
+        };
+        reset();
+        restore();
+        for (const name of ['', 'runtime', 'runtime/runtime.js']) {
+            assert.equal(statSync(join(after, name)).mtimeMs, old.getTime());
+        }
+        for (const change of ['changed', 'added', 'deleted']) {
+            reset();
+            if (change === 'changed') writeFileSync(join(after, 'runtime', 'runtime.js'), 'different');
+            if (change === 'added') writeFileSync(join(after, 'runtime', 'extra.js'), 'new');
+            if (change === 'deleted') rmSync(join(after, 'runtime', 'runtime.js'));
+            utimesSync(after, newer, newer);
+            restore();
+            assert.equal(statSync(after).mtimeMs, newer.getTime(), change);
+        }
+    } finally {
+        rmSync(root, { recursive: true, force: true });
+    }
+});
+
+void test('verification and baseline pass fresh build reuse only to the same-run E2E stage', () => {
+    const root = fixtureDirectory();
+    try {
+        mkdirSync(join(root, 'scripts/lib'), { recursive: true });
+        mkdirSync(join(root, 'bin'), { recursive: true });
+        for (const name of ['verify', 'baseline'])
+            copyFileSync(join(repoRoot, 'scripts', name), join(root, 'scripts', name));
+        writeFileSync(
+            join(root, 'scripts/lib/common.sh'),
+            `REPO_ROOT=${shellQuote(root)}\nnew_run_dir() { RUN_DIR="$REPO_ROOT/run"; mkdir -p "$RUN_DIR"; }\nbaseline_name() { printf fixture; }\nwrite_skipped_stage() { :; }\nusage_error() { exit 2; }\ncapture_stage() { local name="$1"; shift 2; "$@"; }\n`,
+        );
+        writeFileSync(
+            join(root, 'scripts/lib/stages.sh'),
+            `record() { printf '%s:%s\\n' "$1" "\${GOMARKEDIT_E2E_REUSE_DIST:-unset}" >> "$REPO_ROOT/calls"; [[ "$1" != "\${FAIL_STAGE:-}" ]]; }\nrun_lint_stage() { record lint; }\nrun_format_stage() { record format; }\nrun_build_stage() { record build; }\nrun_unit_stage() { record unit; }\nrun_integration_stage() { record integration; }\nrun_e2e_stage() { record e2e; }\n`,
+        );
+        for (const binary of ['node', 'git'])
+            writeFileSync(join(root, 'bin', binary), '#!/bin/sh\nexit 0\n', { mode: 0o755 });
+        const run = (entry, args = [], fail = '') => {
+            rmSync(join(root, 'calls'), { force: true });
+            const env = { ...process.env, PATH: `${join(root, 'bin')}:${process.env.PATH}`, FAIL_STAGE: fail };
+            delete env.GOMARKEDIT_E2E_REUSE_DIST;
+            const result = spawnSync('bash', [join(root, 'scripts', entry), ...args], {
+                cwd: root,
+                env,
+                encoding: 'utf8',
+            });
+            return { result, calls: readFileSync(join(root, 'calls'), 'utf8').trim().split('\n') };
+        };
+        assert.deepEqual(run('verify').calls, [
+            'lint:unset',
+            'format:unset',
+            'build:unset',
+            'unit:unset',
+            'integration:unset',
+            'e2e:1',
+        ]);
+        assert.deepEqual(run('verify', ['e2e']).calls, ['e2e:unset']);
+        assert.ok(!run('verify', ['--skip', 'e2e']).calls.some((line) => line.startsWith('e2e:')));
+        assert.ok(!run('verify', [], 'build').calls.some((line) => line.startsWith('e2e:')));
+        assert.equal(run('baseline', ['--compare']).calls.at(-1), 'e2e:1');
+        assert.equal(run('baseline', ['--compare'], 'build').calls.at(-1), 'e2e:unset');
+    } finally {
+        rmSync(root, { recursive: true, force: true });
+    }
+});
 
 function fixtureDirectory() {
     const directory = join(repoRoot, '.local_tmp_files');

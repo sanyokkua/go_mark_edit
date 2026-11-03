@@ -32,15 +32,24 @@ git diff --binary HEAD >"$RUN_DIR/initial.diff"
 git status --porcelain -z >"$RUN_DIR/initial.status"
 
 failed=0
+build_passed=false
 run_baseline_stage() {
     local name="$1"
     case "$name" in
         lint) capture_stage lint 'scripts/baseline lint' run_lint_stage || failed=1 ;;
         format) capture_stage format 'scripts/baseline format' run_format_stage || failed=1 ;;
-        build) capture_stage build 'scripts/baseline build' run_build_stage || failed=1 ;;
+        build)
+            if capture_stage build 'scripts/baseline build' run_build_stage; then build_passed=true; else failed=1; fi
+            ;;
         unit) capture_stage unit 'scripts/baseline unit' run_unit_stage || failed=1 ;;
         integration) capture_stage integration 'scripts/baseline integration' run_integration_stage || failed=1 ;;
-        e2e) capture_stage e2e 'scripts/baseline e2e' run_e2e_stage || failed=1 ;;
+        e2e)
+            if [[ "$build_passed" == true ]]; then
+                GOMARKEDIT_E2E_REUSE_DIST=1 capture_stage e2e 'scripts/baseline e2e' run_e2e_stage || failed=1
+            else
+                capture_stage e2e 'scripts/baseline e2e' run_e2e_stage || failed=1
+            fi
+            ;;
     esac
 }
 

@@ -268,7 +268,7 @@ No spec change. Owners: `frontend/src/ui/primitives/Toast.module.css`, `frontend
 No spec change. Design §12. Owners: `scripts/build`, `scripts/verify`, `scripts/lib/stages.sh`,
 `frontend/tests/support/prepare.ts`, `.github/workflows/release.yml`, `wails.json`, `build/darwin/`, `build/windows/`.
 
-- [ ] 13.1 Set `GOMARKEDIT_E2E_REUSE_DIST=1` for the E2E stage in `scripts/verify` when Build passed in the same run,
+- [x] 13.1 Set `GOMARKEDIT_E2E_REUSE_DIST=1` for the E2E stage in `scripts/verify` when Build passed in the same run,
       pass `-skipbindings` and `-trimpath` to `wails build` (`scripts/build:106-126`), drop `-gcflags all=-N -l` from
       the e2e binary (`prepare.ts:243`), and give golangci-lint (`stages.sh:9`) a package list that excludes
       `frontend/node_modules`; verify a full `scripts/verify` passes and compare stage times with

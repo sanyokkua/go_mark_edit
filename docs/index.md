@@ -243,6 +243,8 @@ On Windows, `scripts/build` also builds the NSIS installer when `makensis` is on
 
 Use `scripts/build setup --with-browser` to install Chromium for E2E verification. Native clipboard tests are excluded by default; run `E2E_NATIVE_CLIPBOARD=1 scripts/test e2e -- --project=chromium-native` to opt in. They run serially and restore clipboard text, not other clipboard formats. The macOS release subset includes them automatically. Linux desktop builds require GTK 3 and WebKit2GTK 4.1 development headers. Each verification run keeps only the 10 newest folders under `.local_tmp_files/runs/` and shares tool caches in `.local_tmp_files/cache/`. See [the E2E performance note](e2e-performance.md) for harness behavior.
 
+After a successful Build in the same verification or baseline run, E2E reuses the production frontend only when it is newer than its build and binding inputs. Standalone E2E prepares missing or stale assets normally; `GOMARKEDIT_E2E_REUSE_DIST=1` opts into the same freshness check.
+
 ### Local SonarQube analysis
 
 Install the project prerequisites, Playwright Chromium (`scripts/build setup --with-browser`) and SonarScanner CLI, and start an existing SonarQube server. Set `SONAR_HOST_URL` and `SONAR_TOKEN` in the shell; keep the token out of the repository and shell history. From the repository root, run:

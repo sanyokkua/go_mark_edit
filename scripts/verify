@@ -39,15 +39,25 @@ done
 new_run_dir verify >/dev/null
 printf '[gomarkedit] artifacts: %s\n' "$RUN_DIR"
 failed=0
+build_passed=false
 run_named() {
     local name="$1"
     case "$name" in
         lint) capture_stage lint 'scripts/verify lint' run_lint_stage || return 1 ;;
         format) capture_stage format 'scripts/verify format' run_format_stage || return 1 ;;
-        build) capture_stage build 'scripts/verify build' run_build_stage || return 1 ;;
+        build)
+            capture_stage build 'scripts/verify build' run_build_stage || return 1
+            build_passed=true
+            ;;
         unit) capture_stage unit 'scripts/verify unit' run_unit_stage || return 1 ;;
         integration) capture_stage integration 'scripts/verify integration' run_integration_stage || return 1 ;;
-        e2e) capture_stage e2e 'scripts/verify e2e' run_e2e_stage || return 1 ;;
+        e2e)
+            if [[ "$build_passed" == true ]]; then
+                GOMARKEDIT_E2E_REUSE_DIST=1 capture_stage e2e 'scripts/verify e2e' run_e2e_stage || return 1
+            else
+                capture_stage e2e 'scripts/verify e2e' run_e2e_stage || return 1
+            fi
+            ;;
     esac
 }
 
