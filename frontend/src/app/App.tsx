@@ -11,6 +11,8 @@ import { ModalStateProvider } from '../ui/widgets/modalState';
 import { TabRemediationContext } from '../ui/widgets/tabRemediation';
 import { WorkspaceTreeCommandsContext } from '../ui/widgets/WorkspaceTree/workspaceTreeCommands';
 import { AppDialogs } from './AppDialogs';
+import InterfaceErrorBoundary from './InterfaceErrorBoundary';
+import InterfaceFailure from './InterfaceFailure';
 import { AppFrame } from './AppFrame';
 import { TidyCommandsProvider } from './TidyCommandsProvider';
 import { useAppPresentation } from './useAppPresentation';
@@ -141,14 +143,26 @@ const AppContents: React.FC = (): React.JSX.Element => {
     const bootstrap = useBootstrap({ onReady: session.onBootstrapReady });
     const shutdown = useShutdown({
         bootstrapStatus: bootstrap.status,
-        hydratedPendingCloseId: bootstrap.result?.pendingCloseId ?? null,
+        hydratedPendingClose: bootstrap.result?.pendingClose ?? null,
     });
     return (
-        <EditorSessionProvider activeBuffer={session.activeBuffer} externalEpoch={session.externalEpoch}>
-            <TidyCommandsProvider>
-                <AppWorkflows session={session} bootstrap={bootstrap} shutdown={shutdown} />
-            </TidyCommandsProvider>
-        </EditorSessionProvider>
+        <InterfaceErrorBoundary
+            onError={appModelAdapter.retainPendingBuffers}
+            fallback={
+                <InterfaceFailure
+                    shutdown={shutdown}
+                    orderedDocumentIds={session.orderedDocumentIds}
+                    adapter={appModelAdapter}
+                    reload={(): void => globalThis.location.reload()}
+                />
+            }
+        >
+            <EditorSessionProvider activeBuffer={session.activeBuffer} externalEpoch={session.externalEpoch}>
+                <TidyCommandsProvider>
+                    <AppWorkflows session={session} bootstrap={bootstrap} shutdown={shutdown} />
+                </TidyCommandsProvider>
+            </EditorSessionProvider>
+        </InterfaceErrorBoundary>
     );
 };
 

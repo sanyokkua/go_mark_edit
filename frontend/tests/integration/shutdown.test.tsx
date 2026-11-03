@@ -19,8 +19,10 @@ function deferred(): Deferred {
 
 function nativeAdapter(): NativeLifecycleAdapter & {
     emit: (closeID?: string) => void;
+    getState: () => Promise<AppModelState>;
 } {
     let listener: ((closeID?: string) => void) | undefined;
+    let current: string | undefined;
     return {
         onCloseRequested: (nextListener): (() => void) => {
             listener = nextListener;
@@ -28,10 +30,22 @@ function nativeAdapter(): NativeLifecycleAdapter & {
                 listener = undefined;
             };
         },
-        emit: (closeID): void => listener?.(closeID),
+        emit: (closeID): void => {
+            current = closeID;
+            listener?.(closeID);
+        },
+        getState: async () =>
+            current === undefined
+                ? {
+                      ...stateWithPendingClose('unused'),
+                      snapshot: { ...stateWithPendingClose('unused').snapshot, pendingClose: undefined },
+                  }
+                : stateWithPendingClose(current),
         requestQuit: jest.fn(),
         authorizeQuit: jest.fn(async () => undefined),
         cancelQuit: jest.fn(async () => undefined),
+        acknowledgeRecoveryClose: jest.fn(async () => undefined),
+        discardAndAuthorizeQuit: jest.fn(async () => undefined),
     };
 }
 
@@ -42,7 +56,7 @@ function stateWithPendingClose(closeID: string): AppModelState {
             documents: {},
             activeDocumentId: null,
             ui: {},
-            pendingClose: { id: closeID },
+            pendingClose: { id: closeID, owner: 'frontend' },
         },
         activeBuffer: null,
     };
@@ -50,23 +64,28 @@ function stateWithPendingClose(closeID: string): AppModelState {
 
 function Harness(props: {
     bootstrapStatus: 'loading' | 'ready' | 'failed';
-    native: NativeLifecycleAdapter;
+    native: NativeLifecycleAdapter & { getState: () => Promise<AppModelState> };
     onRequest: (closeID: string) => void;
     hydratedPendingCloseId?: string | null;
     hydratedState?: AppModelState;
 }): React.JSX.Element {
     const shutdown = useShutdown({
         bootstrapStatus: props.bootstrapStatus,
-        dependencies: { native: props.native },
-        hydratedPendingCloseId: props.hydratedPendingCloseId,
+        dependencies: { native: props.native, appModel: props.native },
+        hydratedPendingClose:
+            props.hydratedPendingCloseId === undefined
+                ? undefined
+                : props.hydratedPendingCloseId === null
+                  ? null
+                  : { id: props.hydratedPendingCloseId, owner: 'frontend' },
         hydratedState: props.hydratedState,
     });
     useEffect(() => {
-        if (shutdown.pendingClose !== null) props.onRequest(shutdown.pendingClose);
+        if (shutdown.pendingClose !== null) props.onRequest(shutdown.pendingClose.id);
     }, [props.onRequest, shutdown.pendingClose]);
     return (
         <>
-            <output aria-label="Pending close">{shutdown.pendingClose ?? ''}</output>
+            <output aria-label="Pending close">{shutdown.pendingClose?.id ?? ''}</output>
             <button type="button" onClick={(): void => void shutdown.cancelQuit()}>
                 Cancel
             </button>

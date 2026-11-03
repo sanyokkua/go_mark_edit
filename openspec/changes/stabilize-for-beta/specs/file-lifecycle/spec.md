@@ -23,7 +23,7 @@ The system SHALL read and write UTF-8 and SHALL preserve a leading byte-order ma
 
 ### Requirement: Autosave
 
-WHERE the Autosave setting is on, the system SHALL save an existing, writable, non-deleted file one second after the last edit, with the same atomic and disk-change checks as a manual save. Autosave SHALL NOT apply to untitled or read-only documents, or to documents with mixed line endings, and SHALL NOT add Recent Items. A pending autosave SHALL be completed when the document is closed.
+WHERE the Autosave setting is on, the system SHALL save an existing, writable, non-deleted file one second after the last edit, with the same atomic and disk-change checks as a manual save. Autosave SHALL NOT apply to untitled or read-only documents, or to documents with mixed line endings, and SHALL NOT add Recent Items. A pending autosave SHALL be completed when the document is closed, except during the recovery discard or unacknowledged ready-interface close decisions defined in app-shell. Those decisions SHALL pause or discard scheduled autosaves as specified there; ordinary responsive close retains this completion behavior.
 
 #### Scenario: Debounced save
 

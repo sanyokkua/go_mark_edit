@@ -23,12 +23,13 @@ const shutdownDeadline = 10 * time.Second
 type ShutdownState string
 
 const (
-	ShutdownIdle       ShutdownState = "idle"
-	ShutdownRequested  ShutdownState = "requested"
-	ShutdownAwaiting   ShutdownState = "awaiting"
-	ShutdownDraining   ShutdownState = "draining"
-	ShutdownConfirming ShutdownState = "confirming"
-	ShutdownExiting    ShutdownState = "exiting"
+	ShutdownIdle             ShutdownState = "idle"
+	ShutdownRequested        ShutdownState = "requested"
+	ShutdownAwaiting         ShutdownState = "awaiting"
+	ShutdownRecoveryDecision ShutdownState = "recovery-decision"
+	ShutdownDraining         ShutdownState = "draining"
+	ShutdownConfirming       ShutdownState = "confirming"
+	ShutdownExiting          ShutdownState = "exiting"
 )
 
 // CloseRequest is the identity and timing record for one native close or quit
@@ -55,15 +56,17 @@ type ShutdownSnapshot struct {
 type ShutdownModel interface {
 	CloseStatus() (dirtyDocuments []string, pendingWork bool)
 	BeginShutdownDrain()
+	BeginShutdownDiscard()
 	EndShutdownDrain()
 	DrainBeforeClose() *apperr.ClassifiedError
-	SetPendingClose(id string)
+	DrainDiscardBeforeClose() *apperr.ClassifiedError
+	SetPendingClose(pending apperr.PendingClose)
 	ClearPendingClose(id string)
 }
 
 // NativeConfirmation is the non-webview confirmation shown only after every
 // already-started write has finished.
-type NativeConfirmation func(context.Context, []string) (confirmed bool, err error)
+type NativeConfirmation func(context.Context, []string, bool) (confirmed bool, err error)
 
 // ShutdownTimer and ShutdownClock make the ten-second deadline deterministic
 // without changing the production clock.
@@ -138,13 +141,15 @@ type ShutdownOwner struct {
 	clock              ShutdownClock
 	logger             *logging.Logger
 
-	state         ShutdownState
-	request       *CloseRequest
-	frontendReady bool
-	permit        bool
-	timer         ShutdownTimer
-	sequence      uint64
-	nonce         string
+	state          ShutdownState
+	request        *CloseRequest
+	requestContext context.Context
+	frontendReady  bool
+	permit         bool
+	timer          ShutdownTimer
+	sequence       uint64
+	nonce          string
+	previousState  ShutdownState
 }
 
 type systemShutdownClock struct{}
@@ -211,9 +216,8 @@ func (owner *ShutdownOwner) WindowReady(ctx context.Context) {
 	owner.setStateLocked(ShutdownAwaiting, "frontend became ready")
 	id := owner.request.ID
 	deadline := owner.request.Deadline
+	owner.setPendingCloseLocked(id, apperr.PendingCloseOwnerFrontend)
 	owner.mu.Unlock()
-
-	owner.setPendingClose(id)
 	owner.armDeadline(id, deadline)
 	owner.emit(ctx, id)
 }
@@ -235,7 +239,7 @@ func (owner *ShutdownOwner) BeforeClose(ctx context.Context) bool {
 	case ShutdownExiting:
 		owner.mu.Unlock()
 		return false
-	case ShutdownAwaiting:
+	case ShutdownAwaiting, ShutdownRecoveryDecision:
 		id := owner.request.ID
 		owner.mu.Unlock()
 		owner.emit(ctx, id)
@@ -254,6 +258,7 @@ func (owner *ShutdownOwner) BeforeClose(ctx context.Context) bool {
 		FrontendReady: owner.frontendReady,
 	}
 	owner.request = request
+	owner.requestContext = ctx
 	owner.setStateLocked(ShutdownRequested, "native close requested")
 	ready := owner.frontendReady
 	if ready {
@@ -262,10 +267,12 @@ func (owner *ShutdownOwner) BeforeClose(ctx context.Context) bool {
 	}
 	id := request.ID
 	deadline := request.Deadline
+	if ready {
+		owner.setPendingCloseLocked(id, apperr.PendingCloseOwnerFrontend)
+	}
 	owner.mu.Unlock()
 
 	if ready {
-		owner.setPendingClose(id)
 		owner.armDeadline(id, deadline)
 		owner.emit(ctx, id)
 		return true
@@ -273,14 +280,7 @@ func (owner *ShutdownOwner) BeforeClose(ctx context.Context) bool {
 
 	dirtyDocuments, pendingWork := owner.status()
 	if len(dirtyDocuments) == 0 && !pendingWork {
-		owner.mu.Lock()
-		readyDuringStatus := owner.request != nil && owner.request.ID == id && owner.state == ShutdownAwaiting
-		owner.mu.Unlock()
-		if readyDuringStatus {
-			return true
-		}
-		owner.finishImmediate(id, "clean close before frontend ready")
-		return false
+		return !owner.finishImmediate(id, "clean close before frontend ready")
 	}
 	owner.startDrain(ctx, id, drainToConfirm, dirtyDocuments, "close before frontend ready")
 	return true
@@ -289,34 +289,58 @@ func (owner *ShutdownOwner) BeforeClose(ctx context.Context) bool {
 // AuthorizeQuit accepts the frontend's clean-or-discard decision for one close
 // request. The close id is checked before any drain or side effect begins.
 func (owner *ShutdownOwner) AuthorizeQuit(ctx context.Context, closeID string) *apperr.ClassifiedError {
+	return owner.authorize(ctx, closeID, false)
+}
+
+// AcknowledgeRecoveryClose reserves this close for the responsive recovery UI.
+func (owner *ShutdownOwner) AcknowledgeRecoveryClose(_ context.Context, closeID string) *apperr.ClassifiedError {
+	owner.mu.Lock()
+	defer owner.mu.Unlock()
+	if owner.request == nil || owner.request.ID != closeID || (owner.state != ShutdownAwaiting && owner.state != ShutdownRecoveryDecision) {
+		return owner.staleCloseRefusal(closeID)
+	}
+	owner.stopTimerLocked()
+	owner.setStateLocked(ShutdownRecoveryDecision, "recovery acknowledged close")
+	return nil
+}
+
+// DiscardAndAuthorizeQuit drains without starting scheduled document writes.
+func (owner *ShutdownOwner) DiscardAndAuthorizeQuit(ctx context.Context, closeID string) *apperr.ClassifiedError {
+	return owner.authorize(ctx, closeID, true)
+}
+
+func (owner *ShutdownOwner) authorize(ctx context.Context, closeID string, discard bool) *apperr.ClassifiedError {
 	if ctx == nil {
 		ctx = context.Background()
 	}
-	if !owner.beginSynchronousDrain(closeID, "frontend authorized close") {
+	owner.mu.Lock()
+	if owner.request == nil || owner.request.ID != closeID || (owner.state != ShutdownAwaiting && owner.state != ShutdownRecoveryDecision) {
+		owner.mu.Unlock()
 		return owner.staleCloseRefusal(closeID)
 	}
-	if refusal := owner.drain(); refusal != nil {
-		owner.finishDrainFailure(ctx, closeID, refusal)
+	owner.previousState = owner.state
+	owner.claimDrainLocked(closeID, discard, "frontend authorized close")
+	owner.mu.Unlock()
+	if refusal := owner.drain(discard); refusal != nil {
+		owner.finishDrainFailure(ctx, closeID, refusal, false)
 		return refusal
 	}
 	owner.finishExit(ctx, closeID, "frontend authorized close")
 	return nil
 }
 
-// CancelQuit acknowledges cancellation for the current close id. A stale id
-// is refused and leaves the pending request untouched.
+// CancelQuit acknowledges cancellation for the current close id.
 func (owner *ShutdownOwner) CancelQuit(_ context.Context, closeID string) *apperr.ClassifiedError {
 	owner.mu.Lock()
-	if owner.state != ShutdownAwaiting || owner.request == nil || owner.request.ID != closeID {
-		owner.mu.Unlock()
+	defer owner.mu.Unlock()
+	if owner.request == nil || owner.request.ID != closeID || (owner.state != ShutdownAwaiting && owner.state != ShutdownRecoveryDecision) {
 		return owner.staleCloseRefusal(closeID)
 	}
 	owner.stopTimerLocked()
+	owner.clearPendingClose(closeID)
 	owner.setStateLocked(ShutdownIdle, "frontend cancelled close")
 	owner.request = nil
-	owner.mu.Unlock()
-
-	owner.clearPendingClose(closeID)
+	owner.requestContext = nil
 	return nil
 }
 
@@ -326,15 +350,26 @@ func (owner *ShutdownOwner) deadline(closeID string) {
 		owner.mu.Unlock()
 		return
 	}
-	ctx := context.Background()
+	owner.claimDrainLocked(closeID, true, "close acknowledgement deadline reached")
+	ctx := owner.requestContext
 	owner.mu.Unlock()
+	owner.emit(ctx, closeID)
+	go owner.runDrain(ctx, closeID, drainToConfirm, true, true)
+}
 
-	dirtyDocuments, pendingWork := owner.status()
-	if len(dirtyDocuments) == 0 && !pendingWork {
-		owner.finishExit(ctx, closeID, "close acknowledgement deadline reached clean")
-		return
+// claimDrainLocked installs the model barrier and transfers ownership atomically
+// with respect to every frontend decision and native deadline.
+func (owner *ShutdownOwner) claimDrainLocked(closeID string, discard bool, reason string) {
+	owner.stopTimerLocked()
+	owner.setStateLocked(ShutdownDraining, reason)
+	owner.setPendingCloseLocked(closeID, apperr.PendingCloseOwnerNative)
+	if owner.model != nil {
+		if discard {
+			owner.model.BeginShutdownDiscard()
+		} else {
+			owner.model.BeginShutdownDrain()
+		}
 	}
-	owner.startDrain(ctx, closeID, drainToConfirm, dirtyDocuments, "close acknowledgement deadline reached")
 }
 
 func (owner *ShutdownOwner) startDrain(ctx context.Context, closeID string, action drainAction, dirtyDocuments []string, reason string) {
@@ -342,82 +377,82 @@ func (owner *ShutdownOwner) startDrain(ctx context.Context, closeID string, acti
 		ctx = context.Background()
 	}
 	owner.mu.Lock()
-	if owner.request == nil || owner.request.ID != closeID || (owner.state != ShutdownRequested && owner.state != ShutdownAwaiting) {
+	if owner.request == nil || owner.request.ID != closeID || owner.state != ShutdownRequested {
 		owner.mu.Unlock()
 		return
 	}
 	owner.request.DirtyDocuments = append([]string(nil), dirtyDocuments...)
-	owner.setStateLocked(ShutdownDraining, reason)
-	model := owner.model
+	owner.claimDrainLocked(closeID, false, reason)
 	owner.mu.Unlock()
-
-	if model != nil {
-		model.BeginShutdownDrain()
-	}
-	go func() {
-		if refusal := owner.drain(); refusal != nil {
-			owner.finishDrainFailure(ctx, closeID, refusal)
-			return
-		}
-		if action == drainToExit {
-			owner.finishExit(ctx, closeID, "drain completed")
-			return
-		}
-		owner.finishConfirmation(ctx, closeID)
-	}()
+	go owner.runDrain(ctx, closeID, action, false, false)
 }
 
-func (owner *ShutdownOwner) beginSynchronousDrain(closeID, reason string) bool {
-	owner.mu.Lock()
-	defer owner.mu.Unlock()
-	if owner.state != ShutdownAwaiting || owner.request == nil || owner.request.ID != closeID {
-		return false
+func (owner *ShutdownOwner) runDrain(ctx context.Context, closeID string, action drainAction, discard, conservative bool) {
+	if refusal := owner.drain(discard); refusal != nil {
+		owner.finishDrainFailure(ctx, closeID, refusal, true)
+		return
 	}
-	owner.stopTimerLocked()
-	owner.setStateLocked(ShutdownDraining, reason)
-	if owner.model != nil {
-		owner.model.BeginShutdownDrain()
+	if action == drainToExit {
+		owner.finishExit(ctx, closeID, "drain completed")
+		return
 	}
-	return true
+	owner.finishConfirmation(ctx, closeID, discard, conservative)
 }
 
-func (owner *ShutdownOwner) drain() *apperr.ClassifiedError {
+func (owner *ShutdownOwner) drain(discard bool) *apperr.ClassifiedError {
 	if owner.model == nil {
 		return nil
+	}
+	if discard {
+		return owner.model.DrainDiscardBeforeClose()
 	}
 	return owner.model.DrainBeforeClose()
 }
 
-func (owner *ShutdownOwner) finishDrainFailure(ctx context.Context, closeID string, refusal *apperr.ClassifiedError) {
-	if owner.model != nil {
-		owner.model.EndShutdownDrain()
-	}
+func (owner *ShutdownOwner) finishDrainFailure(ctx context.Context, closeID string, refusal *apperr.ClassifiedError, native bool) {
 	owner.mu.Lock()
 	if owner.request == nil || owner.request.ID != closeID || owner.state != ShutdownDraining {
 		owner.mu.Unlock()
 		return
 	}
-	ready := owner.request.FrontendReady || owner.frontendReady
-	if ready {
-		owner.setStateLocked(ShutdownAwaiting, "close drain refused: "+refusal.Message)
+	if native {
+		owner.clearPendingClose(closeID)
+		if owner.model != nil {
+			owner.model.EndShutdownDrain()
+		}
+		owner.setStateLocked(ShutdownIdle, "native close drain refused: "+refusal.Message)
+		owner.request = nil
+		owner.requestContext = nil
 		owner.mu.Unlock()
 		owner.emit(ctx, closeID)
 		return
 	}
-	owner.setStateLocked(ShutdownIdle, "close drain refused: "+refusal.Message)
-	owner.request = nil
+	owner.setPendingCloseLocked(closeID, apperr.PendingCloseOwnerFrontend)
+	if owner.model != nil {
+		owner.model.EndShutdownDrain()
+	}
+	previous := owner.previousState
+	owner.setStateLocked(previous, "close drain refused: "+refusal.Message)
 	owner.mu.Unlock()
+	owner.emit(ctx, closeID)
 }
 
-func (owner *ShutdownOwner) finishConfirmation(ctx context.Context, closeID string) {
+func (owner *ShutdownOwner) finishConfirmation(ctx context.Context, closeID string, discard, conservative bool) {
 	owner.mu.Lock()
 	if owner.request == nil || owner.request.ID != closeID || owner.state != ShutdownDraining {
 		owner.mu.Unlock()
 		return
 	}
 	dirtyDocuments := append([]string(nil), owner.request.DirtyDocuments...)
-	if len(dirtyDocuments) == 0 {
-		if current, pending := owner.status(); len(current) > 0 || pending {
+	owner.mu.Unlock()
+	current, pending := owner.status()
+	owner.mu.Lock()
+	if owner.request == nil || owner.request.ID != closeID || owner.state != ShutdownDraining {
+		owner.mu.Unlock()
+		return
+	}
+	if conservative || len(dirtyDocuments) == 0 {
+		if conservative || len(current) > 0 || pending {
 			dirtyDocuments = current
 		} else {
 			owner.mu.Unlock()
@@ -429,36 +464,51 @@ func (owner *ShutdownOwner) finishConfirmation(ctx context.Context, closeID stri
 	owner.setStateLocked(ShutdownConfirming, "close drain completed")
 	confirm := owner.confirm
 	owner.mu.Unlock()
-
 	if confirm == nil {
-		owner.cancelAfterConfirmation(closeID, "native confirmation unavailable")
+		owner.cancelAfterConfirmation(ctx, closeID, "native confirmation unavailable")
 		return
 	}
-	confirmed, err := confirm(ctx, dirtyDocuments)
-	if err != nil {
-		owner.cancelAfterConfirmation(closeID, "native confirmation failed")
+	confirmed, err := confirm(ctx, dirtyDocuments, conservative)
+	if err != nil || !confirmed {
+		owner.cancelAfterConfirmation(ctx, closeID, "native confirmation cancelled or failed")
 		return
 	}
-	if !confirmed {
-		owner.cancelAfterConfirmation(closeID, "native confirmation cancelled")
+	if discard && !owner.drainConfirmedDiscard(ctx, closeID) {
 		return
 	}
 	owner.finishExit(ctx, closeID, "native confirmation accepted")
 }
 
-func (owner *ShutdownOwner) cancelAfterConfirmation(closeID, reason string) {
-	if owner.model != nil {
-		owner.model.EndShutdownDrain()
+func (owner *ShutdownOwner) drainConfirmedDiscard(ctx context.Context, closeID string) bool {
+	owner.mu.Lock()
+	if owner.request == nil || owner.request.ID != closeID || owner.state != ShutdownConfirming {
+		owner.mu.Unlock()
+		return false
 	}
+	owner.setStateLocked(ShutdownDraining, "native discard confirmed")
+	owner.mu.Unlock()
+	if refusal := owner.drain(true); refusal != nil {
+		owner.finishDrainFailure(ctx, closeID, refusal, true)
+		return false
+	}
+	return true
+}
+
+func (owner *ShutdownOwner) cancelAfterConfirmation(ctx context.Context, closeID, reason string) {
 	owner.mu.Lock()
 	if owner.request == nil || owner.request.ID != closeID || owner.state != ShutdownConfirming {
 		owner.mu.Unlock()
 		return
 	}
+	owner.clearPendingClose(closeID)
+	if owner.model != nil {
+		owner.model.EndShutdownDrain()
+	}
 	owner.setStateLocked(ShutdownIdle, reason)
 	owner.request = nil
+	owner.requestContext = nil
 	owner.mu.Unlock()
-	owner.clearPendingClose(closeID)
+	owner.emit(ctx, closeID)
 }
 
 func (owner *ShutdownOwner) finishExit(ctx context.Context, closeID, reason string) {
@@ -471,22 +521,22 @@ func (owner *ShutdownOwner) finishExit(ctx context.Context, closeID, reason stri
 	owner.setStateLocked(ShutdownExiting, reason)
 	owner.permit = true
 	quit := owner.quit
-	owner.mu.Unlock()
-
 	owner.clearPendingClose(closeID)
+	owner.requestContext = nil
+	owner.mu.Unlock()
 	if quit != nil {
 		quit(ctx)
 	}
 }
 
-func (owner *ShutdownOwner) finishImmediate(closeID, reason string) {
+func (owner *ShutdownOwner) finishImmediate(closeID, reason string) bool {
 	owner.mu.Lock()
+	defer owner.mu.Unlock()
 	if owner.request == nil || owner.request.ID != closeID || owner.state != ShutdownRequested {
-		owner.mu.Unlock()
-		return
+		return false
 	}
 	owner.setStateLocked(ShutdownExiting, reason)
-	owner.mu.Unlock()
+	return true
 }
 
 func (owner *ShutdownOwner) armDeadline(closeID string, deadline time.Time) {
@@ -508,9 +558,9 @@ func (owner *ShutdownOwner) armDeadline(closeID string, deadline time.Time) {
 	owner.mu.Unlock()
 }
 
-func (owner *ShutdownOwner) setPendingClose(closeID string) {
+func (owner *ShutdownOwner) setPendingCloseLocked(closeID string, ownership apperr.PendingCloseOwner) {
 	if owner.model != nil {
-		owner.model.SetPendingClose(closeID)
+		owner.model.SetPendingClose(apperr.PendingClose{ID: closeID, Owner: ownership})
 	}
 }
 

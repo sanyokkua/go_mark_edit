@@ -20,7 +20,8 @@ lives today. Constraints that shape the approach:
 
 - Fix each defect inside its existing owner, with a regression test that fails before the fix.
 - Keep the Wails wire contract unchanged unless a defect cannot be fixed otherwise. The change adds a read-capability
-  value for write-protected files (§5) and a typed committed-save warning value (§6). No bound method signatures change.
+  value for write-protected files (§5), a typed committed-save warning value (§6), two additive native lifecycle
+  methods and pending-close ownership (§8). Existing bound method signatures remain unchanged.
 - Make a full local `scripts/verify` faster and free of desktop side effects except app focus.
 
 **Non-Goals:**
@@ -236,16 +237,68 @@ default. Monaco's read-only mode already refuses the line edits.
   (`EditorSessionProvider` and below, `frontend/src/app/App.tsx:130-143`), not `AppContents` itself. `useDocumentSession`,
   `useBootstrap` and `useShutdown` stay above the boundary, so the native close-request listener (`useShutdown.ts:92-97`)
   survives a crash. Its screen reuses the layout and token styles of `frontend/src/ui/widgets/StartupFailure/StartupFailure.tsx`.
-- Reload interface flushes every open document's pending buffer through the adapter's `flushBuffer`
-  (`appModelAdapter.ts:789`) for the ids in `state.documents.orderedIds`, waiting at most 1 second, then calls
-  `window.location.reload()`. Bootstrap runs again and calls `WindowReady` again; a second `FrontendReady` is
-  harmless (`native_window.go:111-112` returns once shown, `shutdown.go:203-219` only sets the flag), and the backend
-  still holds every document, so the tabs come back.
-- Quit and window close on the screen: the boundary passes `useShutdown` an override for the close confirmation while
-  the screen is shown. It reads dirty documents from `appModelAdapter.getState`; with none it authorizes the quit
-  (`nativeLifecycleAdapter.authorizeQuit`), otherwise it shows the discard confirmation from app-shell "Quitting from
-  the error screen" and authorizes or cancels (`cancelQuit`). The Quit button calls `nativeLifecycleAdapter.requestQuit`
-  (`frontend/src/logic/adapter/index.ts:619`), so button, window close and quit shortcut share that one path.
+- Before failed editor descendants run passive cleanup, the root boundary synchronously asks the existing
+  app-model adapter to retain pending buffers for this page. `retainPendingBuffers()` stops queued delivery timers
+  but preserves pending and in-flight generations; normal view cleanup remains unchanged. Its companion
+  `getPendingBufferDocumentIds()` exposes only IDs whose delivery generation is not acknowledged. This preserves
+  a newer pending edit behind an older in-flight update without adding another content queue or storage owner.
+- Each Reload interface attempt flushes all open and unacknowledged document IDs through `flushBuffer`, with one
+  aggregate 1,000 ms deadline. It calls `window.location.reload()` only after every delivery is acknowledged.
+  Rejection or timeout keeps the screen, retained text and catalogue retry message; a late completion never reloads
+  automatically. Bootstrap runs again against the same backend documents, and repeated `WindowReady` is harmless.
+- Reload also reconciles the authoritative close request before flushing and immediately before page destruction.
+  It cancels a frontend-owned request by exact ID and awaits acknowledgment; cancellation failure or native
+  ownership keeps the page and text intact. After native Cancel, a later Reload rereads state and may proceed.
+  These checks improve ordering; the backend ownership/removal guards below supply the race barrier.
+- Quit, window close and native quit shortcut share the surviving `useShutdown` request identity. The Quit button
+  uses `requestQuit`; no new JavaScript quit binding is introduced. The recovery handler first calls the additive
+  `AcknowledgeRecoveryClose(request, closeID)`, which atomically moves the matching awaiting request to a recovery
+  decision state and stops its deadline. It then counts the union of backend dirty IDs and unacknowledged adapter
+  IDs, deduplicated. A failed state read cannot declare the app clean. With no unsaved work it uses ordinary
+  authorization; otherwise it shows the specified discard prompt, initially focusing Cancel. Cancel acknowledges
+  the same ID and returns focus to Reload interface, keeping queues and scheduling intact.
+- Confirmed recovery discard uses the additive `DiscardAndAuthorizeQuit(request, closeID)` bound method, exposed
+  through the existing handler/holder/native adapter/shutdown controller. It reuses close-ID validation, classified
+  envelopes, drain failure handling and the one-use native permit. Existing `PrepareClose` and `AuthorizeQuit`
+  intentionally flush scheduled autosaves, so neither can implement confirmed recovery discard. No existing method
+  signature changes and no second close-plan owner is introduced.
+- The model's reversible discard fence atomically blocks new document-write admissions and stops timer handles
+  while retaining scheduled autosave intents under `service.mu`. `runAutosave` checks the fence before claiming an
+  entry; `setWriteInFlight(true)` is the final admission boundary. Updates arriving during the fence can replace
+  the retained intent with the latest eligible revision but cannot arm a timer. Cancel/refusal clears the fence and
+  rearms only current retained entries through the existing autosave owner and generation/pointer installation
+  checks; successful exit never rearms them. Discard drain waits already admitted writes and flushes layout without
+  flushing scheduled documents. Layout failure retains its current fatal handling until task 11.2.
+- Every successful write admission increments a per-document count under the model lock; projected `writeInFlight`
+  is derived from count > 0. Every terminal path releases exactly one count, including committed-warning paths.
+  This replaces the current boolean-only admission, which can miss a second accepted operation paused before
+  `coordinator.Commit`. Drain waits for the count and existing coordinator/autosave activity to become idle.
+  Atomic writes admitted before the fence finish safely; timeout or confirmation starts no new document write.
+- A ready frontend that misses the existing ten-second close acknowledgment deadline always enters conservative
+  native confirmation, even when backend metadata is clean: the backend cannot infer that no frontend-only text
+  exists. The timeout and recovery acknowledgment claim ownership under the shutdown-owner mutex. Acknowledgment
+  first leaves the in-app prompt in control; deadline first publishes native ownership before releasing that mutex,
+  applies the reversible fence, waits admitted writes, then asks whether to discard possible undelivered text.
+  Native Cancel/error preserves documents/page and resumes current scheduling; explicit native Quit keeps the fence,
+  finishes non-document drain and grants the permit. A callback that already read status must revalidate ownership
+  before side effects. Normal responsive close and pre-readiness clean exit keep their existing paths.
+- Project required `PendingClose.owner: 'frontend' | 'native'` with its ID, including full bootstrap/hydration.
+  `useShutdown` and `useCloseWorkflow` never start ordinary close handling for native-owned hydration; delayed
+  events do not authorize anything. The native transfer and model structural guards serialize on `service.mu` in
+  the established owner-to-model lock order. Prepare/Resolve/Execute and terminal tab removal refuse native-owned
+  work. A quit close plan captures its current frontend-owned native close ID and validates that same ID before
+  sealing and again under the final removal lock after write waits. Native transfer, Cancel or a fresh ID cannot
+  revive a stale plan or remove tabs. Regular tab/window plans retain their origin but cannot remove tabs while
+  native ownership is active. This protects the race after Reload's final frontend check and during bootstrap.
+- Record these public contract and lifecycle changes in `docs/index.md` and a durable decision in
+  `docs/architecture.md`. Reuse the existing adapter, autosave, shutdown and removal owners; add no replay storage,
+  alternate scheduling queue or generic error framework.
+
+Rejected alternatives: unconditional reload after a one-second timeout loses unacknowledged text; flushing only in
+`componentDidCatch` leaves newer pending text exposed behind an older in-flight update; ordinary close-plan discard
+flushes scheduled autosave before asking; recovery acknowledgment alone cannot protect a delayed handshake; a
+frontend-only Reload gate cannot prevent native takeover between the last check and terminal tab removal.
+
 - The preview's existing class component `CommittedPreview` (`frontend/src/ui/components/MarkdownView.tsx:190`)
   becomes its error boundary and shows the existing inline preview error (`preview.renderError`, `:229`). Today only
   pipeline exceptions are caught (`:271-290`). While in the error state, `commitSuccessfulRender` (`:198-213`) does
@@ -336,8 +389,12 @@ are dominated by in-test loops, so the gain does not justify cross-test state.
 - [A capture-phase listener could steal keys from inputs] → it acts only for events targeted at the editor text area
   and only for available catalogue commands; Find/Replace inputs and dialogs keep the bubble path; covered by the
   existing "Key handled by the Find input" e2e test.
-- [Reload interface after a crash could lose the last 50 ms of typing] → flush every pending buffer before
-  reloading, waiting at most 1 second.
+- [A crash/reload could lose the last 50 ms of typing] → retain pending/in-flight generations before passive
+  cleanup; reload only after acknowledgment within a one-second attempt, otherwise keep text and permit retry.
+- [A native close deadline could overtake recovery or hydrated close plans] → explicit conservative native
+  confirmation, authoritative close ownership and ID-bound final removal guards; Cancel preserves tabs/text.
+- [Discard could start an autosave or miss an admitted write] → reversible scheduling fence and counted admissions;
+  await existing atomic writes, start no new document write, and resume latest retained intent on Cancel/refusal.
 - [Jest parallelism could expose hidden shared state] → require two consecutive green runs; fix any shared state.
 - [Replacing rehype-highlight could change highlighted output] → existing preview and highlight tests must pass
   unchanged; compare rendered output for each registered language in a unit test.

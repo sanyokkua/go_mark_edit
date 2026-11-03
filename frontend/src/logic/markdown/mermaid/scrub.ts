@@ -129,9 +129,16 @@ function canonicalLocalUrls(value: string): string {
     return rewriteCssUrls(value, (target) => `url(${target})`);
 }
 
-/** Match the existing URL syntax without repeatedly scanning malformed suffixes. */
-function rewriteCssUrls(value: string, replace: (target: string, original: string) => string): string {
-    const closings: Record<string, number[]> = { "'": [], '"': [] };
+type CssQuote = "'" | '"';
+type CssUrlIndex = {
+    closings: Record<CssQuote, number[]>;
+    lineEnds: number[];
+    positions: Record<CssQuote, number>;
+    linePosition: number;
+};
+
+function indexCssUrls(value: string): CssUrlIndex {
+    const closings: Record<CssQuote, number[]> = { "'": [], '"': [] };
     const lineEnds: number[] = [];
     for (let index = 0; index < value.length; index++) {
         const character = value[index];
@@ -143,8 +150,27 @@ function rewriteCssUrls(value: string, replace: (target: string, original: strin
         while (after < value.length && /\s/.test(value[after])) after++;
         if (value[after] === ')') closings[character].push(index);
     }
-    const positions: Record<string, number> = { "'": 0, '"': 0 };
-    let linePosition = 0;
+    return { closings, lineEnds, positions: { "'": 0, '"': 0 }, linePosition: 0 };
+}
+
+function quotedCssUrlEnd(index: CssUrlIndex, quote: CssQuote, content: number): number | undefined {
+    const candidates = index.closings[quote];
+    while (index.positions[quote] < candidates.length && candidates[index.positions[quote]] <= content) {
+        index.positions[quote]++;
+    }
+    while (index.linePosition < index.lineEnds.length && index.lineEnds[index.linePosition] <= content) {
+        index.linePosition++;
+    }
+    const close = candidates[index.positions[quote]];
+    return close !== undefined &&
+        (index.linePosition === index.lineEnds.length || close < index.lineEnds[index.linePosition])
+        ? close
+        : undefined;
+}
+
+/** Match the existing URL syntax without repeatedly scanning malformed suffixes. */
+function rewriteCssUrls(value: string, replace: (target: string, original: string) => string): string {
+    const index = indexCssUrls(value);
     const prefix = /url\s*\(\s*/gi;
     const parts: string[] = [];
     let cursor = 0;
@@ -157,11 +183,8 @@ function rewriteCssUrls(value: string, replace: (target: string, original: strin
         let target = value.slice(content, end);
         const quote = value[content];
         if (quote === "'" || quote === '"') {
-            const candidates = closings[quote];
-            while (positions[quote] < candidates.length && candidates[positions[quote]] <= content) positions[quote]++;
-            while (linePosition < lineEnds.length && lineEnds[linePosition] <= content) linePosition++;
-            const close = candidates[positions[quote]];
-            if (close !== undefined && (linePosition === lineEnds.length || close < lineEnds[linePosition])) {
+            const close = quotedCssUrlEnd(index, quote, content);
+            if (close !== undefined) {
                 target = value.slice(content + 1, close);
                 end = value.indexOf(')', close + 1);
             }

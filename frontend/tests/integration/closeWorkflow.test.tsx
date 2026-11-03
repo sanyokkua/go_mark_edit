@@ -29,6 +29,8 @@ const unusedWrites = {
 function nativeRecorder() {
     const recorder = createCommandRecorder();
     let listener: ((id?: string) => void) | undefined;
+    let closeID: string | undefined;
+    let closeOwner: 'frontend' | 'native' = 'frontend';
     const cancel = recorder.binding('CancelQuit', 1);
     const authorize = recorder.binding('AuthorizeQuit', 1);
     const native: NativeLifecycleAdapter = {
@@ -39,10 +41,37 @@ function nativeRecorder() {
             };
         },
         requestQuit: () => undefined,
+        acknowledgeRecoveryClose: async () => undefined,
+        discardAndAuthorizeQuit: async () => undefined,
         cancelQuit: (id) => cancel({ id: 'cancel-command' }, id),
         authorizeQuit: (id) => authorize({ id: 'authorize-command' }, id),
     };
-    return { native, recorder, emit: (id: string) => listener?.(id) };
+    const model = {
+        getState: async () => ({
+            snapshot: {
+                revision: 1,
+                documents: {},
+                activeDocumentId: null,
+                ui: {},
+                pendingClose: closeID === undefined ? undefined : { id: closeID, owner: closeOwner },
+            },
+            activeBuffer: null,
+        }),
+    };
+    return {
+        native,
+        recorder,
+        model,
+        emit: (id: string, owner: 'frontend' | 'native' = 'frontend') => {
+            closeID = id;
+            closeOwner = owner;
+            listener?.(id);
+        },
+        clear: () => {
+            closeID = undefined;
+            listener?.();
+        },
+    };
 }
 
 beforeEach(() => {
@@ -73,8 +102,8 @@ function renderCloseWorkflow(writes?: { saveForClose: jest.Mock; notifyInactiveF
             const session = useDocumentSession();
             const shutdown = useShutdown({
                 bootstrapStatus: 'ready',
-                hydratedPendingCloseId: null,
-                dependencies: { native: runtime.native },
+                hydratedPendingClose: null,
+                dependencies: { native: runtime.native, appModel: runtime.model },
             });
             return useCloseWorkflow({
                 session,
@@ -92,6 +121,100 @@ function renderCloseWorkflow(writes?: { saveForClose: jest.Mock; notifyInactiveF
         { wrapper },
     );
 }
+
+it('does not start a close plan for a native-owned hydrated request', async () => {
+    const runtime = nativeRecorder();
+    const owner = renderHook(
+        () => {
+            const session = useDocumentSession();
+            const shutdown = useShutdown({
+                bootstrapStatus: 'ready',
+                hydratedPendingClose: { id: 'native-owned', owner: 'native' },
+                dependencies: { native: runtime.native, appModel: runtime.model },
+            });
+            return useCloseWorkflow({
+                session,
+                shutdown,
+                conflicts: useConflictCommands(session.activation),
+                recoverySurface: null,
+                writes: unusedWrites,
+            });
+        },
+        { wrapper },
+    );
+    await waitFor(() => expect(owner.result.current.active).toBe(false));
+    expect(closePlanAdapter.prepareClose).not.toHaveBeenCalled();
+    expect(closePlanAdapter.executeClosePlan).not.toHaveBeenCalled();
+    expect(runtime.recorder.calls).toEqual([]);
+    expect(store.getState().documents.orderedIds).toEqual(['one', 'two']);
+});
+
+it.each(['prepare', 'resolve', 'execute'] as const)(
+    'stops a deferred %s continuation after native takeover and preserves tabs on native Cancel',
+    async (stage) => {
+        const runtime = nativeRecorder();
+        const plan = { id: 'plan', kind: 'quit', status: 'ready', tabSetRevision: 0, targets: [] };
+        const snapshot = {
+            revision: 1,
+            tabSetRevision: 0,
+            activeDocumentId: null,
+            orderedDocumentIds: ['one', 'two'],
+            documents: {},
+            ui: {},
+        };
+        (appModelAdapter.getState as jest.Mock).mockResolvedValue({ snapshot, activeBuffer: null });
+        let finish!: (value: unknown) => void;
+        const delayed = new Promise((resolve) => {
+            finish = resolve;
+        });
+        (closePlanAdapter.prepareClose as jest.Mock).mockImplementation(() =>
+            stage === 'prepare' ? delayed : Promise.resolve({ data: plan }),
+        );
+        (closePlanAdapter.resolveClosePlan as jest.Mock).mockImplementation(() =>
+            stage === 'resolve' ? delayed : Promise.resolve({ data: plan }),
+        );
+        (closePlanAdapter.executeClosePlan as jest.Mock).mockImplementation(() =>
+            stage === 'execute' ? delayed : Promise.resolve({ status: 'closed', orderedDocumentIds: [] }),
+        );
+        const owner = renderHook(
+            () => {
+                const session = useDocumentSession();
+                const shutdown = useShutdown({
+                    bootstrapStatus: 'ready',
+                    hydratedPendingClose: null,
+                    dependencies: { native: runtime.native, appModel: runtime.model },
+                });
+                return useCloseWorkflow({
+                    session,
+                    shutdown,
+                    conflicts: useConflictCommands(session.activation),
+                    recoverySurface: null,
+                    writes: unusedWrites,
+                });
+            },
+            { wrapper },
+        );
+        act(() => runtime.emit('close-1'));
+        const call =
+            stage === 'prepare'
+                ? closePlanAdapter.prepareClose
+                : stage === 'resolve'
+                  ? closePlanAdapter.resolveClosePlan
+                  : closePlanAdapter.executeClosePlan;
+        await waitFor(() => expect(call).toHaveBeenCalledTimes(1));
+        act(() => runtime.emit('close-1', 'native'));
+        await waitFor(() => expect(owner.result.current.active).toBe(false));
+        await act(async () => {
+            finish(stage === 'execute' ? { status: 'closed', orderedDocumentIds: [] } : { data: plan });
+        });
+        act(() => runtime.clear());
+        await waitFor(() => expect(owner.result.current.active).toBe(false));
+        expect(runtime.recorder.calls).toEqual([]);
+        expect(store.getState().documents.orderedIds).toEqual(['one', 'two']);
+        if (stage === 'prepare') expect(closePlanAdapter.resolveClosePlan).not.toHaveBeenCalled();
+        if (stage !== 'execute') expect(closePlanAdapter.executeClosePlan).not.toHaveBeenCalled();
+    },
+);
 
 it('cancels the old close plan before saving the active target and revalidates remaining choices', async () => {
     const oldPlan = {
@@ -674,8 +797,8 @@ it.each(['durability', 'recent-items', 'view-state'] as const)(
                 const session = useDocumentSession();
                 const shutdown = useShutdown({
                     bootstrapStatus: 'ready',
-                    hydratedPendingCloseId: null,
-                    dependencies: { native: runtime.native },
+                    hydratedPendingClose: null,
+                    dependencies: { native: runtime.native, appModel: runtime.model },
                 });
                 const close = useCloseWorkflow({
                     session,
@@ -692,7 +815,7 @@ it.each(['durability', 'recent-items', 'view-state'] as const)(
         await waitFor(() => expect(owner.result.current.close.state.phase).toBe('collecting'));
         act(() => void owner.result.current.close.choose('save'));
         await waitFor(() => expect(owner.result.current.close.state.phase).toBe('saving-active'));
-        expect(owner.result.current.shutdown.pendingClose).toBe('native-save-close');
+        expect(owner.result.current.shutdown.pendingClose).toEqual({ id: 'native-save-close', owner: 'frontend' });
         expect(authorize).not.toHaveBeenCalled();
         act(() =>
             emitWarning({
@@ -799,8 +922,8 @@ it('starts one native close for repeated early, hydrated, and live deliveries of
             const session = useDocumentSession();
             const shutdown = useShutdown({
                 bootstrapStatus: ready ? 'ready' : 'loading',
-                hydratedPendingCloseId: 'close-1',
-                dependencies: { native: runtime.native },
+                hydratedPendingClose: { id: 'close-1', owner: 'frontend' },
+                dependencies: { native: runtime.native, appModel: runtime.model },
             });
             return useCloseWorkflow({
                 session,
@@ -836,8 +959,8 @@ it('retains the native pending identity while recovery cancellation awaits its a
             const session = useDocumentSession();
             const shutdown = useShutdown({
                 bootstrapStatus: 'ready',
-                hydratedPendingCloseId: null,
-                dependencies: { native: runtime.native },
+                hydratedPendingClose: null,
+                dependencies: { native: runtime.native, appModel: runtime.model },
             });
             const close = useCloseWorkflow({
                 session,
@@ -857,7 +980,7 @@ it('retains the native pending identity while recovery cancellation awaits its a
         { wrapper },
     );
     act(() => runtime.emit('recovery-close'));
-    expect(owner.result.current.close.state.phase).toBe('recovery-confirmation');
+    await waitFor(() => expect(owner.result.current.close.state.phase).toBe('recovery-confirmation'));
     expect(owner.result.current.close.recoveryDiscardNames).toEqual(['\u2068one.md\u2069']);
     act(() => {
         void owner.result.current.close.decideRecovery(false);
@@ -868,7 +991,7 @@ it('retains the native pending identity while recovery cancellation awaits its a
         ]),
     );
     expect(owner.result.current.close.state.phase).toBe('cancelling');
-    expect(owner.result.current.shutdown.pendingClose).toBe('recovery-close');
+    expect(owner.result.current.shutdown.pendingClose).toEqual({ id: 'recovery-close', owner: 'frontend' });
     expect(owner.result.current.close.active).toBe(true);
 });
 
@@ -884,8 +1007,8 @@ it.each([false, true])(
                 const session = useDocumentSession();
                 const shutdown = useShutdown({
                     bootstrapStatus: 'ready',
-                    hydratedPendingCloseId: null,
-                    dependencies: { native: runtime.native },
+                    hydratedPendingClose: null,
+                    dependencies: { native: runtime.native, appModel: runtime.model },
                 });
                 const close = useCloseWorkflow({
                     session,
@@ -918,7 +1041,7 @@ it.each([false, true])(
             void decide(confirm);
         });
         expect(owner.result.current.close.state.phase).toBe(confirm ? 'preparing' : 'cancelling');
-        expect(owner.result.current.shutdown.pendingClose).toBe('recovery-close');
+        expect(owner.result.current.shutdown.pendingClose).toEqual({ id: 'recovery-close', owner: 'frontend' });
         expect(recorder.calls).toHaveLength(confirm ? 2 : 1);
         expect(runtime.recorder.calls).toEqual(
             confirm ? [] : [{ name: 'CancelQuit', requestId: 'cancel-command', args: ['recovery-close'] }],
@@ -937,8 +1060,8 @@ it('refuses repeated closes on buffer sync failure without duplicate operation e
             const session = useDocumentSession();
             const shutdown = useShutdown({
                 bootstrapStatus: 'ready',
-                hydratedPendingCloseId: null,
-                dependencies: { native: runtime.native },
+                hydratedPendingClose: null,
+                dependencies: { native: runtime.native, appModel: runtime.model },
             });
             const close = useCloseWorkflow({
                 session,

@@ -31,6 +31,7 @@ export namespace apperr {
 	}
 	export class PendingClose {
 	    id: string;
+	    owner: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new PendingClose(source);
@@ -39,6 +40,7 @@ export namespace apperr {
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
+	        this.owner = source["owner"];
 	    }
 	}
 	export class UILayout {

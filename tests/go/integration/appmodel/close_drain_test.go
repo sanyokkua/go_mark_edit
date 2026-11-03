@@ -4,13 +4,136 @@ import (
 	"context"
 	. "github.com/sanyokkua/go_mark_edit/internal/appmodel"
 	"os"
+	"path/filepath"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/sanyokkua/go_mark_edit/internal/apperr"
 	"github.com/sanyokkua/go_mark_edit/internal/file"
 )
+
+func TestShutdownDrainRefusesSavePausedBeforeAdmission(t *testing.T) {
+	entered, release := make(chan struct{}), make(chan struct{})
+	var block atomic.Bool
+	var once sync.Once
+	var writes atomic.Int32
+	service := NewAppModelServiceForHost(WithEmitter(&recordingEmitter{}), AppModelOption{
+		DiskVersion: func(path string) (file.DiskVersion, error) {
+			if block.Load() {
+				once.Do(func() { close(entered); <-release })
+			}
+			return file.CurrentDiskVersion(path)
+		},
+		WriteExecutor: func(snapshot WriteSnapshot) (file.DiskVersion, error) {
+			writes.Add(1)
+			return file.CurrentDiskVersion(snapshot.TargetPath)
+		},
+	})
+	service.SetAutosaveEnabled(false)
+	path, id := openAutosaveDocument(t, service, "base\n")
+	if err := service.UpdateBuffer(context.Background(), id, "edited\n"); err != nil {
+		t.Fatal(err)
+	}
+	state, err := service.GetState(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	block.Store(true)
+	result := make(chan apperr.WriteResult, 1)
+	go func() {
+		result <- service.Save(context.Background(), id, state.Snapshot.Documents[id].ContentRevision, "")
+	}()
+	select {
+	case <-entered:
+	case <-time.After(5 * time.Second):
+		t.Fatal("save did not reach disk inspection")
+	}
+	service.BeginShutdownDrain()
+	if classified := drainBeforeCloseWithin(t, service, 5*time.Second); classified != nil {
+		t.Fatalf("drain: %+v", classified)
+	}
+	close(release)
+	select {
+	case got := <-result:
+		if got.Status == apperr.WriteStatusCommitted {
+			t.Fatalf("late save committed: %+v", got)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("late save did not return")
+	}
+	if writes.Load() != 0 {
+		t.Fatalf("late save invoked executor %d times", writes.Load())
+	}
+	if data, err := os.ReadFile(path); err != nil || string(data) != "base\n" {
+		t.Fatalf("disk = %q, %v", data, err)
+	}
+	state, err = service.GetState(context.Background())
+	if err != nil || state.Snapshot.Documents[id].WriteInFlight {
+		t.Fatalf("state after refusal = %+v, %v", state, err)
+	}
+}
+
+type oneBlockedSaveDialog struct {
+	entered, release chan struct{}
+	path             string
+	once             sync.Once
+}
+
+func (d *oneBlockedSaveDialog) ChooseSaveFile(context.Context, SaveDialogRequest) (string, error) {
+	d.once.Do(func() { close(d.entered); <-d.release })
+	return d.path, nil
+}
+func (*oneBlockedSaveDialog) ConfirmOverwrite(context.Context, string) (bool, error) {
+	return true, nil
+}
+
+func TestShutdownDrainRefusesSaveAsPausedInDialogAndAllowsRetry(t *testing.T) {
+	dialog := &oneBlockedSaveDialog{entered: make(chan struct{}), release: make(chan struct{}), path: filepath.Join(t.TempDir(), "saved.md")}
+	service := NewAppModelServiceForHost(WithEmitter(&recordingEmitter{}), WithDialogs(nil, dialog))
+	service.SetAutosaveEnabled(false)
+	id := newUntitledID(t, service)
+	if err := service.UpdateBuffer(context.Background(), id, "unsaved"); err != nil {
+		t.Fatal(err)
+	}
+	state, err := service.GetState(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	revision := state.Snapshot.Documents[id].ContentRevision
+	result := make(chan apperr.WriteResult, 1)
+	go func() { result <- service.SaveAs(context.Background(), id, revision, "") }()
+	select {
+	case <-dialog.entered:
+	case <-time.After(5 * time.Second):
+		t.Fatal("save dialog did not open")
+	}
+	service.BeginShutdownDrain()
+	if classified := drainBeforeCloseWithin(t, service, 5*time.Second); classified != nil {
+		t.Fatalf("drain: %+v", classified)
+	}
+	close(dialog.release)
+	select {
+	case got := <-result:
+		if got.Status == apperr.WriteStatusCommitted {
+			t.Fatalf("late Save As committed: %+v", got)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("Save As did not return")
+	}
+	if _, err := os.Stat(dialog.path); !os.IsNotExist(err) {
+		t.Fatalf("target exists after refusal: %v", err)
+	}
+	state, err = service.GetState(context.Background())
+	if err != nil || state.Snapshot.Documents[id].Path != "" {
+		t.Fatalf("source adopted target: %+v, %v", state, err)
+	}
+	service.EndShutdownDrain()
+	if got := service.SaveAs(context.Background(), id, revision, ""); got.Status != apperr.WriteStatusCommitted {
+		t.Fatalf("retry = %+v", got)
+	}
+}
 
 // drainBeforeCloseWithin runs the shutdown drain with a real deadline. Every
 // assertion in this file goes through it on purpose: flushAutosaveMode has spun
@@ -46,6 +169,7 @@ func TestDrainBeforeCloseRunsAcceptedAutosaveWork(t *testing.T) {
 		t.Fatalf("pending debounces after the accepted edit = %d, want 1", clock.Pending())
 	}
 
+	service.BeginShutdownDrain()
 	if classified := drainBeforeCloseWithin(t, service, 5*time.Second); classified != nil {
 		t.Fatalf("DrainBeforeClose error = %+v, want none", classified)
 	}
@@ -59,6 +183,55 @@ func TestDrainBeforeCloseRunsAcceptedAutosaveWork(t *testing.T) {
 	}
 	if clock.Pending() != 0 {
 		t.Fatalf("pending debounces after the drain = %d, want none left armed", clock.Pending())
+	}
+}
+
+func TestShutdownDrainWaitsForClaimedAutosaveBeforeAdmission(t *testing.T) {
+	clock := &fakeAutosaveClock{}
+	entered, release := make(chan struct{}), make(chan struct{})
+	var block atomic.Bool
+	var once sync.Once
+	service := NewAppModelServiceForHost(WithEmitter(&recordingEmitter{}), AppModelOption{
+		AutosaveTimer: clock,
+		DiskVersion: func(path string) (file.DiskVersion, error) {
+			if block.Load() {
+				once.Do(func() { close(entered); <-release })
+			}
+			return file.CurrentDiskVersion(path)
+		},
+	})
+	path, id := openAutosaveDocument(t, service, "base\n")
+	if err := service.UpdateBuffer(context.Background(), id, "accepted autosave\n"); err != nil {
+		t.Fatal(err)
+	}
+	block.Store(true)
+	if !clock.FireNextAsync() {
+		t.Fatal("autosave not scheduled")
+	}
+	select {
+	case <-entered:
+	case <-time.After(5 * time.Second):
+		t.Fatal("autosave did not reach disk inspection")
+	}
+	service.BeginShutdownDrain()
+	drained := make(chan *apperr.ClassifiedError, 1)
+	go func() { drained <- service.DrainBeforeClose() }()
+	select {
+	case result := <-drained:
+		t.Fatalf("drain returned before claimed autosave completed: %+v", result)
+	case <-time.After(100 * time.Millisecond):
+	}
+	close(release)
+	select {
+	case result := <-drained:
+		if result != nil {
+			t.Fatalf("drain: %+v", result)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("drain did not finish")
+	}
+	if data, err := os.ReadFile(path); err != nil || string(data) != "accepted autosave\n" {
+		t.Fatalf("disk = %q, %v", data, err)
 	}
 }
 

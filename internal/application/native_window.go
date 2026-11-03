@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/sanyokkua/go_mark_edit/internal/apperr"
 	"github.com/sanyokkua/go_mark_edit/internal/appmodel"
 )
 
@@ -81,24 +82,7 @@ func (service *NativeWindowService) Restore(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	width, height := defaultWindowWidth, defaultWindowHeight
-	if state.Snapshot.UI.WindowWidth != nil {
-		width = *state.Snapshot.UI.WindowWidth
-	}
-	if state.Snapshot.UI.WindowHeight != nil {
-		height = *state.Snapshot.UI.WindowHeight
-	}
-	usableWidth, usableHeight := service.native.UsableSize(ctx)
-	if usableWidth >= minimumWindowWidth && width > usableWidth {
-		width = usableWidth
-	}
-	if usableHeight >= minimumWindowHeight && height > usableHeight {
-		height = usableHeight
-	}
-	service.native.SetSize(ctx, width, height)
-	if state.Snapshot.UI.WindowMaximized != nil && *state.Snapshot.UI.WindowMaximized {
-		service.native.Maximise(ctx)
-	}
+	service.restoreGeometryLocked(ctx, state.Snapshot.UI)
 	service.restored = true
 	service.showIfReadyLocked(ctx)
 	if !service.shown && !service.headless {
@@ -113,6 +97,27 @@ func (service *NativeWindowService) Restore(ctx context.Context) error {
 		})
 	}
 	return nil
+}
+
+func (service *NativeWindowService) restoreGeometryLocked(ctx context.Context, layout apperr.UILayout) {
+	width, height := defaultWindowWidth, defaultWindowHeight
+	if layout.WindowWidth != nil {
+		width = *layout.WindowWidth
+	}
+	if layout.WindowHeight != nil {
+		height = *layout.WindowHeight
+	}
+	usableWidth, usableHeight := service.native.UsableSize(ctx)
+	if usableWidth >= minimumWindowWidth && width > usableWidth {
+		width = usableWidth
+	}
+	if usableHeight >= minimumWindowHeight && height > usableHeight {
+		height = usableHeight
+	}
+	service.native.SetSize(ctx, width, height)
+	if layout.WindowMaximized != nil && *layout.WindowMaximized {
+		service.native.Maximise(ctx)
+	}
 }
 
 // FrontendReady records hydration without attempting backend restore. The

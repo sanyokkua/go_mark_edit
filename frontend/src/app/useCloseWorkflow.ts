@@ -49,6 +49,7 @@ export function useCloseWorkflow({ session, shutdown, conflicts, recoverySurface
     const tabSetRevision = useAppSelector((state) => state.documents.tabSetRevision);
     const [state, setState] = useState<CloseState>({ phase: 'idle' });
     const current = useRef<CloseState>(state);
+    const nativeClose = useRef(shutdown.pendingClose);
     const mounted = useRef(false);
     const deciding = useRef(false);
     const pendingWindowClose = useRef<{
@@ -66,9 +67,16 @@ export function useCloseWorkflow({ session, shutdown, conflicts, recoverySurface
     }, []);
     const isCurrent = useCallback(
         (origin: CloseOrigin): boolean =>
-            mounted.current && current.current.phase !== 'idle' && current.current.origin === origin,
+            mounted.current &&
+            current.current.phase !== 'idle' &&
+            current.current.origin === origin &&
+            (origin.type !== 'native' ||
+                (nativeClose.current?.id === origin.closeId && nativeClose.current.owner === 'frontend')),
         [],
     );
+    useEffect(() => {
+        nativeClose.current = shutdown.pendingClose;
+    }, [shutdown.pendingClose]);
     useEffect(() => {
         mounted.current = true;
         return () => {
@@ -79,6 +87,14 @@ export function useCloseWorkflow({ session, shutdown, conflicts, recoverySurface
             }
         };
     }, []);
+
+    useEffect(() => {
+        if (state.phase === 'idle' || state.phase === 'failed' || state.origin.type !== 'native') return;
+        if (shutdown.pendingClose?.id === state.origin.closeId && shutdown.pendingClose.owner === 'frontend') return;
+        queueMicrotask(() => {
+            if (current.current === state) publish({ phase: 'idle' });
+        });
+    }, [publish, shutdown.pendingClose, state]);
 
     const reportUnknownError = useCallback(
         (error: unknown): void => {
@@ -325,8 +341,9 @@ export function useCloseWorkflow({ session, shutdown, conflicts, recoverySurface
     );
 
     useEffect(() => {
-        const closeId = shutdown.pendingClose;
-        if (closeId === null || recoverySurface !== null || current.current !== state) return;
+        const pending = shutdown.pendingClose;
+        if (pending?.owner !== 'frontend' || recoverySurface !== null || current.current !== state) return;
+        const closeId = pending.id;
         const progress = state;
         if (progress.phase !== 'idle' && progress.phase !== 'failed') return;
         if (progress.phase === 'failed' && progress.origin.type === 'native' && progress.origin.closeId === closeId)
@@ -631,11 +648,11 @@ export function useCloseWorkflow({ session, shutdown, conflicts, recoverySurface
 
     const recoveryConfirmation: CloseState | null =
         recoverySurface !== null &&
-        shutdown.pendingClose !== null &&
+        shutdown.pendingClose?.owner === 'frontend' &&
         (state.phase === 'idle' || state.phase === 'failed')
             ? {
                   phase: 'recovery-confirmation',
-                  origin: { type: 'native', closeId: shutdown.pendingClose },
+                  origin: { type: 'native', closeId: shutdown.pendingClose.id },
                   acceptedNormalizations: {},
               }
             : null;
@@ -643,10 +660,10 @@ export function useCloseWorkflow({ session, shutdown, conflicts, recoverySurface
         (state.phase === 'collecting' || state.phase === 'normalization' || state.phase === 'conflict') &&
         state.plan.targets.some((target) => session.documentsById[target.documentId] === undefined);
     const nativePreparation: CloseState | null =
-        shutdown.pendingClose !== null && (state.phase === 'idle' || state.phase === 'failed')
+        shutdown.pendingClose?.owner === 'frontend' && (state.phase === 'idle' || state.phase === 'failed')
             ? {
                   phase: 'preparing',
-                  origin: { type: 'native', closeId: shutdown.pendingClose },
+                  origin: { type: 'native', closeId: shutdown.pendingClose.id },
                   acceptedNormalizations: {},
               }
             : null;
@@ -700,7 +717,7 @@ export function useCloseWorkflow({ session, shutdown, conflicts, recoverySurface
         choose,
         decideNormalization,
         decideRecovery,
-        active: (state.phase !== 'idle' && state.phase !== 'failed') || shutdown.pendingClose !== null,
+        active: (state.phase !== 'idle' && state.phase !== 'failed') || shutdown.pendingClose?.owner === 'frontend',
         recoveryDiscardNames: recoveryDiscardNames(session.orderedDocumentIds, session.documentsById),
     } as const;
 }

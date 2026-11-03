@@ -521,5 +521,13 @@
     "workspace.create.cancel": "Cancel",
     "workspace.create.create": "Create",
     "action.new-file-here.label": "New File",
-    "action.new-folder-here.label": "New Folder"
+    "action.new-folder-here.label": "New Folder",
+    "interface.failure.title": "Something went wrong",
+    "interface.failure.reload": "Reload interface",
+    "interface.failure.quit": "Quit",
+    "interface.failure.reloadError": "Your changes could not be prepared for reload. Try Reload interface again.",
+    "interface.failure.closeError": "The close request could not be completed. Please try again.",
+    "interface.failure.nativeWait": "A native close decision is in progress.",
+    "interface.failure.discardOne": "Quit and discard unsaved changes in 1 document?",
+    "interface.failure.discardMany": "Quit and discard unsaved changes in {count} documents?"
 }

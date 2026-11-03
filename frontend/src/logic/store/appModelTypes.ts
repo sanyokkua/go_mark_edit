@@ -248,6 +248,7 @@ export interface UILayout {
 
 export interface PendingClose {
     id: string;
+    owner: 'frontend' | 'native';
 }
 
 export interface AppStateSnapshot {

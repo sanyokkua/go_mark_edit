@@ -11,12 +11,27 @@ import (
 	"github.com/sanyokkua/go_mark_edit/internal/file"
 )
 
+const closePlanNoLongerCurrent = "The close plan is no longer current."
+
 // closePlan is the backend-owned, revision-bound transaction. The exported
 // summary is rebuilt on every response; callers cannot mutate this source of
 // truth or provide a source-copy substitute for a later write.
 type closePlan struct {
-	summary apperr.ClosePlanSummary
-	targets []closePlanTarget
+	summary       apperr.ClosePlanSummary
+	targets       []closePlanTarget
+	nativeCloseID string
+}
+
+// validateCloseOwnershipLocked prevents stale frontend close work from removing
+// documents while a native confirmation owns the request.
+func (service *AppModelService) validateCloseOwnershipLocked(expectedID string) error {
+	if service.pendingClose != nil && service.pendingClose.Owner == apperr.PendingCloseOwnerNative {
+		return fmt.Errorf("native confirmation owns the close request")
+	}
+	if expectedID != "" && (service.pendingClose == nil || service.pendingClose.ID != expectedID || service.pendingClose.Owner != apperr.PendingCloseOwnerFrontend) {
+		return fmt.Errorf("the close request is no longer owned by the frontend")
+	}
+	return nil
 }
 
 type closePlanTarget struct {
@@ -40,6 +55,18 @@ func (service *AppModelService) PrepareClose(ctx context.Context, kind apperr.Cl
 	}
 
 	service.mu.Lock()
+	if err := service.validateCloseOwnershipLocked(""); err != nil {
+		service.mu.Unlock()
+		return bridge.Refused[apperr.ClosePlanResult](apperr.ClassifiedConflict, "close plan", err.Error(), apperr.RemediationRetry)
+	}
+	nativeCloseID := ""
+	if kind == apperr.ClosePlanQuit {
+		if service.pendingClose == nil || service.pendingClose.Owner != apperr.PendingCloseOwnerFrontend {
+			service.mu.Unlock()
+			return bridge.Refused[apperr.ClosePlanResult](apperr.ClassifiedConflict, "close plan", "The frontend does not own a quit request.", apperr.RemediationRetry)
+		}
+		nativeCloseID = service.pendingClose.ID
+	}
 	if service.state.tabSetRevision != expectedTabSetRevision {
 		service.mu.Unlock()
 		return bridge.Refused[apperr.ClosePlanResult](apperr.ClassifiedConflict, "close plan", "The tab set changed; close must be retried.", apperr.RemediationRetry)
@@ -49,31 +76,9 @@ func (service *AppModelService) PrepareClose(ctx context.Context, kind apperr.Cl
 		service.mu.Unlock()
 		return bridge.Refused[apperr.ClosePlanResult](apperr.ClassifiedNotFound, "close plan", err.Error(), apperr.RemediationNone)
 	}
-	if service.activeClosePlan != "" {
-		existing := service.closePlans[service.activeClosePlan]
-		switch {
-		case existing == nil:
-			// An active id with no plan behind it can only be a bug, and leaving
-			// it set refuses every later close for the life of the process.
-			service.activeClosePlan = ""
-		case existing.summary.TabSetRevision == expectedTabSetRevision && existing.summary.Kind == kind && sameStringSlice(closePlanTargetIDs(existing.summary), requested):
-			// The same request repeated. Returning the plan already collecting
-			// keeps the choices the user has answered so far.
-			result := closePlanSummaryResult(existing)
-			service.mu.Unlock()
-			return result
-		case existing.summary.Status == apperr.ClosePlanExecuting:
-			// ExecuteClosePlan runs its saves with the mutex released, so this is
-			// the one plan whose work is genuinely in flight. Superseding it would
-			// abandon a write mid-commit.
-			service.mu.Unlock()
-			return bridge.Refused[apperr.ClosePlanResult](apperr.ClassifiedConflict, "close plan", "A close is already saving; wait for it to finish.", apperr.RemediationRetry)
-		default:
-			// The newest close request wins. A plan waiting on a prompt the user
-			// walked away from must never make the window impossible to close.
-			service.invalidateClosePlanLocked(existing, apperr.ClosePlanCancelled)
-			delete(service.closePlans, existing.summary.ID)
-		}
+	if result := service.reuseOrSupersedeClosePlanLocked(kind, nativeCloseID, expectedTabSetRevision, requested); result != nil {
+		service.mu.Unlock()
+		return *result
 	}
 	service.mu.Unlock()
 
@@ -86,6 +91,9 @@ func (service *AppModelService) PrepareClose(ctx context.Context, kind apperr.Cl
 
 	service.mu.Lock()
 	defer service.mu.Unlock()
+	if err := service.validateCloseOwnershipLocked(nativeCloseID); err != nil {
+		return bridge.Refused[apperr.ClosePlanResult](apperr.ClassifiedConflict, "close plan", err.Error(), apperr.RemediationRetry)
+	}
 	if service.state.tabSetRevision != expectedTabSetRevision {
 		return bridge.Refused[apperr.ClosePlanResult](apperr.ClassifiedConflict, "close plan", "The tab set changed while autosave work drained.", apperr.RemediationRetry)
 	}
@@ -95,7 +103,15 @@ func (service *AppModelService) PrepareClose(ctx context.Context, kind apperr.Cl
 		}
 	}
 
-	plan := &closePlan{summary: apperr.ClosePlanSummary{ID: mintDocumentID(), Kind: kind, TabSetRevision: expectedTabSetRevision, Status: apperr.ClosePlanReady}, targets: make([]closePlanTarget, 0, len(requested))}
+	plan := service.captureClosePlanLocked(kind, nativeCloseID, expectedTabSetRevision, requested)
+	service.closePlans[plan.summary.ID] = plan
+	service.activeClosePlan = plan.summary.ID
+	return closePlanSummaryResult(plan)
+}
+
+// captureClosePlanLocked captures the validated targets with service.mu held.
+func (service *AppModelService) captureClosePlanLocked(kind apperr.ClosePlanKind, nativeCloseID string, revision uint64, requested []string) *closePlan {
+	plan := &closePlan{nativeCloseID: nativeCloseID, summary: apperr.ClosePlanSummary{ID: mintDocumentID(), Kind: kind, TabSetRevision: revision, Status: apperr.ClosePlanReady}, targets: make([]closePlanTarget, 0, len(requested))}
 	for _, documentID := range requested {
 		document := service.state.documents[documentID]
 		metadata := service.effectiveDocumentMetadataLocked(document)
@@ -114,9 +130,30 @@ func (service *AppModelService) PrepareClose(ctx context.Context, kind apperr.Cl
 	if len(plan.summary.DirtyTargetIDs) > 0 {
 		plan.summary.Status = apperr.ClosePlanCollecting
 	}
-	service.closePlans[plan.summary.ID] = plan
-	service.activeClosePlan = plan.summary.ID
-	return closePlanSummaryResult(plan)
+	return plan
+}
+
+// reuseOrSupersedeClosePlanLocked keeps a matching request or invalidates a
+// superseded plan. The caller holds service.mu throughout this decision.
+func (service *AppModelService) reuseOrSupersedeClosePlanLocked(kind apperr.ClosePlanKind, nativeCloseID string, revision uint64, requested []string) *apperr.ClosePlanResult {
+	if service.activeClosePlan == "" {
+		return nil
+	}
+	existing := service.closePlans[service.activeClosePlan]
+	switch {
+	case existing == nil:
+		service.activeClosePlan = ""
+	case existing.summary.TabSetRevision == revision && existing.summary.Kind == kind && existing.nativeCloseID == nativeCloseID && sameStringSlice(closePlanTargetIDs(existing.summary), requested):
+		result := closePlanSummaryResult(existing)
+		return &result
+	case existing.summary.Status == apperr.ClosePlanExecuting:
+		result := bridge.Refused[apperr.ClosePlanResult](apperr.ClassifiedConflict, "close plan", "A close is already saving; wait for it to finish.", apperr.RemediationRetry)
+		return &result
+	default:
+		service.invalidateClosePlanLocked(existing, apperr.ClosePlanCancelled)
+		delete(service.closePlans, existing.summary.ID)
+	}
+	return nil
 }
 
 // ResolveClosePlan records all dirty choices and gathers revision-bound
@@ -129,6 +166,10 @@ func (service *AppModelService) ResolveClosePlan(ctx context.Context, planID str
 	if plan == nil || service.activeClosePlan != planID {
 		service.mu.Unlock()
 		return bridge.Refused[apperr.ClosePlanResult](apperr.ClassifiedNotFound, planID, "The close plan is no longer active.", apperr.RemediationNone)
+	}
+	if err := service.validateCloseOwnershipLocked(plan.nativeCloseID); err != nil {
+		service.mu.Unlock()
+		return bridge.Refused[apperr.ClosePlanResult](apperr.ClassifiedConflict, planID, err.Error(), apperr.RemediationRetry)
 	}
 	if plan.summary.Status != apperr.ClosePlanCollecting && plan.summary.Status != apperr.ClosePlanReady {
 		result := closePlanSummaryResult(plan)
@@ -165,13 +206,14 @@ func (service *AppModelService) ResolveClosePlan(ctx context.Context, planID str
 			}
 		}
 	}
+	targets := append([]closePlanTarget(nil), plan.targets...)
 	service.mu.Unlock()
 
 	// Required mixed-ending authorizations are collected before any conflict
 	// inspection or write. The returned token is intentionally single-use and
 	// remains bound to this exact plan target revision.
-	for index := range plan.targets {
-		if plan.targets[index].choice != apperr.CloseChoiceSave {
+	for index := range targets {
+		if targets[index].choice != apperr.CloseChoiceSave {
 			continue
 		}
 		service.mu.Lock()
@@ -179,6 +221,10 @@ func (service *AppModelService) ResolveClosePlan(ctx context.Context, planID str
 		if current == nil || service.activeClosePlan != planID {
 			service.mu.Unlock()
 			return bridge.Refused[apperr.ClosePlanResult](apperr.ClassifiedConflict, planID, "The close plan is no longer active.", apperr.RemediationRetry)
+		}
+		if err := service.validateClosePlanLocked(current); err != nil {
+			service.mu.Unlock()
+			return bridge.Refused[apperr.ClosePlanResult](apperr.ClassifiedConflict, planID, err.Error(), apperr.RemediationRetry)
 		}
 		target := &current.targets[index]
 		document := service.state.documents[target.documentID]
@@ -191,8 +237,9 @@ func (service *AppModelService) ResolveClosePlan(ctx context.Context, planID str
 			requested := service.requestNormalizationLocked(target.documentID, target.contentRevision)
 			target.normalizationToken = requested.DecisionToken
 			service.setNormalizationRequirementLocked(&current.summary.Targets[index], requested)
+			result := closePlanSummaryResult(current)
 			service.mu.Unlock()
-			return closePlanSummaryResult(current)
+			return result
 		}
 		service.mu.Unlock()
 	}
@@ -200,8 +247,8 @@ func (service *AppModelService) ResolveClosePlan(ctx context.Context, planID str
 	// Save As is a native decision, so collect its target and overwrite
 	// confirmation before the first batch write. The reservation remains held
 	// by the plan until execution succeeds or the plan is invalidated.
-	for index := range plan.targets {
-		if plan.targets[index].choice != apperr.CloseChoiceSave {
+	for index := range targets {
+		if targets[index].choice != apperr.CloseChoiceSave {
 			continue
 		}
 		service.mu.RLock()
@@ -223,6 +270,10 @@ func (service *AppModelService) ResolveClosePlan(ctx context.Context, planID str
 		if cancelled {
 			service.mu.Lock()
 			current = service.closePlans[planID]
+			if current == nil || service.validateCloseOwnershipLocked(current.nativeCloseID) != nil {
+				service.mu.Unlock()
+				return bridge.Refused[apperr.ClosePlanResult](apperr.ClassifiedConflict, planID, closePlanNoLongerCurrent, apperr.RemediationRetry)
+			}
 			result := closePlanSummaryResult(current)
 			service.mu.Unlock()
 			return result
@@ -232,8 +283,8 @@ func (service *AppModelService) ResolveClosePlan(ctx context.Context, planID str
 	// Inspect every path-backed save before any write starts. This queues an
 	// external conflict for the UI and accepts a Keep-mine token on a later
 	// resolution pass without allowing an earlier target to be written first.
-	for index := range plan.targets {
-		if plan.targets[index].choice != apperr.CloseChoiceSave {
+	for index := range targets {
+		if targets[index].choice != apperr.CloseChoiceSave {
 			continue
 		}
 		service.mu.Lock()
@@ -242,6 +293,10 @@ func (service *AppModelService) ResolveClosePlan(ctx context.Context, planID str
 			service.mu.Unlock()
 			return bridge.Refused[apperr.ClosePlanResult](apperr.ClassifiedConflict, planID, "The close plan is no longer active.", apperr.RemediationRetry)
 		}
+		if err := service.validateClosePlanLocked(current); err != nil {
+			service.mu.Unlock()
+			return bridge.Refused[apperr.ClosePlanResult](apperr.ClassifiedConflict, planID, err.Error(), apperr.RemediationRetry)
+		}
 		target := current.targets[index]
 		service.mu.Unlock()
 		decisionToken := target.normalizationToken
@@ -249,6 +304,10 @@ func (service *AppModelService) ResolveClosePlan(ctx context.Context, planID str
 		if result.Status == apperr.WriteStatusConflict {
 			service.mu.Lock()
 			current = service.closePlans[planID]
+			if current == nil || service.activeClosePlan != planID || service.validateClosePlanLocked(current) != nil {
+				service.mu.Unlock()
+				return bridge.Refused[apperr.ClosePlanResult](apperr.ClassifiedConflict, planID, closePlanNoLongerCurrent, apperr.RemediationRetry)
+			}
 			if current != nil {
 				current.summary.Targets[index].Conflict = result.Conflict
 			}
@@ -258,6 +317,10 @@ func (service *AppModelService) ResolveClosePlan(ctx context.Context, planID str
 		}
 		service.mu.Lock()
 		current = service.closePlans[planID]
+		if current == nil || service.activeClosePlan != planID || service.validateClosePlanLocked(current) != nil {
+			service.mu.Unlock()
+			return bridge.Refused[apperr.ClosePlanResult](apperr.ClassifiedConflict, planID, closePlanNoLongerCurrent, apperr.RemediationRetry)
+		}
 		if current != nil && index < len(current.summary.Targets) {
 			current.summary.Targets[index].Conflict = nil
 		}
@@ -277,9 +340,14 @@ func (service *AppModelService) ResolveClosePlan(ctx context.Context, planID str
 		service.mu.Unlock()
 		return bridge.Refused[apperr.ClosePlanResult](apperr.ClassifiedConflict, planID, "The close plan is no longer active.", apperr.RemediationRetry)
 	}
+	if err := service.validateClosePlanLocked(plan); err != nil {
+		service.mu.Unlock()
+		return bridge.Refused[apperr.ClosePlanResult](apperr.ClassifiedConflict, planID, err.Error(), apperr.RemediationRetry)
+	}
 	plan.summary.Status = apperr.ClosePlanReady
+	result := closePlanSummaryResult(plan)
 	service.mu.Unlock()
-	return closePlanSummaryResult(plan)
+	return result
 }
 
 // ExecuteClosePlan serializes all requested saves in tab order and only then
@@ -291,6 +359,10 @@ func (service *AppModelService) ExecuteClosePlan(ctx context.Context, planID str
 	if plan == nil || service.activeClosePlan != planID {
 		service.mu.Unlock()
 		return bridge.Refused[apperr.TabTransitionResult](apperr.ClassifiedNotFound, planID, "The close plan is no longer active.", apperr.RemediationNone)
+	}
+	if err := service.validateCloseOwnershipLocked(plan.nativeCloseID); err != nil {
+		service.mu.Unlock()
+		return bridge.Refused[apperr.TabTransitionResult](apperr.ClassifiedConflict, planID, err.Error(), apperr.RemediationRetry)
 	}
 	if plan.summary.Status != apperr.ClosePlanReady {
 		service.mu.Unlock()
@@ -311,9 +383,9 @@ func (service *AppModelService) ExecuteClosePlan(ctx context.Context, planID str
 		}
 		result := apperr.WriteResult{}
 		if target.savePath != "" {
-			result = service.executeClosePlanSaveAs(ctx, target)
+			result = service.executeClosePlanSaveAs(ctx, target, planID)
 		} else {
-			result = service.Save(ctx, target.documentID, target.contentRevision, target.normalizationToken)
+			result = service.save(ctx, target.documentID, target.contentRevision, target.normalizationToken, planID)
 		}
 		if result.Status == apperr.WriteStatusCommitted {
 			service.emitCommittedSaveWarning(ctx, result)
@@ -349,9 +421,10 @@ func (service *AppModelService) ExecuteClosePlan(ctx context.Context, planID str
 	for _, target := range plan.targets {
 		ids = append(ids, target.documentID)
 	}
+	revision, nativeCloseID := plan.summary.TabSetRevision, plan.nativeCloseID
 	service.mu.Unlock()
 
-	transition := service.closeDocuments(ctx, ids, &plan.summary.TabSetRevision)
+	transition := service.closeDocuments(ctx, ids, &revision, nativeCloseID)
 	service.mu.Lock()
 	if transition.Error == nil {
 		if current := service.closePlans[planID]; current != nil {
@@ -362,12 +435,14 @@ func (service *AppModelService) ExecuteClosePlan(ctx context.Context, planID str
 		if service.activeClosePlan == planID {
 			service.activeClosePlan = ""
 		}
+	} else if current := service.closePlans[planID]; current != nil {
+		service.invalidateClosePlanLocked(current, apperr.ClosePlanFailed)
 	}
 	service.mu.Unlock()
 	return transition
 }
 
-func (service *AppModelService) executeClosePlanSaveAs(ctx context.Context, target closePlanTarget) apperr.WriteResult {
+func (service *AppModelService) executeClosePlanSaveAs(ctx context.Context, target closePlanTarget, planID string) apperr.WriteResult {
 	currentVersion, err := file.CurrentDiskVersion(target.savePath)
 	if err != nil || !currentVersion.Equal(target.expectedVersion) {
 		return bridge.Conflict[apperr.WriteResult](service.documentLabel(target.documentID), target.documentID, apperr.ClassifiedConflict, "The Save As target changed before the close-plan write.", apperr.RemediationNone)
@@ -383,12 +458,16 @@ func (service *AppModelService) executeClosePlanSaveAs(ctx context.Context, targ
 		return result
 	}
 	snapshot.identity = target.saveIdentity
+	snapshot.closePlanID = planID
 	snapshot.expectedVersion = target.expectedVersion
 	snapshot.expectedRawHash = target.expectedRawHash
 	return service.executeWrite(ctx, snapshot, SaveOriginSaveAs)
 }
 
 func (service *AppModelService) validateClosePlanLocked(plan *closePlan) error {
+	if err := service.validateCloseOwnershipLocked(plan.nativeCloseID); err != nil {
+		return err
+	}
 	if service.state.tabSetRevision != plan.summary.TabSetRevision {
 		return fmt.Errorf("the tab set changed while the close plan was open")
 	}
@@ -404,10 +483,20 @@ func (service *AppModelService) validateClosePlanLocked(plan *closePlan) error {
 	return nil
 }
 
+func (service *AppModelService) validateResolvingClosePlan(planID string) *apperr.ClassifiedError {
+	service.mu.RLock()
+	defer service.mu.RUnlock()
+	plan := service.closePlans[planID]
+	if plan == nil || service.activeClosePlan != planID || service.validateClosePlanLocked(plan) != nil {
+		return bridge.Classified(apperr.ClassifiedConflict, planID, closePlanNoLongerCurrent, apperr.RemediationRetry)
+	}
+	return nil
+}
+
 func (service *AppModelService) resolveClosePlanSaveAs(ctx context.Context, planID string, index int) (*apperr.ClassifiedError, bool) {
 	service.mu.RLock()
 	plan := service.closePlans[planID]
-	if plan == nil || service.activeClosePlan != planID || index < 0 || index >= len(plan.targets) {
+	if plan == nil || service.activeClosePlan != planID || index < 0 || index >= len(plan.targets) || service.validateClosePlanLocked(plan) != nil {
 		service.mu.RUnlock()
 		return bridge.Classified(apperr.ClassifiedConflict, planID, "The close plan is no longer active.", apperr.RemediationRetry), false
 	}
@@ -432,9 +521,12 @@ func (service *AppModelService) resolveClosePlanSaveAs(ctx context.Context, plan
 	if err != nil {
 		return bridge.Classified(apperr.ClassifiedSystemCommandFailure, target.documentID, "The Save dialog could not be opened.", apperr.RemediationRetry), false
 	}
+	if stale := service.validateResolvingClosePlan(planID); stale != nil {
+		return stale, false
+	}
 	if strings.TrimSpace(selected) == "" {
 		service.mu.Lock()
-		if current := service.closePlans[planID]; current != nil {
+		if current := service.closePlans[planID]; current != nil && service.activeClosePlan == planID && service.validateClosePlanLocked(current) == nil {
 			service.invalidateClosePlanLocked(current, apperr.ClosePlanCancelled)
 		}
 		service.mu.Unlock()
@@ -454,10 +546,18 @@ func (service *AppModelService) resolveClosePlanSaveAs(ctx context.Context, plan
 	if conflict != nil {
 		return conflict, false
 	}
+	if stale := service.validateResolvingClosePlan(planID); stale != nil {
+		service.releaseSaveTarget(reservationID)
+		return stale, false
+	}
 	expectedVersion, err := file.CurrentDiskVersion(candidate.Path)
 	if err != nil {
 		service.releaseSaveTarget(reservationID)
 		return bridge.Classified(apperr.ClassifiedIOFailure, target.documentID, "The Save As target could not be inspected.", apperr.RemediationRetry), false
+	}
+	if stale := service.validateResolvingClosePlan(planID); stale != nil {
+		service.releaseSaveTarget(reservationID)
+		return stale, false
 	}
 	expectedHash := ""
 	if expectedVersion.Exists {
@@ -466,10 +566,14 @@ func (service *AppModelService) resolveClosePlanSaveAs(ctx context.Context, plan
 			service.releaseSaveTarget(reservationID)
 			return bridge.Classified(apperr.ClassifiedSystemCommandFailure, target.documentID, "The overwrite confirmation could not be shown.", apperr.RemediationRetry), false
 		}
+		if stale := service.validateResolvingClosePlan(planID); stale != nil {
+			service.releaseSaveTarget(reservationID)
+			return stale, false
+		}
 		if !confirmed {
 			service.releaseSaveTarget(reservationID)
 			service.mu.Lock()
-			if current := service.closePlans[planID]; current != nil {
+			if current := service.closePlans[planID]; current != nil && service.activeClosePlan == planID && service.validateClosePlanLocked(current) == nil {
 				service.invalidateClosePlanLocked(current, apperr.ClosePlanCancelled)
 			}
 			service.mu.Unlock()
@@ -489,7 +593,7 @@ func (service *AppModelService) resolveClosePlanSaveAs(ctx context.Context, plan
 
 	service.mu.Lock()
 	current := service.closePlans[planID]
-	if current == nil || service.activeClosePlan != planID || index >= len(current.targets) || current.targets[index].documentID != target.documentID || service.state.documents[target.documentID] == nil || service.state.documents[target.documentID].metadata.ContentRevision != target.contentRevision {
+	if current == nil || service.activeClosePlan != planID || service.validateClosePlanLocked(current) != nil || index >= len(current.targets) || current.targets[index].documentID != target.documentID || service.state.documents[target.documentID] == nil || service.state.documents[target.documentID].metadata.ContentRevision != target.contentRevision {
 		service.mu.Unlock()
 		service.releaseSaveTarget(reservationID)
 		return bridge.Classified(apperr.ClassifiedConflict, target.documentID, "The document changed while Save As was being prepared.", apperr.RemediationRetry), false
@@ -521,8 +625,12 @@ func (service *AppModelService) releaseClosePlanReservationsLocked(plan *closePl
 	}
 }
 
-func (service *AppModelService) closeDocuments(ctx context.Context, documentIDs []string, expectedTabSetRevision *uint64) apperr.TabTransitionResult {
+func (service *AppModelService) closeDocuments(ctx context.Context, documentIDs []string, expectedTabSetRevision *uint64, expectedNativeCloseID string) apperr.TabTransitionResult {
 	service.mu.Lock()
+	if err := service.validateCloseOwnershipLocked(expectedNativeCloseID); err != nil {
+		service.mu.Unlock()
+		return bridge.Refused[apperr.TabTransitionResult](apperr.ClassifiedConflict, "close plan", err.Error(), apperr.RemediationRetry)
+	}
 	if expectedTabSetRevision != nil && service.state.tabSetRevision != *expectedTabSetRevision {
 		service.mu.Unlock()
 		return bridge.Refused[apperr.TabTransitionResult](apperr.ClassifiedConflict, "close plan", "The tab set changed before tabs could be removed.", apperr.RemediationRetry)
@@ -532,24 +640,10 @@ func (service *AppModelService) closeDocuments(ctx context.Context, documentIDs 
 		service.mu.Unlock()
 		return result
 	}
-	requested := make(map[string]struct{}, len(documentIDs))
-	closeIDs := make([]string, 0, len(documentIDs))
-	for _, documentID := range documentIDs {
-		if _, duplicate := requested[documentID]; duplicate {
-			continue
-		}
-		document, ok := service.state.documents[documentID]
-		if !ok {
-			service.mu.Unlock()
-			return bridge.Refused[apperr.TabTransitionResult](apperr.ClassifiedNotFound, documentID, "The document is no longer open.", apperr.RemediationNone)
-		}
-		if document.closing {
-			service.mu.Unlock()
-			return bridge.Refused[apperr.TabTransitionResult](apperr.ClassifiedConflict, documentID, "The document is already being closed.", apperr.RemediationRetry)
-		}
-		requested[documentID] = struct{}{}
-		closeIDs = append(closeIDs, documentID)
-		document.closing = true
+	requested, closeIDs, refusal := service.sealCloseDocumentsLocked(documentIDs)
+	if refusal != nil {
+		service.mu.Unlock()
+		return *refusal
 	}
 	service.mu.Unlock()
 
@@ -562,15 +656,8 @@ func (service *AppModelService) closeDocuments(ctx context.Context, documentIDs 
 
 	service.mu.Lock()
 	defer service.mu.Unlock()
-	if expectedTabSetRevision != nil && service.state.tabSetRevision != *expectedTabSetRevision {
-		service.clearClosingLocked(closeIDs)
-		return bridge.Refused[apperr.TabTransitionResult](apperr.ClassifiedConflict, "close plan", "The tab set changed before tabs could be removed.", apperr.RemediationRetry)
-	}
-	for _, documentID := range closeIDs {
-		if _, ok := service.state.documents[documentID]; !ok {
-			service.clearClosingLocked(closeIDs)
-			return bridge.Refused[apperr.TabTransitionResult](apperr.ClassifiedNotFound, documentID, "The document is no longer open.", apperr.RemediationNone)
-		}
+	if refusal := service.validateSealedCloseLocked(closeIDs, expectedTabSetRevision, expectedNativeCloseID); refusal != nil {
+		return *refusal
 	}
 	// Keep the close barrier out of the rollback snapshot. The model lock stays
 	// held until disposal, so clearing it here cannot admit an interleaving write.
@@ -579,6 +666,11 @@ func (service *AppModelService) closeDocuments(ctx context.Context, documentIDs 
 	if len(closeIDs) == 0 {
 		return service.tabTransitionSuccess(apperr.TabTransitionClosed, "")
 	}
+	return service.removeSealedCloseDocumentsLocked(ctx, closeIDs, requested)
+}
+
+// removeSealedCloseDocumentsLocked removes validated, sealed targets with service.mu held.
+func (service *AppModelService) removeSealedCloseDocumentsLocked(ctx context.Context, closeIDs []string, requested map[string]struct{}) apperr.TabTransitionResult {
 	before := service.snapshotLocked()
 	activeIndex := indexOfDocument(service.state.orderedDocumentIDs, service.state.activeDocumentID)
 	removedActive := false
@@ -621,6 +713,56 @@ func (service *AppModelService) closeDocuments(ctx context.Context, documentIDs 
 		return bridge.Refused[apperr.TabTransitionResult](apperr.ClassifiedIOFailure, closeIDs[0], "The documents could not be closed.", apperr.RemediationRetry)
 	}
 	return service.tabTransitionSuccess(apperr.TabTransitionClosed, closeIDs[0])
+}
+
+// sealCloseDocumentsLocked deduplicates and seals targets atomically; on a
+// refusal it releases only seals acquired during this call.
+func (service *AppModelService) sealCloseDocumentsLocked(documentIDs []string) (map[string]struct{}, []string, *apperr.TabTransitionResult) {
+	requested := make(map[string]struct{}, len(documentIDs))
+	closeIDs := make([]string, 0, len(documentIDs))
+	for _, documentID := range documentIDs {
+		if _, duplicate := requested[documentID]; duplicate {
+			continue
+		}
+		document, ok := service.state.documents[documentID]
+		if !ok {
+			service.clearClosingLocked(closeIDs)
+			result := bridge.Refused[apperr.TabTransitionResult](apperr.ClassifiedNotFound, documentID, "The document is no longer open.", apperr.RemediationNone)
+			return nil, nil, &result
+		}
+		if document.closing {
+			service.clearClosingLocked(closeIDs)
+			result := bridge.Refused[apperr.TabTransitionResult](apperr.ClassifiedConflict, documentID, "The document is already being closed.", apperr.RemediationRetry)
+			return nil, nil, &result
+		}
+		requested[documentID] = struct{}{}
+		closeIDs = append(closeIDs, documentID)
+		document.closing = true
+	}
+	return requested, closeIDs, nil
+}
+
+// validateSealedCloseLocked rechecks ownership and the tab set after waiting
+// for writes. A refusal releases the seals acquired by the caller.
+func (service *AppModelService) validateSealedCloseLocked(closeIDs []string, expectedTabSetRevision *uint64, expectedNativeCloseID string) *apperr.TabTransitionResult {
+	if err := service.validateCloseOwnershipLocked(expectedNativeCloseID); err != nil {
+		service.clearClosingLocked(closeIDs)
+		result := bridge.Refused[apperr.TabTransitionResult](apperr.ClassifiedConflict, "close plan", err.Error(), apperr.RemediationRetry)
+		return &result
+	}
+	if expectedTabSetRevision != nil && service.state.tabSetRevision != *expectedTabSetRevision {
+		service.clearClosingLocked(closeIDs)
+		result := bridge.Refused[apperr.TabTransitionResult](apperr.ClassifiedConflict, "close plan", "The tab set changed before tabs could be removed.", apperr.RemediationRetry)
+		return &result
+	}
+	for _, documentID := range closeIDs {
+		if _, ok := service.state.documents[documentID]; !ok {
+			service.clearClosingLocked(closeIDs)
+			result := bridge.Refused[apperr.TabTransitionResult](apperr.ClassifiedNotFound, documentID, "The document is no longer open.", apperr.RemediationNone)
+			return &result
+		}
+	}
+	return nil
 }
 
 func closePlanTargetOrderLocked(order []string, documents map[string]*openDocument, kind apperr.ClosePlanKind, requested []string) ([]string, error) {

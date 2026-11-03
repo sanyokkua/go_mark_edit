@@ -76,6 +76,8 @@ function createAdapter(getState: () => Promise<AppModelState>): AppModelAdapter 
     return {
         getState,
         updateBuffer: jest.fn<Promise<void>, [string, string]>(),
+        retainPendingBuffers: jest.fn(),
+        getPendingBufferDocumentIds: jest.fn(() => []),
         flushBuffer: jest.fn<Promise<void>, [string]>(),
         subscribeAcceptedBuffers: jest.fn<
             () => void,
@@ -145,6 +147,16 @@ it('strips content while hydrating projection metadata', async () => {
     expect(projection).not.toHaveProperty('documents.byId.document-1.content');
     expect(JSON.stringify(projection)).not.toContain('Canonical content');
     expect(localStorage).toHaveLength(0);
+});
+
+it('retains native close ownership in the bootstrap result', async () => {
+    const state = appState(3);
+    state.snapshot.pendingClose = { id: 'close-1', owner: 'native' };
+    await expect(bootstrapAppModelProjection(createAdapter(async () => state))).resolves.toMatchObject({
+        status: 'ready',
+        pendingClose: { id: 'close-1', owner: 'native' },
+        activeBuffer: state.activeBuffer,
+    });
 });
 
 it('dev bridge dirty state follows disk baseline', async (): Promise<void> => {

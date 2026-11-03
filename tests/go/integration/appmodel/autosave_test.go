@@ -46,6 +46,35 @@ func TestAutosaveDebounceWritesTheLatestAcceptedBuffer(t *testing.T) {
 	}
 }
 
+func TestDiscardFenceRetainsLatestAutosaveWithoutWritingUntilCancel(t *testing.T) {
+	clock := &fakeAutosaveClock{}
+	service := NewAppModelServiceForHost(WithEmitter(&recordingEmitter{}), AppModelOption{AutosaveTimer: clock})
+	path, id := openAutosaveDocument(t, service, "base\n")
+	if err := service.UpdateBuffer(context.Background(), id, "first\n"); err != nil {
+		t.Fatal(err)
+	}
+	service.BeginShutdownDiscard()
+	if err := service.UpdateBuffer(context.Background(), id, "latest\n"); err != nil {
+		t.Fatal(err)
+	}
+	if clock.FireNext() {
+		t.Fatal("discard fence left an armed autosave")
+	}
+	if err := service.DrainDiscardBeforeClose(); err != nil {
+		t.Fatalf("discard drain: %+v", err)
+	}
+	if bytes, err := os.ReadFile(path); err != nil || string(bytes) != "base\n" {
+		t.Fatalf("disk while fenced = %q, %v", bytes, err)
+	}
+	service.EndShutdownDrain()
+	if !clock.FireNext() {
+		t.Fatal("cancel did not rearm latest intent")
+	}
+	if bytes, err := os.ReadFile(path); err != nil || string(bytes) != "latest\n" {
+		t.Fatalf("disk after cancel = %q, %v", bytes, err)
+	}
+}
+
 func TestAutosaveSkipsUntitledAndDetachesWhenTheBackingFileDisappears(t *testing.T) {
 	clock := &fakeAutosaveClock{}
 	service := NewAppModelServiceForHost(WithEmitter(&recordingEmitter{}), AppModelOption{AutosaveTimer: clock})

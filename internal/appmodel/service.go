@@ -45,6 +45,8 @@ type AppModelService struct {
 	runtimeContext                 context.Context
 	conflictQueue                  *conflictQueue
 	shutdownDraining               bool
+	shutdownDiscarding             bool
+	discardEpoch                   uint64
 	metadata                       FileMetadataRepository
 	recentItems                    RecentItemsRepository
 	defaultOpenMode                string
@@ -220,17 +222,51 @@ func (service *AppModelService) BeginShutdownDrain() {
 func (service *AppModelService) EndShutdownDrain() {
 	service.mu.Lock()
 	service.shutdownDraining = false
+	service.shutdownDiscarding = false
+	var pending []string
+	for id, document := range service.state.documents {
+		if document.autosave != nil {
+			pending = append(pending, id)
+		}
+	}
 	service.mu.Unlock()
+	for _, id := range pending {
+		service.resumeAutosave(id)
+	}
+}
+
+// BeginShutdownDiscard fences document writes while retaining debounced work.
+func (service *AppModelService) BeginShutdownDiscard() {
+	service.mu.Lock()
+	defer service.mu.Unlock()
+	service.shutdownDraining = true
+	service.shutdownDiscarding = true
+	service.discardEpoch++
+	for _, document := range service.state.documents {
+		if entry := document.autosave; entry != nil {
+			entry.arm++
+			entry.armed = false
+			if entry.timer != nil {
+				entry.timer.Stop()
+				entry.timer = nil
+			}
+		}
+	}
 }
 
 // SetPendingClose records a close request for a frontend that hydrates after
 // the native request was emitted.
-func (service *AppModelService) SetPendingClose(id string) {
-	if id == "" {
+func (service *AppModelService) SetPendingClose(pending apperr.PendingClose) {
+	if pending.ID == "" || (pending.Owner != apperr.PendingCloseOwnerFrontend && pending.Owner != apperr.PendingCloseOwnerNative) {
 		return
 	}
 	service.mu.Lock()
-	service.pendingClose = &apperr.PendingClose{ID: id}
+	service.pendingClose = &pending
+	if service.activeClosePlan != "" {
+		if plan := service.closePlans[service.activeClosePlan]; plan != nil && plan.summary.Status != apperr.ClosePlanExecuting && service.validateCloseOwnershipLocked(plan.nativeCloseID) != nil {
+			service.invalidateClosePlanLocked(plan, apperr.ClosePlanFailed)
+		}
+	}
 	service.mu.Unlock()
 }
 
@@ -239,6 +275,9 @@ func (service *AppModelService) ClearPendingClose(id string) {
 	service.mu.Lock()
 	if service.pendingClose != nil && service.pendingClose.ID == id {
 		service.pendingClose = nil
+		if plan := service.closePlans[service.activeClosePlan]; plan != nil && plan.summary.Status != apperr.ClosePlanExecuting && service.validateCloseOwnershipLocked(plan.nativeCloseID) != nil {
+			service.invalidateClosePlanLocked(plan, apperr.ClosePlanFailed)
+		}
 	}
 	service.mu.Unlock()
 }

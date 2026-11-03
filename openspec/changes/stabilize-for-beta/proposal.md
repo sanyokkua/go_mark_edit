@@ -38,7 +38,10 @@ Visible failures
   the startup failure screen is visible.
 - An unexpected rendering error shows a recoverable "Something went wrong" screen instead of a blank window, with
   Reload interface (keeps every document and its unsaved text) and Quit (asks before discarding unsaved changes); an
-  error inside the preview stays inside the preview pane.
+  error inside the preview stays inside the preview pane. Reload waits for acknowledged delivery of pending text; a
+  failed or one-second delivery attempt keeps the recovery screen and permits retry. Confirmed recovery discard
+  does not start a document write. A ready interface that misses the native close deadline requires explicit
+  native confirmation even when backend metadata is clean, protecting text not yet delivered by the interface.
 - A layout (window geometry) save failure no longer prevents quitting.
 
 Editor and shortcuts
@@ -104,9 +107,11 @@ None.
 
 - Backend: `internal/appmodel` (save, conflict, lifecycle, close plan, autosave, layout drain), `internal/file`
   (atomic replace, document reader), `internal/application` (native window, `application_context_holder.go` port
-  wiring), `main.go` (headless test ports).
-- Bridge: a read-capability value for write-protected files and a typed committed-save warning value (generated
-  bindings regenerate); no bound method signature changes.
+  wiring and shutdown ownership), `main.go` (headless test ports and conservative native confirmation).
+- Bridge: a read-capability value for write-protected files, a typed committed-save warning value, two additive
+  native lifecycle methods (`AcknowledgeRecoveryClose` and `DiscardAndAuthorizeQuit`), and a required
+  `PendingClose.owner` value (`frontend` or `native`); generated bindings regenerate. Existing bound method
+  signatures remain unchanged. Bootstrap carries the full pending-close identity and owner.
 - Frontend: `useSyncedBuffer`, `useDocumentSession`, `CodeEditor`, `EditorStage`, `monacoSetup`,
   `useEditorActionExecutor`, `useShellShortcuts`, shortcut registry, `DocumentTabs`, `readOnlyReason`,
   `useDocumentWrites`, adapter error reporting, the root error boundary in `App`, `MarkdownView`/`useLivePreview`, `useWindowGeometry`, `Menubar`,

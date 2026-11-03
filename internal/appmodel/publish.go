@@ -74,7 +74,7 @@ func (service *AppModelService) publishPreparedLocked(ctx context.Context, publi
 	if panicked {
 		rolledBack := service.publicationCurrentLocked(publication) && publication.rollback
 		if rolledBack {
-			service.state = publication.before
+			service.rollbackPublicationLocked(publication.before)
 		}
 		service.logPublicationFailure(nil, true, rolledBack)
 		return apperr.Internal(errors.New("emit state patch panicked"))
@@ -82,12 +82,36 @@ func (service *AppModelService) publishPreparedLocked(ctx context.Context, publi
 	if emitErr != nil {
 		rolledBack := service.publicationCurrentLocked(publication) && publication.rollback
 		if rolledBack {
-			service.state = publication.before
+			service.rollbackPublicationLocked(publication.before)
 		}
 		service.logPublicationFailure(emitErr, false, rolledBack)
 		return apperr.Internal(fmt.Errorf("emit state patch: %w", emitErr))
 	}
 	return nil
+}
+
+// rollbackPublicationLocked preserves non-projected write admissions that may
+// change while the model lock is released to deliver a reversible publication.
+func (service *AppModelService) rollbackPublicationLocked(before applicationState) {
+	for id, previous := range before.documents {
+		if current := service.state.documents[id]; current != nil {
+			previous.admittedWrites = current.admittedWrites
+			previous.writeInFlight = current.writeInFlight
+			previous.autosave = current.autosave
+			previous.autosaveInFlight = current.autosaveInFlight
+			previous.autosaveGeneration = current.autosaveGeneration
+		}
+	}
+	service.state = before
+	for id, document := range service.state.documents {
+		if document.autosave != nil && !service.autosaveEligibleLocked(id, document.autosave.revision) {
+			service.cancelAutosaveLocked(id)
+		} else if document.autosave != nil && document.autosave.elapsed && !service.shutdownDraining && document.autosaveInFlight == nil {
+			// The timer may have fired against a provisional revision while the
+			// emitter had the lock. Resume it after this rollback releases mu.
+			go service.resumeAutosave(id)
+		}
+	}
 }
 
 func (service *AppModelService) logPublicationFailure(deliveryErr error, panicked, rolledBack bool) {

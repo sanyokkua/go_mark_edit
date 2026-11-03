@@ -574,7 +574,7 @@ interface QuotedLine {
 export function parseQuoteLine(line: string): QuotedLine {
     // Capture whitespace in a lookahead so a later line terminator cannot make
     // the engine retry the same prefix once for every whitespace character.
-    const match = line.match(/^(?=(\s*))\1(>\s?)?(.*)$/);
+    const match = /^(?=(\s*))\1(>\s?)?(.*)$/.exec(line);
     return {
         indent: match?.[1] ?? '',
         quote: match?.[2] ?? '',
@@ -583,22 +583,22 @@ export function parseQuoteLine(line: string): QuotedLine {
 }
 
 function removeHeading(line: string): string {
-    const match = line.match(/^(?=(\s*))\1#{1,6}(?:(?=(\s+))\2|$)(.*)$/);
+    const match = /^(?=(\s*))\1#{1,6}(?:(?=(\s+))\2|$)(.*)$/.exec(line);
     return match === null ? line : (match[1] ?? '') + (match[3] ?? '');
 }
 
 export function parseListLine(line: string): ParsedLine {
     const indent = line.match(/^\s*/)?.[0] ?? '';
     const rest = line.slice(indent.length);
-    const task = rest.match(/^[-+*]\s+\[[ xX]\](?=(\s*))\1(.*)$/);
+    const task = /^[-+*]\s+\[[ xX]\](?=(\s*))\1(.*)$/.exec(rest);
     if (task !== null) {
         return { indent, kind: 'task-list', content: task[2] ?? '' };
     }
-    const numbered = rest.match(/^\d+[.)](?=(\s+))\1(.*)$/);
+    const numbered = /^\d+[.)](?=(\s+))\1(.*)$/.exec(rest);
     if (numbered !== null) {
         return { indent, kind: 'numbered-list', content: numbered[2] ?? '' };
     }
-    const bullet = rest.match(/^[-+*](?=(\s*))\1(.*)$/);
+    const bullet = /^[-+*](?=(\s*))\1(.*)$/.exec(rest);
     if (bullet !== null) {
         return { indent, kind: 'bullet-list', content: bullet[2] ?? '' };
     }
@@ -704,7 +704,7 @@ function headingLine(line: string, level: number): string {
     const quoted = parseQuoteLine(line);
     const parsed = parseListLine(quoted.content);
     const candidate = parsed.kind === null ? quoted.content : parsed.indent + parsed.content;
-    const match = candidate.match(/^(?=(\s*))\1(#{1,6})(?:(?=(\s+))\3|$)(.*)$/);
+    const match = /^(?=(\s*))\1(#{1,6})(?:(?=(\s+))\3|$)(.*)$/.exec(candidate);
     if (match === null) {
         const indent = candidate.match(/^\s*/)?.[0] ?? '';
         return quoted.indent + quoted.quote + indent + '#'.repeat(level) + ' ' + candidate.slice(indent.length);

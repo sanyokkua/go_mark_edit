@@ -38,6 +38,7 @@ type DocumentRecord struct {
 	baselineRawHash         string
 	conflictBlocked         bool
 	writeInFlight           bool
+	admittedWrites          uint64
 	closing                 bool
 	hasSavedView            bool
 }
@@ -85,6 +86,7 @@ func (service *AppModelService) dispose(documentID string) {
 	document.baselineRawHash = ""
 	document.conflictBlocked = false
 	document.writeInFlight = false
+	document.admittedWrites = 0
 	document.closing = false
 	document.hasSavedView = false
 	delete(service.state.documents, documentID)

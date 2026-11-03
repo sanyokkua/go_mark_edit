@@ -161,6 +161,19 @@ func (port applicationShutdownModel) BeginShutdownDrain() {
 	}
 }
 
+func (port applicationShutdownModel) BeginShutdownDiscard() {
+	if model := port.model(); model != nil {
+		model.BeginShutdownDiscard()
+	}
+}
+
+func (port applicationShutdownModel) DrainDiscardBeforeClose() *apperr.ClassifiedError {
+	if model := port.model(); model != nil {
+		return model.DrainDiscardBeforeClose()
+	}
+	return nil
+}
+
 func (port applicationShutdownModel) EndShutdownDrain() {
 	if model := port.model(); model != nil {
 		model.EndShutdownDrain()
@@ -174,9 +187,9 @@ func (port applicationShutdownModel) DrainBeforeClose() *apperr.ClassifiedError 
 	return nil
 }
 
-func (port applicationShutdownModel) SetPendingClose(id string) {
+func (port applicationShutdownModel) SetPendingClose(pending apperr.PendingClose) {
 	if model := port.model(); model != nil {
-		model.SetPendingClose(id)
+		model.SetPendingClose(pending)
 	}
 }
 
@@ -402,9 +415,31 @@ func (holder *ApplicationContextHolder) AuthorizeQuit(ctx context.Context, close
 	shutdown := holder.Shutdown
 	holder.mu.Unlock()
 	if shutdown == nil {
-		return bridge.ClassifiedWithID(apperr.ClassifiedUnsupportedInput, "native close", "This build cannot authorize a native close.", apperr.RemediationNone, closeID)
+		return bridge.ClassifiedWithID(apperr.ClassifiedUnsupportedInput, nativeCloseErrorSource, "This build cannot authorize a native close.", apperr.RemediationNone, closeID)
 	}
 	return shutdown.AuthorizeQuit(ctx, closeID)
+}
+
+// AcknowledgeRecoveryClose reserves a pending request for the recovery screen.
+func (holder *ApplicationContextHolder) AcknowledgeRecoveryClose(ctx context.Context, closeID string) *apperr.ClassifiedError {
+	holder.mu.Lock()
+	shutdown := holder.Shutdown
+	holder.mu.Unlock()
+	if shutdown == nil {
+		return bridge.ClassifiedWithID(apperr.ClassifiedUnsupportedInput, nativeCloseErrorSource, "This build cannot acknowledge a native close.", apperr.RemediationNone, closeID)
+	}
+	return shutdown.AcknowledgeRecoveryClose(ctx, closeID)
+}
+
+// DiscardAndAuthorizeQuit discards scheduled writes before authorizing quit.
+func (holder *ApplicationContextHolder) DiscardAndAuthorizeQuit(ctx context.Context, closeID string) *apperr.ClassifiedError {
+	holder.mu.Lock()
+	shutdown := holder.Shutdown
+	holder.mu.Unlock()
+	if shutdown == nil {
+		return bridge.ClassifiedWithID(apperr.ClassifiedUnsupportedInput, nativeCloseErrorSource, "This build cannot authorize a native close.", apperr.RemediationNone, closeID)
+	}
+	return shutdown.DiscardAndAuthorizeQuit(ctx, closeID)
 }
 
 // CancelQuit abandons the pending native close without creating a permit.
@@ -413,7 +448,7 @@ func (holder *ApplicationContextHolder) CancelQuit(ctx context.Context, closeID 
 	shutdown := holder.Shutdown
 	holder.mu.Unlock()
 	if shutdown == nil {
-		return bridge.ClassifiedWithID(apperr.ClassifiedUnsupportedInput, "native close", "This build cannot cancel a native close.", apperr.RemediationNone, closeID)
+		return bridge.ClassifiedWithID(apperr.ClassifiedUnsupportedInput, nativeCloseErrorSource, "This build cannot cancel a native close.", apperr.RemediationNone, closeID)
 	}
 	return shutdown.CancelQuit(ctx, closeID)
 }

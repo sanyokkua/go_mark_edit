@@ -776,7 +776,16 @@ The sequence is normative:
 
 A timeout never authorizes data loss. A late or stale answer is rejected by close identity, and a
 second native request while one is pending re-emits the same request rather than creating a second
-veto state. There is no session restore.
+veto state. Pending close state carries frontend or native ownership. If a ready frontend does not
+acknowledge the close, native confirmation protects edits that may exist only in the frontend.
+
+A root rendering failure retains unacknowledged adapter buffers while the recovery screen is open.
+Reload waits up to one second per attempt for pending text to reach the backend and reloads only after
+acknowledgment; failure or timeout leaves the text available for retry. `AcknowledgeRecoveryClose`
+reserves the current frontend-owned decision. `DiscardAndAuthorizeQuit` fences new document writes,
+cancels scheduled autosaves and waits for writes already admitted before exit. Native ownership
+prevents stale frontend close plans from writing or removing tabs. Cancel releases the fence and
+resumes retained autosave intent. There is no session restore.
 
 ## Persistence
 

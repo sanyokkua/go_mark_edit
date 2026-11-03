@@ -279,10 +279,19 @@ type AppStateSnapshot struct {
 	PendingClose       *PendingClose               `json:"pendingClose,omitempty"`
 }
 
+// PendingCloseOwner identifies which side controls a native close request.
+type PendingCloseOwner string
+
+const (
+	PendingCloseOwnerFrontend PendingCloseOwner = "frontend"
+	PendingCloseOwnerNative   PendingCloseOwner = "native"
+)
+
 // PendingClose identifies a native close request that the frontend must
 // discover during hydration.
 type PendingClose struct {
-	ID string `json:"id"`
+	ID    string            `json:"id"`
+	Owner PendingCloseOwner `json:"owner"`
 }
 
 // ActiveBuffer carries the canonical content only during explicit state hydration.

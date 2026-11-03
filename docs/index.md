@@ -79,7 +79,7 @@ There are no HTTP, gRPC, GraphQL, webhook or message-queue endpoints in the desk
 3. A user command crosses the adapter into a Wails handler. The handler validates request identity, delegates to the owning service and returns a typed result; successful state changes are published back to the frontend.
 4. Opening a document canonicalizes and reads the selected path. The app model owns its identity, content revision, disk baseline and tab state. Saves verify revisions and external disk state before replacing bytes.
 5. Opening a folder builds a bounded, filtered tree snapshot. Its root and tree belong to that process; only the app-wide hidden-folder preference and combined Recent Items are persisted.
-6. Settings and layout repositories write to SQLite. On shutdown, pending application work is drained before the database and logger close.
+6. Settings and layout repositories write to SQLite. On shutdown, pending application work is drained before the database and logger close. The lifecycle bridge exposes `AcknowledgeRecoveryClose` and `DiscardAndAuthorizeQuit` for the interface-error recovery flow; its pending-close snapshot identifies whether the frontend or native fallback owns the decision.
 7. The frontend previews the latest accepted editor buffer and runs tidy against the current editor working copy. Tidy uses a module worker behind one per-window operation slot; progress, cancellation and lint findings are ephemeral frontend state.
 
 Detailed document lifecycle, conflict, close and shutdown flows are in [architecture.md](architecture.md#document-lifecycle), [architecture.md](architecture.md#shutdown) and [architecture.md](architecture.md#persistence).

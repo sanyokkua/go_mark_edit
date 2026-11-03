@@ -196,14 +196,34 @@ markdown-preview "Live update and degradation". Design §8.
       (`:198-213`) and resetting on new content or document; add a component test with a throwing child, an
       integration test for "Drawing failure" (editor, tabs and menus keep working) and one for "Recovery after a
       drawing failure"; verify they pass.
-- [ ] 9.3 Add the root error boundary in `frontend/src/app/` around the content of `AppContents` (`App.tsx:130-143`),
-      keeping `useDocumentSession`, `useBootstrap` and `useShutdown` above it. The "Something went wrong" screen
-      reuses `StartupFailure.tsx`'s layout and tokens, uses catalogue strings, focuses Reload interface, flushes every
-      pending buffer via `flushBuffer` (`appModelAdapter.ts:789`, at most 1 second) before reloading, and handles Quit,
-      window close and the quit shortcut through `useShutdown`'s close confirmation with the discard prompt
-      (`nativeLifecycleAdapter.requestQuit`, `authorizeQuit`, `cancelQuit`; `frontend/src/logic/adapter/index.ts:619`).
-      Add component tests for "Reload interface", "Quit with unsaved work" and "Quit with nothing unsaved"; verify
-      they pass and check Quit with a modified document in the real app.
+- [x] 9.3 Add the root error boundary around `AppContents`' rendered content, keeping `useDocumentSession`,
+      `useBootstrap` and `useShutdown` above it. Reuse StartupFailure layout/tokens, catalogue strings, Button and
+      ModalShell; focus Reload interface. Extend the existing app-model adapter to retain pending/in-flight buffer
+      generations before passive editor cleanup and expose unacknowledged document IDs. Flush all open/pending IDs
+      with one aggregate 1,000 ms attempt limit; reload only after acknowledgment, retaining text and retry controls
+      on rejection/timeout and ignoring late completion. Cancel/await a current frontend-owned close before reload;
+      native-owned close blocks reload until a later retry after native Cancel.
+      Extend the existing native lifecycle owner/handler/adapter/controller with `AcknowledgeRecoveryClose` and
+      `DiscardAndAuthorizeQuit`, and project required `PendingClose.owner` through full bootstrap/hydration.
+      Recovery acknowledgment stops the deadline for that ID. Count backend dirty and pending-only IDs once; Cancel
+      preserves text/scheduling, confirmed discard starts no document write. Add a reversible model admission fence
+      that stops/retains autosave intents, waits counted already-admitted writes and flushes layout; resume only
+      latest retained intents on refusal/Cancel. Replace boolean-only write admission with a per-document count
+      released exactly once on every terminal path. A ready-frontend ten-second timeout always native-confirms
+      possible undelivered text, even with clean backend metadata; normal responsive/pre-readiness close stays intact.
+      Serialize ownership transfer with model guards: quit plans capture their frontend-owned native close ID and
+      validate it before sealing and final tab removal after waiting; native-owned hydration never starts normal
+      close work, and transfer/Cancel/fresh IDs cannot revive stale plans. Reuse the existing removal implementation.
+      Add failing adapter/hook/integration tests for crash-unmount retention, older in-flight plus newer pending,
+      two-document reload, rejection/timeout/retry/late completion, focus, pending-only discard count and all close
+      origins. Add Go race tests for scheduled/admitted/queued writes, timer installation and fence races,
+      Cancel/refusal resumption, stale IDs/permits, native fallback versus acknowledgment, and reload/native-Cancel
+      preserving tabs/text. Explicitly permit an owner-level white-box admission/terminal-removal test for the
+      controlled gap before Commit and final mutation; also test real queued execution. Keep ordinary save/autosave,
+      external reload, close workflow and startup regressions green. Update native bridge documentation and durable
+      lifecycle decision, run strict OpenSpec validation and all six verification stages, and use an isolated real
+      app to verify reload, modified-document Quit/Cancel, native shortcut/window close and unchanged disk bytes
+      after confirmed discard (already-admitted atomic writes may finish).
 
 ## 10. Preview measurement only while visible
 

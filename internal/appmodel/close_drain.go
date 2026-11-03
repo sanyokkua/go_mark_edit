@@ -20,6 +20,18 @@ func (service *AppModelService) DrainBeforeClose() *apperr.ClassifiedError {
 	// and persisting the layout intent after the editor work has settled is what
 	// makes the drain's own ordering match the required "layout, editor, and
 	// autosave work" as one boundary rather than three racing ones.
+	return service.drainCloseLayout()
+}
+
+// DrainDiscardBeforeClose waits accepted work without starting held autosaves.
+func (service *AppModelService) DrainDiscardBeforeClose() *apperr.ClassifiedError {
+	for _, documentID := range service.openDocumentIDs() {
+		service.waitForWriteInFlight(documentID)
+	}
+	return service.drainCloseLayout()
+}
+
+func (service *AppModelService) drainCloseLayout() *apperr.ClassifiedError {
 	if err := service.FlushPendingUILayout(); err != nil {
 		return bridge.ClassifiedWithID(apperr.ClassifiedIOFailure, "native close", "The application could not finish saving pending work before closing.", apperr.RemediationRetry, "")
 	}

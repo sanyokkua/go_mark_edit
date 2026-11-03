@@ -152,6 +152,9 @@ func executeWarningClose(t *testing.T, service *AppModelService, id string, kind
 	t.Helper()
 	ctx := context.Background()
 	state, _ := service.GetState(ctx)
+	if kind == apperr.ClosePlanQuit {
+		service.SetPendingClose(apperr.PendingClose{ID: "quit", Owner: apperr.PendingCloseOwnerFrontend})
+	}
 	plan := service.PrepareClose(ctx, kind, []string{id}, state.Snapshot.TabSetRevision)
 	if plan.Data == nil {
 		t.Fatalf("plan = %+v", plan)

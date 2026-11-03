@@ -52,6 +52,182 @@ func TestClosePlanCompletenessAndCancel(t *testing.T) {
 	}
 }
 
+func TestNativeOwnedCloseRefusesCompetingClosures(t *testing.T) {
+	service := NewAppModelServiceForHost(WithEmitter(&recordingEmitter{}))
+	_, first := openAutosaveDocument(t, service, "first\n")
+	_, second := openAutosaveDocument(t, service, "second\n")
+	service.SetPendingClose(apperr.PendingClose{ID: "a", Owner: apperr.PendingCloseOwnerNative})
+	state, _ := service.GetState(context.Background())
+	if state.Snapshot.PendingClose == nil || state.Snapshot.PendingClose.Owner != apperr.PendingCloseOwnerNative {
+		t.Fatalf("pending close = %+v", state.Snapshot.PendingClose)
+	}
+	service.SetPendingClose(apperr.PendingClose{ID: "invalid", Owner: "unknown"})
+	state, _ = service.GetState(context.Background())
+	if state.Snapshot.PendingClose == nil || state.Snapshot.PendingClose.ID != "a" || state.Snapshot.PendingClose.Owner != apperr.PendingCloseOwnerNative {
+		t.Fatalf("invalid close replaced owner: %+v", state.Snapshot.PendingClose)
+	}
+	if result := service.CloseDocument(context.Background(), first, state.Snapshot.TabSetRevision); result.Error == nil {
+		t.Fatalf("native-owned direct close succeeded: %+v", result)
+	}
+	for _, kind := range []apperr.ClosePlanKind{apperr.ClosePlanSingle, apperr.ClosePlanWindow, apperr.ClosePlanQuit} {
+		result := service.PrepareClose(context.Background(), kind, []string{first}, state.Snapshot.TabSetRevision)
+		if result.Error == nil {
+			t.Fatalf("native-owned %s prepare succeeded: %+v", kind, result)
+		}
+	}
+	state, _ = service.GetState(context.Background())
+	if len(state.Snapshot.Documents) != 2 || state.Snapshot.Documents[first].DocumentID != first || state.Snapshot.Documents[second].DocumentID != second {
+		t.Fatalf("documents changed: %+v", state.Snapshot.Documents)
+	}
+}
+
+func TestQuitPlanCannotSurviveNativeTakeoverOrNewClose(t *testing.T) {
+	service := NewAppModelServiceForHost(WithEmitter(&recordingEmitter{}))
+	_, id := openAutosaveDocument(t, service, "base\n")
+	service.SetPendingClose(apperr.PendingClose{ID: "a", Owner: apperr.PendingCloseOwnerFrontend})
+	state, _ := service.GetState(context.Background())
+	plan := service.PrepareClose(context.Background(), apperr.ClosePlanQuit, nil, state.Snapshot.TabSetRevision)
+	if plan.Error != nil || plan.Data == nil {
+		t.Fatalf("prepare: %+v", plan)
+	}
+	service.SetPendingClose(apperr.PendingClose{ID: "a", Owner: apperr.PendingCloseOwnerNative})
+	if result := service.ResolveClosePlan(context.Background(), plan.Data.ID, nil); result.Error == nil {
+		t.Fatalf("stale resolve: %+v", result)
+	}
+	if result := service.ExecuteClosePlan(context.Background(), plan.Data.ID); result.Error == nil {
+		t.Fatalf("stale execute: %+v", result)
+	}
+	service.ClearPendingClose("a")
+	service.SetPendingClose(apperr.PendingClose{ID: "b", Owner: apperr.PendingCloseOwnerFrontend})
+	if result := service.ExecuteClosePlan(context.Background(), plan.Data.ID); result.Error == nil {
+		t.Fatalf("revived execute: %+v", result)
+	}
+	newPlan := service.PrepareClose(context.Background(), apperr.ClosePlanQuit, nil, state.Snapshot.TabSetRevision)
+	if newPlan.Error != nil || newPlan.Data == nil || newPlan.Data.ID == plan.Data.ID {
+		t.Fatalf("fresh owner reused stale plan: %+v", newPlan)
+	}
+	state, _ = service.GetState(context.Background())
+	if _, ok := state.Snapshot.Documents[id]; !ok {
+		t.Fatal("takeover removed document")
+	}
+}
+
+type blockedCloseSaveDialog struct {
+	entered chan struct{}
+	release chan struct{}
+	path    string
+}
+
+func (dialog blockedCloseSaveDialog) ChooseSaveFile(context.Context, SaveDialogRequest) (string, error) {
+	close(dialog.entered)
+	<-dialog.release
+	return dialog.path, nil
+}
+
+func (dialog blockedCloseSaveDialog) ConfirmOverwrite(context.Context, string) (bool, error) {
+	return true, nil
+}
+
+func TestQuitPlanRejectsSaveDialogContinuationAfterNativeTakeover(t *testing.T) {
+	dialog := blockedCloseSaveDialog{entered: make(chan struct{}), release: make(chan struct{}), path: filepath.Join(t.TempDir(), "new.md")}
+	service := NewAppModelServiceForHost(WithEmitter(&recordingEmitter{}), WithDialogs(nil, dialog))
+	id := newUntitledID(t, service)
+	if err := service.UpdateBuffer(context.Background(), id, "unsaved"); err != nil {
+		t.Fatal(err)
+	}
+	service.SetPendingClose(apperr.PendingClose{ID: "a", Owner: apperr.PendingCloseOwnerFrontend})
+	state, _ := service.GetState(context.Background())
+	plan := service.PrepareClose(context.Background(), apperr.ClosePlanQuit, nil, state.Snapshot.TabSetRevision)
+	if plan.Error != nil || plan.Data == nil {
+		t.Fatalf("prepare = %+v", plan)
+	}
+	resolved := make(chan apperr.ClosePlanResult, 1)
+	go func() {
+		resolved <- service.ResolveClosePlan(context.Background(), plan.Data.ID, []apperr.ClosePlanDecision{{Choice: apperr.CloseChoiceSaveAll}})
+	}()
+	<-dialog.entered
+	service.SetPendingClose(apperr.PendingClose{ID: "a", Owner: apperr.PendingCloseOwnerNative})
+	close(dialog.release)
+	if result := <-resolved; result.Error == nil {
+		t.Fatalf("stale dialog continuation = %+v", result)
+	}
+	state, _ = service.GetState(context.Background())
+	if _, ok := state.Snapshot.Documents[id]; !ok {
+		t.Fatal("native takeover removed document")
+	}
+	if _, err := os.Stat(dialog.path); !os.IsNotExist(err) {
+		t.Fatalf("dialog continuation wrote a file: %v", err)
+	}
+}
+
+func TestResolveClosePlanRacesNativeOwnershipTransfer(t *testing.T) {
+	service := NewAppModelServiceForHost(WithEmitter(&recordingEmitter{}))
+	newUntitledID(t, service)
+	for range 500 {
+		service.SetPendingClose(apperr.PendingClose{ID: "a", Owner: apperr.PendingCloseOwnerFrontend})
+		state, _ := service.GetState(context.Background())
+		plan := service.PrepareClose(context.Background(), apperr.ClosePlanQuit, nil, state.Snapshot.TabSetRevision)
+		if plan.Error != nil || plan.Data == nil {
+			t.Fatalf("prepare = %+v", plan)
+		}
+		var done sync.WaitGroup
+		done.Add(2)
+		go func() { defer done.Done(); service.ResolveClosePlan(context.Background(), plan.Data.ID, nil) }()
+		go func() {
+			defer done.Done()
+			service.SetPendingClose(apperr.PendingClose{ID: "a", Owner: apperr.PendingCloseOwnerNative})
+		}()
+		done.Wait()
+		service.ClearPendingClose("a")
+	}
+}
+
+func TestQuitSaveAllDoesNotAdmitLaterWriteAfterNativeTakeover(t *testing.T) {
+	entered, release := make(chan struct{}), make(chan struct{})
+	var writes atomic.Int32
+	service := NewAppModelServiceForHost(WithEmitter(&recordingEmitter{}), AppModelOption{WriteExecutor: func(snapshot WriteSnapshot) (file.DiskVersion, error) {
+		if writes.Add(1) == 1 {
+			close(entered)
+			<-release
+		}
+		return file.DiskVersion{Exists: true, Size: int64(len(snapshot.EncodedData))}, nil
+	}})
+	_, first := openAutosaveDocument(t, service, "first\n")
+	secondPath, second := openAutosaveDocument(t, service, "second\n")
+	service.SetAutosaveEnabled(false)
+	if err := service.UpdateBuffer(context.Background(), first, "first edited\n"); err != nil {
+		t.Fatal(err)
+	}
+	if err := service.UpdateBuffer(context.Background(), second, "second edited\n"); err != nil {
+		t.Fatal(err)
+	}
+	service.SetPendingClose(apperr.PendingClose{ID: "a", Owner: apperr.PendingCloseOwnerFrontend})
+	state, _ := service.GetState(context.Background())
+	plan := service.PrepareClose(context.Background(), apperr.ClosePlanQuit, nil, state.Snapshot.TabSetRevision)
+	if plan.Error != nil || plan.Data == nil {
+		t.Fatalf("prepare: %+v", plan)
+	}
+	resolved := service.ResolveClosePlan(context.Background(), plan.Data.ID, []apperr.ClosePlanDecision{{Choice: apperr.CloseChoiceSaveAll}})
+	if resolved.Error != nil || resolved.Data == nil || resolved.Data.Status != apperr.ClosePlanReady {
+		t.Fatalf("resolve: %+v", resolved)
+	}
+	result := make(chan apperr.TabTransitionResult, 1)
+	go func() { result <- service.ExecuteClosePlan(context.Background(), plan.Data.ID) }()
+	<-entered
+	service.SetPendingClose(apperr.PendingClose{ID: "a", Owner: apperr.PendingCloseOwnerNative})
+	service.ClearPendingClose("a") // native Cancel
+	close(release)
+	if got := <-result; got.Error == nil {
+		t.Fatalf("stale plan succeeded: %+v", got)
+	}
+	if got := writes.Load(); got != 1 {
+		t.Fatalf("write calls = %d, want only the admitted first write", got)
+	}
+	if got, err := os.ReadFile(secondPath); err != nil || string(got) != "second\n" {
+		t.Fatalf("second file = %q, %v", got, err)
+	}
+}
+
 // conflicts before each affected save" is proved by the sibling below)
 func TestClosePlanSaveOrderAndFailure(t *testing.T) {
 	var executor WriteExecutor
@@ -479,6 +655,7 @@ func TestPrepareCloseWithNoTargetsMarshalsAnEmptyTargetArray(t *testing.T) {
 		t.Fatalf("documents still open: %v", state.Snapshot.OrderedDocumentIDs)
 	}
 
+	service.SetPendingClose(apperr.PendingClose{ID: "quit", Owner: apperr.PendingCloseOwnerFrontend})
 	plan := service.PrepareClose(context.Background(), apperr.ClosePlanQuit, nil, state.Snapshot.TabSetRevision)
 
 	if plan.Error != nil {
@@ -522,6 +699,7 @@ func TestPrepareCloseSupersedesAnAbandonedPlan(t *testing.T) {
 	}
 
 	// The user walks away from the prompt: no ResolveClosePlan ever arrives.
+	service.SetPendingClose(apperr.PendingClose{ID: "quit", Owner: apperr.PendingCloseOwnerFrontend})
 	quit := service.PrepareClose(context.Background(), apperr.ClosePlanQuit, []string{firstID, secondID}, state.Snapshot.TabSetRevision)
 	if quit.Error != nil || quit.Data == nil {
 		t.Fatalf("quit PrepareClose = %+v, want the newest request to win", quit)

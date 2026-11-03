@@ -121,6 +121,10 @@ export interface AppModelAdapter {
     flushActiveSession?: (documentId: string, expectedActivationToken?: symbol) => Promise<void>;
     registerActiveSession?: (session: RegisteredLifecycleSession<symbol>) => () => void;
     flushBuffer: (documentId: string) => Promise<void>;
+    /** Preserve unacknowledged content for the lifetime of a failed interface. */
+    retainPendingBuffers: () => void;
+    /** Identify documents with content not yet acknowledged by the backend. */
+    getPendingBufferDocumentIds: () => readonly string[];
     subscribeAcceptedBuffers: (listener: (buffer: AcceptedBuffer) => void) => () => void;
     setDocView: (documentId: string, view: DocViewIntent, fallbackView?: DocViewInput) => Promise<void>;
     updateDocView: (documentId: string, view: DocViewInput) => Promise<void>;
@@ -431,6 +435,7 @@ export function createAppModelAdapter(bindings: AppModelBindings, runtime: AppMo
     const bufferSyncErrorListeners = new Set<(error: WireError) => void>();
     let bufferSyncFailed = false;
     const bufferRecords = new Map<string, BufferRecord>();
+    let retainRecoveryBuffers = false;
     const viewRecords = new Map<string, ViewRecord>();
     let greatestProjectionRevision = 0;
     let recoveryPromise: Promise<AppModelState | RecoverySurface> | undefined;
@@ -588,6 +593,10 @@ export function createAppModelAdapter(bindings: AppModelBindings, runtime: AppMo
         const record = bufferRecord(documentId);
         if (record.timer !== undefined) {
             clearTimeout(record.timer);
+            record.timer = undefined;
+        }
+        if (retainRecoveryBuffers) {
+            return;
         }
         record.timer = setTimeout((): void => {
             record.timer = undefined;
@@ -822,6 +831,24 @@ export function createAppModelAdapter(bindings: AppModelBindings, runtime: AppMo
                 await sendPendingBuffer(documentId);
             }
         },
+        retainPendingBuffers(): void {
+            retainRecoveryBuffers = true;
+            for (const record of bufferRecords.values()) {
+                if (record.timer !== undefined) {
+                    clearTimeout(record.timer);
+                    record.timer = undefined;
+                }
+            }
+        },
+        getPendingBufferDocumentIds(): readonly string[] {
+            return [...bufferRecords.entries()]
+                .filter(
+                    ([, record]) =>
+                        Math.max(record.pending?.generation ?? 0, record.inFlightGeneration ?? 0) >
+                        record.acceptedGeneration,
+                )
+                .map(([documentId]) => documentId);
+        },
         subscribeAcceptedBuffers(listener: (buffer: AcceptedBuffer) => void): () => void {
             acceptedBufferListeners.add(listener);
             return (): void => {
@@ -856,7 +883,7 @@ export function createAppModelAdapter(bindings: AppModelBindings, runtime: AppMo
                 clearTimeout(buffer.timer);
                 buffer.timer = undefined;
             }
-            if (buffer !== undefined) {
+            if (buffer !== undefined && !retainRecoveryBuffers) {
                 buffer.pending = undefined;
             }
 

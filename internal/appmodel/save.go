@@ -29,6 +29,7 @@ type normalizationAuthorization struct {
 }
 
 type writeSnapshot struct {
+	closePlanID       string
 	documentID        string
 	contentRevision   uint64
 	content           string
@@ -48,6 +49,10 @@ type encodedWrite struct {
 
 // Save writes a path-backed document or enters the native Save As flow for an untitled one.
 func (service *AppModelService) Save(ctx context.Context, documentID string, expectedContentRevision uint64, decisionToken string) apperr.WriteResult {
+	return service.save(ctx, documentID, expectedContentRevision, decisionToken, "")
+}
+
+func (service *AppModelService) save(ctx context.Context, documentID string, expectedContentRevision uint64, decisionToken, closePlanID string) apperr.WriteResult {
 	service.mu.RLock()
 	if service.shutdownDraining {
 		service.mu.RUnlock()
@@ -84,9 +89,14 @@ func (service *AppModelService) Save(ctx context.Context, documentID string, exp
 	}
 	service.mu.RUnlock()
 	if path == "" {
+		if closePlanID != "" {
+			return bridge.Refused[apperr.WriteResult](apperr.ClassifiedConflict, documentID, "The close plan no longer has a save target.", apperr.RemediationRetry)
+		}
 		return service.SaveAs(ctx, documentID, expectedContentRevision, decisionToken)
 	}
-	service.flushAutosave(documentID)
+	if closePlanID == "" {
+		service.flushAutosave(documentID)
+	}
 	if result := service.prepareWriteDisk(ctx, documentID, expectedContentRevision, decisionToken); result.Status != "" {
 		return result
 	}
@@ -95,6 +105,7 @@ func (service *AppModelService) Save(ctx context.Context, documentID string, exp
 	if result.Status != "" {
 		return result
 	}
+	snapshot.closePlanID = closePlanID
 	return service.executeWrite(ctx, snapshot, SaveOriginExplicitSave)
 }
 
@@ -350,7 +361,7 @@ func (service *AppModelService) executeWrite(ctx context.Context, snapshot write
 		}
 		return bridge.Refused[apperr.WriteResult](documentLabelFromMetadata(snapshot.metadata), snapshot.documentID, apperr.ClassifiedIOFailure, "The document could not be encoded for saving.", apperr.RemediationRetry)
 	}
-	if !service.setWriteInFlight(ctx, snapshot.documentID, true) {
+	if !service.setWriteInFlightForPlan(ctx, snapshot.documentID, true, snapshot.closePlanID, origin) {
 		service.mu.RLock()
 		documentClosing := false
 		documentExists := false
@@ -367,9 +378,9 @@ func (service *AppModelService) executeWrite(ctx context.Context, snapshot write
 		}
 		return bridge.Refused[apperr.WriteResult](documentLabelFromMetadata(snapshot.metadata), snapshot.documentID, apperr.ClassifiedConflict, "The document could not accept the save.", apperr.RemediationRetry)
 	}
+	defer service.setWriteInFlight(ctx, snapshot.documentID, false)
 	coordinator := service.writeCoordinator(snapshot.documentID)
 	if coordinator == nil {
-		service.setWriteInFlight(ctx, snapshot.documentID, false)
 		return bridge.Refused[apperr.WriteResult]("document", snapshot.documentID, apperr.ClassifiedNotFound, "The document was closed before the save started.", apperr.RemediationNone)
 	}
 	committed, replaceErr := coordinator.Commit(WriteSnapshot{
@@ -387,7 +398,6 @@ func (service *AppModelService) executeWrite(ctx context.Context, snapshot write
 		}
 	}
 	if !committedToDisk {
-		service.setWriteInFlight(ctx, snapshot.documentID, false)
 		category := apperr.ClassifiedIOFailure
 		message := "The document could not be saved."
 		remediation := apperr.RemediationRetry
@@ -414,7 +424,6 @@ func (service *AppModelService) executeWrite(ctx context.Context, snapshot write
 		return bridge.Refused[apperr.WriteResult](documentLabelFromMetadata(snapshot.metadata), snapshot.documentID, apperr.ClassifiedNotFound, "The document was closed before the save completed.", apperr.RemediationNone)
 	}
 	before := service.snapshotLocked()
-	document.writeInFlight = false
 	// AtomicReplace commits every write via rename-over-target, which gives the
 	// target path a new on-disk identity each time and frees the old one for
 	// filesystem reuse. document.identity must track that on every save, not
@@ -518,27 +527,53 @@ func (service *AppModelService) emitCommittedSaveWarning(ctx context.Context, re
 }
 
 func (service *AppModelService) setWriteInFlight(ctx context.Context, documentID string, inFlight bool) bool {
+	return service.setWriteInFlightForPlan(ctx, documentID, inFlight, "", SaveOriginExplicitSave)
+}
+
+func (service *AppModelService) setWriteInFlightForPlan(ctx context.Context, documentID string, inFlight bool, closePlanID string, origin SaveOrigin) bool {
 	ctx = service.runtimeContextOr(ctx)
 	service.mu.Lock()
+	if inFlight && closePlanID != "" {
+		plan := service.closePlans[closePlanID]
+		if plan == nil || service.activeClosePlan != closePlanID || plan.summary.Status != apperr.ClosePlanExecuting || service.validateClosePlanLocked(plan) != nil {
+			service.mu.Unlock()
+			return false
+		}
+	}
 	document, ok := service.state.documents[documentID]
-	if !ok || (inFlight && document.closing) {
+	if !ok || (inFlight && (document.closing || service.shutdownDiscarding || (service.shutdownDraining && origin != SaveOriginAutosave))) {
 		service.mu.Unlock()
 		return false
 	}
-	if document.writeInFlight == inFlight {
+	if !inFlight && document.admittedWrites == 0 {
 		service.mu.Unlock()
-		return true
+		return false
 	}
 	before := service.snapshotLocked()
-	document.writeInFlight = inFlight
-	patch := service.documentPatchLocked(documentID)
+	wasWriting := document.writeInFlight
+	if inFlight {
+		document.admittedWrites++
+		document.writeInFlight = true
+	} else {
+		releaseWriteAdmissionLocked(document)
+	}
 	// This is lifecycle bookkeeping around an accepted write, not a reversible
 	// user command. Keep the state transition even when the projection cannot
 	// be delivered so a failed emitter cannot leave the document permanently
 	// marked as writing.
-	_ = service.publishCommittedLocked(ctx, before, patch)
+	if wasWriting != document.writeInFlight {
+		_ = service.publishCommittedLocked(ctx, before, service.documentPatchLocked(documentID))
+	}
 	service.mu.Unlock()
 	return true
+}
+
+// releaseWriteAdmissionLocked releases one accepted write while service.mu is held.
+func releaseWriteAdmissionLocked(document *DocumentRecord) {
+	if document.admittedWrites > 0 {
+		document.admittedWrites--
+	}
+	document.writeInFlight = document.admittedWrites > 0
 }
 
 func (service *AppModelService) writeCoordinator(documentID string) *DocumentWriteCoordinator {

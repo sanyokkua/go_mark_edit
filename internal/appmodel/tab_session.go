@@ -65,6 +65,10 @@ func activeDocumentTransition(documentID string, projectionRevision uint64, docu
 // same insertion point, or the previous tab when the closed tab was last.
 func (service *AppModelService) CloseDocument(ctx context.Context, documentID string, expectedTabSetRevision uint64) apperr.TabTransitionOutcome {
 	service.mu.Lock()
+	if err := service.validateCloseOwnershipLocked(""); err != nil {
+		service.mu.Unlock()
+		return bridge.Refused[apperr.TabTransitionResult](apperr.ClassifiedConflict, documentID, err.Error(), apperr.RemediationRetry)
+	}
 	if service.state.tabSetRevision != expectedTabSetRevision {
 		service.mu.Unlock()
 		return bridge.Refused[apperr.TabTransitionResult](apperr.ClassifiedConflict, documentID, "The tab set changed; close must be retried.", apperr.RemediationRetry)
@@ -83,6 +87,10 @@ func (service *AppModelService) CloseDocument(ctx context.Context, documentID st
 	service.flushAutosaveForClose(documentID)
 
 	service.mu.Lock()
+	if err := service.validateCloseOwnershipLocked(""); err != nil {
+		service.mu.Unlock()
+		return bridge.Refused[apperr.TabTransitionResult](apperr.ClassifiedConflict, documentID, err.Error(), apperr.RemediationRetry)
+	}
 	if service.state.tabSetRevision != expectedTabSetRevision {
 		service.mu.Unlock()
 		return bridge.Refused[apperr.TabTransitionResult](apperr.ClassifiedConflict, documentID, "The tab set changed; close must be retried.", apperr.RemediationRetry)
@@ -102,7 +110,7 @@ func (service *AppModelService) CloseDocument(ctx context.Context, documentID st
 		return bridge.Refused[apperr.TabTransitionResult](apperr.ClassifiedConflict, documentID, "The document has unsaved changes; prepare a close plan first.", apperr.RemediationRetry)
 	}
 	service.mu.Unlock()
-	return service.closeDocuments(ctx, []string{documentID}, &expectedTabSetRevision)
+	return service.closeDocuments(ctx, []string{documentID}, &expectedTabSetRevision, "")
 }
 
 func (service *AppModelService) rememberClosedLocked(path string, document *openDocument) {

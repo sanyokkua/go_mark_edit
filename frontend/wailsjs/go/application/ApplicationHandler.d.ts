@@ -3,9 +3,13 @@
 import {bridge} from '../models';
 import {apperr} from '../models';
 
+export function AcknowledgeRecoveryClose(arg1:bridge.Request,arg2:string):Promise<apperr.ClassifiedVoidResult>;
+
 export function AuthorizeQuit(arg1:bridge.Request,arg2:string):Promise<apperr.ClassifiedVoidResult>;
 
 export function CancelQuit(arg1:bridge.Request,arg2:string):Promise<apperr.ClassifiedVoidResult>;
+
+export function DiscardAndAuthorizeQuit(arg1:bridge.Request,arg2:string):Promise<apperr.ClassifiedVoidResult>;
 
 export function OpenNewWindow(arg1:bridge.Request,arg2:string):Promise<apperr.VoidResult>;
 

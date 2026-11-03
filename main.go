@@ -210,10 +210,13 @@ func newAppOptionsWithLogger(applicationContext *application.ApplicationContextH
 	applicationContext.ConfigureShutdown(
 		application.WithCloseRequestedEmitter(ports.emitNativeCloseRequest),
 		application.WithNativeQuit(ports.quitNativeApplication),
-		application.WithNativeConfirmation(func(ctx context.Context, documents []string) (bool, error) {
+		application.WithNativeConfirmation(func(ctx context.Context, documents []string, possibleUndelivered bool) (bool, error) {
 			message := "There are unsaved changes."
+			if possibleUndelivered {
+				message = "The interface did not respond. Changes may not have reached the application."
+			}
 			if len(documents) > 0 {
-				message = "The following documents have unsaved changes:\n\n" + strings.Join(documents, "\n")
+				message += "\n\nKnown unsaved documents:\n" + strings.Join(documents, "\n")
 			}
 			result, err := runtime.MessageDialog(ctx, runtime.MessageDialogOptions{
 				Type:          runtime.QuestionDialog,

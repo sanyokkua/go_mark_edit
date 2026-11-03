@@ -4,7 +4,7 @@ import { notifyError } from './notificationsSlice';
 import { parseSaveWarning, saveWarningNotification } from './saveWarning';
 
 import { applyStatePatch, hydrateProjection, resetProjection } from './appModelProjectionActions';
-import type { ActiveBuffer, AppStatePatch } from './appModelTypes';
+import type { ActiveBuffer, AppStatePatch, PendingClose } from './appModelTypes';
 import { store } from './index';
 import { disposeSettingsProjection } from './settingsProjection';
 
@@ -13,7 +13,7 @@ export type AppModelBootstrapResult =
           status: 'ready';
           activeBuffer: ActiveBuffer | null;
           applicationVersion: string;
-          pendingCloseId?: string;
+          pendingClose?: PendingClose;
       }
     | {
           status: 'failed';
@@ -93,7 +93,7 @@ async function initializeProjection(appModelAdapter: AppModelAdapter): Promise<A
             applicationVersion: state.snapshot.applicationVersion,
         };
         if (state.snapshot.pendingClose?.id !== undefined) {
-            result.pendingCloseId = state.snapshot.pendingClose.id;
+            result.pendingClose = state.snapshot.pendingClose;
         }
         return result;
     } catch (error: unknown) {

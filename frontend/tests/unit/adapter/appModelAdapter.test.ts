@@ -1450,3 +1450,74 @@ it('keeps newer buffer text when an older in-flight delivery fails', async () =>
     expect(updateBuffer.mock.calls.map(([, content]) => content)).toEqual(['older', 'newer']);
     expect(errors).toHaveBeenCalledTimes(1);
 });
+
+it('retains queued content across session cleanup only in interface recovery', async () => {
+    jest.useFakeTimers();
+    const updateBuffer = jest.fn((id: string, content: string): Promise<VoidResult> => {
+        void id;
+        void content;
+        return Promise.resolve({});
+    });
+    const setDocView = jest.fn((id: string, view: DocViewInput): Promise<VoidResult> => {
+        void id;
+        void view;
+        return Promise.resolve({});
+    });
+    const adapter = createAppModelAdapter(
+        { getState: async () => ({ data: state }), updateBuffer, setDocView, setUILayout: async () => ({}) },
+        { eventsOn: () => () => undefined },
+    );
+
+    await adapter.updateBuffer('normal', 'discarded');
+    adapter.cancelPendingSession?.('normal');
+    await adapter.flushBuffer('normal');
+    expect(updateBuffer).not.toHaveBeenCalled();
+
+    await adapter.updateBuffer('one', 'preserved');
+    await adapter.updateDocView('one', viewAt(2));
+    adapter.retainPendingBuffers();
+    adapter.retainPendingBuffers();
+    adapter.cancelPendingSession?.('one');
+    await adapter.updateBuffer('two', 'late edit');
+    jest.runAllTimers();
+    expect(updateBuffer).not.toHaveBeenCalled();
+    expect(setDocView).not.toHaveBeenCalled();
+    expect(adapter.getPendingBufferDocumentIds()).toEqual(['one', 'two']);
+    await adapter.flushBuffer('one');
+    expect(updateBuffer).toHaveBeenCalledWith('one', 'preserved');
+    expect(adapter.getPendingBufferDocumentIds()).toEqual(['two']);
+    await adapter.flushBuffer('two');
+    expect(adapter.getPendingBufferDocumentIds()).toEqual([]);
+});
+
+it('retains newer pending content behind a failed in-flight delivery during recovery', async () => {
+    const first = deferred<VoidResult>();
+    const updateBuffer = jest.fn((id: string, content: string): Promise<VoidResult> => {
+        void id;
+        void content;
+        return Promise.resolve({});
+    });
+    updateBuffer.mockReturnValueOnce(first.promise);
+    const adapter = createAppModelAdapter(
+        {
+            getState: async () => ({ data: state }),
+            updateBuffer,
+            setDocView: async () => ({}),
+            setUILayout: async () => ({}),
+        },
+        { eventsOn: () => () => undefined },
+    );
+    await adapter.updateBuffer('one', 'older');
+    const inFlight = adapter.flushBuffer('one');
+    await Promise.resolve();
+    await adapter.updateBuffer('one', 'newer');
+    adapter.retainPendingBuffers();
+    adapter.cancelPendingSession?.('one');
+    expect(adapter.getPendingBufferDocumentIds()).toEqual(['one']);
+    first.resolve({ error: { code: 'io', title: 'Sync failed', message: 'offline', retryable: true } });
+    await expect(inFlight).rejects.toThrow();
+    expect(adapter.getPendingBufferDocumentIds()).toEqual(['one']);
+    await adapter.flushBuffer('one');
+    expect(updateBuffer.mock.calls.map(([, content]) => content)).toEqual(['older', 'newer']);
+    expect(adapter.getPendingBufferDocumentIds()).toEqual([]);
+});
