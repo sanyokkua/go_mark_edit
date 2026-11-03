@@ -191,7 +191,7 @@ markdown-preview "Live update and degradation". Design §8.
       (`shutdown.go:68-77`); add a test in `tests/go/integration/application/native_window_test.go` with
       `recordingNativeWindow` and a fake clock that `Show` is called without `FrontendReady` and not called twice;
       verify it passes and, in the real app, that a forced settings-step failure becomes visible.
-- [ ] 9.2 Make `CommittedPreview` (`frontend/src/ui/components/MarkdownView.tsx:190`) the preview's error boundary,
+- [x] 9.2 Make `CommittedPreview` (`frontend/src/ui/components/MarkdownView.tsx:190`) the preview's error boundary,
       showing the existing inline error (`:229`), not committing a failing candidate in `commitSuccessfulRender`
       (`:198-213`) and resetting on new content or document; add a component test with a throwing child, an
       integration test for "Drawing failure" (editor, tabs and menus keep working) and one for "Recovery after a

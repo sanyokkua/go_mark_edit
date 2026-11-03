@@ -68,6 +68,20 @@ interface MockMonacoRuntime {
 }
 
 const mockRuntime = {} as MockMonacoRuntime;
+let mockPreviewDrawFailure = false;
+
+jest.mock('../../src/ui/components/AlertBox', () => {
+    const actual = jest.requireActual<typeof import('../../src/ui/components/AlertBox')>(
+        '../../src/ui/components/AlertBox',
+    );
+    return {
+        __esModule: true,
+        default: (props: React.ComponentProps<typeof actual.default>): React.JSX.Element => {
+            if (mockPreviewDrawFailure) throw new Error('preview drawing failure');
+            return <actual.default {...props} />;
+        },
+    };
+});
 
 function resetMockMonaco(): void {
     mockRuntime.deferMount = false;
@@ -215,6 +229,7 @@ import AppearanceControls from '../../src/ui/widgets/AppearanceControls';
 import { useAppearanceSettings } from '../../src/ui/widgets/appearanceSettingsContext';
 import EditorView, { type EditorViewAdapter } from '../../src/ui/widgets/EditorView';
 import SettingsMenu from '../../src/ui/widgets/Menubar/SettingsMenu';
+import Menubar from '../../src/ui/widgets/Menubar/Menubar';
 
 type VoidResult = { error?: WireError };
 
@@ -277,9 +292,103 @@ const AppearanceSettingsMenu: React.FC = (): React.JSX.Element => {
 };
 
 beforeEach((): void => {
+    mockPreviewDrawFailure = false;
     store.dispatch(hydrateSettings(loadedMarkdownSettings));
     jest.useFakeTimers();
     resetMockMonaco();
+});
+
+it('keeps editor, tabs and menus usable after a preview drawing failure and recovers', async () => {
+    const errors = jest.spyOn(console, 'error').mockImplementation(() => {});
+    try {
+        let accepted: ((buffer: AcceptedBuffer) => void) | undefined;
+        const first = statusDocument({ documentId: 'document-1', title: 'First' });
+        const second = statusDocument({ documentId: 'document-2', title: 'Second' });
+        store.dispatch(
+            hydrateProjection({
+                revision: 1,
+                orderedDocumentIds: [first.documentId, second.documentId],
+                documents: { [first.documentId]: first, [second.documentId]: second },
+                activeDocumentId: first.documentId,
+                ui: {},
+            }),
+        );
+        const adapter: EditorViewAdapter = {
+            ...createRenderedEditorAdapter(),
+            subscribeAcceptedBuffers: (listener): (() => void) => {
+                accepted = listener;
+                return (): void => {
+                    accepted = undefined;
+                };
+            },
+        };
+        const activate = jest.fn(() => Promise.resolve({}));
+        const newWindow = jest.fn(() => Promise.resolve());
+        render(
+            <Provider store={store}>
+                <EditorSessionContext.Provider value={{ documentId: first.documentId, content: '# Before' }}>
+                    <Menubar
+                        modalOpen={false}
+                        onAbout={jest.fn()}
+                        onNewWindow={newWindow}
+                        toggleFullscreen={jest.fn()}
+                        settingsMenuProps={{
+                            mode: 'auto',
+                            theme: 'material',
+                            onModeChange: jest.fn(),
+                            onOpenAppearance: jest.fn(),
+                            onThemeChange: jest.fn(),
+                        }}
+                    />
+                    <EditorView adapter={adapter} onActivateDocument={activate} />
+                </EditorSessionContext.Provider>
+            </Provider>,
+        );
+        expect(await screen.findByRole('heading', { name: 'Before' })).toBeInTheDocument();
+        mockPreviewDrawFailure = true;
+        act(() => accepted?.({ documentId: first.documentId, content: '> [!NOTE]\n> broken', generation: 1 }));
+        expect(await screen.findByRole('alert')).toHaveTextContent('Preview could not be rendered');
+        expect(screen.getByRole('heading', { name: 'Before' })).toBeInTheDocument();
+        const editor = screen.getByRole('textbox', { name: 'Markdown source' });
+        fireEvent.change(editor, { target: { value: '# Recovered' } });
+        act(() => accepted?.({ documentId: first.documentId, content: '# Recovered', generation: 2 }));
+        expect(await screen.findByRole('heading', { name: 'Recovered' })).toBeInTheDocument();
+        expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+        fireEvent.click(screen.getByRole('tab', { name: /Second/ }));
+        await waitFor(() => expect(activate).toHaveBeenCalled());
+        fireEvent.click(screen.getByRole('button', { name: 'File' }));
+        fireEvent.click(screen.getByRole('menuitem', { name: 'New Window' }));
+        await waitFor(() => expect(newWindow).toHaveBeenCalled());
+    } finally {
+        errors.mockRestore();
+    }
+});
+
+it('recovers the preview after removing content that fails on its first draw', async () => {
+    const errors = jest.spyOn(console, 'error').mockImplementation(() => {});
+    try {
+        let accepted: ((buffer: AcceptedBuffer) => void) | undefined;
+        const adapter: EditorViewAdapter = {
+            ...createRenderedEditorAdapter(),
+            subscribeAcceptedBuffers: (listener): (() => void) => {
+                accepted = listener;
+                return (): void => {
+                    accepted = undefined;
+                };
+            },
+        };
+        mockPreviewDrawFailure = true;
+        renderLivePreviewEditor('> [!NOTE]\n> broken', adapter);
+        expect(await screen.findByRole('alert')).toHaveTextContent('Preview could not be rendered');
+        fireEvent.change(screen.getByRole('textbox', { name: 'Markdown source' }), {
+            target: { value: '# Fixed' },
+        });
+        act(() => accepted?.({ documentId: 'document-1', content: '# Fixed', generation: 1 }));
+        expect(await screen.findByRole('heading', { name: 'Fixed' })).toBeInTheDocument();
+        expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    } finally {
+        errors.mockRestore();
+    }
 });
 
 afterEach((): void => {

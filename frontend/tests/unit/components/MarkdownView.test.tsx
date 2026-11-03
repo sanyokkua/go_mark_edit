@@ -8,6 +8,111 @@ import { createPipeline } from '../../../src/logic/markdown/pipeline';
 
 import MarkdownView, { type CommittedMarkdownPreview } from '../../../src/ui/components/MarkdownView';
 
+let mockAlertThrows = false;
+jest.mock('../../../src/ui/components/AlertBox', () => {
+    const actual = jest.requireActual<typeof import('../../../src/ui/components/AlertBox')>(
+        '../../../src/ui/components/AlertBox',
+    );
+    return {
+        __esModule: true,
+        default: (props: React.ComponentProps<typeof actual.default>): React.JSX.Element => {
+            if (mockAlertThrows) throw new Error('drawing failure');
+            return <actual.default {...props} />;
+        },
+    };
+});
+
+afterEach(() => {
+    mockAlertThrows = false;
+});
+
+it('shows an empty error for the first drawing failure and does not commit or retry it on unrelated updates', () => {
+    const errors = jest.spyOn(console, 'error').mockImplementation(() => {});
+    try {
+        mockAlertThrows = true;
+        const committed = jest.fn();
+        const props = { documentId: 'one', source: '> [!NOTE]\n> Bad', standard: 'full' as const };
+        const { rerender } = render(<MarkdownView {...props} onPreviewCommitted={committed} />);
+        expect(screen.getByRole('alert')).toHaveTextContent('Preview could not be rendered');
+        expect(screen.queryByRole('article')).not.toBeInTheDocument();
+        expect(committed).not.toHaveBeenCalled();
+        rerender(<MarkdownView {...props} onPreviewCommitted={jest.fn()} />);
+        expect(screen.getByRole('alert')).toBeInTheDocument();
+        rerender(<MarkdownView {...props} suspended onPreviewCommitted={committed} />);
+        expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+        expect(committed).not.toHaveBeenCalled();
+    } finally {
+        errors.mockRestore();
+    }
+});
+
+it('confines drawing failures, retains the last successful preview, and recovers', () => {
+    const errors = jest.spyOn(console, 'error').mockImplementation(() => {});
+    try {
+        const committed = jest.fn();
+        const { rerender } = render(
+            <MarkdownView documentId="one" source="# Good" standard="full" onPreviewCommitted={committed} />,
+        );
+        mockAlertThrows = true;
+        rerender(
+            <MarkdownView
+                documentId="one"
+                source={'> [!NOTE]\n> Bad'}
+                standard="full"
+                onPreviewCommitted={committed}
+            />,
+        );
+        expect(screen.getByRole('alert')).toHaveTextContent('Preview could not be rendered');
+        expect(screen.getByRole('heading', { name: 'Good' })).toBeInTheDocument();
+        expect(committed).toHaveBeenCalledTimes(1);
+        rerender(<MarkdownView documentId="one" source="# Recovered" standard="full" onPreviewCommitted={committed} />);
+        expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: 'Recovered' })).toBeInTheDocument();
+        expect(committed).toHaveBeenCalledTimes(2);
+    } finally {
+        errors.mockRestore();
+    }
+});
+
+it('does not expose retained drawing failures or another document’s preview', () => {
+    const errors = jest.spyOn(console, 'error').mockImplementation(() => {});
+    try {
+        const committed = jest.fn();
+        const { rerender } = render(
+            <MarkdownView
+                documentId="one"
+                source={'> [!NOTE]\n> Good'}
+                standard="full"
+                onPreviewCommitted={committed}
+            />,
+        );
+        mockAlertThrows = true;
+        rerender(
+            <MarkdownView
+                documentId="one"
+                source={'> [!NOTE]\n> Bad'}
+                standard="full"
+                onPreviewCommitted={committed}
+            />,
+        );
+        expect(screen.getByRole('alert')).toHaveTextContent('Preview could not be rendered');
+        expect(screen.queryByRole('article')).not.toBeInTheDocument();
+        expect(committed).toHaveBeenCalledTimes(1);
+        rerender(
+            <MarkdownView
+                documentId="two"
+                source={'> [!NOTE]\n> Bad'}
+                standard="full"
+                onPreviewCommitted={committed}
+            />,
+        );
+        expect(screen.getByRole('alert')).toHaveTextContent('Preview could not be rendered');
+        expect(screen.queryByRole('article')).not.toBeInTheDocument();
+    } finally {
+        errors.mockRestore();
+    }
+});
+
 jest.mock('../../../src/logic/markdown/mermaid/queue', () => ({
     mermaidQueue: {
         render: jest.fn().mockResolvedValue({
