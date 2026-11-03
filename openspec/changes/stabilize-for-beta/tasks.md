@@ -186,7 +186,7 @@ area"; editor "Text navigation and line editing keys". Design §7. Owners:
 Spec: app-shell "Window shown only when ready", "Unexpected interface error", "Quitting from the error screen";
 markdown-preview "Live update and degradation". Design §8.
 
-- [ ] 9.1 Arm a 12-second watchdog in `NativeWindowService.Restore` (`internal/application/native_window.go:53-90`)
+- [x] 9.1 Arm a 12-second watchdog in `NativeWindowService.Restore` (`internal/application/native_window.go:53-90`)
       that shows a still-hidden, non-headless window, with an injected clock like `ShutdownClock`
       (`shutdown.go:68-77`); add a test in `tests/go/integration/application/native_window_test.go` with
       `recordingNativeWindow` and a fake clock that `Show` is called without `FrontendReady` and not called twice;

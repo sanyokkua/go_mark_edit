@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"sync"
+	"time"
 
 	"github.com/sanyokkua/go_mark_edit/internal/appmodel"
 )
@@ -17,10 +18,11 @@ func E2EHeadlessEnabled() bool {
 }
 
 const (
-	defaultWindowWidth  = 1024
-	defaultWindowHeight = 768
-	minimumWindowWidth  = 375
-	minimumWindowHeight = 480
+	defaultWindowWidth        = 1024
+	defaultWindowHeight       = 768
+	minimumWindowWidth        = 375
+	minimumWindowHeight       = 480
+	startupVisibilityDeadline = 12 * time.Second
 )
 
 // NativeWindowAPI contains only public Wails operations required to restore
@@ -43,10 +45,23 @@ type NativeWindowService struct {
 	frontendReady bool
 	shown         bool
 	headless      bool
+	clock         ShutdownClock
+	watchdog      ShutdownTimer
 }
 
-func NewNativeWindowService(model *appmodel.AppModelService, native NativeWindowAPI) *NativeWindowService {
-	return &NativeWindowService{model: model, native: native, headless: E2EHeadlessEnabled()}
+// NativeWindowOption configures the window visibility clock.
+type NativeWindowOption struct {
+	Clock ShutdownClock
+}
+
+func NewNativeWindowService(model *appmodel.AppModelService, native NativeWindowAPI, options ...NativeWindowOption) *NativeWindowService {
+	service := &NativeWindowService{model: model, native: native, headless: E2EHeadlessEnabled(), clock: systemShutdownClock{}}
+	for _, option := range options {
+		if option.Clock != nil {
+			service.clock = option.Clock
+		}
+	}
+	return service
 }
 
 // Restore loads the valid persisted layout while Wails keeps the window hidden.
@@ -86,6 +101,17 @@ func (service *NativeWindowService) Restore(ctx context.Context) error {
 	}
 	service.restored = true
 	service.showIfReadyLocked(ctx)
+	if !service.shown && !service.headless {
+		service.watchdog = service.clock.AfterFunc(startupVisibilityDeadline, func() {
+			service.mu.Lock()
+			defer service.mu.Unlock()
+			if service.shown || !service.restored || service.headless || service.native == nil {
+				return
+			}
+			service.native.Show(ctx)
+			service.shown = true
+		})
+	}
 	return nil
 }
 
@@ -113,6 +139,11 @@ func (service *NativeWindowService) Print(ctx context.Context) {
 func (service *NativeWindowService) showIfReadyLocked(ctx context.Context) {
 	if service.shown || !service.restored || !service.frontendReady || service.native == nil {
 		return
+	}
+
+	if service.watchdog != nil {
+		service.watchdog.Stop()
+		service.watchdog = nil
 	}
 
 	if service.headless {

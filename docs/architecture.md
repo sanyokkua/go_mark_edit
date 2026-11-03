@@ -747,6 +747,13 @@ Workspace operations are additive only: New file, New folder, Reveal in file man
 The application does not rename, move, delete or reorder workspace files because it has no watcher or
 undo journal to reconcile those destructive changes safely.
 
+## Window startup
+
+`internal/application/native_window.go` restores the saved native geometry before showing the
+window. Frontend readiness normally triggers the one-shot show; if readiness never arrives, a
+12-second watchdog shows the restored window so the startup failure screen remains visible. The
+watchdog does not mark the frontend ready and never shows a headless E2E window.
+
 ## Shutdown
 
 `internal/application/shutdown.go` owns the native close and quit protocol; `frontend/src/app/useShutdown.ts`
