@@ -289,7 +289,7 @@ No spec change. Design §12. Owners: `scripts/build`, `scripts/verify`, `scripts
 No spec change. Design §12. Owners: `frontend/src/logic/markdown/highlight.ts`, the preview's rehype pipeline,
 `frontend/package.json`.
 
-- [ ] 14.1 Replace `rehype-highlight` with a small rehype plugin on `createLowlight()` registering only the app's 26
+- [x] 14.1 Replace `rehype-highlight` with a small rehype plugin on `createLowlight()` registering only the app's 26
       grammars and reading code text with `hast-util-to-text`, keeping class names and the unknown-language behaviour, and remove the direct `mdast-util-math`
       dependency; add a unit test comparing highlighted output for every registered language; verify preview tests
       pass, `bundle-scan` passes, and the main chunk shrinks (record before and after sizes).

@@ -390,7 +390,7 @@ from the same highlight palette across all six theme and mode combinations, so b
 remain consistent with the shared syntax colors. `CodeEditor.tsx` applies the root palette after
 Monaco mounts and forces a view repaint after palette changes, so unfocused lines do not retain
 token color ids from the previous palette. This does not change editor content, selection or undo. The preview
-pipeline uses `frontend/src/logic/markdown/highlight.ts` for its explicit fenced-language registry and
+pipeline uses `frontend/src/logic/markdown/highlight.ts` with a lowlight instance containing only its explicit fenced-language registry and
 200,000-character guard; `MarkdownView.tsx` loads the generated unscoped highlight rules, which follow
 the active tokens without re-parsing the document.
 

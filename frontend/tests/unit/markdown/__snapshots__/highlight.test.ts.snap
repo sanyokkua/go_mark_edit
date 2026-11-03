@@ -1,0 +1,243 @@
+// Jest Snapshot v1, https://jestjs.io/docs/snapshot-testing
+
+exports[`preserves rendered highlighting for bash: echo hello 1`] = `
+"<code class="hljs language-bash"><span class="hljs-built_in">echo</span> hello
+</code>"
+`;
+
+exports[`preserves rendered highlighting for c: int main(void) { return 0; } 1`] = `
+"<code class="hljs language-c"><span class="hljs-type">int</span> <span class="hljs-title function_">main</span><span class="hljs-params">(<span class="hljs-type">void</span>)</span> { <span class="hljs-keyword">return</span> <span class="hljs-number">0</span>; }
+</code>"
+`;
+
+exports[`preserves rendered highlighting for console: echo hello 1`] = `
+"<code class="hljs language-console"><span class="hljs-built_in">echo</span> hello
+</code>"
+`;
+
+exports[`preserves rendered highlighting for cpp: int main() { return 0; } 1`] = `
+"<code class="hljs language-cpp"><span class="hljs-function"><span class="hljs-type">int</span> <span class="hljs-title">main</span><span class="hljs-params">()</span> </span>{ <span class="hljs-keyword">return</span> <span class="hljs-number">0</span>; }
+</code>"
+`;
+
+exports[`preserves rendered highlighting for cs: class Main {} 1`] = `
+"<code class="hljs language-cs"><span class="hljs-keyword">class</span> <span class="hljs-title">Main</span> {}
+</code>"
+`;
+
+exports[`preserves rendered highlighting for csharp: class Main {} 1`] = `
+"<code class="hljs language-csharp"><span class="hljs-keyword">class</span> <span class="hljs-title">Main</span> {}
+</code>"
+`;
+
+exports[`preserves rendered highlighting for css: body { color: red; } 1`] = `
+"<code class="hljs language-css"><span class="hljs-selector-tag">body</span> { <span class="hljs-attribute">color</span>: red; }
+</code>"
+`;
+
+exports[`preserves rendered highlighting for diff: +hello 1`] = `
+"<code class="hljs language-diff"><span class="hljs-addition">+hello</span>
+</code>"
+`;
+
+exports[`preserves rendered highlighting for docker: FROM alpine 1`] = `
+"<code class="hljs language-docker"><span class="hljs-keyword">FROM</span> alpine
+</code>"
+`;
+
+exports[`preserves rendered highlighting for dockerfile: FROM alpine 1`] = `
+"<code class="hljs language-dockerfile"><span class="hljs-keyword">FROM</span> alpine
+</code>"
+`;
+
+exports[`preserves rendered highlighting for go: package main 1`] = `
+"<code class="hljs language-go"><span class="hljs-keyword">package</span> main
+</code>"
+`;
+
+exports[`preserves rendered highlighting for html: <div>hello</div> 1`] = `
+"<code class="hljs language-html"><span class="hljs-tag">&lt;<span class="hljs-name">div</span>&gt;</span>hello<span class="hljs-tag">&lt;/<span class="hljs-name">div</span>&gt;</span>
+</code>"
+`;
+
+exports[`preserves rendered highlighting for ini: [section]\\nanswer=true 1`] = `
+"<code class="hljs language-ini"><span class="hljs-section">[section]</span>
+<span class="hljs-attr">answer</span>=<span class="hljs-literal">true</span>
+</code>"
+`;
+
+exports[`preserves rendered highlighting for java: class Main {} 1`] = `
+"<code class="hljs language-java"><span class="hljs-keyword">class</span> <span class="hljs-title class_">Main</span> {}
+</code>"
+`;
+
+exports[`preserves rendered highlighting for javascript: const answer = 42; 1`] = `
+"<code class="hljs language-javascript"><span class="hljs-keyword">const</span> answer = <span class="hljs-number">42</span>;
+</code>"
+`;
+
+exports[`preserves rendered highlighting for json: {"answer":42} 1`] = `
+"<code class="hljs language-json"><span class="hljs-punctuation">{</span><span class="hljs-attr">"answer"</span><span class="hljs-punctuation">:</span><span class="hljs-number">42</span><span class="hljs-punctuation">}</span>
+</code>"
+`;
+
+exports[`preserves rendered highlighting for jsonc: {"answer":42} 1`] = `
+"<code class="hljs language-jsonc"><span class="hljs-punctuation">{</span><span class="hljs-attr">"answer"</span><span class="hljs-punctuation">:</span><span class="hljs-number">42</span><span class="hljs-punctuation">}</span>
+</code>"
+`;
+
+exports[`preserves rendered highlighting for jsx: const x = <div />; 1`] = `
+"<code class="hljs language-jsx"><span class="hljs-keyword">const</span> x = <span class="xml"><span class="hljs-tag">&lt;<span class="hljs-name">div</span> /&gt;</span></span>;
+</code>"
+`;
+
+exports[`preserves rendered highlighting for kotlin: fun main() {} 1`] = `
+"<code class="hljs language-kotlin"><span class="hljs-function"><span class="hljs-keyword">fun</span> <span class="hljs-title">main</span><span class="hljs-params">()</span></span> {}
+</code>"
+`;
+
+exports[`preserves rendered highlighting for kt: fun main() {} 1`] = `
+"<code class="hljs language-kt"><span class="hljs-function"><span class="hljs-keyword">fun</span> <span class="hljs-title">main</span><span class="hljs-params">()</span></span> {}
+</code>"
+`;
+
+exports[`preserves rendered highlighting for make: all:\\n	echo hello 1`] = `
+"<code class="hljs language-make"><span class="hljs-section">all:</span>
+	echo hello
+</code>"
+`;
+
+exports[`preserves rendered highlighting for makefile: all:\\n	echo hello 1`] = `
+"<code class="hljs language-makefile"><span class="hljs-section">all:</span>
+	echo hello
+</code>"
+`;
+
+exports[`preserves rendered highlighting for markdown: # Heading 1`] = `
+"<code class="hljs language-markdown"><span class="hljs-section"># Heading</span>
+</code>"
+`;
+
+exports[`preserves rendered highlighting for markdown: # Heading\\n\\n**bold** and \`code\` 1`] = `
+"<code class="hljs language-markdown"><span class="hljs-section"># Heading</span>
+
+<span class="hljs-strong">**bold**</span> and <span class="hljs-code">\`code\`</span>
+</code>"
+`;
+
+exports[`preserves rendered highlighting for md: # Heading 1`] = `
+"<code class="hljs language-md"><span class="hljs-section"># Heading</span>
+</code>"
+`;
+
+exports[`preserves rendered highlighting for mk: all:\\n	echo hello 1`] = `
+"<code class="hljs language-mk"><span class="hljs-section">all:</span>
+	echo hello
+</code>"
+`;
+
+exports[`preserves rendered highlighting for patch: +hello 1`] = `
+"<code class="hljs language-patch"><span class="hljs-addition">+hello</span>
+</code>"
+`;
+
+exports[`preserves rendered highlighting for php: <?php echo "hi"; 1`] = `
+"<code class="hljs language-php"><span class="hljs-meta">&lt;?php</span> <span class="hljs-keyword">echo</span> <span class="hljs-string">"hi"</span>;
+</code>"
+`;
+
+exports[`preserves rendered highlighting for php: <div><?php echo "hi"; ?></div> 1`] = `
+"<code class="hljs language-php">&lt;div&gt;<span class="hljs-meta">&lt;?php</span> <span class="hljs-keyword">echo</span> <span class="hljs-string">"hi"</span>; <span class="hljs-meta">?&gt;</span>&lt;/div&gt;
+</code>"
+`;
+
+exports[`preserves rendered highlighting for powershell: Write-Host "hello" 1`] = `
+"<code class="hljs language-powershell"><span class="hljs-built_in">Write-Host</span> <span class="hljs-string">"hello"</span>
+</code>"
+`;
+
+exports[`preserves rendered highlighting for python: def f(): return 1 1`] = `
+"<code class="hljs language-python"><span class="hljs-keyword">def</span> <span class="hljs-title function_">f</span>(): <span class="hljs-keyword">return</span> <span class="hljs-number">1</span>
+</code>"
+`;
+
+exports[`preserves rendered highlighting for rs: fn main() {} 1`] = `
+"<code class="hljs language-rs"><span class="hljs-keyword">fn</span> <span class="hljs-title function_">main</span>() {}
+</code>"
+`;
+
+exports[`preserves rendered highlighting for ruby: def hello; end 1`] = `
+"<code class="hljs language-ruby"><span class="hljs-keyword">def</span> <span class="hljs-title function_">hello</span>; <span class="hljs-keyword">end</span>
+</code>"
+`;
+
+exports[`preserves rendered highlighting for rust: fn main() {} 1`] = `
+"<code class="hljs language-rust"><span class="hljs-keyword">fn</span> <span class="hljs-title function_">main</span>() {}
+</code>"
+`;
+
+exports[`preserves rendered highlighting for sass: $color: red; 1`] = `
+"<code class="hljs language-sass"><span class="hljs-variable">$color</span>: red;
+</code>"
+`;
+
+exports[`preserves rendered highlighting for scss: $color: red; 1`] = `
+"<code class="hljs language-scss"><span class="hljs-variable">$color</span>: red;
+</code>"
+`;
+
+exports[`preserves rendered highlighting for sh: echo hello 1`] = `
+"<code class="hljs language-sh"><span class="hljs-built_in">echo</span> hello
+</code>"
+`;
+
+exports[`preserves rendered highlighting for shell: echo hello 1`] = `
+"<code class="hljs language-shell"><span class="hljs-built_in">echo</span> hello
+</code>"
+`;
+
+exports[`preserves rendered highlighting for sql: SELECT 1; 1`] = `
+"<code class="hljs language-sql"><span class="hljs-keyword">SELECT</span> <span class="hljs-number">1</span>;
+</code>"
+`;
+
+exports[`preserves rendered highlighting for swift: func main() {} 1`] = `
+"<code class="hljs language-swift"><span class="hljs-keyword">func</span> <span class="hljs-title function_">main</span>() {}
+</code>"
+`;
+
+exports[`preserves rendered highlighting for toml: [section]\\nanswer=true 1`] = `
+"<code class="hljs language-toml"><span class="hljs-section">[section]</span>
+<span class="hljs-attr">answer</span>=<span class="hljs-literal">true</span>
+</code>"
+`;
+
+exports[`preserves rendered highlighting for tsx: const x: number = 1; 1`] = `
+"<code class="hljs language-tsx"><span class="hljs-keyword">const</span> <span class="hljs-attr">x</span>: <span class="hljs-built_in">number</span> = <span class="hljs-number">1</span>;
+</code>"
+`;
+
+exports[`preserves rendered highlighting for typescript: const answer: number = 42; 1`] = `
+"<code class="hljs language-typescript"><span class="hljs-keyword">const</span> <span class="hljs-attr">answer</span>: <span class="hljs-built_in">number</span> = <span class="hljs-number">42</span>;
+</code>"
+`;
+
+exports[`preserves rendered highlighting for xml: <root>hello</root> 1`] = `
+"<code class="hljs language-xml"><span class="hljs-tag">&lt;<span class="hljs-name">root</span>&gt;</span>hello<span class="hljs-tag">&lt;/<span class="hljs-name">root</span>&gt;</span>
+</code>"
+`;
+
+exports[`preserves rendered highlighting for xml: <script>const value = 1;</script><style>body { color: red; }</style> 1`] = `
+"<code class="hljs language-xml"><span class="hljs-tag">&lt;<span class="hljs-name">script</span>&gt;</span><span class="javascript"><span class="hljs-keyword">const</span> value = <span class="hljs-number">1</span>;</span><span class="hljs-tag">&lt;/<span class="hljs-name">script</span>&gt;</span><span class="hljs-tag">&lt;<span class="hljs-name">style</span>&gt;</span><span class="css"><span class="hljs-selector-tag">body</span> { <span class="hljs-attribute">color</span>: red; }</span><span class="hljs-tag">&lt;/<span class="hljs-name">style</span>&gt;</span>
+</code>"
+`;
+
+exports[`preserves rendered highlighting for yaml: answer: true 1`] = `
+"<code class="hljs language-yaml"><span class="hljs-attr">answer:</span> <span class="hljs-literal">true</span>
+</code>"
+`;
+
+exports[`preserves rendered highlighting for zsh: echo hello 1`] = `
+"<code class="hljs language-zsh"><span class="hljs-built_in">echo</span> hello
+</code>"
+`;
