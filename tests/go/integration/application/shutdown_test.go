@@ -617,6 +617,12 @@ func (model *shutdownModel) CloseStatus() ([]string, bool) {
 	return append([]string(nil), model.dirtyDocuments...), model.pendingWrite
 }
 
+func (model *shutdownModel) ClaimPreparedQuit(id string) *apperr.ClassifiedError {
+	model.SetPendingClose(apperr.PendingClose{ID: id, Owner: apperr.PendingCloseOwnerNative})
+	model.BeginShutdownDiscard()
+	return nil
+}
+
 func (model *shutdownModel) BeginShutdownDrain() {
 	model.mu.Lock()
 	model.draining = true

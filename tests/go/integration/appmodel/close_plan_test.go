@@ -726,8 +726,8 @@ func TestPrepareCloseSupersedesAnAbandonedPlan(t *testing.T) {
 		t.Fatalf("ExecuteClosePlan = %+v", transition)
 	}
 	state, _ = service.GetState(context.Background())
-	if len(state.Snapshot.OrderedDocumentIDs) != 0 {
-		t.Fatalf("documents still open after quit: %v", state.Snapshot.OrderedDocumentIDs)
+	if len(state.Snapshot.OrderedDocumentIDs) != 2 {
+		t.Fatalf("prepared quit must retain documents: %v", state.Snapshot.OrderedDocumentIDs)
 	}
 }
 

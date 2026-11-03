@@ -150,8 +150,8 @@ func assertQuitWarningOutcome(t *testing.T, service *AppModelService, emitter *r
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(state.Snapshot.Documents) != 0 {
-		t.Fatalf("documents retained after quit: %+v", state.Snapshot.Documents)
+	if len(state.Snapshot.Documents) != 1 {
+		t.Fatalf("prepared quit must retain document: %+v", state.Snapshot.Documents)
 	}
 }
 

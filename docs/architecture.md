@@ -784,8 +784,11 @@ Reload waits up to one second per attempt for pending text to reach the backend 
 acknowledgment; failure or timeout leaves the text available for retry. `AcknowledgeRecoveryClose`
 reserves the current frontend-owned decision. `DiscardAndAuthorizeQuit` fences new document writes,
 cancels scheduled autosaves and waits for writes already admitted before exit. Native ownership
-prevents stale frontend close plans from writing or removing tabs. Cancel releases the fence and
-resumes retained autosave intent. There is no session restore.
+prevents stale frontend close plans from writing or removing tabs. A completed ordinary quit plan retains its tabs;
+authorization atomically verifies its request, tab set, content revisions and document save state while transferring ownership and
+installing the discard fence. The prepared-quit fence refuses subsequent buffer, reload and tab mutations until a
+failed drain releases it. This keeps the tabs available if native confirmation takes over and is cancelled.
+Cancel releases the fence and resumes retained autosave intent. There is no session restore.
 
 ## Persistence
 

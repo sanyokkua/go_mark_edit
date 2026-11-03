@@ -36,6 +36,27 @@ it('sets attributes only on the document element', (): void => {
     child.remove();
 });
 
+it('reconciles a system change between applying Auto and subscribing', (): void => {
+    const media = {
+        matches: true,
+        addEventListener: jest.fn(),
+        removeEventListener: jest.fn(),
+    };
+    applyThemeToRoot({ mode: resolveAppearance('auto', () => media.matches), theme: 'material' }, document);
+    expect(document.documentElement).toHaveAttribute('data-mode', 'dark');
+
+    // The OS changed before a change listener was registered.
+    media.matches = false;
+    const dispose = observeSystemAppearance(
+        'auto',
+        () => media,
+        (mode) => applyThemeToRoot({ mode, theme: 'material' }, document),
+    );
+
+    expect(document.documentElement).toHaveAttribute('data-mode', 'light');
+    dispose();
+});
+
 it('subscribes to system appearance only while Auto is selected', (): void => {
     const listener = jest.fn();
     const media = {

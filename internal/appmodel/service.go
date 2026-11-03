@@ -47,6 +47,7 @@ type AppModelService struct {
 	conflictQueue                  *conflictQueue
 	shutdownDraining               bool
 	shutdownDiscarding             bool
+	preparedQuitFenced             bool
 	discardEpoch                   uint64
 	metadata                       FileMetadataRepository
 	recentItems                    RecentItemsRepository
@@ -224,6 +225,7 @@ func (service *AppModelService) EndShutdownDrain() {
 	service.mu.Lock()
 	service.shutdownDraining = false
 	service.shutdownDiscarding = false
+	service.preparedQuitFenced = false
 	var pending []string
 	for id, document := range service.state.documents {
 		if document.autosave != nil {
@@ -240,6 +242,10 @@ func (service *AppModelService) EndShutdownDrain() {
 func (service *AppModelService) BeginShutdownDiscard() {
 	service.mu.Lock()
 	defer service.mu.Unlock()
+	service.beginShutdownDiscardLocked()
+}
+
+func (service *AppModelService) beginShutdownDiscardLocked() {
 	service.shutdownDraining = true
 	service.shutdownDiscarding = true
 	service.discardEpoch++

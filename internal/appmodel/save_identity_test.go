@@ -221,5 +221,5 @@ func TestCommittedDurabilityWarningSurvivesQuit(t *testing.T) {
 	}
 	executeWarningClose(t, service, id, apperr.ClosePlanQuit)
 	assertWarningDisk(t, path)
-	assertWarningEventAndState(t, recorder, service, id, true)
+	assertWarningEventAndState(t, recorder, service, id, false)
 }

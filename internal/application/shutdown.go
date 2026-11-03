@@ -55,6 +55,7 @@ type ShutdownSnapshot struct {
 // model owns document truth and the drain; this owner owns only protocol state.
 type ShutdownModel interface {
 	CloseStatus() (dirtyDocuments []string, pendingWork bool)
+	ClaimPreparedQuit(closeID string) *apperr.ClassifiedError
 	BeginShutdownDrain()
 	BeginShutdownDiscard()
 	EndShutdownDrain()
@@ -319,7 +320,21 @@ func (owner *ShutdownOwner) authorize(ctx context.Context, closeID string, disca
 		return owner.staleCloseRefusal(closeID)
 	}
 	owner.previousState = owner.state
-	owner.claimDrainLocked(closeID, discard, "frontend authorized close")
+	if !discard && owner.state == ShutdownAwaiting {
+		if owner.model == nil {
+			owner.mu.Unlock()
+			return owner.staleCloseRefusal(closeID)
+		}
+		if refusal := owner.model.ClaimPreparedQuit(closeID); refusal != nil {
+			owner.mu.Unlock()
+			return refusal
+		}
+		owner.stopTimerLocked()
+		owner.setStateLocked(ShutdownDraining, "frontend authorized prepared quit")
+		discard = true
+	} else {
+		owner.claimDrainLocked(closeID, discard, "frontend authorized close")
+	}
 	owner.mu.Unlock()
 	if refusal := owner.drain(discard); refusal != nil {
 		owner.finishDrainFailure(ctx, closeID, refusal, false)

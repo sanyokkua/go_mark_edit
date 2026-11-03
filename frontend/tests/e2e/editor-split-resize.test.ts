@@ -119,16 +119,21 @@ test('dragging and keyboard resizing change real pane widths without losing edit
         const previewPane = page.getByRole('region', { name: 'Preview pane' });
         await expect(editorPane).toBeVisible();
         await expect(previewPane).toBeVisible();
-        const editorBox = await editorPane.boundingBox();
-        const previewBox = await previewPane.boundingBox();
-        if (editorBox === null || previewBox === null) throw new Error('panes are not measurable');
         if (width <= 376) {
             await expect(divider).toHaveCount(0);
-            expect(previewBox.y).toBeGreaterThanOrEqual(editorBox.y + editorBox.height);
         } else {
             await expect(divider).toBeVisible();
-            expect(previewBox.x).toBeGreaterThanOrEqual(editorBox.x + editorBox.width);
         }
+        await expect
+            .poll(() =>
+                page.evaluate((stacked) => {
+                    const editor = document.querySelector('[data-pane-identity="editor"]')?.getBoundingClientRect();
+                    const preview = document.querySelector('[data-pane-identity="preview"]')?.getBoundingClientRect();
+                    if (!editor || !preview) return Number.NEGATIVE_INFINITY;
+                    return stacked ? preview.y - editor.bottom : preview.x - editor.right;
+                }, width <= 376),
+            )
+            .toBeGreaterThanOrEqual(0);
         expect(await currentRatio(page)).toBe(0.8);
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     }

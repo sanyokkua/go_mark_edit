@@ -259,8 +259,8 @@ default. Monaco's read-only mode already refuses the line edits.
   the same ID and returns focus to Reload interface, keeping queues and scheduling intact.
 - Confirmed recovery discard uses the additive `DiscardAndAuthorizeQuit(request, closeID)` bound method, exposed
   through the existing handler/holder/native adapter/shutdown controller. It reuses close-ID validation, classified
-  envelopes, drain failure handling and the one-use native permit. Existing `PrepareClose` and `AuthorizeQuit`
-  intentionally flush scheduled autosaves, so neither can implement confirmed recovery discard. No existing method
+  envelopes, drain failure handling and the one-use native permit. Ordinary quit preparation may flush scheduled autosaves before decisions; recovery discard uses the separate
+  discard authorization path without starting them. No existing method
   signature changes and no second close-plan owner is introduced.
 - The model's reversible discard fence atomically blocks new document-write admissions and stops timer handles
   while retaining scheduled autosave intents under `service.mu`. `runAutosave` checks the fence before claiming an
@@ -286,8 +286,11 @@ default. Monaco's read-only mode already refuses the line edits.
   `useShutdown` and `useCloseWorkflow` never start ordinary close handling for native-owned hydration; delayed
   events do not authorize anything. The native transfer and model structural guards serialize on `service.mu` in
   the established owner-to-model lock order. Prepare/Resolve/Execute and terminal tab removal refuse native-owned
-  work. A quit close plan captures its current frontend-owned native close ID and validates that same ID before
-  sealing and again under the final removal lock after write waits. Native transfer, Cancel or a fresh ID cannot
+  work. A quit close plan captures its current frontend-owned native close ID, executes requested saves, and retains all
+  documents and the completed revision-bound plan. Authorization validates that proof, including effective dirty and detached state, and installs the discard
+  fence and native ownership together under the model lock. The prepared-quit fence also refuses new buffer,
+  reload and tab mutations until drain failure releases it; the native-confirmation fence still retains updates.
+  Native transfer, Cancel or a fresh ID cannot
   revive a stale plan or remove tabs. Regular tab/window plans retain their origin but cannot remove tabs while
   native ownership is active. This protects the race after Reload's final frontend check and during bootstrap.
 - Record these public contract and lifecycle changes in `docs/index.md` and a durable decision in

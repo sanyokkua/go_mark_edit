@@ -60,7 +60,7 @@ func (commands documentCommands) UpdateBuffer(ctx context.Context, documentID, c
 		commands.service.mu.Unlock()
 		return apperr.NotFound(documentID)
 	}
-	if document.closing {
+	if document.closing || commands.service.preparedQuitFenced {
 		commands.service.mu.Unlock()
 		return apperr.Busy()
 	}

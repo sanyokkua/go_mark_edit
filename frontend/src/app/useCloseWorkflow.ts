@@ -192,7 +192,10 @@ export function useCloseWorkflow({ session, shutdown, conflicts, recoverySurface
                         target.choice === 'save' &&
                         target.documentId !== (session.activeDocument?.documentId ?? session.activeBuffer?.documentId),
                 );
-                if (result.error === undefined && result.status === 'closed') {
+                if (
+                    result.error === undefined &&
+                    (result.status === 'closed' || (context.origin.type === 'native' && result.status === 'noop'))
+                ) {
                     for (const target of backgroundSaves) writes.notifyInactiveFormatSkipped(target.documentId);
                 } else if (result.error !== undefined && backgroundSaves.length > 0) {
                     // The batch stops on its first failed write. A still-open, clean document
@@ -234,6 +237,10 @@ export function useCloseWorkflow({ session, shutdown, conflicts, recoverySurface
                 }
                 if (!isCurrent(context.origin)) return result;
                 if (context.origin.type === 'native') {
+                    if (result.status !== 'noop') {
+                        await fail(new Error('The quit plan was not prepared.'), context);
+                        return result;
+                    }
                     const refusal = await shutdown.authorizeQuit(context.origin.closeId);
                     if (refusal !== undefined) {
                         await fail(refusal, context);

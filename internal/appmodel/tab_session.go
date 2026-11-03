@@ -12,6 +12,10 @@ import (
 func (service *AppModelService) ActivateDocument(ctx context.Context, documentID string, expectedTabSetRevision uint64) apperr.DocumentTransitionOutcome {
 	service.mu.Lock()
 
+	if service.preparedQuitFenced {
+		service.mu.Unlock()
+		return bridge.Refused[apperr.DocumentTransitionResult](apperr.ClassifiedConflict, documentID, "Shutdown is in progress.", apperr.RemediationRetry)
+	}
 	if service.state.tabSetRevision != expectedTabSetRevision {
 		service.mu.Unlock()
 		return bridge.Refused[apperr.DocumentTransitionResult](apperr.ClassifiedConflict, documentID, "The tab set changed; activation must be retried.", apperr.RemediationRetry)

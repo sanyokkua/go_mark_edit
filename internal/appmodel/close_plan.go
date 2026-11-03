@@ -37,6 +37,8 @@ func (service *AppModelService) validateCloseOwnershipLocked(expectedID string) 
 type closePlanTarget struct {
 	documentID         string
 	contentRevision    uint64
+	dirty              bool
+	detached           bool
 	choice             apperr.CloseChoice
 	normalizationToken string
 	savePath           string
@@ -122,7 +124,7 @@ func (service *AppModelService) captureClosePlanLocked(kind apperr.ClosePlanKind
 			WriteInFlight: metadata.WriteInFlight, Status: metadata.Status,
 		}
 		plan.summary.Targets = append(plan.summary.Targets, target)
-		plan.targets = append(plan.targets, closePlanTarget{documentID: documentID, contentRevision: metadata.ContentRevision})
+		plan.targets = append(plan.targets, closePlanTarget{documentID: documentID, contentRevision: metadata.ContentRevision, dirty: metadata.Dirty, detached: document.detached})
 		if metadata.Dirty {
 			plan.summary.DirtyTargetIDs = append(plan.summary.DirtyTargetIDs, documentID)
 		}
@@ -350,9 +352,9 @@ func (service *AppModelService) ResolveClosePlan(ctx context.Context, planID str
 	return result
 }
 
-// ExecuteClosePlan serializes all requested saves in tab order and only then
-// performs one removal transition. A failed write expires the plan while
-// leaving every tab open and preserving earlier successful disk commits.
+// ExecuteClosePlan serializes requested saves in tab order. Ordinary closes
+// remove targets after saving; quit retains them until shutdown authorization.
+// A failed write leaves every tab open and preserves earlier disk commits.
 func (service *AppModelService) ExecuteClosePlan(ctx context.Context, planID string) apperr.TabTransitionResult {
 	service.mu.Lock()
 	plan := service.closePlans[planID]
@@ -421,6 +423,26 @@ func (service *AppModelService) ExecuteClosePlan(ctx context.Context, planID str
 	for _, target := range plan.targets {
 		ids = append(ids, target.documentID)
 	}
+	if plan.summary.Kind == apperr.ClosePlanQuit {
+		for index := range plan.targets {
+			target := &plan.targets[index]
+			document := service.state.documents[target.documentID]
+			dirty := service.effectiveDocumentMetadataLocked(document).Dirty
+			if (target.choice == apperr.CloseChoiceSave && (dirty || document.detached)) ||
+				(target.choice != apperr.CloseChoiceSave && (dirty != target.dirty || document.detached != target.detached)) {
+				service.invalidateClosePlanLocked(plan, apperr.ClosePlanFailed)
+				service.mu.Unlock()
+				return bridge.Refused[apperr.TabTransitionResult](apperr.ClassifiedConflict, planID, "A document's save state changed during the quit plan.", apperr.RemediationRetry)
+			}
+			target.dirty = dirty
+			target.detached = document.detached
+		}
+		plan.summary.Status = apperr.ClosePlanComplete
+		service.releaseClosePlanReservationsLocked(plan)
+		result := service.tabTransitionSuccess(apperr.TabTransitionNoop, "")
+		service.mu.Unlock()
+		return result
+	}
 	revision, nativeCloseID := plan.summary.TabSetRevision, plan.nativeCloseID
 	service.mu.Unlock()
 
@@ -440,6 +462,27 @@ func (service *AppModelService) ExecuteClosePlan(ctx context.Context, planID str
 	}
 	service.mu.Unlock()
 	return transition
+}
+
+// ClaimPreparedQuit validates the completed plan and transfers the close to
+// native ownership under the same lock that fences later document writes.
+func (service *AppModelService) ClaimPreparedQuit(closeID string) *apperr.ClassifiedError {
+	service.mu.Lock()
+	defer service.mu.Unlock()
+	plan := service.closePlans[service.activeClosePlan]
+	if closeID == "" || plan == nil || plan.nativeCloseID != closeID || plan.summary.Kind != apperr.ClosePlanQuit || plan.summary.Status != apperr.ClosePlanComplete || service.validateClosePlanLocked(plan) != nil {
+		return bridge.Classified(apperr.ClassifiedConflict, closeID, "The quit plan is no longer current.", apperr.RemediationRetry)
+	}
+	for _, target := range plan.targets {
+		document := service.state.documents[target.documentID]
+		if service.effectiveDocumentMetadataLocked(document).Dirty != target.dirty || document.detached != target.detached {
+			return bridge.Classified(apperr.ClassifiedConflict, closeID, "A document's save state changed after the quit plan.", apperr.RemediationRetry)
+		}
+	}
+	service.pendingClose = &apperr.PendingClose{ID: closeID, Owner: apperr.PendingCloseOwnerNative}
+	service.preparedQuitFenced = true
+	service.beginShutdownDiscardLocked()
+	return nil
 }
 
 func (service *AppModelService) executeClosePlanSaveAs(ctx context.Context, target closePlanTarget, planID string) apperr.WriteResult {

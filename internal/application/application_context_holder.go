@@ -155,6 +155,13 @@ func (port applicationShutdownModel) CloseStatus() ([]string, bool) {
 	return model.CloseStatus()
 }
 
+func (port applicationShutdownModel) ClaimPreparedQuit(id string) *apperr.ClassifiedError {
+	if model := port.model(); model != nil {
+		return model.ClaimPreparedQuit(id)
+	}
+	return bridge.Classified(apperr.ClassifiedConflict, id, "The quit plan is unavailable.", apperr.RemediationRetry)
+}
+
 func (port applicationShutdownModel) BeginShutdownDrain() {
 	if model := port.model(); model != nil {
 		model.BeginShutdownDrain()

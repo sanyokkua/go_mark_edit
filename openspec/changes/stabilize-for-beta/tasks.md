@@ -212,8 +212,9 @@ markdown-preview "Live update and degradation". Design §8.
       released exactly once on every terminal path. A ready-frontend ten-second timeout always native-confirms
       possible undelivered text, even with clean backend metadata; normal responsive/pre-readiness close stays intact.
       Serialize ownership transfer with model guards: quit plans capture their frontend-owned native close ID and
-      validate it before sealing and final tab removal after waiting; native-owned hydration never starts normal
-      close work, and transfer/Cancel/fresh IDs cannot revive stale plans. Reuse the existing removal implementation.
+      retain documents after executing requested saves. Atomically validate the completed revision-bound quit plan and
+      install the discard fence and native ownership at authorization; native-owned hydration never starts normal
+      close work, and transfer/Cancel/fresh IDs cannot revive stale plans. Ordinary closes reuse existing removal.
       Add failing adapter/hook/integration tests for crash-unmount retention, older in-flight plus newer pending,
       two-document reload, rejection/timeout/retry/late completion, focus, pending-only discard count and all close
       origins. Add Go race tests for scheduled/admitted/queued writes, timer installation and fence races,
@@ -292,7 +293,8 @@ No spec change. Design §12. Owners: `frontend/src/logic/markdown/highlight.ts`,
 - [x] 14.1 Replace `rehype-highlight` with a small rehype plugin on `createLowlight()` registering only the app's 26
       grammars and reading code text with `hast-util-to-text`, keeping class names and the unknown-language behaviour, and remove the direct `mdast-util-math`
       dependency; add a unit test comparing highlighted output for every registered language; verify preview tests
-      pass, `bundle-scan` passes, and the main chunk shrinks (record before and after sizes).
+      pass, `bundle-scan` passes, and the main chunk shrinks (record before and after sizes). The application entry
+      fell from 1,469,513 to 1,425,551 bytes (gzip: 439,589 to 429,175 bytes).
 
 ## 15. Test hygiene
 
@@ -325,3 +327,11 @@ Existing spec: editor "View arrangements". Owner: `frontend/src/ui/widgets/Edito
 - [x] 16.1 Keep both panes visible in Split at CSS widths of 375 and 376 px, with the existing vertical layout and no
       divider, without changing the stored arrangement or split ratio. Cover resize across 376/377 px with integration
       and real-backend browser geometry tests, and preserve Editor, Preview and Reading behavior.
+
+## 17. System appearance reconciliation
+
+Existing spec: appearance-themes "Auto mode follows the system". Owner: `frontend/src/logic/theme/theme.ts`.
+
+- [x] 17.1 Reconcile the current system appearance after subscribing in Auto mode so a change between the initial
+      application and listener registration cannot leave the palette stale. Cover the missed-event interval and
+      listener cleanup, and exercise appearance changes in the real-backend browser suite.

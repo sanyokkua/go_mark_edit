@@ -392,7 +392,7 @@ func (service *AppModelService) applyDetached(ctx context.Context, documentID st
 	service.mu.Lock()
 	defer service.mu.Unlock()
 	document, ok := service.state.documents[documentID]
-	if !ok || document.metadata.ContentRevision != expectedRevision {
+	if service.preparedQuitFenced || !ok || document.metadata.ContentRevision != expectedRevision {
 		return errConflictRevisionChanged
 	}
 	if document.detached && !document.baselineVersion.Exists {
@@ -412,7 +412,7 @@ func (service *AppModelService) refreshDiskVersion(ctx context.Context, document
 	service.mu.Lock()
 	defer service.mu.Unlock()
 	document, ok := service.state.documents[documentID]
-	if !ok || document.metadata.ContentRevision != expectedRevision {
+	if service.preparedQuitFenced || !ok || document.metadata.ContentRevision != expectedRevision {
 		return errConflictRevisionChanged
 	}
 	before := service.snapshotLocked()
@@ -426,7 +426,7 @@ func (service *AppModelService) applyReload(ctx context.Context, documentID stri
 	service.mu.Lock()
 	defer service.mu.Unlock()
 	document, ok := service.state.documents[documentID]
-	if !ok || document.metadata.ContentRevision != expectedRevision {
+	if service.preparedQuitFenced || !ok || document.metadata.ContentRevision != expectedRevision {
 		return errConflictRevisionChanged
 	}
 	if !stable.Version.Equal(fileVersionFromWire(detected)) {

@@ -45,6 +45,9 @@ func (service *AppModelService) NewDocument(ctx context.Context, expectedTabSetR
 	service.mu.Lock()
 	defer service.mu.Unlock()
 
+	if service.preparedQuitFenced {
+		return bridge.Refused[apperr.DocumentTransitionResult](apperr.ClassifiedConflict, "Shutdown is in progress.", apperr.RemediationRetry)
+	}
 	if service.state.tabSetRevision != expectedTabSetRevision {
 		return bridge.Refused[apperr.DocumentTransitionResult](
 			apperr.ClassifiedConflict,
@@ -224,6 +227,11 @@ func (service *AppModelService) CommitPreparedOpen(ctx context.Context, reservat
 		return bridge.FromClassified[apperr.OpenOutcome](classified, apperr.OpenStatusRefused)
 	}
 	delete(service.reservations, reservationID)
+	if service.preparedQuitFenced {
+		service.mu.Unlock()
+		classified := bridge.ClassifiedWithID(apperr.ClassifiedConflict, "document", "Shutdown is in progress.", apperr.RemediationRetry, "")
+		return bridge.FromClassified[apperr.OpenOutcome](classified, apperr.OpenStatusRefused)
+	}
 	if service.state.tabSetRevision != reservation.expectedTabRevision {
 		service.mu.Unlock()
 		classified := bridge.ClassifiedWithID(apperr.ClassifiedConflict, "document", "The tab set changed; Open must be retried.", apperr.RemediationRetry, "")

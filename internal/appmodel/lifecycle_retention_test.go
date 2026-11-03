@@ -701,7 +701,7 @@ func TestCloseDocumentsSealsTheRecordBeforeWaitingForWrites(t *testing.T) {
 	}
 }
 
-func TestQuitRemovalRejectsOwnershipTransferWhileWaiting(t *testing.T) {
+func TestPreparedQuitRejectsOwnershipTransfer(t *testing.T) {
 	for _, newOwner := range []string{"native", "cleared", "new"} {
 		t.Run(newOwner, func(t *testing.T) {
 			service := NewAppModelServiceForHost(WithEmitter(&retentionEmitter{}))
@@ -713,45 +713,15 @@ func TestQuitRemovalRejectsOwnershipTransferWhileWaiting(t *testing.T) {
 			if plan.Error != nil || plan.Data == nil {
 				t.Fatalf("prepare = %+v", plan)
 			}
-			if !service.setWriteInFlight(context.Background(), first, true) {
-				t.Fatal("write not admitted")
+			if result := service.ExecuteClosePlan(context.Background(), plan.Data.ID); result.Error != nil || result.Status != apperr.TabTransitionNoop {
+				t.Fatalf("execute = %+v", result)
 			}
-			closed := make(chan apperr.TabTransitionResult, 1)
-			go func() { closed <- service.ExecuteClosePlan(context.Background(), plan.Data.ID) }()
-			waitForRetentionSeals(t, service, first, second, closed)
 			transferRetentionClose(service, newOwner)
-			service.setWriteInFlight(context.Background(), first, false)
-			select {
-			case result := <-closed:
-				if result.Error == nil {
-					t.Fatalf("stale close = %+v", result)
-				}
-			case <-time.After(time.Second):
-				t.Fatal("close did not return")
+			if refusal := service.ClaimPreparedQuit("a"); refusal == nil {
+				t.Fatal("stale authorization accepted")
 			}
 			assertRetentionDocumentsOpen(t, service, first, second)
 		})
-	}
-}
-
-func waitForRetentionSeals(t *testing.T, service *AppModelService, first, second string, closed <-chan apperr.TabTransitionResult) {
-	t.Helper()
-	deadline := time.After(time.Second)
-	for {
-		service.mu.RLock()
-		sealed := service.state.documents[first].closing && service.state.documents[second].closing
-		service.mu.RUnlock()
-		if sealed {
-			return
-		}
-		select {
-		case result := <-closed:
-			t.Fatalf("early close: %+v", result)
-		case <-deadline:
-			t.Fatal("not sealed")
-		default:
-			time.Sleep(time.Millisecond)
-		}
 	}
 }
 

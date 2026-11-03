@@ -779,8 +779,8 @@ it.each(['durability', 'recent-items', 'view-state'] as const)(
             data: id === original.id ? { ...original, status: 'cancelled' } : { ...fresh, status: 'ready' },
         }));
         (closePlanAdapter.executeClosePlan as jest.Mock).mockResolvedValue({
-            status: 'closed',
-            orderedDocumentIds: [],
+            status: 'noop',
+            orderedDocumentIds: ['one'],
         });
         let finishSave!: (result: { status: 'saved'; writtenContentRevision: number }) => void;
         const writes = {

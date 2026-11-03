@@ -55,6 +55,14 @@ func checkShutdownAuthorizationLayoutFailure(t *testing.T, discard bool) {
 	if discard {
 		refusal = owner.DiscardAndAuthorizeQuit(context.Background(), id)
 	} else {
+		state, _ := model.GetState(context.Background())
+		plan := model.PrepareClose(context.Background(), apperr.ClosePlanQuit, nil, state.Snapshot.TabSetRevision)
+		if plan.Error != nil || plan.Data == nil {
+			t.Fatalf("prepare = %+v", plan)
+		}
+		if result := model.ExecuteClosePlan(context.Background(), plan.Data.ID); result.Error != nil {
+			t.Fatalf("execute = %+v", result)
+		}
 		refusal = owner.AuthorizeQuit(context.Background(), id)
 	}
 	if refusal != nil || quit != 1 {
