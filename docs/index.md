@@ -77,7 +77,7 @@ There are no HTTP, gRPC, GraphQL, webhook or message-queue endpoints in the desk
 1. `main.go#main` creates the local logger, file path service, database, repositories, application model and Wails handlers.
 2. The backend publishes an initial state snapshot. The frontend hydrates from it and renders documents, settings, tabs, preview and folder controls.
 3. A user command crosses the adapter into a Wails handler. The handler validates request identity, delegates to the owning service and returns a typed result; successful state changes are published back to the frontend.
-4. Opening a document canonicalizes and reads the selected path. The app model owns its identity, content revision, disk baseline and tab state. Saves verify revisions and external disk state before replacing bytes.
+4. Opening a document canonicalizes and reads the selected path. The app model owns its identity, content revision, disk baseline and tab state. Stable reads capture a raw-byte fingerprint; saves recheck revisions, disk metadata and that fingerprint immediately before atomic replacement. The check and replacement are separate operations, so portable code cannot guarantee compare-and-swap against a concurrent external writer.
 5. Opening a folder builds a bounded, filtered tree snapshot. Its root and tree belong to that process; only the app-wide hidden-folder preference and combined Recent Items are persisted.
 6. Settings and layout repositories write to SQLite. On shutdown, pending application work is drained before the database and logger close. The lifecycle bridge exposes `AcknowledgeRecoveryClose` and `DiscardAndAuthorizeQuit` for the interface-error recovery flow; its pending-close snapshot identifies whether the frontend or native fallback owns the decision.
 7. The frontend previews the latest accepted editor buffer and runs tidy against the current editor working copy. Tidy uses a module worker behind one per-window operation slot; progress, cancellation and lint findings are ephemeral frontend state.
@@ -146,15 +146,15 @@ apply inside fenced code. Image stays disabled.
 
 ### 6.2 Error Handling and Edge Cases
 
-| Scenario                                        | Behavior                                                                                            |
-| ----------------------------------------------- | --------------------------------------------------------------------------------------------------- |
-| File path aliases an already-open file          | Stable file identity focuses the existing tab instead of duplicating it.                            |
-| File changes outside the app                    | Disk version checks block unsafe writes and route through an explicit conflict decision.            |
-| Folder tree exceeds its configured entry budget | The snapshot is marked truncated; it does not traverse without a bound.                             |
-| Folder or descendant cannot be read             | The UI receives an unavailable state or an unreadable node, depending on which path failed.         |
-| Unsupported dropped path                        | It is classified without opening or changing app state.                                             |
-| Unsupported preview URL scheme                  | It is refused; only allowed user-activated external links are delegated to the OS browser.          |
-| Persistent database is corrupt                  | Startup preserves the corrupt file and reports recovery failure instead of silently overwriting it. |
+| Scenario                                        | Behavior                                                                                                                                                                                                                                     |
+| ----------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| File path aliases an already-open file          | Stable file identity focuses the existing tab instead of duplicating it.                                                                                                                                                                     |
+| File changes outside the app                    | Stable raw-byte fingerprints catch changed bytes even when filesystem metadata is preserved; checks block stale writes and route through an explicit conflict decision. Atomic replacement still has a narrow portable check-to-rename race. |
+| Folder tree exceeds its configured entry budget | The snapshot is marked truncated; it does not traverse without a bound.                                                                                                                                                                      |
+| Folder or descendant cannot be read             | The UI receives an unavailable state or an unreadable node, depending on which path failed.                                                                                                                                                  |
+| Unsupported dropped path                        | It is classified without opening or changing app state.                                                                                                                                                                                      |
+| Unsupported preview URL scheme                  | It is refused; only allowed user-activated external links are delegated to the OS browser.                                                                                                                                                   |
+| Persistent database is corrupt                  | Startup preserves the corrupt file and reports recovery failure instead of silently overwriting it.                                                                                                                                          |
 
 ## 7. External Services and Dependencies
 

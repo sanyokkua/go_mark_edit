@@ -261,10 +261,18 @@ jest.mock('@monaco-editor/react', () => {
     const MockMonacoEditor = (props: EditorProps): React.JSX.Element => {
         const { onMount } = props;
         const editorInstance = React.useMemo(() => mockRuntime.editor, []);
+        const beforeMounted = React.useRef(false);
 
         mockRuntime.props = props;
 
         React.useEffect(() => {
+            if (!beforeMounted.current) {
+                beforeMounted.current = true;
+                props.beforeMount?.({
+                    Uri: { parse: (value: string) => value },
+                    editor: { getModel: (uri: string) => mockModels.get(uri) ?? null },
+                } as unknown as Parameters<NonNullable<EditorProps['beforeMount']>>[0]);
+            }
             if (mockUseModelPaths && props.path !== undefined) {
                 const path = props.path;
                 let model = mockModels.get(path);
@@ -1394,4 +1402,26 @@ it('rebinds activation state when returning to a retained model', async () => {
     ref.current?.setMarkers([{ ...marker, message: 'fresh' }]);
     expect(setModelMarkers.mock.lastCall?.[0]).toBe(modelA);
     expect(setModelMarkers.mock.lastCall?.[2][0].message).toBe('fresh');
+});
+
+it('replaces an unregistered Monaco model when activation content changed', async () => {
+    mockUseModelPaths = true;
+    let content = 'original';
+    const unregistered: MockModel = {
+        dispose: jest.fn(() => {
+            mockModels.delete('inmemory://gomarkedit/inactive-reload/0.md');
+        }),
+        getFullModelRange: jest.fn(() => fullModelRange),
+        getLineCount: jest.fn(() => 1),
+        getValue: jest.fn(() => content),
+        setValue: jest.fn((value: string) => {
+            content = value;
+        }),
+    };
+    mockModels.set('inmemory://gomarkedit/inactive-reload/0.md', unregistered);
+    render(<CodeEditor documentId="inactive-reload" initialValue="external" activationId="return" externalEpoch={0} />);
+    await screen.findByRole('textbox', { name: 'Markdown source' });
+    expect(mockRuntime.model).not.toBe(unregistered);
+    expect(mockRuntime.model.getValue()).toBe('external');
+    expect(unregistered.dispose).toHaveBeenCalledTimes(1);
 });

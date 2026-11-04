@@ -27,7 +27,13 @@ const adapter = appModelAdapter as unknown as Record<string, jest.Mock>;
 const opened = { status: 'opened', documentId: 'doc-2', readingMode: true, activeBuffer: undefined };
 
 function renderCommands(isCurrent: () => boolean = () => true) {
-    const activation = { begin: jest.fn(() => 1), acknowledge: jest.fn(), isCurrent: jest.fn(isCurrent) };
+    const activation = {
+        begin: jest.fn(() => 1),
+        snapshot: jest.fn(() => 1),
+        refresh: jest.fn(),
+        acknowledge: jest.fn(),
+        isCurrent: jest.fn(isCurrent),
+    };
     return renderHook(
         () =>
             useCommands(

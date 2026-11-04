@@ -14,6 +14,8 @@ import (
 	"github.com/sanyokkua/go_mark_edit/internal/file"
 )
 
+const conflictChangedAgainMessage = "The file changed again; refresh the comparison."
+
 var errConflictRevisionChanged = errors.New("document changed during external check")
 
 type documentConflict struct {
@@ -105,7 +107,7 @@ func (service *AppModelService) ReloadFromDisk(ctx context.Context, documentID s
 	}
 	if !current.Equal(fileVersionFromWire(detectedVersion)) {
 		service.invalidateConflict(ctx, documentID)
-		return service.conflictRefused(documentID, apperr.ClassifiedConflict, "The file changed again; refresh the comparison.", apperr.RemediationRetry)
+		return service.conflictRefused(documentID, apperr.ClassifiedConflict, conflictChangedAgainMessage, apperr.RemediationRetry)
 	}
 	stable, readErr := service.readStable(path)
 	if readErr != nil {
@@ -114,6 +116,10 @@ func (service *AppModelService) ReloadFromDisk(ctx context.Context, documentID s
 			return service.conflictResultUnstable(documentID, expectedContentRevision)
 		}
 		return service.conflictRefused(documentID, apperr.ClassifiedIOFailure, "The document could not be reloaded.", apperr.RemediationRetry)
+	}
+	if stable.RawHash != detectedVersion.RawHash || detectedVersion.RawHash == "" {
+		service.invalidateConflict(ctx, documentID)
+		return service.conflictRefused(documentID, apperr.ClassifiedConflict, conflictChangedAgainMessage, apperr.RemediationRetry)
 	}
 	if !stable.Version.Exists || stable.Read.Error != nil {
 		return service.conflictRefused(documentID, apperr.ClassifiedNotFound, "The document could not be found.", apperr.RemediationSaveToRecreate)
@@ -172,6 +178,7 @@ func (service *AppModelService) AuthorizeKeepMine(ctx context.Context, documentI
 		reader = file.CurrentDiskVersion
 	}
 	current, err := reader(canonicalPath)
+	stable, stableErr := service.readStable(canonicalPath)
 	service.mu.Lock()
 	defer service.mu.Unlock()
 	document, ok = service.state.documents[documentID]
@@ -180,18 +187,18 @@ func (service *AppModelService) AuthorizeKeepMine(ctx context.Context, documentI
 	}
 	queued := document.conflict
 	ok = queued != nil
-	if !ok || document.metadata.ContentRevision != contentRevision || document.metadata.Path != canonicalPath || !queued.version.Equal(fileVersionFromWire(detectedVersion)) || queued.preview.ContentRevision != contentRevision || queued.preview.Path != canonicalPath {
+	if !ok || document.metadata.ContentRevision != contentRevision || document.metadata.Path != canonicalPath || (!queued.version.Equal(fileVersionFromWire(detectedVersion)) || queued.rawHash != detectedVersion.RawHash || detectedVersion.RawHash == "") || queued.preview.ContentRevision != contentRevision || queued.preview.Path != canonicalPath {
 		return service.conflictRefusedLocked(documentID, apperr.ClassifiedConflict, "The external-change decision is no longer current.", apperr.RemediationRetry)
 	}
 	if queued.preview.ReadOnly {
 		return service.conflictRefusedLocked(documentID, apperr.ClassifiedPermissionDenied, "The document is read-only and cannot be overwritten.", apperr.RemediationNone)
 	}
-	if err != nil || !current.Equal(queued.version) {
+	if err != nil || stableErr != nil || !current.Equal(queued.version) || !stable.Version.Equal(queued.version) || stable.RawHash != queued.rawHash {
 		before := service.snapshotLocked()
 		service.removeConflictLocked(documentID)
 		patch := service.documentPatchLocked(documentID)
 		_ = service.publishLocked(ctx, before, patch)
-		return service.conflictRefusedLocked(documentID, apperr.ClassifiedConflict, "The file changed again; refresh the comparison.", apperr.RemediationRetry)
+		return service.conflictRefusedLocked(documentID, apperr.ClassifiedConflict, conflictChangedAgainMessage, apperr.RemediationRetry)
 	}
 	token := mintDocumentID()
 	if document.keepMine == nil {
@@ -217,7 +224,7 @@ func (service *AppModelService) SkipConflict(ctx context.Context, documentID str
 	}
 	queued := document.conflict
 	ok = queued != nil
-	if !ok || document.metadata.ContentRevision != expectedContentRevision || !queued.version.Equal(fileVersionFromWire(detectedVersion)) {
+	if !ok || document.metadata.ContentRevision != expectedContentRevision || (!queued.version.Equal(fileVersionFromWire(detectedVersion)) || queued.rawHash != detectedVersion.RawHash || detectedVersion.RawHash == "") {
 		return service.conflictRefusedLocked(documentID, apperr.ClassifiedConflict, "The external-change decision is no longer current.", apperr.RemediationRetry)
 	}
 	if queued.preview.ReadOnly {
@@ -244,7 +251,7 @@ func (service *AppModelService) CancelConflict(ctx context.Context, documentID s
 	}
 	queued := document.conflict
 	queuedOK := queued != nil
-	if !queuedOK || document.metadata.ContentRevision != expectedContentRevision || !queued.version.Equal(fileVersionFromWire(detectedVersion)) {
+	if !queuedOK || document.metadata.ContentRevision != expectedContentRevision || (!queued.version.Equal(fileVersionFromWire(detectedVersion)) || queued.rawHash != detectedVersion.RawHash || detectedVersion.RawHash == "") {
 		return service.conflictRefusedLocked(documentID, apperr.ClassifiedConflict, "The external-change decision is no longer current.", apperr.RemediationRetry)
 	}
 	before := service.snapshotLocked()
@@ -268,7 +275,6 @@ func (service *AppModelService) inspectDocument(ctx context.Context, documentID 
 		return diskInspection{classified: bridge.ClassifiedWithID(apperr.ClassifiedConflict, service.documentLabel(documentID), "The document changed before the disk check completed.", apperr.RemediationRetry, documentID)}
 	}
 	path := document.metadata.Path
-	baselineVersion := document.baselineVersion
 	baselineHash := document.baselineRawHash
 	baselineCharacteristics := document.baselineCharacteristics
 	documentSnapshot := *document
@@ -283,12 +289,8 @@ func (service *AppModelService) inspectDocument(ctx context.Context, documentID 
 		}
 	}
 
-	current, err := service.currentDiskVersion(path)
-	if err != nil {
+	if _, err := service.currentDiskVersion(path); err != nil {
 		return diskInspection{classified: bridge.ClassifiedWithID(apperr.ClassifiedIOFailure, service.documentLabel(documentID), "The document could not be inspected.", apperr.RemediationRetry, documentID)}
-	}
-	if current.Equal(baselineVersion) {
-		return diskInspection{kind: diskUnchanged, version: current}
 	}
 	stable, readErr := service.readStable(path)
 	if readErr != nil {
@@ -313,6 +315,7 @@ func (service *AppModelService) inspectDocument(ctx context.Context, documentID 
 		return diskInspection{kind: diskUnchanged, version: stable.Version, rawHash: stable.RawHash, characteristics: stable.Read.Characteristics}
 	}
 	preview := buildConflictPreview(documentID, &documentSnapshot, stable.Read, stable.Version)
+	preview.DetectedDiskVersion.RawHash = stable.RawHash
 	if err := service.registerConflict(ctx, documentID, expectedRevision, stable, preview, decisionToken); err != nil {
 		return diskInspection{classified: bridge.ClassifiedWithID(apperr.ClassifiedConflict, service.documentLabel(documentID), "The external-change decision could not be queued.", apperr.RemediationRetry, documentID)}
 	}
@@ -321,7 +324,8 @@ func (service *AppModelService) inspectDocument(ctx context.Context, documentID 
 
 // consumeKeepMine adopts the authorized baseline only while its disk version remains current.
 func (service *AppModelService) consumeKeepMine(ctx context.Context, documentID string, expectedRevision uint64, decisionToken, path string, metadata apperr.DocumentMetadata) *diskInspection {
-	currentVersion, versionErr := service.currentDiskVersion(path)
+	stable, versionErr := service.readStable(path)
+	currentVersion := stable.Version
 	service.mu.Lock()
 	defer service.mu.Unlock()
 	currentDocument := service.state.documents[documentID]
@@ -329,7 +333,7 @@ func (service *AppModelService) consumeKeepMine(ctx context.Context, documentID 
 		return nil
 	}
 	authorization := currentDocument.keepMine[decisionToken]
-	if authorization == nil || authorization.documentID != documentID || authorization.contentRevision != expectedRevision || authorization.path != path || versionErr != nil || !currentVersion.Equal(authorization.version) {
+	if authorization == nil || authorization.documentID != documentID || authorization.contentRevision != expectedRevision || authorization.path != path || versionErr != nil || (!currentVersion.Equal(authorization.version) || stable.RawHash != authorization.rawHash) {
 		return nil
 	}
 	delete(currentDocument.keepMine, decisionToken)
@@ -472,7 +476,7 @@ func (service *AppModelService) registerConflict(ctx context.Context, documentID
 		document.normalization.accepted = true
 	}
 	for token, authorization := range document.keepMine {
-		if !authorization.version.Equal(stable.Version) {
+		if !authorization.version.Equal(stable.Version) || authorization.rawHash != stable.RawHash {
 			delete(document.keepMine, token)
 		}
 	}

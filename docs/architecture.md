@@ -624,8 +624,13 @@ format or assistant proposal becomes one editor edit and then follows the ordina
 autosave path. Autosave is allowed only for an existing saved file; a never-saved buffer is not silently
 written.
 
-`internal/file/atomic_replace.go` owns atomic replacement. Before the replacement commits, failure
-leaves disk and the old baseline unchanged. After it commits, the model records the exact written
+`internal/file/atomic_replace.go` owns atomic replacement. It checks the expected disk metadata and
+raw-byte fingerprint immediately before replacement. The fingerprint check and rename are separate
+operations: the host platform's atomic replace prevents readers from observing a partially written
+file, but portable Go APIs do not provide a compare-and-swap rename conditioned on the old bytes. An
+external writer can still race in the narrow check-to-rename interval, so this is a stale-write guard
+with a documented limitation, not an atomic compare-and-swap guarantee. Before replacement commits,
+failure leaves disk and the old baseline unchanged. After it commits, the model records the exact written
 baseline even if patch delivery fails; the adapter rehydrates before accepting further mutations and
 does not repeat the write. `useDocumentWrites` repairs the Redux projection from the recovered
 snapshot; it does not reinstall editor content or advance activation generations. A committed `WriteResult`
@@ -636,14 +641,27 @@ remains open. A committed-save warning does not delay a successful Quit: shutdow
 commits, without waiting for the warning to be acknowledged or displayed. The application does not guarantee warning
 visibility before process exit.
 
+`internal/file/document_reader.go` captures a SHA-256 `rawHash` of the physical bytes as part of a
+bounded stable read, with disk-version checks before and after reading. The hash is carried in the
+conflict's detected disk-version wire value and checked again when authorizing a decision. It detects
+different bytes even when size, modification time, permissions and file identity are preserved. A
+timestamp-only touch with identical bytes is ignored; permission, encoding, BOM and line-ending changes
+remain part of the disk-version and file-characteristics comparison.
+
 External changes are classified before saving. Editable conflicts offer Reload or one exact-version
-Keep mine authorization. A conflict is read-only if either the open document or the current disk version
+Keep mine authorization. Foreground conflicts retain document identity, are ordered by open tabs, and
+are presented after close-owned and write-owned conflicts. Deferred items are rechecked before display;
+closed documents are dropped. When closing the selected tab activates another tab and its activation
+check finds a conflict, that conflict is handed to the foreground conflict owner. Reloading a background
+document updates its backend content without installing that text into the active editor or invalidating
+an unrelated activation generation. A conflict is read-only if either the open document or the current disk version
 is read-only; it offers Reload and Cancel, and cannot authorize Keep mine. Save and autosave refuse a
 write-protected document, but Save As may copy it to a different file. Save As also permits unsaved edits
 to be copied when a writable document's source has become write-protected: it checks the current disk
 state even after Cancel dismisses the conflict. Source identity checks reject the source itself, including
-symlinks and hardlinks, and recheck the target after the native dialogs; the atomic write verifies its disk
-version, including permissions, before replacement. Mixed-ending normalization and BOM preservation still
+symlinks and hardlinks, and recheck the target after the native dialogs; the atomic write rechecks its disk
+version and raw-byte fingerprint before replacement, subject to the check-to-rename limitation above.
+Mixed-ending normalization and BOM preservation still
 apply to the copy. Close plans gather all required choices
 and normalization authorizations before writing, save in authoritative tab order, stop at the first
 failure, and close tabs only after all requested saves succeed.

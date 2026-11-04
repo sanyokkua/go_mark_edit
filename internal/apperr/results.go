@@ -528,6 +528,7 @@ type DiskVersion struct {
 	ModifiedUnixNano int64  `json:"modifiedUnixNano"`
 	Mode             uint32 `json:"mode"`
 	FileIdentity     string `json:"fileIdentity,omitempty"`
+	RawHash          string `json:"rawHash,omitempty"`
 }
 
 // MarshalJSON encodes the nanosecond timestamp as text so the JavaScript
@@ -539,6 +540,7 @@ func (version DiskVersion) MarshalJSON() ([]byte, error) {
 		ModifiedUnixNano string `json:"modifiedUnixNano"`
 		Mode             uint32 `json:"mode"`
 		FileIdentity     string `json:"fileIdentity,omitempty"`
+		RawHash          string `json:"rawHash,omitempty"`
 	}
 	return json.Marshal(wireDiskVersion{
 		Exists:           version.Exists,
@@ -546,6 +548,7 @@ func (version DiskVersion) MarshalJSON() ([]byte, error) {
 		ModifiedUnixNano: strconv.FormatInt(version.ModifiedUnixNano, 10),
 		Mode:             version.Mode,
 		FileIdentity:     version.FileIdentity,
+		RawHash:          version.RawHash,
 	})
 }
 
@@ -558,6 +561,7 @@ func (version *DiskVersion) UnmarshalJSON(data []byte) error {
 		ModifiedUnixNano json.RawMessage `json:"modifiedUnixNano"`
 		Mode             uint32          `json:"mode"`
 		FileIdentity     string          `json:"fileIdentity,omitempty"`
+		RawHash          string          `json:"rawHash,omitempty"`
 	}
 	var wire wireDiskVersion
 	if err := json.Unmarshal(data, &wire); err != nil {
@@ -573,6 +577,7 @@ func (version *DiskVersion) UnmarshalJSON(data []byte) error {
 		ModifiedUnixNano: modifiedUnixNano,
 		Mode:             wire.Mode,
 		FileIdentity:     wire.FileIdentity,
+		RawHash:          wire.RawHash,
 	}
 	return nil
 }

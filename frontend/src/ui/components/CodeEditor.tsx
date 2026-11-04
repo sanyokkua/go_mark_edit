@@ -732,6 +732,13 @@ const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(function CodeEd
                         language="markdown"
                         path={path}
                         keepCurrentModel
+                        beforeMount={(monaco): void => {
+                            const model = monaco.editor.getModel(monaco.Uri.parse(path));
+                            if (model !== null && (readOnly || model.getValue() !== initialValueRef.current)) {
+                                model.dispose();
+                                retainedModels.delete(path);
+                            }
+                        }}
                         className={styles.editor}
                         options={{
                             lineNumbers,

@@ -21,7 +21,9 @@ test('native clipboard project requires explicit opt-in outside the macOS subset
     expect(projects({})).not.toContain('[chromium-native]');
     expect(projects({ E2E_NATIVE_CLIPBOARD: 'true' })).not.toContain('[chromium-native]');
     expect(projects({ E2E_NATIVE_CLIPBOARD: '1' })).toContain('[chromium-native]');
-    expect(projects({ E2E_SUBSET: 'macos' })).toContain('[chromium-native]');
+    const macos = projects({ E2E_SUBSET: 'macos' });
+    expect(macos).toContain('[chromium-native]');
+    expect(macos).toContain('[chromium-macos] › external-changes.test.ts');
     expect(() => projects({ E2E_PROJECTS: 'chromium-native' })).toThrow();
     expect(projects({ E2E_PROJECTS: 'chromium-native', E2E_NATIVE_CLIPBOARD: '1' })).toContain('[chromium-native]');
     expect(projects({ E2E_PROJECTS: 'chromium-serial' })).toContain('[chromium-serial]');

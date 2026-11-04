@@ -18,6 +18,7 @@ import DocumentTabs from '../../src/ui/widgets/DocumentTabs/DocumentTabs';
 import { TabRemediationContext, type TabRemediationExecutor } from '../../src/ui/widgets/tabRemediation';
 import { EDITOR_TABPANEL_ID } from '../../src/ui/widgets/editorTabPanel';
 import Launcher from '../../src/ui/widgets/Launcher';
+import { conflictFixture } from '../support/appFixtures';
 
 function documentFor(documentId: string, path: string, dirty = false): DocumentMetadata {
     return {
@@ -1430,4 +1431,24 @@ it('refuses the fallback switch when the outgoing flush rejects', async () => {
     await waitFor(() => expect(store.getState().notifications.items).toHaveLength(1));
     expect(store.getState().documents.activeDocumentId).toBe('one');
     expect(activateDocument).not.toHaveBeenCalled();
+});
+
+it('routes a fallback close activation conflict to the external owner', async () => {
+    hydrate([documentFor('one', '/repo/one.md'), documentFor('two', '/repo/two.md')]);
+    const onExternalConflict = jest.fn();
+    const adapter = {
+        closeDocument: jest.fn(async (): Promise<TabTransitionResult> => ({
+            status: 'closed',
+            orderedDocumentIds: ['two'],
+            activeDocumentId: 'two',
+            conflict: conflictFixture('two'),
+        })),
+    };
+    render(
+        <Provider store={store}>
+            <DocumentTabs adapter={adapter} onExternalConflict={onExternalConflict} />
+        </Provider>,
+    );
+    fireEvent.click(screen.getByRole('button', { name: /close .*one\.md/i }));
+    await waitFor(() => expect(onExternalConflict).toHaveBeenCalledWith(conflictFixture('two')));
 });

@@ -698,18 +698,26 @@ func (service *AppModelService) closeDocuments(ctx context.Context, documentIDs 
 	}
 
 	service.mu.Lock()
-	defer service.mu.Unlock()
 	if refusal := service.validateSealedCloseLocked(closeIDs, expectedTabSetRevision, expectedNativeCloseID); refusal != nil {
+		service.mu.Unlock()
 		return *refusal
 	}
-	// Keep the close barrier out of the rollback snapshot. The model lock stays
-	// held until disposal, so clearing it here cannot admit an interleaving write.
 	service.clearClosingLocked(closeIDs)
-
 	if len(closeIDs) == 0 {
-		return service.tabTransitionSuccess(apperr.TabTransitionClosed, "")
+		result := service.tabTransitionSuccess(apperr.TabTransitionClosed, "")
+		service.mu.Unlock()
+		return result
 	}
-	return service.removeSealedCloseDocumentsLocked(ctx, closeIDs, requested)
+	previousActive := service.state.activeDocumentID
+	result := service.removeSealedCloseDocumentsLocked(ctx, closeIDs, requested)
+	service.mu.Unlock()
+	if result.Error == nil && result.ActiveDocumentID != "" && result.ActiveDocumentID != previousActive {
+		checked := service.CheckDocumentDisk(ctx, result.ActiveDocumentID)
+		if checked.Status == apperr.ConflictStatusDetected {
+			result.Conflict = checked.Preview
+		}
+	}
+	return result
 }
 
 // removeSealedCloseDocumentsLocked removes validated, sealed targets with service.mu held.

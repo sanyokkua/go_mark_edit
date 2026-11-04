@@ -1,6 +1,8 @@
 package file
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"io"
 	"io/fs"
@@ -18,6 +20,7 @@ type AtomicReplaceRequest struct {
 	TargetPath      string
 	Data            []byte
 	ExpectedVersion *DiskVersion
+	ExpectedRawHash string
 }
 
 // AtomicReplaceResult reports the committed disk baseline. A result returned
@@ -136,6 +139,14 @@ func atomicReplaceWithOps(request AtomicReplaceRequest, ops atomicReplaceOps) (A
 		return AtomicReplaceResult{}, newAtomicReplaceError(target, false, atomicReplacePreCommit, apperr.ClassifiedConflict, errors.New("target disk version changed before replacement"))
 	}
 
+	expectedHash := request.ExpectedRawHash
+	if expected.Exists && expectedHash == "" {
+		expectedHash, err = rawFileHash(target, expected.Size)
+		if err != nil {
+			return AtomicReplaceResult{}, newAtomicReplaceError(target, false, atomicReplacePreCommit, classifyAtomicReplaceCause(err), err)
+		}
+	}
+
 	directory := filepath.Dir(target)
 	temporary, err := ops.createTemp(directory)
 	if err != nil {
@@ -194,6 +205,23 @@ func atomicReplaceWithOps(request AtomicReplaceRequest, ops atomicReplaceOps) (A
 		return failBeforeCommit(apperr.ClassifiedConflict, errors.New("target disk version changed before replacement"))
 	}
 
+	if expected.Exists {
+		currentHash, hashErr := rawFileHash(target, expected.Size)
+		if hashErr != nil {
+			return failBeforeCommit(classifyAtomicReplaceCause(hashErr), hashErr)
+		}
+		if currentHash != expectedHash {
+			return failBeforeCommit(apperr.ClassifiedConflict, errors.New("target bytes changed before replacement"))
+		}
+		current, err = ops.currentVersion(target)
+		if err != nil {
+			return failBeforeCommit(classifyAtomicReplaceCause(err), err)
+		}
+		if !current.Equal(expected) {
+			return failBeforeCommit(apperr.ClassifiedConflict, errors.New("target disk version changed before replacement"))
+		}
+	}
+
 	if err := ops.replace(temporaryPath, target); err != nil {
 		return failBeforeCommit(classifyAtomicReplaceCause(err), err)
 	}
@@ -203,6 +231,14 @@ func atomicReplaceWithOps(request AtomicReplaceRequest, ops atomicReplaceOps) (A
 	result.Version, err = CurrentDiskVersion(target)
 	if err != nil {
 		return result, newAtomicReplaceError(target, true, atomicReplacePostCommit, apperr.ClassifiedPersistenceWarning, err)
+	}
+	committedHash, hashErr := rawFileHash(target, int64(len(request.Data)))
+	writtenDigest := sha256.Sum256(request.Data)
+	if hashErr != nil || committedHash != hex.EncodeToString(writtenDigest[:]) {
+		if hashErr == nil {
+			hashErr = errors.New("target changed after replacement")
+		}
+		return result, newAtomicReplaceError(target, true, atomicReplacePostCommit, apperr.ClassifiedPersistenceWarning, hashErr)
 	}
 	if err := ops.syncDir(directory); err != nil {
 		return result, newAtomicReplaceError(target, true, atomicReplacePostCommit, apperr.ClassifiedPersistenceWarning, err)
@@ -243,6 +279,9 @@ func withDefaultAtomicReplaceOps(ops atomicReplaceOps) atomicReplaceOps {
 }
 
 func classifyAtomicReplaceCause(err error) apperr.ClassifiedErrorCategory {
+	if errors.Is(err, errFingerprintChanged) {
+		return apperr.ClassifiedConflict
+	}
 	if errors.Is(err, fs.ErrPermission) || os.IsPermission(err) {
 		return apperr.ClassifiedPermissionDenied
 	}
@@ -279,4 +318,48 @@ func newAtomicReplaceError(target string, committed bool, phase atomicReplacePha
 		Classified: bridge.ClassifiedWithID(category, target, message, remediation, ""),
 		Cause:      cause,
 	}
+}
+
+var errFingerprintChanged = errors.New("target size or type changed while fingerprinting")
+
+func rawFileHash(path string, expectedSize int64) (string, error) {
+	if expectedSize < 0 {
+		return "", errFingerprintChanged
+	}
+	info, err := os.Stat(path)
+	if err != nil {
+		return "", err
+	}
+	if !info.Mode().IsRegular() || info.Size() != expectedSize {
+		return "", errFingerprintChanged
+	}
+	f, err := os.Open(path)
+	if err != nil {
+		return "", err
+	}
+	defer func() { _ = f.Close() }()
+	info, err = f.Stat()
+	if err != nil {
+		return "", err
+	}
+	if !info.Mode().IsRegular() || info.Size() != expectedSize {
+		return "", errFingerprintChanged
+	}
+	h := sha256.New()
+	count, err := io.Copy(h, io.LimitReader(f, expectedSize))
+	if err != nil {
+		return "", err
+	}
+	if count != expectedSize {
+		return "", errFingerprintChanged
+	}
+	var extra [1]byte
+	n, err := f.Read(extra[:])
+	if n != 0 {
+		return "", errFingerprintChanged
+	}
+	if err != nil && !errors.Is(err, io.EOF) {
+		return "", err
+	}
+	return hex.EncodeToString(h.Sum(nil)), nil
 }

@@ -1,6 +1,7 @@
 package appmodel
 
 import (
+	"bytes"
 	"errors"
 	"sync"
 
@@ -14,6 +15,7 @@ type WriteSnapshot struct {
 	CanonicalContent    string
 	TargetPath          string
 	ExpectedDiskVersion *file.DiskVersion
+	ExpectedRawHash     string
 	EncodedData         []byte
 }
 
@@ -111,6 +113,16 @@ func (coordinator *DocumentWriteCoordinator) waitForIdle() {
 
 func reusableCommit(committed CommittedWriteResult, requested WriteSnapshot) bool {
 	if committed.Snapshot.DocumentID != requested.DocumentID || committed.Snapshot.ContentRevision != requested.ContentRevision || committed.Snapshot.CanonicalContent != requested.CanonicalContent || committed.Snapshot.TargetPath != requested.TargetPath {
+		return false
+	}
+	if !bytes.Equal(committed.Snapshot.EncodedData, requested.EncodedData) {
+		return false
+	}
+	if requested.ExpectedRawHash != "" {
+		if requested.ExpectedRawHash != hashBytes(committed.Snapshot.EncodedData) {
+			return false
+		}
+	} else if requested.ExpectedDiskVersion != nil && requested.ExpectedDiskVersion.Exists {
 		return false
 	}
 	if requested.ExpectedDiskVersion == nil {

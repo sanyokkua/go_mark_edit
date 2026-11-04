@@ -17,14 +17,14 @@ export function useConflictCommands(activation: GuardedActivation): ConflictComm
                 const { documentId, contentRevision, detectedDiskVersion } = preview;
                 switch (decision) {
                     case 'reload': {
-                        const generation = activation.begin();
+                        const snapshot = activation.snapshot();
                         const result = await documentConflictAdapter.reloadFromDisk(
                             documentId,
                             contentRevision,
                             detectedDiskVersion,
                         );
                         if (result.status === 'reloaded' && result.error === undefined) {
-                            activation.acknowledge(generation, result.activeBuffer, documentId, 'reload');
+                            activation.refresh(snapshot, result.activeBuffer, documentId);
                         }
                         return result;
                     }

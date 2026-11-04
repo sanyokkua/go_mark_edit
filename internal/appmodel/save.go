@@ -337,7 +337,7 @@ func (service *AppModelService) snapshotForWrite(documentID string, expectedCont
 	return writeSnapshot{
 		documentID: documentID, contentRevision: expectedContentRevision, content: document.content,
 		path: targetPath, identity: document.identity, metadata: document.metadata,
-		expectedVersion: document.baselineVersion, targetPathAdopted: targetPathAdopted,
+		expectedVersion: document.baselineVersion, expectedRawHash: document.baselineRawHash, targetPathAdopted: targetPathAdopted,
 	}, apperr.WriteResult{}
 }
 
@@ -386,7 +386,7 @@ func (service *AppModelService) executeWrite(ctx context.Context, snapshot write
 	committed, replaceErr := coordinator.Commit(WriteSnapshot{
 		DocumentID: snapshot.documentID, ContentRevision: snapshot.contentRevision,
 		CanonicalContent: snapshot.content, TargetPath: snapshot.path,
-		ExpectedDiskVersion: &snapshot.expectedVersion, EncodedData: encoded.data,
+		ExpectedDiskVersion: &snapshot.expectedVersion, ExpectedRawHash: snapshot.expectedRawHash, EncodedData: encoded.data,
 	})
 	committedToDisk := committed.Snapshot.DocumentID != ""
 	if committedToDisk {
@@ -591,7 +591,7 @@ func (service *AppModelService) writeCoordinator(documentID string) *DocumentWri
 		executor = func(snapshot WriteSnapshot) (file.DiskVersion, error) {
 			replaced, err := file.AtomicReplace(file.AtomicReplaceRequest{
 				TargetPath: snapshot.TargetPath, Data: snapshot.EncodedData,
-				ExpectedVersion: snapshot.ExpectedDiskVersion,
+				ExpectedVersion: snapshot.ExpectedDiskVersion, ExpectedRawHash: snapshot.ExpectedRawHash,
 			})
 			if replaced.Committed && err != nil {
 				return replaced.Version, &committedWriteError{version: replaced.Version, err: err}

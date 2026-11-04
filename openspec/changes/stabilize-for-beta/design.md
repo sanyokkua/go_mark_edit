@@ -159,6 +159,29 @@ the OR of content ≠ baseline, `ContentRevision > committedRevision`, detached,
 - Permission changes on disk already raise a conflict (`DiskVersion.Equal` and `characteristicsEqual` compare the
   mode); the spec now states this, and Reload from disk re-reads, so it re-evaluates the capability.
 
+### 5.1 External-change fingerprints, queue ownership and reload activation
+
+The implemented file reader captures a SHA-256 `rawHash` over the physical bytes during a bounded stable read. The
+disk version is checked before and after that read; a changed version rejects the result as unstable. The fingerprint
+travels on the conflict's detected disk version across the Go/TypeScript wire contract and is checked again when a
+decision is authorized. This detects byte changes even when size, timestamp, permissions and file identity are
+preserved. Permission, encoding, BOM and line-ending differences remain detectable through the disk version and
+classified characteristics, while an identical-byte timestamp touch does not create a conflict.
+
+`AtomicReplace` checks the expected disk metadata and raw fingerprint before replacing the target. The replacement
+uses the platform's atomic rename/replace operation, but the fingerprint check and rename are separate filesystem
+operations. Portable Go APIs do not provide a cross-platform compare-and-swap rename that atomically conditions the
+replacement on the old bytes. A concurrent external writer in that narrow check-to-replace interval can therefore
+still race; this mechanism is a best-effort stale-write guard, not an atomic compare-and-swap guarantee. Keep this
+limitation explicit in the product documentation and do not describe the raw hash as closing that race.
+
+The frontend retains foreground conflicts by document identity and tab order. Prompt priority is close-owned, then
+write-owned, then foreground. Deferred comparisons are revalidated before presentation, and closed documents are
+dropped. A close execution that activates a changed next tab hands the conflict to the foreground conflict owner.
+Reload commands distinguish the compared document from the active editor: reloading a background tab updates that
+document's backend state without installing its text into the current editor buffer or invalidating an unrelated
+activation generation.
+
 ### 6. Reporting save and sync outcomes
 
 - `WriteResult` has one `Error` field (`internal/apperr/results.go:493-503`). In `save.go:427-457` choose one warning
@@ -402,6 +425,9 @@ real-backend browser checks cover geometry at 375, 376 and 377 px, the divider, 
   existing "Key handled by the Find input" e2e test.
 - [A crash/reload could lose the last 50 ms of typing] → retain pending/in-flight generations before passive
   cleanup; reload only after acknowledgment within a one-second attempt, otherwise keep text and permit retry.
+- [An external writer can race between the final fingerprint check and rename] → recheck immediately before replace,
+  use the platform's atomic replacement primitive, and document the remaining portable check-to-rename limitation;
+  no compare-and-swap guarantee is made.
 - [A native close deadline could overtake recovery or hydrated close plans] → explicit conservative native
   confirmation, authoritative close ownership and ID-bound final removal guards; Cancel preserves tabs/text.
 - [Discard could start an autosave or miss an admitted write] → reversible scheduling fence and counted admissions;

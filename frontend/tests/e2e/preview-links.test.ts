@@ -514,9 +514,17 @@ test('preview links activate and reveal documents in and outside the folder', as
     await expectActiveDocument(page, 'a.md', 'Link journeys');
 
     const editor = page.locator('[data-editor-surface] textarea').first();
+    const mac = await page.evaluate(() => navigator.userAgent.includes('Macintosh'));
+    const documentEnd = mac ? 'Meta+ArrowDown' : 'Control+End';
+    const documentStart = mac ? 'Meta+ArrowUp' : 'Control+Home';
+    await expect.poll(() => getState(page).then((state) => state.data?.activeBuffer?.content)).toBe(savedSource);
     await editor.focus();
-    await editor.press('ControlOrMeta+End');
+    await expect(editor).toBeFocused();
+    await editor.press(documentEnd);
     await page.keyboard.insertText('\nUnsaved source edit.');
+    await expect
+        .poll(() => getState(page).then((state) => state.data?.activeBuffer?.content))
+        .toBe(`${savedSource}\nUnsaved source edit.`);
     await expect(page.locator('[data-editor-surface] .view-lines')).toContainText('Unsaved source edit.');
     await expect(page.getByRole('treeitem', { name: 'a.md' })).toHaveAttribute('aria-description', /Unsaved changes/u);
     expect(await readFile(source, 'utf8')).toBe(savedSource);
@@ -533,7 +541,9 @@ test('preview links activate and reveal documents in and outside the folder', as
         .toContain('Unsaved source edit.');
     // Monaco renders only the visible lines; the edit is on the last line, which a taller line
     // height can leave below the viewport.
-    await page.locator('[data-editor-surface] textarea').first().press('ControlOrMeta+End');
+    await editor.focus();
+    await expect(editor).toBeFocused();
+    await editor.press(documentEnd);
     await expect(page.locator('[data-editor-surface] .view-lines')).toContainText('Unsaved source edit.');
     await clickWithoutNavigation(page, page.getByRole('link', { name: 'sibling' }), originalUrl);
     await expectActiveDocument(page, 'b.md', 'Sibling document');
@@ -587,6 +597,13 @@ test('preview links activate and reveal documents in and outside the folder', as
     await expect(page.getByRole('tab', { name: 'My Notes.md' })).toHaveCount(1);
 
     await page.getByRole('tab', { name: 'a.md' }).click();
+    await expect(page.getByRole('tab', { name: 'a.md' })).toHaveAttribute('aria-selected', 'true');
+    await expect
+        .poll(() => getState(page).then((state) => state.data?.activeBuffer?.content))
+        .toBe(`${savedSource}\nUnsaved source edit.`);
+    await editor.focus();
+    await expect(editor).toBeFocused();
+    await editor.press(documentStart);
     await expectActiveDocument(page, 'a.md', 'Link journeys');
     const beforeUnsupported = await page.getByRole('tab').count();
     await clickWithoutNavigation(page, page.getByRole('link', { name: 'unsupported' }), originalUrl);

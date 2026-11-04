@@ -138,6 +138,8 @@ export type InstallationReason = 'activation' | 'reload';
 /** One generation is claimed before issuing a command and installed at most once. */
 export interface GuardedActivation {
     begin: () => number;
+    snapshot: () => number;
+    refresh: (generation: number, acknowledgement: ActiveBuffer | undefined, requestedDocumentId: string) => void;
     isCurrent: (generation: number) => boolean;
     acknowledge: (
         generation: number,
@@ -159,6 +161,7 @@ export function useGuardedActivation(
     const latestGeneration = useRef(0);
     const installedGeneration = useRef(0);
     const [pending, setPending] = useState<PendingAcknowledgement | null>(null);
+    const [pendingRefresh, setPendingRefresh] = useState<PendingAcknowledgement | null>(null);
     const revision = useAppSelector((state) => state.documents.revision);
     const activeDocumentId = useAppSelector((state) => state.documents.activeDocumentId);
     const documents = useAppSelector((state) => state.documents.byId);
@@ -175,6 +178,8 @@ export function useGuardedActivation(
         latestGeneration.current += 1;
         return latestGeneration.current;
     }, []);
+
+    const snapshot = useCallback((): number => latestGeneration.current, []);
 
     const isCurrent = useCallback((generation: number): boolean => generation === latestGeneration.current, []);
 
@@ -199,6 +204,37 @@ export function useGuardedActivation(
         },
         [],
     );
+
+    const refresh = useCallback(
+        (generation: number, acknowledgement: ActiveBuffer | undefined, requestedDocumentId: string): void => {
+            if (acknowledgement === undefined || generation !== latestGeneration.current) return;
+            setPendingRefresh({
+                acknowledgement,
+                reason: 'reload',
+                request: { generation, documentId: requestedDocumentId },
+            });
+        },
+        [],
+    );
+
+    useEffect((): void => {
+        if (pendingRefresh === null) return;
+        if (pendingRefresh.request.generation !== latestGeneration.current) {
+            setPendingRefresh(null);
+            return;
+        }
+        if (
+            !acceptsActivationAcknowledgement(
+                pendingRefresh.acknowledgement,
+                pendingRefresh.request,
+                latestGeneration.current,
+                projection,
+            )
+        )
+            return;
+        setPendingRefresh(null);
+        install(pendingRefresh.acknowledgement, 'reload');
+    }, [install, pendingRefresh, projection]);
 
     // Command answers may precede their projection patch; wait until identity and revision agree.
     useEffect((): void => {
@@ -225,5 +261,8 @@ export function useGuardedActivation(
         install(pending.acknowledgement, pending.reason);
     }, [install, pending, projection]);
 
-    return useMemo((): GuardedActivation => ({ acknowledge, begin, isCurrent }), [acknowledge, begin, isCurrent]);
+    return useMemo(
+        (): GuardedActivation => ({ acknowledge, begin, snapshot, refresh, isCurrent }),
+        [acknowledge, begin, snapshot, refresh, isCurrent],
+    );
 }

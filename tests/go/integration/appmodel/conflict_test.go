@@ -269,6 +269,65 @@ func TestKeepMineAuthorizationIsSingleUseAndSavesTheCurrentBuffer(t *testing.T) 
 	}
 }
 
+func TestKeepMineWritesWhenExternalBytesRevertWithCommittedMetadata(t *testing.T) {
+	ctx := context.Background()
+	service := NewAppModelServiceForHost(WithEmitter(&recordingEmitter{}), AppModelOption{AutosaveTimer: &fakeAutosaveClock{}})
+	path, documentID := openAutosaveDocument(t, service, "base\n")
+	if err := service.UpdateBuffer(ctx, documentID, "mine\n"); err != nil {
+		t.Fatalf("edit: %v", err)
+	}
+	state, err := service.GetState(ctx)
+	if err != nil {
+		t.Fatalf("GetState before first save: %v", err)
+	}
+	revision := state.Snapshot.Documents[documentID].ContentRevision
+	firstSave := service.Save(ctx, documentID, revision, "")
+	if firstSave.Status != apperr.WriteStatusCommitted {
+		t.Fatalf("first save = %+v, want committed", firstSave)
+	}
+	committedInfo, err := os.Stat(path)
+	if err != nil {
+		t.Fatalf("stat committed file: %v", err)
+	}
+	if err := os.WriteFile(path, []byte("base\n"), 0o640); err != nil {
+		t.Fatalf("restore original bytes externally: %v", err)
+	}
+	if err := os.Chtimes(path, committedInfo.ModTime(), committedInfo.ModTime()); err != nil {
+		t.Fatalf("restore committed timestamps: %v", err)
+	}
+	restoredInfo, err := os.Stat(path)
+	if err != nil {
+		t.Fatalf("stat externally restored file: %v", err)
+	}
+	if !os.SameFile(committedInfo, restoredInfo) || restoredInfo.Size() != committedInfo.Size() || !restoredInfo.ModTime().Equal(committedInfo.ModTime()) || restoredInfo.Mode().Perm() != committedInfo.Mode().Perm() {
+		t.Fatalf("restored file metadata = %+v, want committed metadata %+v", restoredInfo, committedInfo)
+	}
+
+	detected := service.CheckExternalChanges(ctx, documentID)
+	if detected.Preview == nil {
+		t.Fatalf("CheckExternalChanges = %+v, want conflict preview", detected)
+	}
+	state, err = service.GetState(ctx)
+	if err != nil {
+		t.Fatalf("GetState before authorization: %v", err)
+	}
+	authorized := service.AuthorizeKeepMine(ctx, documentID, revision, state.Snapshot.Documents[documentID].Path, detected.Preview.DetectedDiskVersion)
+	if authorized.Status != apperr.ConflictStatusAuthorized || authorized.DecisionToken == "" {
+		t.Fatalf("AuthorizeKeepMine = %+v, want one decision token", authorized)
+	}
+	saved := service.Save(ctx, documentID, revision, authorized.DecisionToken)
+	if saved.Status != apperr.WriteStatusCommitted {
+		t.Fatalf("Save with keep-mine token = %+v, want committed", saved)
+	}
+	disk, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read saved file: %v", err)
+	}
+	if string(disk) != "mine\n" {
+		t.Fatalf("saved bytes = %q, want current buffer", disk)
+	}
+}
+
 func TestMixedKeepMineSurvivesSameVersionCheck(t *testing.T) {
 	ctx := context.Background()
 	service := NewAppModelServiceForHost(WithEmitter(&recordingEmitter{}), AppModelOption{AutosaveTimer: &fakeAutosaveClock{}})
@@ -383,5 +442,59 @@ func TestMixedKeepMineSaveAs(t *testing.T) {
 	bytes, err := os.ReadFile(target)
 	if err != nil || string(bytes) != "mine\r\n" {
 		t.Fatalf("target = %q, %v", bytes, err)
+	}
+}
+
+func TestExternalChangeWithUnchangedMetadataIsDetected(t *testing.T) {
+	service := NewAppModelServiceForHost(WithEmitter(&recordingEmitter{}), AppModelOption{AutosaveTimer: &fakeAutosaveClock{}})
+	path, id := openAutosaveDocument(t, service, "base\n")
+	info, err := os.Stat(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, []byte("disk\n"), info.Mode()); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chtimes(path, info.ModTime(), info.ModTime()); err != nil {
+		t.Fatal(err)
+	}
+	result := service.CheckExternalChanges(context.Background(), id)
+	if result.Preview == nil || result.Preview.OnDisk.Text != "disk\n" {
+		t.Fatalf("check = %+v, want external comparison", result)
+	}
+}
+
+func TestConflictDecisionsRejectSameMetadataChangedBytes(t *testing.T) {
+	for _, action := range []string{"reload", "keep"} {
+		t.Run(action, func(t *testing.T) {
+			service := NewAppModelServiceForHost(WithEmitter(&recordingEmitter{}), AppModelOption{AutosaveTimer: &fakeAutosaveClock{}})
+			path, id := openAutosaveDocument(t, service, "base\n")
+			if err := os.WriteFile(path, []byte("disk\n"), 0o640); err != nil {
+				t.Fatal(err)
+			}
+			preview := service.CheckExternalChanges(context.Background(), id).Preview
+			if preview == nil {
+				t.Fatal("missing preview")
+			}
+			info, err := os.Stat(path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(path, []byte("next\n"), info.Mode()); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.Chtimes(path, info.ModTime(), info.ModTime()); err != nil {
+				t.Fatal(err)
+			}
+			var result apperr.ConflictResult
+			if action == "reload" {
+				result = service.ReloadFromDisk(context.Background(), id, preview.ContentRevision, preview.DetectedDiskVersion)
+			} else {
+				result = service.AuthorizeKeepMine(context.Background(), id, preview.ContentRevision, preview.Path, preview.DetectedDiskVersion)
+			}
+			if result.Status == apperr.ConflictStatusReloaded || result.Status == apperr.ConflictStatusAuthorized {
+				t.Fatalf("stale decision accepted: %+v", result)
+			}
+		})
 	}
 }

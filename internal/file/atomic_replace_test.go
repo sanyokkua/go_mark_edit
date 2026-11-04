@@ -263,3 +263,60 @@ func TestAtomicReplaceNewTargetChmodFailureCleansTemporary(t *testing.T) {
 		t.Fatalf("target stat error = %v, want not exist", err)
 	}
 }
+
+func TestAtomicReplaceRejectsSameMetadataChangeDuringPreparation(t *testing.T) {
+	target := filepath.Join(t.TempDir(), "race.md")
+	if err := os.WriteFile(target, []byte("base"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	version, err := CurrentDiskVersion(target)
+	if err != nil {
+		t.Fatal(err)
+	}
+	info, err := os.Stat(target)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ops := defaultAtomicReplaceOps()
+	originalSync := ops.syncFile
+	ops.syncFile = func(f atomicTempFile) error {
+		if err := originalSync(f); err != nil {
+			return err
+		}
+		if err := os.WriteFile(target, []byte("disk"), info.Mode()); err != nil {
+			return err
+		}
+		return os.Chtimes(target, info.ModTime(), info.ModTime())
+	}
+	result, err := atomicReplaceWithOps(AtomicReplaceRequest{TargetPath: target, Data: []byte("mine"), ExpectedVersion: &version}, ops)
+	if err == nil || result.Committed {
+		t.Fatalf("replacement = %+v, %v; want conflict", result, err)
+	}
+	data, readErr := os.ReadFile(target)
+	if readErr != nil || string(data) != "disk" {
+		t.Fatalf("disk = %q, %v", data, readErr)
+	}
+}
+
+func TestAtomicReplaceReportsInterveningChangeAfterRename(t *testing.T) {
+	target := filepath.Join(t.TempDir(), "race.md")
+	if err := os.WriteFile(target, []byte("base"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	version, err := CurrentDiskVersion(target)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ops := defaultAtomicReplaceOps()
+	originalReplace := ops.replace
+	ops.replace = func(from, to string) error {
+		if err := originalReplace(from, to); err != nil {
+			return err
+		}
+		return os.WriteFile(to, []byte("disk"), 0o644)
+	}
+	result, err := atomicReplaceWithOps(AtomicReplaceRequest{TargetPath: target, Data: []byte("mine"), ExpectedVersion: &version}, ops)
+	if err == nil || !result.Committed {
+		t.Fatalf("replacement = %+v, %v; want committed warning", result, err)
+	}
+}

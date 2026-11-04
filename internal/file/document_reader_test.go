@@ -2,6 +2,8 @@ package file
 
 import (
 	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"os"
 	"path/filepath"
@@ -33,18 +35,13 @@ func TestReadClassifiedStableBoundsRawHashAndDetectsGrowth(t *testing.T) {
 		t.Fatalf("stable read = %+v, want stable bounded hash", stable)
 	}
 
-	before, err := CurrentDiskVersion(path)
-	if err != nil {
-		t.Fatalf("version before direct stable verification: %v", err)
-	}
-	classified, err := readClassified(path, 4)
-	if err != nil {
-		t.Fatalf("classified read before direct stable verification: %v", err)
-	}
-	if err := os.WriteFile(path, []byte("abcde"), 0o644); err != nil {
-		t.Fatalf("grow file between stable-read steps: %v", err)
-	}
-	unstable, err := verifyStableClassifiedRead(path, before, classified, 4)
+	unstable, err := readClassifiedStableWithReader(path, 4, func(path string, maxBytes int64) (ClassifiedRead, []byte, error) {
+		classified, raw, readErr := readClassifiedWithRaw(path, maxBytes)
+		if writeErr := os.WriteFile(path, []byte("abcde"), 0o644); writeErr != nil {
+			t.Fatal(writeErr)
+		}
+		return classified, raw, readErr
+	})
 	if !errors.Is(err, ErrUnstableRead) || unstable.Stable {
 		t.Fatalf("growth race = result=%+v err=%v, want ErrUnstableRead and unstable", unstable, err)
 	}
@@ -273,5 +270,36 @@ func writeRepeatedBytes(t *testing.T, path string, size int64, value byte) {
 			t.Fatal("zero-byte write while building exact-size fixture")
 		}
 		written += int64(n)
+	}
+}
+
+func TestStableReadHashesTheSameBytesItClassifies(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "race.md")
+	if err := os.WriteFile(path, []byte("base"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	info, err := os.Stat(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	read, err := readClassifiedStableWithReader(path, MaxClassifiedReadBytes, func(path string, limit int64) (ClassifiedRead, []byte, error) {
+		classified, raw, err := readClassifiedWithRaw(path, limit)
+		if err != nil {
+			return classified, raw, err
+		}
+		if err := os.WriteFile(path, []byte("disk"), info.Mode()); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Chtimes(path, info.ModTime(), info.ModTime()); err != nil {
+			t.Fatal(err)
+		}
+		return classified, raw, nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	digest := sha256.Sum256([]byte("base"))
+	if read.Read.Content != "base" || read.RawHash != hex.EncodeToString(digest[:]) {
+		t.Fatalf("read = %+v, want matching classified bytes and hash", read)
 	}
 }

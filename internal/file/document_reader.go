@@ -111,6 +111,10 @@ type ClassifiedRead struct {
 // the raw-byte hash. A result is usable only when both versions are equal.
 // The read itself remains bounded by readClassified's configured limit.
 func ReadClassifiedStable(path string, maxBytes int64) (StableClassifiedRead, error) {
+	return readClassifiedStableWithReader(path, maxBytes, readClassifiedWithRaw)
+}
+
+func readClassifiedStableWithReader(path string, maxBytes int64, reader func(string, int64) (ClassifiedRead, []byte, error)) (StableClassifiedRead, error) {
 	maxBytes = normalizedReadLimit(maxBytes)
 	before, err := CurrentDiskVersion(path)
 	if err != nil {
@@ -119,44 +123,19 @@ func ReadClassifiedStable(path string, maxBytes int64) (StableClassifiedRead, er
 	if !before.Exists {
 		return StableClassifiedRead{Version: before}, nil
 	}
-	read, err := readClassified(path, maxBytes)
+	read, raw, err := reader(path, maxBytes)
 	if err != nil {
 		return StableClassifiedRead{Read: read, Version: before}, err
 	}
-	return verifyStableClassifiedRead(path, before, read, maxBytes)
-}
-
-// verifyStableClassifiedRead completes a classified read that already captured
-// its starting disk version. Keeping this step explicit lets the in-package
-// bounded-read test exercise the otherwise unreachable change-between-read-and-
-// hash race without adding a production callback or test setter.
-func verifyStableClassifiedRead(path string, before DiskVersion, read ClassifiedRead, maxBytes int64) (StableClassifiedRead, error) {
-	maxBytes = normalizedReadLimit(maxBytes)
-	if read.Error != nil {
-		after, err := CurrentDiskVersion(path)
-		if err != nil {
-			return StableClassifiedRead{Read: read, Version: before}, err
-		}
-		result := StableClassifiedRead{
-			Read:    read,
-			Version: after,
-			Stable:  before.Equal(after),
-		}
-		if !result.Stable {
-			return result, ErrUnstableRead
-		}
-		return result, nil
-	}
-	raw, err := readRawBytesBounded(path, maxBytes)
-	if err != nil {
-		return StableClassifiedRead{Read: read, Version: before}, err
-	}
-	digest := sha256.Sum256(raw)
 	after, err := CurrentDiskVersion(path)
 	if err != nil {
-		return StableClassifiedRead{Read: read, Version: before, RawHash: hex.EncodeToString(digest[:])}, err
+		return StableClassifiedRead{Read: read, Version: before}, err
 	}
-	result := StableClassifiedRead{Read: read, Version: after, RawHash: hex.EncodeToString(digest[:]), Stable: before.Equal(after)}
+	result := StableClassifiedRead{Read: read, Version: after, Stable: before.Equal(after)}
+	if read.Error == nil {
+		digest := sha256.Sum256(raw)
+		result.RawHash = hex.EncodeToString(digest[:])
+	}
 	if !result.Stable {
 		return result, ErrUnstableRead
 	}
@@ -166,10 +145,15 @@ func verifyStableClassifiedRead(path string, before DiskVersion, read Classified
 // readClassified reads no more than the configured cap and refuses an over-limit file before
 // allocating or inserting any document state.
 func readClassified(path string, maxBytes int64) (ClassifiedRead, error) {
+	read, _, err := readClassifiedWithRaw(path, maxBytes)
+	return read, err
+}
+
+func readClassifiedWithRaw(path string, maxBytes int64) (ClassifiedRead, []byte, error) {
 	maxBytes = normalizedReadLimit(maxBytes)
 	canonical, err := CanonicalizeDocumentPath(path)
 	if err != nil {
-		return ClassifiedRead{Outcome: readOutcomeRefused, Capability: CapabilityRefused, Error: bridge.Classified(path, apperr.ClassifiedNotFound, "The document could not be found.", apperr.RemediationNone)}, nil
+		return ClassifiedRead{Outcome: readOutcomeRefused, Capability: CapabilityRefused, Error: bridge.Classified(path, apperr.ClassifiedNotFound, "The document could not be found.", apperr.RemediationNone)}, nil, nil
 	}
 	if !IsSupportedDocumentSuffix(canonical.Path) {
 		return ClassifiedRead{
@@ -177,11 +161,11 @@ func readClassified(path string, maxBytes int64) (ClassifiedRead, error) {
 			Outcome:       readOutcomeRefused,
 			Capability:    CapabilityRefused,
 			Error:         bridge.Classified(canonical.DisplayName, apperr.ClassifiedUnsupportedInput, "The selected file type is not supported.", apperr.RemediationNone),
-		}, nil
+		}, nil, nil
 	}
 	info, err := os.Stat(canonical.Path)
 	if err != nil {
-		return ClassifiedRead{CanonicalPath: canonical, Outcome: readOutcomeRefused, Capability: CapabilityRefused, Error: bridge.Classified(canonical.DisplayName, apperr.ClassifiedNotFound, "The document could not be found.", apperr.RemediationNone)}, nil
+		return ClassifiedRead{CanonicalPath: canonical, Outcome: readOutcomeRefused, Capability: CapabilityRefused, Error: bridge.Classified(canonical.DisplayName, apperr.ClassifiedNotFound, "The document could not be found.", apperr.RemediationNone)}, nil, nil
 	}
 	if info.Size() > maxBytes || info.Size() > MaxSupportedDocumentBytes {
 		return ClassifiedRead{
@@ -190,21 +174,21 @@ func readClassified(path string, maxBytes int64) (ClassifiedRead, error) {
 			Outcome:         readOutcomeRefused,
 			Capability:      CapabilityRefused,
 			Error:           bridge.Classified(canonical.DisplayName, apperr.ClassifiedCapacityLimit, "The document exceeds the 50 MiB limit.", apperr.RemediationNone),
-		}, nil
+		}, nil, nil
 	}
 
 	file, err := os.Open(canonical.Path)
 	if err != nil {
-		return ClassifiedRead{CanonicalPath: canonical, Outcome: readOutcomeRefused, Capability: CapabilityRefused, Error: bridge.Classified(canonical.DisplayName, apperr.ClassifiedIOFailure, "The document could not be read.", apperr.RemediationRetry)}, err
+		return ClassifiedRead{CanonicalPath: canonical, Outcome: readOutcomeRefused, Capability: CapabilityRefused, Error: bridge.Classified(canonical.DisplayName, apperr.ClassifiedIOFailure, "The document could not be read.", apperr.RemediationRetry)}, nil, err
 	}
 	defer func() { _ = file.Close() }()
 	data, err := readBounded(file, maxBytes)
 	if err != nil {
-		return ClassifiedRead{CanonicalPath: canonical, Outcome: readOutcomeRefused, Capability: CapabilityRefused, BytesRead: int64(len(data)), Error: bridge.Classified(canonical.DisplayName, apperr.ClassifiedIOFailure, "The document could not be read.", apperr.RemediationRetry)}, err
+		return ClassifiedRead{CanonicalPath: canonical, Outcome: readOutcomeRefused, Capability: CapabilityRefused, BytesRead: int64(len(data)), Error: bridge.Classified(canonical.DisplayName, apperr.ClassifiedIOFailure, "The document could not be read.", apperr.RemediationRetry)}, nil, err
 	}
 	classified := classifyDocumentBytes(canonical, info, data)
 	classified.BytesRead = int64(len(data))
-	return classified, nil
+	return classified, data, nil
 }
 
 func normalizedReadLimit(maxBytes int64) int64 {
@@ -212,15 +196,6 @@ func normalizedReadLimit(maxBytes int64) int64 {
 		return MaxClassifiedReadBytes
 	}
 	return maxBytes
-}
-
-func readRawBytesBounded(path string, maxBytes int64) ([]byte, error) {
-	file, err := os.Open(path)
-	if err != nil {
-		return nil, err
-	}
-	defer func() { _ = file.Close() }()
-	return readBounded(file, maxBytes)
 }
 
 func readBounded(reader io.Reader, maxBytes int64) ([]byte, error) {

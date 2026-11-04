@@ -544,6 +544,7 @@ export namespace apperr {
 	    modifiedUnixNano: number;
 	    mode: number;
 	    fileIdentity?: string;
+	    rawHash?: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new DiskVersion(source);
@@ -556,6 +557,7 @@ export namespace apperr {
 	        this.modifiedUnixNano = source["modifiedUnixNano"];
 	        this.mode = source["mode"];
 	        this.fileIdentity = source["fileIdentity"];
+	        this.rawHash = source["rawHash"];
 	    }
 	}
 	export class ConflictPreview {

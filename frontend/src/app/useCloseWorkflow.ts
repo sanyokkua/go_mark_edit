@@ -11,6 +11,7 @@ import { parseError } from '../logic/utils/parseError';
 import type {
     ClassifiedError,
     CloseChoice,
+    ConflictPreview,
     ClosePlanDecision,
     ClosePlanKind,
     ClosePlanResult,
@@ -39,12 +40,20 @@ interface CloseWorkflowOptions {
     conflicts: ConflictCommands;
     recoverySurface: RecoverySurface | null;
     writes: Pick<DocumentWrites, 'saveForClose' | 'notifyInactiveFormatSkipped'>;
+    onExternalConflict?: (preview: ConflictPreview) => void;
 }
 
 export type CloseAllWindowTabsResult = 'closed' | 'cancelled' | 'refused';
 
 /** Owns close plans and their prompts; the shutdown controller owns native request identity. */
-export function useCloseWorkflow({ session, shutdown, conflicts, recoverySurface, writes }: CloseWorkflowOptions) {
+export function useCloseWorkflow({
+    session,
+    shutdown,
+    conflicts,
+    recoverySurface,
+    writes,
+    onExternalConflict,
+}: CloseWorkflowOptions) {
     const dispatch = useAppDispatch();
     const tabSetRevision = useAppSelector((state) => state.documents.tabSetRevision);
     const [state, setState] = useState<CloseState>({ phase: 'idle' });
@@ -229,6 +238,7 @@ export function useCloseWorkflow({ session, shutdown, conflicts, recoverySurface
                     return result;
                 }
                 session.activation.acknowledge(generation, result.activeBuffer);
+                if (result.conflict !== undefined) onExternalConflict?.(result.conflict);
                 if (result.orderedDocumentIds.length === 0) {
                     const reconciled = await appModelAdapter.getState();
                     if (isCurrent(context.origin) && (reconciled.snapshot.orderedDocumentIds ?? []).length === 0) {
@@ -260,6 +270,7 @@ export function useCloseWorkflow({ session, shutdown, conflicts, recoverySurface
             dispatch,
             fail,
             isCurrent,
+            onExternalConflict,
             publish,
             session.activation,
             session.activeBuffer,

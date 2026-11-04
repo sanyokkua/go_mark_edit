@@ -29,6 +29,11 @@ The system SHALL treat a file as changed only when its bytes, its encoding, BOM 
   and the window regains focus
 - **THEN** no dialog appears
 
+#### Scenario: Bytes change while filesystem metadata is preserved
+
+- **WHEN** another program replaces the bytes of "notes.md" but preserves its size, modification time, permissions and file identity, and GoMarkEdit checks the file
+- **THEN** the changed bytes are detected and the comparison dialog appears
+
 ### Requirement: Choices for a read-only document
 
 For a read-only document, or when the changed file on disk is write-protected, the dialog SHALL offer only Reload from disk and Cancel, with Cancel focused first and dismissal choosing Cancel. Keep mine and Skip SHALL NOT be offered, because such documents are never written.
@@ -51,6 +56,35 @@ For a read-only document, or when the changed file on disk is write-protected, t
   in the dialog and then Save As "copy.md"
 - **THEN** "copy.md" contains the user's text, "notes.md" is unchanged, and the tab becomes "copy.md" and accepts edits
 
+### Requirement: Conflict queue
+
+The system SHALL retain each pending conflict with its document identity and present at most one comparison at a time. A close-owned conflict SHALL be shown before a write-owned conflict, which SHALL be shown before a foreground conflict; conflicts at the same priority SHALL follow open-tab order. A conflict for a document that is no longer open SHALL be dropped. Resolving a prompt SHALL recheck deferred comparisons before showing them.
+
+#### Scenario: Close, write and foreground conflicts are pending
+
+- **WHEN** a close-owned conflict, a write-owned conflict and a focus-check conflict are pending together
+- **THEN** the close-owned comparison is shown first, then the write-owned comparison, then the focus-check comparison
+
+#### Scenario: Close and focus conflicts together
+
+- **WHEN** a conflict from closing a tab and one from a focus check are both pending
+- **THEN** the closing conflict is shown first
+
+#### Scenario: Foreground conflicts use tab order
+
+- **WHEN** foreground checks detect conflicts for "two.md" and "three.md" in that order, while the open-tab order is "one.md", "two.md", "three.md"
+- **THEN** "two.md" is shown before "three.md"
+
+#### Scenario: Closed queued document
+
+- **WHEN** "two.md" has a queued conflict, its tab closes, and "three.md" has another queued conflict
+- **THEN** the conflict for "two.md" is discarded and "three.md" is shown next
+
+#### Scenario: Closing the selected tab activates a changed next tab
+
+- **WHEN** closing the active tab activates "two.md" and an activation check finds that "two.md" changed on disk
+- **THEN** the comparison for "two.md" is routed to the external-conflict prompt and the active editor remains associated with "two.md"
+
 ## ADDED Requirements
 
 ### Requirement: Reload is not undone by a later write
@@ -64,6 +98,11 @@ the text the document held before the reload.
 - **WHEN** Autosave is on, "notes.md" holds unsaved text "mine", another program writes "theirs" to the file, the
   user chooses Reload from disk, switches to another tab and back, and waits two seconds
 - **THEN** the file on disk contains "theirs", the editor shows "theirs" and the tab is not marked modified
+
+#### Scenario: Reload a background tab
+
+- **WHEN** "one.md" is active, "two.md" has a pending comparison, and the user reloads "two.md" from disk
+- **THEN** "two.md" adopts the reloaded bytes while "one.md" keeps its active editor text and activation remains valid
 
 #### Scenario: Save right after reload
 

@@ -233,8 +233,7 @@ function normalizeConflictPreview(preview: apperr.ConflictPreview | undefined): 
     return {
         contentRevision: preview.contentRevision,
         detectedDiskVersion: {
-            exists: preview.detectedDiskVersion.exists,
-            size: preview.detectedDiskVersion.size,
+            ...preview.detectedDiskVersion,
             modifiedUnixNano: String(preview.detectedDiskVersion.modifiedUnixNano),
             mode: preview.detectedDiskVersion.mode,
             fileIdentity: preview.detectedDiskVersion.fileIdentity,

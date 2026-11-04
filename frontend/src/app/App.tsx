@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Provider } from 'react-redux';
 
 import { store, useAppDispatch } from '../logic/store';
 import { appModelAdapter } from '../logic/adapter';
 import { notifyError } from '../logic/store/notificationsSlice';
+import type { ConflictPreview } from '../logic/store/appModelTypes';
 import { ApplicationMenuRequestContext } from '../ui/widgets/applicationMenuRequest';
 import { InsertTableRequestContext } from '../ui/widgets/insertTableRequest';
 import { EditorSessionProvider } from '../ui/widgets/editorSession';
@@ -51,7 +52,19 @@ const AppWorkflows = ({
     );
     const conflicts = useConflictCommands(session.activation);
     const writes = useDocumentWrites(session, conflicts);
-    const close = useCloseWorkflow({ session, shutdown, conflicts, recoverySurface: writes.recoverySurface, writes });
+    const externalReceiver = useRef<(preview: ConflictPreview) => void>(() => undefined);
+    const onCloseExternalConflict = useCallback(
+        (preview: ConflictPreview): void => externalReceiver.current(preview),
+        [],
+    );
+    const close = useCloseWorkflow({
+        session,
+        shutdown,
+        conflicts,
+        recoverySurface: writes.recoverySurface,
+        writes,
+        onExternalConflict: onCloseExternalConflict,
+    });
     const commands = useCommands(session, close.closeAllWindowTabs);
     const drops = useDropHandler(commands, bootstrap.status === 'ready');
     useLaunchTarget(commands, bootstrap.status === 'ready');
@@ -61,6 +74,9 @@ const AppWorkflows = ({
         bootstrapStatus: bootstrap.status,
         blocked: close.active || writes.active,
     });
+    useEffect(() => {
+        externalReceiver.current = external.receiveConflict;
+    }, [external.receiveConflict]);
     const prompts = useWorkflowPrompts(close, writes, external);
     const pdf = usePdfExport(session);
     const presentation = useAppPresentation({

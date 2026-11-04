@@ -313,9 +313,10 @@ const DocumentTabs: React.FC<DocumentTabsProps> = ({
             if (result?.error !== undefined) {
                 reportClassifiedError(dispatch, result.error, 'The document could not be closed.');
             }
+            if (result?.conflict !== undefined) onExternalConflict?.(result.conflict);
             return result;
         },
-        [adapter, dispatch, onCloseDocument],
+        [adapter, dispatch, onCloseDocument, onExternalConflict],
     );
 
     /*

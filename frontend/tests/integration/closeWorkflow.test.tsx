@@ -18,7 +18,7 @@ import { useCloseWorkflow } from '../../src/app/useCloseWorkflow';
 import { useConflictCommands } from '../../src/app/useConflictCommands';
 import { useShutdown } from '../../src/app/useShutdown';
 import { createCommandRecorder } from '../support/commandRecorder';
-import { documentFixture } from '../support/appFixtures';
+import { conflictFixture, documentFixture } from '../support/appFixtures';
 
 const wrapper = ({ children }: PropsWithChildren): React.JSX.Element => <Provider store={store}>{children}</Provider>;
 const unusedWrites = {
@@ -95,7 +95,10 @@ afterEach(() => {
     jest.resetAllMocks();
 });
 
-function renderCloseWorkflow(writes?: { saveForClose: jest.Mock; notifyInactiveFormatSkipped?: jest.Mock }) {
+function renderCloseWorkflow(
+    writes?: { saveForClose: jest.Mock; notifyInactiveFormatSkipped?: jest.Mock },
+    onExternalConflict = jest.fn(),
+) {
     const runtime = nativeRecorder();
     return renderHook(
         () => {
@@ -108,6 +111,7 @@ function renderCloseWorkflow(writes?: { saveForClose: jest.Mock; notifyInactiveF
             return useCloseWorkflow({
                 session,
                 shutdown,
+                ...{ onExternalConflict },
                 conflicts: useConflictCommands(session.activation),
                 recoverySurface: null,
                 writes: {
@@ -1087,4 +1091,25 @@ it('refuses repeated closes on buffer sync failure without duplicate operation e
     });
     expect(closePlanAdapter.prepareClose).not.toHaveBeenCalled();
     expect(store.getState().notifications.items).toHaveLength(0);
+});
+
+it('routes a close-induced activation conflict through the external conflict owner', async () => {
+    const onExternalConflict = jest.fn();
+    (closePlanAdapter.prepareClose as jest.Mock).mockResolvedValue({
+        data: { id: 'plan', kind: 'single', status: 'ready', tabSetRevision: 0, targets: [] },
+    });
+    (closePlanAdapter.resolveClosePlan as jest.Mock).mockResolvedValue({
+        data: { id: 'plan', kind: 'single', status: 'ready', tabSetRevision: 0, targets: [] },
+    });
+    (closePlanAdapter.executeClosePlan as jest.Mock).mockResolvedValue({
+        status: 'closed',
+        orderedDocumentIds: ['two'],
+        activeDocumentId: 'two',
+        conflict: conflictFixture('two'),
+    });
+    const owner = renderCloseWorkflow(undefined, onExternalConflict);
+    await act(async () => {
+        await owner.result.current.onCloseDocument('one', 0);
+    });
+    expect(onExternalConflict).toHaveBeenCalledWith(conflictFixture('two'));
 });

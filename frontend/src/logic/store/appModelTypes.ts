@@ -192,6 +192,7 @@ export interface DiskVersion {
     modifiedUnixNano: string;
     mode: number;
     fileIdentity?: string;
+    rawHash?: string;
 }
 
 export interface ConflictPreview {
