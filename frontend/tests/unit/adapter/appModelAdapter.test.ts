@@ -107,6 +107,79 @@ it('exposes guarded refresh and clear recent commands', async () => {
     expect(clearRecentItems).toHaveBeenCalledTimes(1);
 });
 
+it('preserves optional tab and path command forwarding, arity, and order', async () => {
+    const commands = {
+        revealWorkspacePath: jest.fn((_path: string) => {
+            void _path;
+            return Promise.resolve({});
+        }),
+        copyWorkspacePath: jest.fn((_path: string) => {
+            void _path;
+            return Promise.resolve({});
+        }),
+        openPreviewLink: jest.fn((_id: string, _href: string) => {
+            void _id;
+            void _href;
+            return Promise.resolve({});
+        }),
+        activateDocument: jest.fn((_id: string, _revision: number) => {
+            void _id;
+            void _revision;
+            return Promise.resolve({});
+        }),
+        reorderDocument: jest.fn((_id: string, _index: number, _revision: number) => {
+            void _id;
+            void _index;
+            void _revision;
+            return Promise.resolve({});
+        }),
+        closeDocument: jest.fn((_id: string, _revision: number) => {
+            void _id;
+            void _revision;
+            return Promise.resolve({});
+        }),
+        copyPath: jest.fn((_id: string) => {
+            void _id;
+            return Promise.resolve({});
+        }),
+        revealInFileManager: jest.fn((_id: string) => {
+            void _id;
+            return Promise.resolve({});
+        }),
+    };
+    const base = {
+        getState: async () => ({ data: state }),
+        updateBuffer: async () => ({}),
+        setDocView: async () => ({}),
+        setUILayout: async () => ({}),
+    };
+    const runtime = { eventsOn: (): (() => void) => (): void => undefined };
+    const empty = createAppModelAdapter(base, runtime);
+    const adapter = createAppModelAdapter({ ...base, ...commands } as unknown as AppModelBindings, runtime);
+    const cases: Array<[keyof typeof commands, unknown[]]> = [
+        ['revealWorkspacePath', ['/workspace/file']],
+        ['copyWorkspacePath', ['/workspace/file']],
+        ['openPreviewLink', ['doc', './file.md']],
+        ['activateDocument', ['doc', 2]],
+        ['reorderDocument', ['doc', 1, 2]],
+        ['closeDocument', ['doc', 2]],
+        ['copyPath', ['doc']],
+        ['revealInFileManager', ['doc']],
+    ];
+    expect(Object.keys(adapter).filter((key) => Object.hasOwn(commands, key))).toEqual(cases.map(([key]) => key));
+    for (const [key, args] of cases) {
+        expect(empty[key]).toBeUndefined();
+        const command = adapter[key];
+        expect(command).toBeDefined();
+        expect(command?.length).toBe(args.length);
+        await expect(Reflect.apply(command!, undefined, args)).resolves.toEqual({});
+        expect(commands[key]).toHaveBeenCalledWith(...args);
+        await expect(Reflect.apply(command!, undefined, [...args, 'extra'])).resolves.toEqual({});
+        expect(commands[key]).toHaveBeenCalledTimes(2);
+        expect(commands[key]).toHaveBeenLastCalledWith(...args);
+    }
+});
+
 it('exposes guarded New/Open commands without converting classified outcomes', async () => {
     const newDocument = jest.fn(async (expectedTabSetRevision: number) => {
         void expectedTabSetRevision;
@@ -346,9 +419,29 @@ it('blocks later lifecycle work through bounded recovery and exposes saved-on-di
     const getState = jest.fn(async (): Promise<{ data: AppModelState }> => {
         throw new Error('projection unavailable');
     });
+    const newDocument = jest.fn((revision: number) => {
+        void revision;
+        return Promise.resolve({ data: { documentId: 'new-doc', content: '' } });
+    });
+    const openDocument = jest.fn((revision: number) => {
+        void revision;
+        return Promise.resolve({ status: 'cancelled' as const });
+    });
+    const openWorkspace = jest.fn((path: string): Promise<WorkspaceResult> => {
+        void path;
+        return Promise.resolve({ status: 'unchanged' });
+    });
+    const copyPath = jest.fn((documentId: string) => {
+        void documentId;
+        return Promise.resolve({ status: 'copied' as const });
+    });
     const adapter = createAppModelAdapter(
         {
             getState,
+            newDocument,
+            openDocument,
+            openWorkspace,
+            copyPath,
             updateBuffer: async (): Promise<VoidResult> => ({}),
             setDocView: async (): Promise<VoidResult> => ({}),
             setUILayout: async (): Promise<VoidResult> => ({}),
@@ -366,6 +459,12 @@ it('blocks later lifecycle work through bounded recovery and exposes saved-on-di
         resyncRequired: true,
     });
     expect(getState).toHaveBeenCalledTimes(1);
+    await expect(adapter.newDocument!(1)).rejects.toThrow();
+    await expect(adapter.openWorkspace!('/tmp/project')).rejects.toThrow();
+    await expect(adapter.copyPath!('document-1')).rejects.toThrow();
+    expect(newDocument).not.toHaveBeenCalled();
+    expect(openWorkspace).not.toHaveBeenCalled();
+    expect(copyPath).not.toHaveBeenCalled();
     await jest.advanceTimersByTimeAsync(250);
     await jest.advanceTimersByTimeAsync(1000);
     await expect(recovery).resolves.toMatchObject({
@@ -375,6 +474,12 @@ it('blocks later lifecycle work through bounded recovery and exposes saved-on-di
     });
     expect(getState).toHaveBeenCalledTimes(3);
     await expect(adapter.updateBuffer('document-1', 'blocked')).rejects.toThrow('editor-state recovery failed');
+    await expect(adapter.newDocument!(1)).rejects.toThrow('editor-state recovery failed');
+    await expect(adapter.openWorkspace!('/tmp/project')).rejects.toThrow('editor-state recovery failed');
+    await expect(adapter.copyPath!('document-1')).rejects.toThrow('editor-state recovery failed');
+    expect(newDocument).not.toHaveBeenCalled();
+    expect(openWorkspace).not.toHaveBeenCalled();
+    expect(copyPath).not.toHaveBeenCalled();
 
     getState.mockResolvedValue({ data: state });
     await expect(

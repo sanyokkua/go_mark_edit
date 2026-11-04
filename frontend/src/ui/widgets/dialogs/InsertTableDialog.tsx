@@ -24,11 +24,11 @@ function InsertTableForm({
     snapshot,
     columnsRef,
     onClose,
-}: {
+}: Readonly<{
     snapshot: EditorActionSnapshot;
     columnsRef: React.RefObject<HTMLInputElement | null>;
     onClose: () => void;
-}): React.JSX.Element {
+}>): React.JSX.Element {
     const [columns, setColumns] = useState('3');
     const [rows, setRows] = useState('3');
     const columnsValid = inRange(columns, maxColumns);
@@ -99,7 +99,11 @@ function InsertTableForm({
 }
 
 /** Asks for a table size, then inserts it through the shared format runner as one edit. */
-export default function InsertTableDialog({ open, snapshot, onClose }: InsertTableDialogProps): React.JSX.Element {
+export default function InsertTableDialog({
+    open,
+    snapshot,
+    onClose,
+}: Readonly<InsertTableDialogProps>): React.JSX.Element {
     const columnsRef = useRef<HTMLInputElement | null>(null);
     const shown = open && snapshot !== null;
     const returnTo = useRef<EditorActionSnapshot | null>(null);

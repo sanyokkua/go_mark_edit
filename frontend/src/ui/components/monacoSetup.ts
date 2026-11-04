@@ -111,83 +111,75 @@ export function registerEditorLinkModel(
     model: monaco.editor.ITextModel,
     activate: (href: string) => void,
 ): monaco.IDisposable {
-    if (providerRegistration === undefined) {
-        providerRegistration = monaco.languages.registerLinkProvider(
-            { language: 'markdown', exclusive: true },
-            {
-                async provideLinks(currentModel, token) {
-                    const entry = models.get(currentModel);
-                    if (entry === undefined || token.isCancellationRequested) return { links: [] };
-                    const version = currentModel.getVersionId();
-                    entry.pending?.abort();
-                    const generation = ++entry.generation;
-                    entry.targets = [];
-                    entry.parsedVersion = null;
-                    let links: EditorLink[];
-                    if (entry.completed?.version === version) {
-                        links = entry.completed.links;
-                    } else {
-                        const control = new AbortController();
-                        entry.pending = control;
-                        const subscription = token.onCancellationRequested(() => control.abort());
-                        try {
-                            const result = await runEditorLinkExtraction(currentModel.getValue(), control.signal);
-                            if (result.kind !== 'links') return { links: [] };
-                            links = result.links;
-                        } finally {
-                            subscription.dispose();
-                            if (entry.pending === control) entry.pending = null;
-                        }
+    providerRegistration ??= monaco.languages.registerLinkProvider(
+        { language: 'markdown', exclusive: true },
+        {
+            async provideLinks(currentModel, token) {
+                const entry = models.get(currentModel);
+                if (entry === undefined || token.isCancellationRequested) return { links: [] };
+                const version = currentModel.getVersionId();
+                entry.pending?.abort();
+                const generation = ++entry.generation;
+                entry.targets = [];
+                entry.parsedVersion = null;
+                let links: EditorLink[];
+                if (entry.completed?.version === version) {
+                    links = entry.completed.links;
+                } else {
+                    const control = new AbortController();
+                    entry.pending = control;
+                    const subscription = token.onCancellationRequested(() => control.abort());
+                    try {
+                        const result = await runEditorLinkExtraction(currentModel.getValue(), control.signal);
+                        if (result.kind !== 'links') return { links: [] };
+                        links = result.links;
+                    } finally {
+                        subscription.dispose();
+                        if (entry.pending === control) entry.pending = null;
                     }
-                    if (
-                        token.isCancellationRequested ||
-                        models.get(currentModel) !== entry ||
-                        entry.generation !== generation ||
-                        currentModel.getVersionId() !== version
-                    )
-                        return { links: [] };
-                    entry.completed = { version, links };
-                    entry.parsedVersion = version;
-                    entry.targets = links.map((link) => link.href);
-                    return {
-                        links: links.map((link, index) => ({
-                            range: link.range,
-                            url: monaco.Uri.from({
-                                scheme: 'https',
-                                authority: editorLinkAuthority,
-                                path: `/${entry.id}/${generation}/${index}`,
-                            }),
-                        })),
-                    };
-                },
+                }
+                if (
+                    token.isCancellationRequested ||
+                    models.get(currentModel) !== entry ||
+                    entry.generation !== generation ||
+                    currentModel.getVersionId() !== version
+                )
+                    return { links: [] };
+                entry.completed = { version, links };
+                entry.parsedVersion = version;
+                entry.targets = links.map((link) => link.href);
+                return {
+                    links: links.map((link, index) => ({
+                        range: link.range,
+                        url: monaco.Uri.from({
+                            scheme: 'https',
+                            authority: editorLinkAuthority,
+                            path: `/${entry.id}/${generation}/${index}`,
+                        }),
+                    })),
+                };
             },
-        );
-    }
+        },
+    );
     // Keep one opener for the app lifetime: a hover action can outlive its model,
     // and an abandoned synthetic HTTPS URL must still be consumed locally.
-    if (openerRegistration === undefined) {
-        openerRegistration = monaco.editor.registerLinkOpener({
-            open(resource) {
-                if (resource.scheme === 'https' && resource.authority === editorLinkAuthority) {
-                    const match = /^\/([^/]+)\/(\d+)\/(\d+)$/u.exec(resource.path);
-                    if (match !== null && resource.query === '' && resource.fragment === '') {
-                        const entry = modelsById.get(match[1]);
-                        if (
-                            entry !== undefined &&
-                            entry.generation === Number(match[2]) &&
-                            entry.model.getVersionId() === entry.parsedVersion
-                        ) {
-                            const target = entry.targets[Number(match[3])];
-                            if (target !== undefined) entry.activate(target);
-                        }
+    openerRegistration ??= monaco.editor.registerLinkOpener({
+        open(resource) {
+            if (resource.scheme === 'https' && resource.authority === editorLinkAuthority) {
+                const match = /^\/([^/]+)\/(\d+)\/(\d+)$/u.exec(resource.path);
+                if (match !== null && resource.query === '' && resource.fragment === '') {
+                    const entry = modelsById.get(match[1]);
+                    if (entry?.generation === Number(match[2]) && entry.model.getVersionId() === entry.parsedVersion) {
+                        const target = entry.targets[Number(match[3])];
+                        if (target !== undefined) entry.activate(target);
                     }
-                    // Unknown or stale editor links must never reach Monaco's browser opener.
-                    return true;
                 }
-                return false;
-            },
-        });
-    }
+                // Unknown or stale editor links must never reach Monaco's browser opener.
+                return true;
+            }
+            return false;
+        },
+    });
 
     const previous = models.get(model);
     if (previous !== undefined) {
@@ -225,7 +217,7 @@ export function registerEditorLinkModel(
     };
 }
 
-self.MonacoEnvironment = {
+(globalThis as typeof globalThis & Window).MonacoEnvironment = {
     getWorker(): Worker {
         return new EditorWorker();
     },

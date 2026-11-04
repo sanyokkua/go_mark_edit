@@ -20,7 +20,7 @@ interface AlertBoxProps {
     sourceLine?: number | string;
 }
 
-export default function AlertBox({ kind, children, id, sourceLine }: AlertBoxProps): React.JSX.Element {
+export default function AlertBox({ kind, children, id, sourceLine }: Readonly<AlertBoxProps>): React.JSX.Element {
     return (
         <div className={`${styles.alert} ${styles[kind]}`} data-source-line={sourceLine} id={id} role="note">
             <p className={styles.title}>

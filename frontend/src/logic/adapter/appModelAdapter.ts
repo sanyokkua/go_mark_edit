@@ -177,6 +177,10 @@ export interface DocViewSplitRatioIntent {
 
 export type DocViewIntent = DocViewInput | DocViewArrangementIntent | DocViewSplitRatioIntent;
 
+function isFullDocView(view: DocViewIntent): view is DocViewInput {
+    return 'cursor' in view;
+}
+
 function isAppStatePatch(payload: unknown): payload is AppStatePatch {
     return (
         typeof payload === 'object' && payload !== null && 'revision' in payload && typeof payload.revision === 'number'
@@ -288,8 +292,21 @@ function normalizeStatePatch(patch: AppStatePatch): AppStatePatch {
     return normalized;
 }
 
-export function createAppModelAdapter(bindings: AppModelBindings, runtime: AppModelRuntime): AppModelAdapter {
-    const getState = guardArity('AppModelHandler.GetState', bindings.getState);
+function snapshotDocView(view: DocViewInput): DocViewInput {
+    return {
+        editorVisible: view.editorVisible,
+        previewVisible: view.previewVisible,
+        ...(view.splitRatio === undefined ? {} : { splitRatio: view.splitRatio }),
+        cursor: { ...view.cursor },
+        selection: {
+            start: { ...view.selection.start },
+            end: { ...view.selection.end },
+        },
+        scroll: { ...view.scroll },
+    };
+}
+
+function createLifecycleCommands(bindings: AppModelBindings, assertCommandsAvailable: () => void) {
     const documentLifecycle =
         bindings.newDocument === undefined || bindings.openDocument === undefined
             ? undefined
@@ -299,22 +316,45 @@ export function createAppModelAdapter(bindings: AppModelBindings, runtime: AppMo
                   openRecentFile: bindings.openRecentFile,
                   reopenLastFile: bindings.reopenLastFile,
               });
-    const openPreviewLink =
-        bindings.openPreviewLink === undefined
-            ? undefined
-            : guardArity('AppModelHandler.OpenPreviewLink', bindings.openPreviewLink);
-    const activateDocument =
-        bindings.activateDocument === undefined
-            ? undefined
-            : guardArity('AppModelHandler.ActivateDocument', bindings.activateDocument);
-    const reorderDocument =
-        bindings.reorderDocument === undefined
-            ? undefined
-            : guardArity('AppModelHandler.ReorderDocument', bindings.reorderDocument);
-    const closeDocument =
-        bindings.closeDocument === undefined
-            ? undefined
-            : guardArity('AppModelHandler.CloseDocument', bindings.closeDocument);
+    return {
+        newDocument:
+            documentLifecycle === undefined
+                ? undefined
+                : async (expectedTabSetRevision: number): Promise<DocumentTransitionResult> => {
+                      assertCommandsAvailable();
+                      return documentLifecycle.newDocument(expectedTabSetRevision);
+                  },
+        openDocument:
+            documentLifecycle === undefined
+                ? undefined
+                : async (expectedTabSetRevision: number): Promise<OpenResult> => {
+                      assertCommandsAvailable();
+                      return documentLifecycle.openDocument(expectedTabSetRevision);
+                  },
+        openRecentFile:
+            documentLifecycle?.openRecentFile === undefined
+                ? undefined
+                : async (path: string, expectedTabSetRevision: number): Promise<OpenResult> => {
+                      assertCommandsAvailable();
+                      return (
+                          documentLifecycle.openRecentFile?.(path, expectedTabSetRevision) ?? { status: 'cancelled' }
+                      );
+                  },
+        reopenLastFile:
+            documentLifecycle?.reopenLastFile === undefined
+                ? undefined
+                : async (expectedTabSetRevision: number): Promise<OpenResult> => {
+                      assertCommandsAvailable();
+                      return (
+                          documentLifecycle.reopenLastFile?.(expectedTabSetRevision) ?? {
+                              status: 'cancelled',
+                          }
+                      );
+                  },
+    };
+}
+
+function createWorkspaceCommands(bindings: AppModelBindings, assertCommandsAvailable: () => void) {
     const openWorkspaceBinding = bindings.openWorkspace;
     const classifyDroppedPaths =
         bindings.classifyDroppedPaths === undefined
@@ -412,6 +452,37 @@ export function createAppModelAdapter(bindings: AppModelBindings, runtime: AppMo
                       return normalizeWorkspaceResult(await bindings.createWorkspaceFolder!(parentPath, name));
                   },
               );
+    return {
+        classifyDroppedPaths,
+        refreshRecentItems,
+        clearRecentItems,
+        openWorkspace,
+        chooseWorkspaceFolder,
+        refreshWorkspace,
+        setWorkspaceHiddenFolders,
+        closeWorkspace,
+        createWorkspaceFile,
+        createWorkspaceFolder,
+    };
+}
+
+function guardedTabBindings(bindings: AppModelBindings) {
+    const openPreviewLink =
+        bindings.openPreviewLink === undefined
+            ? undefined
+            : guardArity('AppModelHandler.OpenPreviewLink', bindings.openPreviewLink);
+    const activateDocument =
+        bindings.activateDocument === undefined
+            ? undefined
+            : guardArity('AppModelHandler.ActivateDocument', bindings.activateDocument);
+    const reorderDocument =
+        bindings.reorderDocument === undefined
+            ? undefined
+            : guardArity('AppModelHandler.ReorderDocument', bindings.reorderDocument);
+    const closeDocument =
+        bindings.closeDocument === undefined
+            ? undefined
+            : guardArity('AppModelHandler.CloseDocument', bindings.closeDocument);
     const revealWorkspacePath =
         bindings.revealWorkspacePath === undefined
             ? undefined
@@ -426,6 +497,125 @@ export function createAppModelAdapter(bindings: AppModelBindings, runtime: AppMo
         bindings.revealInFileManager === undefined
             ? undefined
             : guardArity('AppModelHandler.RevealInFileManager', bindings.revealInFileManager);
+    return {
+        openPreviewLink,
+        activateDocument,
+        reorderDocument,
+        closeDocument,
+        revealWorkspacePath,
+        copyWorkspacePath,
+        copyPath,
+        revealInFileManager,
+    };
+}
+
+function createWorkspacePathCommands(
+    guarded: ReturnType<typeof guardedTabBindings>,
+    assertCommandsAvailable: () => void,
+): Pick<AppModelAdapter, 'revealWorkspacePath' | 'copyWorkspacePath'> {
+    const { revealWorkspacePath, copyWorkspacePath } = guarded;
+    return {
+        revealWorkspacePath:
+            revealWorkspacePath === undefined
+                ? undefined
+                : async (path) => {
+                      assertCommandsAvailable();
+                      return revealWorkspacePath(path);
+                  },
+        copyWorkspacePath:
+            copyWorkspacePath === undefined
+                ? undefined
+                : async (path) => {
+                      assertCommandsAvailable();
+                      return copyWorkspacePath(path);
+                  },
+    };
+}
+
+function createTabNavigationCommands(
+    guarded: ReturnType<typeof guardedTabBindings>,
+    assertCommandsAvailable: () => void,
+): Pick<AppModelAdapter, 'openPreviewLink' | 'activateDocument' | 'reorderDocument'> {
+    const { openPreviewLink, activateDocument, reorderDocument } = guarded;
+    return {
+        openPreviewLink:
+            openPreviewLink === undefined
+                ? undefined
+                : async (documentId: string, href: string): Promise<OpenResult> => {
+                      assertCommandsAvailable();
+                      return openPreviewLink(documentId, href);
+                  },
+        activateDocument:
+            activateDocument === undefined
+                ? undefined
+                : async (documentId, expectedTabSetRevision) => {
+                      assertCommandsAvailable();
+                      return activateDocument(documentId, expectedTabSetRevision);
+                  },
+        reorderDocument:
+            reorderDocument === undefined
+                ? undefined
+                : async (documentId, targetIndex, expectedTabSetRevision) => {
+                      assertCommandsAvailable();
+                      return reorderDocument(documentId, targetIndex, expectedTabSetRevision);
+                  },
+    };
+}
+
+function createTabOperationCommands(
+    guarded: ReturnType<typeof guardedTabBindings>,
+    assertCommandsAvailable: () => void,
+): Pick<AppModelAdapter, 'closeDocument' | 'copyPath' | 'revealInFileManager'> {
+    const { closeDocument, copyPath, revealInFileManager } = guarded;
+    return {
+        closeDocument:
+            closeDocument === undefined
+                ? undefined
+                : async (documentId, expectedTabSetRevision) => {
+                      assertCommandsAvailable();
+                      return closeDocument(documentId, expectedTabSetRevision);
+                  },
+        copyPath:
+            copyPath === undefined
+                ? undefined
+                : async (documentId) => {
+                      assertCommandsAvailable();
+                      return copyPath(documentId);
+                  },
+        revealInFileManager:
+            revealInFileManager === undefined
+                ? undefined
+                : async (documentId) => {
+                      assertCommandsAvailable();
+                      return revealInFileManager(documentId);
+                  },
+    };
+}
+
+function createTabCommands(
+    bindings: AppModelBindings,
+    assertCommandsAvailable: () => void,
+): Pick<
+    AppModelAdapter,
+    | 'revealWorkspacePath'
+    | 'copyWorkspacePath'
+    | 'openPreviewLink'
+    | 'activateDocument'
+    | 'reorderDocument'
+    | 'closeDocument'
+    | 'copyPath'
+    | 'revealInFileManager'
+> {
+    const guarded = guardedTabBindings(bindings);
+    return {
+        ...createWorkspacePathCommands(guarded, assertCommandsAvailable),
+        ...createTabNavigationCommands(guarded, assertCommandsAvailable),
+        ...createTabOperationCommands(guarded, assertCommandsAvailable),
+    };
+}
+
+export function createAppModelAdapter(bindings: AppModelBindings, runtime: AppModelRuntime): AppModelAdapter {
+    const getState = guardArity('AppModelHandler.GetState', bindings.getState);
     const updateBuffer = guardArity('AppModelHandler.UpdateBuffer', bindings.updateBuffer);
     const setDocView = guardArity('AppModelHandler.SetDocView', bindings.setDocView);
     const setUILayout = guardArity('AppModelHandler.SetUILayout', bindings.setUILayout);
@@ -473,24 +663,6 @@ export function createAppModelAdapter(bindings: AppModelBindings, runtime: AppMo
         return record;
     }
 
-    function snapshotDocView(view: DocViewInput): DocViewInput {
-        return {
-            editorVisible: view.editorVisible,
-            previewVisible: view.previewVisible,
-            ...(view.splitRatio === undefined ? {} : { splitRatio: view.splitRatio }),
-            cursor: { ...view.cursor },
-            selection: {
-                start: { ...view.selection.start },
-                end: { ...view.selection.end },
-            },
-            scroll: { ...view.scroll },
-        };
-    }
-
-    function isFullDocView(view: DocViewIntent): view is DocViewInput {
-        return 'cursor' in view;
-    }
-
     function queueDocView(
         record: ViewRecord,
         view: DocViewIntent,
@@ -502,18 +674,16 @@ export function createAppModelAdapter(bindings: AppModelBindings, runtime: AppMo
         if (baseView === undefined && !isFullDocView(view)) {
             throw new Error('A partial view command requires a document view snapshot.');
         }
-        const latestView = isFullDocView(view)
-            ? preserveLatestVisibility && baseView !== undefined
-                ? {
-                      ...snapshotDocView(view),
-                      editorVisible: baseView.editorVisible,
-                      previewVisible: baseView.previewVisible,
-                  }
-                : snapshotDocView(view)
-            : {
-                  ...snapshotDocView(baseView as DocViewInput),
-                  ...view,
-              };
+        let latestView: DocViewInput;
+        if (isFullDocView(view)) {
+            latestView = snapshotDocView(view);
+            if (preserveLatestVisibility && baseView !== undefined) {
+                latestView.editorVisible = baseView.editorVisible;
+                latestView.previewVisible = baseView.previewVisible;
+            }
+        } else {
+            latestView = { ...snapshotDocView(baseView as DocViewInput), ...view };
+        }
 
         if (preserveLatestRatio && baseView?.splitRatio !== undefined) {
             latestView.splitRatio = baseView.splitRatio;
@@ -673,109 +843,12 @@ export function createAppModelAdapter(bindings: AppModelBindings, runtime: AppMo
         async getState(): Promise<AppModelState> {
             return hydrateState();
         },
-        newDocument:
-            documentLifecycle === undefined
-                ? undefined
-                : async (expectedTabSetRevision: number): Promise<DocumentTransitionResult> => {
-                      assertCommandsAvailable();
-                      return documentLifecycle.newDocument(expectedTabSetRevision);
-                  },
-        openDocument:
-            documentLifecycle === undefined
-                ? undefined
-                : async (expectedTabSetRevision: number): Promise<OpenResult> => {
-                      assertCommandsAvailable();
-                      return documentLifecycle.openDocument(expectedTabSetRevision);
-                  },
-        openRecentFile:
-            documentLifecycle?.openRecentFile === undefined
-                ? undefined
-                : async (path: string, expectedTabSetRevision: number): Promise<OpenResult> => {
-                      assertCommandsAvailable();
-                      return (
-                          documentLifecycle.openRecentFile?.(path, expectedTabSetRevision) ?? { status: 'cancelled' }
-                      );
-                  },
-        classifyDroppedPaths,
-        refreshRecentItems,
-        clearRecentItems,
-        openWorkspace,
-        chooseWorkspaceFolder,
-        refreshWorkspace,
-        setWorkspaceHiddenFolders,
-        closeWorkspace,
-        createWorkspaceFile,
-        createWorkspaceFolder,
-        revealWorkspacePath:
-            revealWorkspacePath === undefined
-                ? undefined
-                : async (path) => {
-                      assertCommandsAvailable();
-                      return revealWorkspacePath(path);
-                  },
-        copyWorkspacePath:
-            copyWorkspacePath === undefined
-                ? undefined
-                : async (path) => {
-                      assertCommandsAvailable();
-                      return copyWorkspacePath(path);
-                  },
-        openPreviewLink:
-            openPreviewLink === undefined
-                ? undefined
-                : async (documentId: string, href: string): Promise<OpenResult> => {
-                      assertCommandsAvailable();
-                      return openPreviewLink(documentId, href);
-                  },
+        ...createLifecycleCommands(bindings, assertCommandsAvailable),
+        ...createWorkspaceCommands(bindings, assertCommandsAvailable),
+        ...createTabCommands(bindings, assertCommandsAvailable),
         openExternalLink: bindings.openExternalLink,
         resolvePreviewImage: (documentId: string, source: string): string =>
             `/preview-image?doc=${encodeURIComponent(documentId)}&src=${encodeURIComponent(source)}`,
-        reopenLastFile:
-            documentLifecycle?.reopenLastFile === undefined
-                ? undefined
-                : async (expectedTabSetRevision: number): Promise<OpenResult> => {
-                      assertCommandsAvailable();
-                      return (
-                          documentLifecycle.reopenLastFile?.(expectedTabSetRevision) ?? {
-                              status: 'cancelled',
-                          }
-                      );
-                  },
-        activateDocument:
-            activateDocument === undefined
-                ? undefined
-                : async (documentId, expectedTabSetRevision) => {
-                      assertCommandsAvailable();
-                      return activateDocument(documentId, expectedTabSetRevision);
-                  },
-        reorderDocument:
-            reorderDocument === undefined
-                ? undefined
-                : async (documentId, targetIndex, expectedTabSetRevision) => {
-                      assertCommandsAvailable();
-                      return reorderDocument(documentId, targetIndex, expectedTabSetRevision);
-                  },
-        closeDocument:
-            closeDocument === undefined
-                ? undefined
-                : async (documentId, expectedTabSetRevision) => {
-                      assertCommandsAvailable();
-                      return closeDocument(documentId, expectedTabSetRevision);
-                  },
-        copyPath:
-            copyPath === undefined
-                ? undefined
-                : async (documentId) => {
-                      assertCommandsAvailable();
-                      return copyPath(documentId);
-                  },
-        revealInFileManager:
-            revealInFileManager === undefined
-                ? undefined
-                : async (documentId) => {
-                      assertCommandsAvailable();
-                      return revealInFileManager(documentId);
-                  },
         async updateBuffer(documentId: string, content: string): Promise<void> {
             assertCommandsAvailable();
             const record = bufferRecord(documentId);

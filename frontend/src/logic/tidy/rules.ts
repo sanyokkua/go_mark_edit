@@ -87,7 +87,8 @@ export function expectedEmphasisMarker(
             child.type === 'strong' ? initial === '*' : expectedEmphasisMarker(child, source, preferred) === initial,
         );
     if (!conflicts) return initial;
-    return initial === '_' ? '*' : canUseUnderscore(node, source) ? '_' : '*';
+    if (initial === '_') return '*';
+    return canUseUnderscore(node, source) ? '_' : '*';
 }
 
 export function unorderedMarkerAt(list: List, source: string): BulletMarker | null {

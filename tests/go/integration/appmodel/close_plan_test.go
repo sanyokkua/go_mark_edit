@@ -228,6 +228,29 @@ func TestQuitSaveAllDoesNotAdmitLaterWriteAfterNativeTakeover(t *testing.T) {
 	}
 }
 
+func assertClosePlanPartialSave(t *testing.T, service *AppModelService, firstID, secondID, firstPath, secondPath string) {
+	t.Helper()
+	state, _ := service.GetState(context.Background())
+	if _, firstOpen := state.Snapshot.Documents[firstID]; !firstOpen {
+		t.Fatal("first document was removed after a later save failure")
+	}
+	if _, secondOpen := state.Snapshot.Documents[secondID]; !secondOpen {
+		t.Fatal("second document was removed after its save failure")
+	}
+	if state.Snapshot.Documents[firstID].Dirty {
+		t.Fatal("earlier successful save remained dirty")
+	}
+	if !state.Snapshot.Documents[secondID].Dirty {
+		t.Fatal("failed save became clean")
+	}
+	if disk, err := os.ReadFile(firstPath); err != nil || string(disk) != "first edited\n" {
+		t.Fatalf("first disk after partial batch = %q, err=%v", disk, err)
+	}
+	if disk, err := os.ReadFile(secondPath); err != nil || string(disk) != "second base\n" {
+		t.Fatalf("second disk after failed batch = %q, err=%v", disk, err)
+	}
+}
+
 // conflicts before each affected save" is proved by the sibling below)
 func TestClosePlanSaveOrderAndFailure(t *testing.T) {
 	var executor WriteExecutor
@@ -274,25 +297,7 @@ func TestClosePlanSaveOrderAndFailure(t *testing.T) {
 	if len(gotOrder) != 2 || gotOrder[0] != firstID || gotOrder[1] != secondID {
 		t.Fatalf("save order = %v, want [%s %s]", gotOrder, firstID, secondID)
 	}
-	state, _ = service.GetState(context.Background())
-	if _, firstOpen := state.Snapshot.Documents[firstID]; !firstOpen {
-		t.Fatal("first document was removed after a later save failure")
-	}
-	if _, secondOpen := state.Snapshot.Documents[secondID]; !secondOpen {
-		t.Fatal("second document was removed after its save failure")
-	}
-	if state.Snapshot.Documents[firstID].Dirty {
-		t.Fatal("earlier successful save remained dirty")
-	}
-	if !state.Snapshot.Documents[secondID].Dirty {
-		t.Fatal("failed save became clean")
-	}
-	if disk, err := os.ReadFile(firstPath); err != nil || string(disk) != "first edited\n" {
-		t.Fatalf("first disk after partial batch = %q, err=%v", disk, err)
-	}
-	if disk, err := os.ReadFile(secondPath); err != nil || string(disk) != "second base\n" {
-		t.Fatalf("second disk after failed batch = %q, err=%v", disk, err)
-	}
+	assertClosePlanPartialSave(t, service, firstID, secondID, firstPath, secondPath)
 }
 
 // conflicts before each affected save". The order and first-failure clauses are
@@ -347,17 +352,7 @@ func TestClosePlanResolvesEveryExternalConflictBeforeAnySaveRuns(t *testing.T) {
 	if blocked.Data.Status == apperr.ClosePlanReady {
 		t.Fatalf("close plan status = %q, want it held short of ready while a conflict is unresolved", blocked.Data.Status)
 	}
-	var conflicted *apperr.ConflictPreview
-	for _, target := range blocked.Data.Targets {
-		if target.DocumentID == secondID {
-			conflicted = target.Conflict
-		} else if target.Conflict != nil {
-			t.Fatalf("target %q reported a conflict it does not have: %+v", target.DocumentID, target.Conflict)
-		}
-	}
-	if conflicted == nil {
-		t.Fatalf("no conflict surfaced for the externally changed target: %+v", blocked.Data.Targets)
-	}
+	conflicted := assertClosePlanConflictTarget(t, blocked.Data.Targets, secondID)
 	if got := writes.Load(); got != 0 {
 		t.Fatalf("writes performed while a conflict was still unresolved = %d, want 0", got)
 	}
@@ -380,7 +375,12 @@ func TestClosePlanResolvesEveryExternalConflictBeforeAnySaveRuns(t *testing.T) {
 		t.Fatalf("writes performed during resolution = %d, want the batch still unstarted", got)
 	}
 
-	executed := service.ExecuteClosePlan(context.Background(), plan.Data.ID)
+	assertClosePlanResolvedBatch(t, service, plan.Data.ID, &writes, firstPath, secondPath)
+}
+
+func assertClosePlanResolvedBatch(t *testing.T, service *AppModelService, planID string, writes *atomic.Int32, firstPath, secondPath string) {
+	t.Helper()
+	executed := service.ExecuteClosePlan(context.Background(), planID)
 	if executed.Error != nil {
 		t.Fatalf("ExecuteClosePlan = %+v", executed)
 	}
@@ -393,6 +393,22 @@ func TestClosePlanResolvesEveryExternalConflictBeforeAnySaveRuns(t *testing.T) {
 	if disk, err := os.ReadFile(secondPath); err != nil || string(disk) != "second edited\n" {
 		t.Fatalf("second file after the resolved batch = %q / %v", disk, err)
 	}
+}
+
+func assertClosePlanConflictTarget(t *testing.T, targets []apperr.CloseTarget, secondID string) *apperr.ConflictPreview {
+	t.Helper()
+	var conflicted *apperr.ConflictPreview
+	for _, target := range targets {
+		if target.DocumentID == secondID {
+			conflicted = target.Conflict
+		} else if target.Conflict != nil {
+			t.Fatalf("target %q reported a conflict it does not have: %+v", target.DocumentID, target.Conflict)
+		}
+	}
+	if conflicted == nil {
+		t.Fatalf("no conflict surfaced for the externally changed target: %+v", targets)
+	}
+	return conflicted
 }
 
 func TestClosePlanSaveAsResolvesBeforeBatchWrite(t *testing.T) {
@@ -582,8 +598,17 @@ func TestCloseAdjacentAndFinalZeroState(t *testing.T) {
 		state, _ = service.GetState(context.Background())
 	}
 	order := append([]string(nil), state.Snapshot.OrderedDocumentIDs...)
+	closeAdjacentDocuments(t, service, order)
+	state, _ = service.GetState(context.Background())
+	if state.Snapshot.ActiveDocumentID != "" || state.ActiveBuffer != nil || len(state.Snapshot.OrderedDocumentIDs) != 0 {
+		t.Fatalf("final close state = %+v, want zero tabs and buffer", state)
+	}
+}
+
+func closeAdjacentDocuments(t *testing.T, service *AppModelService, order []string) {
+	t.Helper()
 	for index := len(order) - 1; index >= 0; index-- {
-		state, _ = service.GetState(context.Background())
+		state, _ := service.GetState(context.Background())
 		plan := service.PrepareClose(context.Background(), apperr.ClosePlanSingle, []string{order[index]}, state.Snapshot.TabSetRevision)
 		if plan.Error != nil || plan.Data == nil || plan.Data.Status != apperr.ClosePlanReady {
 			t.Fatalf("PrepareClose[%d] = %+v", index, plan)
@@ -599,10 +624,6 @@ func TestCloseAdjacentAndFinalZeroState(t *testing.T) {
 		if index > 0 && closed.ActiveDocumentID != order[index-1] {
 			t.Fatalf("active after closing %s = %q, want %q", order[index], closed.ActiveDocumentID, order[index-1])
 		}
-	}
-	state, _ = service.GetState(context.Background())
-	if state.Snapshot.ActiveDocumentID != "" || state.ActiveBuffer != nil || len(state.Snapshot.OrderedDocumentIDs) != 0 {
-		t.Fatalf("final close state = %+v, want zero tabs and buffer", state)
 	}
 }
 

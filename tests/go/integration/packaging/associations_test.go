@@ -94,55 +94,39 @@ func rootDict(t *testing.T, path string) *plistNode {
 
 func TestMacOSBundlesDeclareExactlyTheSupportedSuffixesAndFolders(t *testing.T) {
 	for _, path := range plists() {
-		dict := rootDict(t, path)
+		checkMacOSBundle(t, path)
+	}
+}
 
-		var suffixes []string
-		folder := false
-		documentTypes := dictValue(dict, "CFBundleDocumentTypes")
-		if documentTypes == nil || len(documentTypes.Children) == 0 {
-			t.Fatalf("%s declares no CFBundleDocumentTypes", path)
-		}
-		for _, entry := range documentTypes.Children {
-			suffixes = append(suffixes, strings_(dictValue(entry, "CFBundleTypeExtensions"))...)
-			if slices.Contains(strings_(dictValue(entry, "LSItemContentTypes")), "public.folder") {
-				folder = true
-			}
-			if rank := dictValue(entry, "LSHandlerRank"); rank == nil || rank.Text != "Alternate" {
-				t.Errorf("%s: a document type does not use LSHandlerRank Alternate (would claim a default)", path)
-			}
-		}
+func checkMacOSBundle(t *testing.T, path string) {
+	t.Helper()
+	dict := rootDict(t, path)
 
-		imported := dictValue(dict, "UTImportedTypeDeclarations")
-		if imported == nil || len(imported.Children) == 0 {
-			t.Fatalf("%s declares no UTImportedTypeDeclarations", path)
+	var suffixes []string
+	folder := false
+	documentTypes := dictValue(dict, "CFBundleDocumentTypes")
+	if documentTypes == nil || len(documentTypes.Children) == 0 {
+		t.Fatalf("%s declares no CFBundleDocumentTypes", path)
+	}
+	for _, entry := range documentTypes.Children {
+		suffixes = append(suffixes, strings_(dictValue(entry, "CFBundleTypeExtensions"))...)
+		if slices.Contains(strings_(dictValue(entry, "LSItemContentTypes")), "public.folder") {
+			folder = true
 		}
-		for _, declaration := range imported.Children {
-			if id := dictValue(declaration, "UTTypeIdentifier"); id == nil || id.Text != "net.daringfireball.markdown" {
-				continue
-			}
-			spec := dictValue(declaration, "UTTypeTagSpecification")
-			suffixes = append(suffixes, strings_(dictValue(spec, "public.filename-extension"))...)
+		if rank := dictValue(entry, "LSHandlerRank"); rank == nil || rank.Text != "Alternate" {
+			t.Errorf("%s: a document type does not use LSHandlerRank Alternate (would claim a default)", path)
 		}
+	}
 
-		got := map[string]bool{}
-		for _, suffix := range suffixes {
-			got["."+strings.TrimPrefix(suffix, ".")] = true
-		}
-		want := file.SupportedDocumentSuffixes()
-		if len(got) != len(want) {
-			t.Errorf("%s: declared suffixes %v, want %v", path, got, want)
-		}
-		for _, suffix := range want {
-			if !got[suffix] {
-				t.Errorf("%s: suffix %s is not declared", path, suffix)
-			}
-		}
-		if !folder {
-			t.Errorf("%s: no public.folder document type", path)
-		}
-		if minimum := dictValue(dict, "LSMinimumSystemVersion"); minimum == nil || minimum.Text != "11.0" {
-			t.Errorf("%s: LSMinimumSystemVersion = %v, want 11.0", path, minimum)
-		}
+	suffixes = append(suffixes, importedMarkdownSuffixes(t, dict, path)...)
+
+	checkMacOSSuffixes(t, path, suffixes)
+
+	if !folder {
+		t.Errorf("%s: no public.folder document type", path)
+	}
+	if minimum := dictValue(dict, "LSMinimumSystemVersion"); minimum == nil || minimum.Text != "11.0" {
+		t.Errorf("%s: LSMinimumSystemVersion = %v, want 11.0", path, minimum)
 	}
 }
 
@@ -173,13 +157,7 @@ func nsiMacroCalls(t *testing.T, lines []string, macro string) []nsiCall {
 			if len(tokens) == 0 || strings.HasPrefix(trimmed, "#") {
 				continue
 			}
-			call := nsiCall{Command: tokens[0]}
-			for _, token := range tokens[1:] {
-				if quote := token[0]; (quote == '"' || quote == '\'') && len(token) >= 2 {
-					token = token[1 : len(token)-1]
-				}
-				call.Args = append(call.Args, token)
-			}
+			call := parseNSICall(tokens)
 			calls = append(calls, call)
 		}
 	}
@@ -213,6 +191,44 @@ func TestWindowsInstallerRegistersOpenWithWithoutTakingDefaults(t *testing.T) {
 	register := nsiMacroCalls(t, lines, "gomarkedit.register")
 	unregister := nsiMacroCalls(t, lines, "gomarkedit.unregister")
 
+	checkWindowsSuffixes(t, register)
+
+	checkWindowsVerbCommands(t, register)
+
+	checkWindowsUnregister(t, register, unregister)
+}
+
+func importedMarkdownSuffixes(t *testing.T, dict *plistNode, path string) []string {
+	t.Helper()
+	var suffixes []string
+	imported := dictValue(dict, "UTImportedTypeDeclarations")
+	if imported == nil || len(imported.Children) == 0 {
+		t.Fatalf("%s declares no UTImportedTypeDeclarations", path)
+	}
+	for _, declaration := range imported.Children {
+		if id := dictValue(declaration, "UTTypeIdentifier"); id == nil || id.Text != "net.daringfireball.markdown" {
+			continue
+		}
+		spec := dictValue(declaration, "UTTypeTagSpecification")
+		suffixes = append(suffixes, strings_(dictValue(spec, "public.filename-extension"))...)
+	}
+
+	return suffixes
+}
+
+func parseNSICall(tokens []string) nsiCall {
+	call := nsiCall{Command: tokens[0]}
+	for _, token := range tokens[1:] {
+		if quote := token[0]; (quote == '"' || quote == '\'') && len(token) >= 2 {
+			token = token[1 : len(token)-1]
+		}
+		call.Args = append(call.Args, token)
+	}
+	return call
+}
+
+func checkWindowsSuffixes(t *testing.T, register []nsiCall) {
+	t.Helper()
 	progIDs := regexp.MustCompile(`^Software\\Classes\\(\.[^\\]+)\\OpenWithProgids$`)
 	var progIDSuffixes, supportedSuffixes []string
 	for _, call := range register {
@@ -238,7 +254,10 @@ func TestWindowsInstallerRegistersOpenWithWithoutTakingDefaults(t *testing.T) {
 			t.Errorf("%s suffixes = %v, want %v", label, got, want)
 		}
 	}
+}
 
+func checkWindowsVerbCommands(t *testing.T, register []nsiCall) {
+	t.Helper()
 	verbCommands := map[string]string{
 		`Software\Classes\Directory\shell\GoMarkEdit\command`:            `%1`,
 		`Software\Classes\Directory\Background\shell\GoMarkEdit\command`: `%V`,
@@ -257,26 +276,52 @@ func TestWindowsInstallerRegistersOpenWithWithoutTakingDefaults(t *testing.T) {
 			t.Errorf("register does not write %s", key)
 		}
 	}
+}
 
+func checkWindowsUnregister(t *testing.T, register, unregister []nsiCall) {
+	t.Helper()
 	for _, call := range register {
 		if call.Command != "WriteRegStr" || len(call.Args) < 3 {
 			continue
 		}
 		key, name := call.Args[1], call.Args[2]
-		removed := false
-		for _, undo := range unregister {
-			if len(undo.Args) < 2 || undo.Args[0] != call.Args[0] {
-				continue
-			}
-			switch undo.Command {
-			case "DeleteRegValue":
-				removed = removed || (undo.Args[1] == key && len(undo.Args) > 2 && undo.Args[2] == name)
-			case "DeleteRegKey":
-				removed = removed || key == undo.Args[1] || strings.HasPrefix(key, undo.Args[1]+`\`)
-			}
-		}
+		removed := removesRegistryCall(call, unregister)
 		if !removed {
 			t.Errorf("unregister does not remove %s [%q] written by register", key, name)
+		}
+	}
+}
+
+func removesRegistryCall(call nsiCall, unregister []nsiCall) bool {
+	key, name := call.Args[1], call.Args[2]
+	removed := false
+	for _, undo := range unregister {
+		if len(undo.Args) < 2 || undo.Args[0] != call.Args[0] {
+			continue
+		}
+		switch undo.Command {
+		case "DeleteRegValue":
+			removed = removed || (undo.Args[1] == key && len(undo.Args) > 2 && undo.Args[2] == name)
+		case "DeleteRegKey":
+			removed = removed || key == undo.Args[1] || strings.HasPrefix(key, undo.Args[1]+`\`)
+		}
+	}
+	return removed
+}
+
+func checkMacOSSuffixes(t *testing.T, path string, suffixes []string) {
+	t.Helper()
+	got := map[string]bool{}
+	for _, suffix := range suffixes {
+		got["."+strings.TrimPrefix(suffix, ".")] = true
+	}
+	want := file.SupportedDocumentSuffixes()
+	if len(got) != len(want) {
+		t.Errorf("%s: declared suffixes %v, want %v", path, got, want)
+	}
+	for _, suffix := range want {
+		if !got[suffix] {
+			t.Errorf("%s: suffix %s is not declared", path, suffix)
 		}
 	}
 }

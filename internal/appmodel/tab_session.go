@@ -7,6 +7,8 @@ import (
 	"github.com/sanyokkua/go_mark_edit/internal/bridge"
 )
 
+const tabDocumentClosedMessage = "The document is no longer open."
+
 // ActivateDocument changes only the backend-owned active identity. The returned
 // acknowledgement is the sole source payload that may be installed by a caller.
 func (service *AppModelService) ActivateDocument(ctx context.Context, documentID string, expectedTabSetRevision uint64) apperr.DocumentTransitionOutcome {
@@ -23,7 +25,7 @@ func (service *AppModelService) ActivateDocument(ctx context.Context, documentID
 	document, exists := service.state.documents[documentID]
 	if !exists {
 		service.mu.Unlock()
-		return bridge.Refused[apperr.DocumentTransitionResult](apperr.ClassifiedNotFound, documentID, "The document is no longer open.", apperr.RemediationNone)
+		return bridge.Refused[apperr.DocumentTransitionResult](apperr.ClassifiedNotFound, documentID, tabDocumentClosedMessage, apperr.RemediationNone)
 	}
 	if service.state.activeDocumentID == documentID {
 		outcome := activeDocumentTransition(documentID, service.state.revision, document)
@@ -79,7 +81,7 @@ func (service *AppModelService) CloseDocument(ctx context.Context, documentID st
 	}
 	if _, exists := service.state.documents[documentID]; !exists {
 		service.mu.Unlock()
-		return bridge.Refused[apperr.TabTransitionResult](apperr.ClassifiedNotFound, documentID, "The document is no longer open.", apperr.RemediationNone)
+		return bridge.Refused[apperr.TabTransitionResult](apperr.ClassifiedNotFound, documentID, tabDocumentClosedMessage, apperr.RemediationNone)
 	}
 	service.mu.Unlock()
 
@@ -102,7 +104,7 @@ func (service *AppModelService) CloseDocument(ctx context.Context, documentID st
 	document, exists := service.state.documents[documentID]
 	if !exists {
 		service.mu.Unlock()
-		return bridge.Refused[apperr.TabTransitionResult](apperr.ClassifiedNotFound, documentID, "The document is no longer open.", apperr.RemediationNone)
+		return bridge.Refused[apperr.TabTransitionResult](apperr.ClassifiedNotFound, documentID, tabDocumentClosedMessage, apperr.RemediationNone)
 	}
 	// Still dirty after the flush means there was nothing accepted to write, or
 	// the write did not clean the document — either way it needs a close plan.

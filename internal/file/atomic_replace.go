@@ -117,34 +117,9 @@ func createAtomicTemp(directory string) (atomicTempFile, error) {
 func atomicReplaceWithOps(request AtomicReplaceRequest, ops atomicReplaceOps) (AtomicReplaceResult, error) {
 	ops = withDefaultAtomicReplaceOps(ops)
 	target := request.TargetPath
-	if strings.TrimSpace(target) == "" {
-		return AtomicReplaceResult{}, newAtomicReplaceError(request.TargetPath, false, atomicReplacePreCommit, apperr.ClassifiedIOFailure, errors.New("target path is empty"))
-	}
-
-	var expected DiskVersion
-	if request.ExpectedVersion != nil {
-		expected = *request.ExpectedVersion
-	} else {
-		var err error
-		expected, err = ops.currentVersion(target)
-		if err != nil {
-			return AtomicReplaceResult{}, newAtomicReplaceError(target, false, atomicReplacePreCommit, classifyAtomicReplaceCause(err), err)
-		}
-	}
-	baseline, err := CurrentDiskVersion(target)
+	expected, expectedHash, err := atomicReplaceBaseline(request, ops)
 	if err != nil {
-		return AtomicReplaceResult{}, newAtomicReplaceError(target, false, atomicReplacePreCommit, classifyAtomicReplaceCause(err), err)
-	}
-	if !baseline.Equal(expected) {
-		return AtomicReplaceResult{}, newAtomicReplaceError(target, false, atomicReplacePreCommit, apperr.ClassifiedConflict, errors.New("target disk version changed before replacement"))
-	}
-
-	expectedHash := request.ExpectedRawHash
-	if expected.Exists && expectedHash == "" {
-		expectedHash, err = rawFileHash(target, expected.Size)
-		if err != nil {
-			return AtomicReplaceResult{}, newAtomicReplaceError(target, false, atomicReplacePreCommit, classifyAtomicReplaceCause(err), err)
-		}
+		return AtomicReplaceResult{}, err
 	}
 
 	directory := filepath.Dir(target)
@@ -168,20 +143,10 @@ func atomicReplaceWithOps(request AtomicReplaceRequest, ops atomicReplaceOps) (A
 		return AtomicReplaceResult{}, newAtomicReplaceError(target, false, atomicReplacePreCommit, category, cause)
 	}
 
-	for offset := 0; offset < len(request.Data); {
-		written, writeErr := ops.write(temporary, request.Data[offset:])
-		remaining := len(request.Data) - offset
-		if written < 0 || written > remaining {
-			return failBeforeCommit(apperr.ClassifiedIOFailure, errors.New("invalid write count"))
-		}
-		offset += written
-		if writeErr != nil {
-			return failBeforeCommit(classifyAtomicReplaceCause(writeErr), writeErr)
-		}
-		if written == 0 {
-			return failBeforeCommit(apperr.ClassifiedIOFailure, io.ErrNoProgress)
-		}
+	if err := writeAtomicTemp(temporary, request.Data, ops); err != nil {
+		return failBeforeCommit(classifyAtomicReplaceCause(err), err)
 	}
+
 	mode, setMode := atomicReplacementMode(expected)
 	if setMode {
 		if err := ops.chmod(temporary, mode); err != nil {
@@ -206,19 +171,9 @@ func atomicReplaceWithOps(request AtomicReplaceRequest, ops atomicReplaceOps) (A
 	}
 
 	if expected.Exists {
-		currentHash, hashErr := rawFileHash(target, expected.Size)
-		if hashErr != nil {
-			return failBeforeCommit(classifyAtomicReplaceCause(hashErr), hashErr)
-		}
-		if currentHash != expectedHash {
-			return failBeforeCommit(apperr.ClassifiedConflict, errors.New("target bytes changed before replacement"))
-		}
-		current, err = ops.currentVersion(target)
-		if err != nil {
-			return failBeforeCommit(classifyAtomicReplaceCause(err), err)
-		}
-		if !current.Equal(expected) {
-			return failBeforeCommit(apperr.ClassifiedConflict, errors.New("target disk version changed before replacement"))
+		category, checkErr := recheckAtomicTarget(target, expected, expectedHash, ops)
+		if checkErr != nil {
+			return failBeforeCommit(category, checkErr)
 		}
 	}
 
@@ -226,14 +181,52 @@ func atomicReplaceWithOps(request AtomicReplaceRequest, ops atomicReplaceOps) (A
 		return failBeforeCommit(classifyAtomicReplaceCause(err), err)
 	}
 	temporaryPath = ""
-	result := AtomicReplaceResult{Committed: true}
+	return verifyAtomicCommit(target, directory, request.Data, ops)
+}
 
+func atomicReplaceBaseline(request AtomicReplaceRequest, ops atomicReplaceOps) (DiskVersion, string, error) {
+	target := request.TargetPath
+	if strings.TrimSpace(target) == "" {
+		return DiskVersion{}, "", newAtomicReplaceError(target, false, atomicReplacePreCommit, apperr.ClassifiedIOFailure, errors.New("target path is empty"))
+	}
+
+	var expected DiskVersion
+	if request.ExpectedVersion != nil {
+		expected = *request.ExpectedVersion
+	} else {
+		var err error
+		expected, err = ops.currentVersion(target)
+		if err != nil {
+			return DiskVersion{}, "", newAtomicReplaceError(target, false, atomicReplacePreCommit, classifyAtomicReplaceCause(err), err)
+		}
+	}
+	baseline, err := CurrentDiskVersion(target)
+	if err != nil {
+		return DiskVersion{}, "", newAtomicReplaceError(target, false, atomicReplacePreCommit, classifyAtomicReplaceCause(err), err)
+	}
+	if !baseline.Equal(expected) {
+		return DiskVersion{}, "", newAtomicReplaceError(target, false, atomicReplacePreCommit, apperr.ClassifiedConflict, errors.New("target disk version changed before replacement"))
+	}
+
+	expectedHash := request.ExpectedRawHash
+	if expected.Exists && expectedHash == "" {
+		expectedHash, err = rawFileHash(target, expected.Size)
+		if err != nil {
+			return DiskVersion{}, "", newAtomicReplaceError(target, false, atomicReplacePreCommit, classifyAtomicReplaceCause(err), err)
+		}
+	}
+	return expected, expectedHash, nil
+}
+
+func verifyAtomicCommit(target, directory string, data []byte, ops atomicReplaceOps) (AtomicReplaceResult, error) {
+	result := AtomicReplaceResult{Committed: true}
+	var err error
 	result.Version, err = CurrentDiskVersion(target)
 	if err != nil {
 		return result, newAtomicReplaceError(target, true, atomicReplacePostCommit, apperr.ClassifiedPersistenceWarning, err)
 	}
-	committedHash, hashErr := rawFileHash(target, int64(len(request.Data)))
-	writtenDigest := sha256.Sum256(request.Data)
+	committedHash, hashErr := rawFileHash(target, int64(len(data)))
+	writtenDigest := sha256.Sum256(data)
 	if hashErr != nil || committedHash != hex.EncodeToString(writtenDigest[:]) {
 		if hashErr == nil {
 			hashErr = errors.New("target changed after replacement")
@@ -244,6 +237,43 @@ func atomicReplaceWithOps(request AtomicReplaceRequest, ops atomicReplaceOps) (A
 		return result, newAtomicReplaceError(target, true, atomicReplacePostCommit, apperr.ClassifiedPersistenceWarning, err)
 	}
 	return result, nil
+}
+
+// writeAtomicTemp handles short writes without allowing a stalled writer to loop forever.
+func writeAtomicTemp(temporary atomicTempFile, data []byte, ops atomicReplaceOps) error {
+	for offset := 0; offset < len(data); {
+		written, err := ops.write(temporary, data[offset:])
+		if written < 0 || written > len(data)-offset {
+			return errors.New("invalid write count")
+		}
+		offset += written
+		if err != nil {
+			return err
+		}
+		if written == 0 {
+			return io.ErrNoProgress
+		}
+	}
+	return nil
+}
+
+// recheckAtomicTarget verifies both bytes and metadata before replacement.
+func recheckAtomicTarget(target string, expected DiskVersion, expectedHash string, ops atomicReplaceOps) (apperr.ClassifiedErrorCategory, error) {
+	currentHash, err := rawFileHash(target, expected.Size)
+	if err != nil {
+		return classifyAtomicReplaceCause(err), err
+	}
+	if currentHash != expectedHash {
+		return apperr.ClassifiedConflict, errors.New("target bytes changed before replacement")
+	}
+	current, err := ops.currentVersion(target)
+	if err != nil {
+		return classifyAtomicReplaceCause(err), err
+	}
+	if !current.Equal(expected) {
+		return apperr.ClassifiedConflict, errors.New("target disk version changed before replacement")
+	}
+	return "", nil
 }
 
 func withDefaultAtomicReplaceOps(ops atomicReplaceOps) atomicReplaceOps {

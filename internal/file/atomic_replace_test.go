@@ -41,84 +41,9 @@ func (temp *atomicReplaceTestTemp) Sync() error             { return temp.syncEr
 func (temp *atomicReplaceTestTemp) Close() error            { return temp.closeErr }
 
 func TestAtomicReplace(t *testing.T) {
-	t.Run("existing target preserves bytes and mode", func(t *testing.T) {
-		root := t.TempDir()
-		target := filepath.Join(root, "document.md")
-		if err := os.WriteFile(target, []byte("before\r\n"), 0o640); err != nil {
-			t.Fatal(err)
-		}
-		before, err := CurrentDiskVersion(target)
-		if err != nil {
-			t.Fatal(err)
-		}
+	t.Run("existing target preserves bytes and mode", testAtomicReplaceExistingTarget)
 
-		result, err := AtomicReplace(AtomicReplaceRequest{
-			TargetPath:      target,
-			Data:            []byte("after\r\n"),
-			ExpectedVersion: &before,
-		})
-		if err != nil {
-			t.Fatalf("AtomicReplace: %v", err)
-		}
-		if !result.Committed {
-			t.Fatalf("result = %+v, want committed", result)
-		}
-		got, err := os.ReadFile(target)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if !bytes.Equal(got, []byte("after\r\n")) {
-			t.Fatalf("target bytes = %q", got)
-		}
-		info, err := os.Stat(target)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if gotMode := info.Mode().Perm(); gotMode != 0o640 {
-			t.Fatalf("target mode = %04o, want 0640", gotMode)
-		}
-		entries, err := os.ReadDir(root)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if len(entries) != 1 || entries[0].Name() != "document.md" {
-			t.Fatalf("same-directory artifacts = %+v", entries)
-		}
-		if !result.Version.Equal(mustCurrentDiskVersion(t, target)) {
-			t.Fatalf("result version = %+v, current = %+v", result.Version, mustCurrentDiskVersion(t, target))
-		}
-	})
-
-	t.Run("new target uses normal creation semantics", func(t *testing.T) {
-		root := t.TempDir()
-		target := filepath.Join(root, "new.md")
-		absent := DiskVersion{}
-		result, err := AtomicReplace(AtomicReplaceRequest{
-			TargetPath:      target,
-			Data:            []byte("new file"),
-			ExpectedVersion: &absent,
-		})
-		if err != nil {
-			t.Fatalf("AtomicReplace: %v", err)
-		}
-		if !result.Committed {
-			t.Fatalf("result = %+v, want committed", result)
-		}
-		got, err := os.ReadFile(target)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if !bytes.Equal(got, []byte("new file")) {
-			t.Fatalf("new target bytes = %q", got)
-		}
-		entries, err := os.ReadDir(root)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if len(entries) != 1 || entries[0].Name() != "new.md" {
-			t.Fatalf("same-directory artifacts = %+v", entries)
-		}
-	})
+	t.Run("new target uses normal creation semantics", testAtomicReplaceNewTarget)
 
 	for _, failure := range []atomicReplaceFailure{
 		{name: "write", category: apperr.ClassifiedIOFailure, configure: func(_ *atomicReplaceOps, temp *atomicReplaceTestTemp, _ DiskVersion) {
@@ -143,61 +68,11 @@ func TestAtomicReplace(t *testing.T) {
 		}},
 	} {
 		t.Run("pre-commit "+failure.name+" preserves original", func(t *testing.T) {
-			root := t.TempDir()
-			target := filepath.Join(root, "document.md")
-			if err := os.WriteFile(target, []byte("before"), 0o640); err != nil {
-				t.Fatal(err)
-			}
-			beforeBytes, err := os.ReadFile(target)
-			if err != nil {
-				t.Fatal(err)
-			}
-			before := mustCurrentDiskVersion(t, target)
-			temp := &atomicReplaceTestTemp{name: filepath.Join(root, ".temporary")}
-			ops, removed := testAtomicReplaceOps(temp, before)
-			failure.configure(&ops, temp, before)
-
-			result, err := atomicReplaceWithOps(AtomicReplaceRequest{TargetPath: target, Data: []byte("after"), ExpectedVersion: &before}, ops)
-			assertAtomicReplaceFailure(t, err, false, failure.category)
-			if result.Committed {
-				t.Fatalf("result = %+v, want pre-commit result", result)
-			}
-			got, readErr := os.ReadFile(target)
-			if readErr != nil {
-				t.Fatal(readErr)
-			}
-			if !bytes.Equal(got, beforeBytes) {
-				t.Fatalf("original bytes = %q, want %q", got, beforeBytes)
-			}
-			if !*removed {
-				t.Fatalf("temporary file %q was not cleaned up", temp.name)
-			}
+			testAtomicReplacePreCommitFailure(t, failure)
 		})
 	}
 
-	t.Run("post-commit directory sync reports committed write", func(t *testing.T) {
-		root := t.TempDir()
-		target := filepath.Join(root, "document.md")
-		if err := os.WriteFile(target, []byte("before"), 0o640); err != nil {
-			t.Fatal(err)
-		}
-		before := mustCurrentDiskVersion(t, target)
-		ops := defaultAtomicReplaceOps()
-		ops.syncDir = func(string) error { return errors.New("directory sync failed") }
-
-		result, err := atomicReplaceWithOps(AtomicReplaceRequest{TargetPath: target, Data: []byte("after"), ExpectedVersion: &before}, ops)
-		assertAtomicReplaceFailure(t, err, true, apperr.ClassifiedPersistenceWarning)
-		if !result.Committed {
-			t.Fatalf("result = %+v, want committed result", result)
-		}
-		got, readErr := os.ReadFile(target)
-		if readErr != nil {
-			t.Fatal(readErr)
-		}
-		if !bytes.Equal(got, []byte("after")) {
-			t.Fatalf("committed bytes = %q", got)
-		}
-	})
+	t.Run("post-commit directory sync reports committed write", testAtomicReplaceDirectorySyncFailure)
 }
 
 func testAtomicReplaceOps(temp *atomicReplaceTestTemp, version DiskVersion) (atomicReplaceOps, *bool) {
@@ -318,5 +193,144 @@ func TestAtomicReplaceReportsInterveningChangeAfterRename(t *testing.T) {
 	result, err := atomicReplaceWithOps(AtomicReplaceRequest{TargetPath: target, Data: []byte("mine"), ExpectedVersion: &version}, ops)
 	if err == nil || !result.Committed {
 		t.Fatalf("replacement = %+v, %v; want committed warning", result, err)
+	}
+}
+
+func testAtomicReplaceExistingTarget(t *testing.T) {
+	t.Helper()
+	root := t.TempDir()
+	target := filepath.Join(root, "document.md")
+	if err := os.WriteFile(target, []byte("before\r\n"), 0o640); err != nil {
+		t.Fatal(err)
+	}
+	before, err := CurrentDiskVersion(target)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	result, err := AtomicReplace(AtomicReplaceRequest{
+		TargetPath:      target,
+		Data:            []byte("after\r\n"),
+		ExpectedVersion: &before,
+	})
+	if err != nil {
+		t.Fatalf("AtomicReplace: %v", err)
+	}
+	if !result.Committed {
+		t.Fatalf("result = %+v, want committed", result)
+	}
+	got, err := os.ReadFile(target)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(got, []byte("after\r\n")) {
+		t.Fatalf("target bytes = %q", got)
+	}
+	info, err := os.Stat(target)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if gotMode := info.Mode().Perm(); gotMode != 0o640 {
+		t.Fatalf("target mode = %04o, want 0640", gotMode)
+	}
+	entries, err := os.ReadDir(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != 1 || entries[0].Name() != "document.md" {
+		t.Fatalf("same-directory artifacts = %+v", entries)
+	}
+	if !result.Version.Equal(mustCurrentDiskVersion(t, target)) {
+		t.Fatalf("result version = %+v, current = %+v", result.Version, mustCurrentDiskVersion(t, target))
+	}
+}
+
+func testAtomicReplaceNewTarget(t *testing.T) {
+	t.Helper()
+	root := t.TempDir()
+	target := filepath.Join(root, "new.md")
+	absent := DiskVersion{}
+	result, err := AtomicReplace(AtomicReplaceRequest{
+		TargetPath:      target,
+		Data:            []byte("new file"),
+		ExpectedVersion: &absent,
+	})
+	if err != nil {
+		t.Fatalf("AtomicReplace: %v", err)
+	}
+	if !result.Committed {
+		t.Fatalf("result = %+v, want committed", result)
+	}
+	got, err := os.ReadFile(target)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(got, []byte("new file")) {
+		t.Fatalf("new target bytes = %q", got)
+	}
+	entries, err := os.ReadDir(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != 1 || entries[0].Name() != "new.md" {
+		t.Fatalf("same-directory artifacts = %+v", entries)
+	}
+}
+
+func testAtomicReplaceDirectorySyncFailure(t *testing.T) {
+	t.Helper()
+	root := t.TempDir()
+	target := filepath.Join(root, "document.md")
+	if err := os.WriteFile(target, []byte("before"), 0o640); err != nil {
+		t.Fatal(err)
+	}
+	before := mustCurrentDiskVersion(t, target)
+	ops := defaultAtomicReplaceOps()
+	ops.syncDir = func(string) error { return errors.New("directory sync failed") }
+
+	result, err := atomicReplaceWithOps(AtomicReplaceRequest{TargetPath: target, Data: []byte("after"), ExpectedVersion: &before}, ops)
+	assertAtomicReplaceFailure(t, err, true, apperr.ClassifiedPersistenceWarning)
+	if !result.Committed {
+		t.Fatalf("result = %+v, want committed result", result)
+	}
+	got, readErr := os.ReadFile(target)
+	if readErr != nil {
+		t.Fatal(readErr)
+	}
+	if !bytes.Equal(got, []byte("after")) {
+		t.Fatalf("committed bytes = %q", got)
+	}
+}
+
+func testAtomicReplacePreCommitFailure(t *testing.T, failure atomicReplaceFailure) {
+	t.Helper()
+	root := t.TempDir()
+	target := filepath.Join(root, "document.md")
+	if err := os.WriteFile(target, []byte("before"), 0o640); err != nil {
+		t.Fatal(err)
+	}
+	beforeBytes, err := os.ReadFile(target)
+	if err != nil {
+		t.Fatal(err)
+	}
+	before := mustCurrentDiskVersion(t, target)
+	temp := &atomicReplaceTestTemp{name: filepath.Join(root, ".temporary")}
+	ops, removed := testAtomicReplaceOps(temp, before)
+	failure.configure(&ops, temp, before)
+
+	result, err := atomicReplaceWithOps(AtomicReplaceRequest{TargetPath: target, Data: []byte("after"), ExpectedVersion: &before}, ops)
+	assertAtomicReplaceFailure(t, err, false, failure.category)
+	if result.Committed {
+		t.Fatalf("result = %+v, want pre-commit result", result)
+	}
+	got, readErr := os.ReadFile(target)
+	if readErr != nil {
+		t.Fatal(readErr)
+	}
+	if !bytes.Equal(got, beforeBytes) {
+		t.Fatalf("original bytes = %q, want %q", got, beforeBytes)
+	}
+	if !*removed {
+		t.Fatalf("temporary file %q was not cleaned up", temp.name)
 	}
 }

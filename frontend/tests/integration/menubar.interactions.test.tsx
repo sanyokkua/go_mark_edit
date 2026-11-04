@@ -82,6 +82,27 @@ it('offers live Open Folder and Close Folder rows when a workspace is open', () 
     expect(onCloseFolder).toHaveBeenCalledTimes(1);
 });
 
+it('opens the File menu in webviews without Object.hasOwn', () => {
+    const originalHasOwn = Object.hasOwn;
+    Object.defineProperty(Object, 'hasOwn', { value: undefined });
+    try {
+        render(
+            <Menubar
+                modalOpen={false}
+                onAbout={jest.fn()}
+                onOpenDocument={jest.fn()}
+                settingsMenuProps={settingsMenuProps}
+            />,
+        );
+        fireEvent.click(screen.getByRole('button', { name: 'File' }));
+    } finally {
+        Object.defineProperty(Object, 'hasOwn', { value: originalHasOwn });
+    }
+
+    const menu = screen.getByRole('menu', { name: 'File' });
+    expect(within(menu).getByRole('menuitem', { name: 'Open File' })).toBeEnabled();
+});
+
 afterEach(() => {
     Object.defineProperty(window, 'innerWidth', {
         configurable: true,

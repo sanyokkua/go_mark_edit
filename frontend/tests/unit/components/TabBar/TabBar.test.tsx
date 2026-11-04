@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 
 import TabBar, { type TabBarTab } from '../../../../src/ui/components/TabBar/TabBar';
 
@@ -115,7 +115,7 @@ it('reports a dragged tab destination without projecting order locally', () => {
     fireEvent(document, new MouseEvent('pointerup', { bubbles: true, clientX: 140 }));
 
     expect(callbacks.onReorder).toHaveBeenCalledWith('one', 2);
-    expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual(['One', 'Two', 'Three']);
+    expect(screen.getAllByRole('tab').map((tab) => tab.getAttribute('aria-label'))).toEqual(['One', 'Two', 'Three']);
 });
 
 it('keeps the tablist inside one labelled scrollable bar with tab state exposed', () => {
@@ -125,8 +125,27 @@ it('keeps the tablist inside one labelled scrollable bar with tab state exposed'
     expect(bar).toHaveAttribute('data-bar-overflow', 'scroll');
     expect(bar.querySelector('[role="tablist"]')).not.toBeNull();
     expect(screen.getByRole('tab', { name: 'One' })).toHaveAttribute('aria-selected', 'true');
-    expect(screen.getByRole('tab', { name: 'Two' })).toHaveAttribute('aria-readonly', 'true');
+    const readOnlyTab = screen.getByRole('tab', { name: 'Two' });
+    expect(readOnlyTab).toHaveAccessibleDescription('Read-only');
+    expect(within(readOnlyTab).getByText('Read-only')).toBeVisible();
+    expect(screen.getByRole('tab', { name: 'One' })).not.toHaveAccessibleDescription();
     expect(screen.getByLabelText('Modified')).toBeInTheDocument();
+});
+
+it('exposes the localized read-only status through a description reference for older webviews', () => {
+    const label = 'Project notes for the next release.md';
+    const title = `/repo/notes/${label}`;
+    const readOnlyLabel = 'Apenas para leitura';
+    renderTabBar({
+        tabs: [{ active: true, dirty: false, id: 'notes', label, readOnly: true, readOnlyLabel, title }],
+    });
+
+    const tab = screen.getByRole('tab', { name: label });
+    expect(tab).toHaveAttribute('title', title);
+    const descriptionId = tab.getAttribute('aria-describedby');
+    expect(document.getElementById(descriptionId ?? '')).toHaveTextContent(`Apenas para leitura · ${title}`);
+    expect(tab).toHaveAccessibleDescription(`Apenas para leitura · ${title}`);
+    expect(screen.getByText(readOnlyLabel)).toBeVisible();
 });
 
 function setHorizontalBounds(element: Element, left: number, right: number): void {

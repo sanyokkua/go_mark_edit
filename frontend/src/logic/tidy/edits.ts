@@ -15,6 +15,7 @@ import {
     trailingHorizontalWhitespaceStart,
     unorderedMarkerAt,
     type BulletMarker,
+    type SourceRange,
 } from './rules';
 
 export function applyEdits(source: string, edits: TextEdit[]): string {
@@ -38,9 +39,7 @@ interface Line {
     protected: boolean;
 }
 
-export function compactEdits(source: string, tree: Root): TextEdit[] {
-    const protectedSpans = protectedRanges(tree, source);
-    const breaks = hardBreakRanges(tree);
+function sourceLines(source: string, protectedSpans: SourceRange[]): Line[] {
     const lines: Line[] = [];
     for (let from = 0; from < source.length;) {
         const newline = source.indexOf('\n', from);
@@ -51,6 +50,27 @@ export function compactEdits(source: string, tree: Root): TextEdit[] {
         lines.push({ from, end, after, value, blank: /^[ \t]*$/u.test(value), protected: protectedLine });
         from = after;
     }
+
+    return lines;
+}
+
+function trailingWhitespaceEdit(line: Line, protectedSpans: SourceRange[], breaks: SourceRange[]): TextEdit | null {
+    const index = trailingHorizontalWhitespaceStart(line.value);
+    if (index === line.value.length) return null;
+    const whitespace = line.value.slice(index);
+    const from = line.from + index;
+    if (protectedSpans.some((span) => span.from < line.end && span.to > from)) return null;
+    const hardBreak =
+        whitespace.length >= 2 &&
+        /^ +$/u.test(whitespace) &&
+        breaks.some((span) => span.from <= from && span.to > line.end);
+    return hardBreak ? null : { from, to: line.end, text: '' };
+}
+
+export function compactEdits(source: string, tree: Root): TextEdit[] {
+    const protectedSpans = protectedRanges(tree, source);
+    const breaks = hardBreakRanges(tree);
+    const lines = sourceLines(source, protectedSpans);
 
     const edits: TextEdit[] = [];
     let blanks = 0;
@@ -64,16 +84,8 @@ export function compactEdits(source: string, tree: Root): TextEdit[] {
         } else {
             blanks = 0;
         }
-        const index = trailingHorizontalWhitespaceStart(line.value);
-        if (index === line.value.length) continue;
-        const whitespace = line.value.slice(index);
-        const from = line.from + index;
-        if (protectedSpans.some((span) => span.from < line.end && span.to > from)) continue;
-        const hardBreak =
-            whitespace.length >= 2 &&
-            /^ +$/u.test(whitespace) &&
-            breaks.some((span) => span.from <= from && span.to > line.end);
-        if (!hardBreak) edits.push({ from, to: line.end, text: '' });
+        const trailing = trailingWhitespaceEdit(line, protectedSpans, breaks);
+        if (trailing !== null) edits.push(trailing);
     }
     return edits;
 }
@@ -99,27 +111,29 @@ function blockGapEdits(source: string, tree: Root): TextEdit[] {
     return edits;
 }
 
+function normalizeFinalLine(source: string, tree: Root, edits: TextEdit[]): void {
+    let from = source.length;
+    while (from > 0 && (source[from - 1] === ' ' || source[from - 1] === '\t' || source[from - 1] === '\n')) from--;
+    if (from === source.length) {
+        edits.push({ from: source.length, to: source.length, text: '\n' });
+        return;
+    }
+    const tail = source.slice(from);
+    const safe = !protectedRanges(tree, source).some((span) => span.from < source.length && span.to > from);
+    if (safe && tail !== '\n') {
+        for (let index = edits.length - 1; index >= 0; index--) {
+            if (edits[index].to > from || edits[index].from >= from) edits.splice(index, 1);
+        }
+        edits.push({ from, to: source.length, text: '\n' });
+    } else if (!safe && !source.endsWith('\n')) {
+        edits.push({ from: source.length, to: source.length, text: '\n' });
+    }
+}
+
 function formatLineEdits(source: string, tree: Root, finalChunk: boolean): TextEdit[] {
     const edits = compactEdits(source, tree);
     if (!finalChunk) return edits.concat(blockGapEdits(source, tree));
-    let from = source.length;
-    while (from > 0 && (source[from - 1] === ' ' || source[from - 1] === '\t' || source[from - 1] === '\n')) from--;
-    if (from < source.length) {
-        const tail = source.slice(from);
-        const safe = !protectedRanges(tree, source).some((span) => span.from < source.length && span.to > from);
-        if (safe) {
-            if (tail !== '\n') {
-                for (let index = edits.length - 1; index >= 0; index--) {
-                    if (edits[index].to > from || edits[index].from >= from) edits.splice(index, 1);
-                }
-                edits.push({ from, to: source.length, text: '\n' });
-            }
-        } else if (!source.endsWith('\n')) {
-            edits.push({ from: source.length, to: source.length, text: '\n' });
-        }
-    } else {
-        edits.push({ from: source.length, to: source.length, text: '\n' });
-    }
+    normalizeFinalLine(source, tree, edits);
     return edits.concat(blockGapEdits(source, tree));
 }
 
@@ -187,6 +201,24 @@ function replaceRegion(
     edits.push({ from, to, text: next });
 }
 
+function atxHeadingContent(current: string, depth: number): string | null {
+    const atx = /^(#{1,6})(?=[ \t]|$)/u.exec(current);
+    if (atx?.[1].length !== depth) return null;
+    let start = atx[1].length;
+    while (current[start] === ' ' || current[start] === '\t') start++;
+    let rawContent = current.slice(start);
+    if (/[\r\n\u2028\u2029]/u.test(rawContent)) return null;
+    let end = trailingHorizontalWhitespaceStart(rawContent);
+    const afterHashes = end;
+    while (end > 0 && rawContent[end - 1] === '#') end--;
+    if (end < afterHashes && end > 0 && (rawContent[end - 1] === ' ' || rawContent[end - 1] === '\t')) {
+        while (end > 0 && (rawContent[end - 1] === ' ' || rawContent[end - 1] === '\t')) end--;
+        rawContent = rawContent.slice(0, end);
+    }
+    const content = rawContent.trimEnd();
+    return content === '' ? null : content;
+}
+
 export function headingReplacement(
     source: string,
     heading: Heading,
@@ -207,25 +239,12 @@ export function headingReplacement(
             : null;
     if (underline !== null) {
         if (preferred === 'setext') return null;
-        const depth = underline[1][0] === '=' ? 1 : 2;
+        const depth = underline[1].startsWith('=') ? 1 : 2;
         return depth === heading.depth ? `${'#'.repeat(depth)} ${lines[0]}` : null;
     }
     if (preferred !== 'setext' || heading.depth > 2 || current.includes('\n')) return null;
-    const atx = /^(#{1,6})(?=[ \t]|$)/u.exec(current);
-    if (atx === null || atx[1].length !== heading.depth) return null;
-    let start = atx[1].length;
-    while (current[start] === ' ' || current[start] === '\t') start++;
-    let rawContent = current.slice(start);
-    if (/[\r\n\u2028\u2029]/u.test(rawContent)) return null;
-    let end = trailingHorizontalWhitespaceStart(rawContent);
-    const afterHashes = end;
-    while (end > 0 && rawContent[end - 1] === '#') end--;
-    if (end < afterHashes && end > 0 && (rawContent[end - 1] === ' ' || rawContent[end - 1] === '\t')) {
-        while (end > 0 && (rawContent[end - 1] === ' ' || rawContent[end - 1] === '\t')) end--;
-        rawContent = rawContent.slice(0, end);
-    }
-    const content = rawContent.trimEnd();
-    if (content === '') return null;
+    const content = atxHeadingContent(current, heading.depth);
+    if (content === null) return null;
     const underlineText = (heading.depth === 1 ? '=' : '-').repeat(Math.max(3, displayWidth(toString(heading))));
     const candidate = `${content}\n${continuation}${underlineText}`;
     const parsed = parseFull(`${prefix}${candidate}`);
@@ -253,6 +272,18 @@ interface TableLine {
     ambiguous: boolean;
 }
 
+function backtickRunLength(line: string, index: number): number {
+    let run = 1;
+    while (line[index + run] === '`') run++;
+    return run;
+}
+
+function isEscapedPipe(line: string, index: number): boolean {
+    let escapes = 0;
+    for (let before = index - 1; before >= 0 && line[before] === '\\'; before--) escapes++;
+    return escapes % 2 === 1;
+}
+
 function splitTableLine(line: string): TableLine {
     const segments: string[] = [];
     let previous = 0;
@@ -260,17 +291,13 @@ function splitTableLine(line: string): TableLine {
     let ambiguous = false;
     for (let index = 0; index < line.length; index++) {
         if (line[index] === '`') {
-            let run = 1;
-            while (line[index + run] === '`') run++;
+            const run = backtickRunLength(line, index);
             if (backticks === 0) backticks = run;
             else if (backticks === run) backticks = 0;
             index += run - 1;
             continue;
         }
-        if (line[index] !== '|') continue;
-        let escapes = 0;
-        for (let before = index - 1; before >= 0 && line[before] === '\\'; before--) escapes++;
-        if (escapes % 2 === 1) continue;
+        if (line[index] !== '|' || isEscapedPipe(line, index)) continue;
         if (backticks !== 0) ambiguous = true;
         segments.push(line.slice(previous, index));
         previous = index + 1;
@@ -376,10 +403,9 @@ export function formatEdits(source: string, tree: Root, prefs: TidyPreferences, 
         if (node.type !== 'emphasis' && node.type !== 'strong') return;
         const ranges = inlineMarkerRanges(node);
         if (ranges === null) return;
+        const strongParent = parent?.type === 'strong' ? parent : null;
         const marker =
-            node.type === 'strong'
-                ? '**'
-                : expectedEmphasisMarker(node, source, prefs.emphasis, parent?.type === 'strong' ? parent : null);
+            node.type === 'strong' ? '**' : expectedEmphasisMarker(node, source, prefs.emphasis, strongParent);
         for (const range of [ranges.open, ranges.close]) {
             if (source.slice(range.from, range.to) !== marker) {
                 edits.push({ from: range.from, to: range.to, text: marker });

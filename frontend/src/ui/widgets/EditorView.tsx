@@ -49,14 +49,14 @@ function fallbackView(): DocumentView {
     };
 }
 
-export interface EditorViewProps {
+export interface EditorViewProps extends Pick<EditorStageProps, 'onOpenLink' | 'fragmentRequest'> {
     problemsOpen?: boolean;
     problemsSummary?: ProblemsSummary | null;
     onCloseProblems?: () => void;
-    tabRevealRequest?: DocumentTabsProps['revealRequest'];
+    tabRevealRequest?: Exclude<DocumentTabsProps['revealRequest'], undefined>;
     editorFocusRequest?: { documentId: string; sequence: number } | null;
     adapter?: EditorViewAdapter;
-    tabAdapter?: DocumentTabsProps['adapter'];
+    tabAdapter?: Exclude<DocumentTabsProps['adapter'], undefined>;
     onNewDocument?: (expectedTabSetRevision: number) => Promise<unknown>;
     onActivateDocument?: (documentId: string, expectedTabSetRevision: number) => Promise<DocumentTransitionResult>;
     onCloseDocument?: (
@@ -66,8 +66,6 @@ export interface EditorViewProps {
         targetDocumentIds?: string[],
     ) => Promise<TabTransitionResult>;
     onExternalConflict?: (preview: ConflictPreview) => void;
-    onOpenLink?: EditorStageProps['onOpenLink'];
-    fragmentRequest?: EditorStageProps['fragmentRequest'];
     onLiveCursorChange?: (cursor: EditorPosition) => void;
 }
 

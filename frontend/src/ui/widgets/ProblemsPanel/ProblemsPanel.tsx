@@ -16,7 +16,11 @@ export interface ProblemsPanelProps {
 
 const MAX_ROWS = 10000;
 
-export default function ProblemsPanel({ summary, onActivate, onClose }: ProblemsPanelProps): React.JSX.Element {
+export default function ProblemsPanel({
+    summary,
+    onActivate,
+    onClose,
+}: Readonly<ProblemsPanelProps>): React.JSX.Element {
     const findings =
         summary?.findings
             .slice()
@@ -24,6 +28,8 @@ export default function ProblemsPanel({ summary, onActivate, onClose }: Problems
             .slice(0, MAX_ROWS) ?? [];
     const overflow = Math.max(0, (summary?.total ?? 0) - MAX_ROWS);
     const title = t('problems.title');
+    const hasSummary = summary !== null;
+    const emptyMessage = hasSummary ? 'problems.empty' : 'problems.notRun';
 
     return (
         <Pane
@@ -52,10 +58,8 @@ export default function ProblemsPanel({ summary, onActivate, onClose }: Problems
             }
             body={
                 <div className={styles.body}>
-                    {summary === null ? (
-                        <p>{t('problems.notRun')}</p>
-                    ) : summary.total === 0 ? (
-                        <p>{t('problems.empty')}</p>
+                    {!hasSummary || summary.total === 0 ? (
+                        <p>{t(emptyMessage)}</p>
                     ) : (
                         <>
                             <div className={styles.list}>

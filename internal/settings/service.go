@@ -8,6 +8,11 @@ import (
 	"github.com/sanyokkua/go_mark_edit/internal/apperr"
 )
 
+const (
+	readSettingsOperation   = "read settings"
+	updateSettingsOperation = "update settings"
+)
+
 // AutosaveObserver is notified whenever the persisted autosave preference is
 // written. Settings owns the preference; it does not own the document model, so
 // it must not import it. The composition root supplies this so the preference
@@ -94,23 +99,23 @@ func (service *SettingsService) Get(ctx context.Context) (apperr.Settings, error
 
 	appearance, err := repository.GetAppearance(ctx)
 	if err != nil {
-		return apperr.Settings{}, apperr.IO("read settings", err)
+		return apperr.Settings{}, apperr.IO(readSettingsOperation, err)
 	}
 	markdown, err := repository.GetMarkdown(ctx)
 	if err != nil {
-		return apperr.Settings{}, apperr.IO("read settings", err)
+		return apperr.Settings{}, apperr.IO(readSettingsOperation, err)
 	}
 	contentPrivacy, err := repository.GetContentPrivacy(ctx)
 	if err != nil {
-		return apperr.Settings{}, apperr.IO("read settings", err)
+		return apperr.Settings{}, apperr.IO(readSettingsOperation, err)
 	}
 	editor, err := repository.GetEditor(ctx)
 	if err != nil {
-		return apperr.Settings{}, apperr.IO("read settings", err)
+		return apperr.Settings{}, apperr.IO(readSettingsOperation, err)
 	}
 	fileSettings, err := repository.GetFile(ctx)
 	if err != nil {
-		return apperr.Settings{}, apperr.IO("read settings", err)
+		return apperr.Settings{}, apperr.IO(readSettingsOperation, err)
 	}
 
 	return apperr.Settings{
@@ -129,7 +134,7 @@ func (service *SettingsService) UpdateFile(ctx context.Context, fileSettings app
 		return err
 	}
 	if err := repository.UpdateFile(nonNilContext(ctx), fileSettings); err != nil {
-		return apperr.IO("update settings", err)
+		return apperr.IO(updateSettingsOperation, err)
 	}
 	// Only after the write succeeds: a preference that failed to persist must
 	// not change what the document model does.
@@ -147,7 +152,7 @@ func (service *SettingsService) UpdateEditor(ctx context.Context, editor apperr.
 		return err
 	}
 	if err := repository.UpdateEditor(nonNilContext(ctx), editor); err != nil {
-		return apperr.IO("update settings", err)
+		return apperr.IO(updateSettingsOperation, err)
 	}
 	return nil
 }
@@ -162,7 +167,7 @@ func (service *SettingsService) UpdateAppearance(ctx context.Context, appearance
 		return err
 	}
 	if err := repository.UpdateAppearance(nonNilContext(ctx), appearance); err != nil {
-		return apperr.IO("update settings", err)
+		return apperr.IO(updateSettingsOperation, err)
 	}
 	// Only after the write succeeds, for the same reason as UpdateFile: a
 	// preference that failed to persist must not change what the document model
@@ -201,7 +206,7 @@ func (service *SettingsService) UpdateMarkdown(ctx context.Context, markdown app
 		return err
 	}
 	if err := repository.UpdateMarkdown(nonNilContext(ctx), markdown); err != nil {
-		return apperr.IO("update settings", err)
+		return apperr.IO(updateSettingsOperation, err)
 	}
 	return nil
 }
@@ -216,7 +221,7 @@ func (service *SettingsService) UpdateContentPrivacy(ctx context.Context, conten
 		return err
 	}
 	if err := repository.UpdateContentPrivacy(nonNilContext(ctx), contentPrivacy); err != nil {
-		return apperr.IO("update settings", err)
+		return apperr.IO(updateSettingsOperation, err)
 	}
 	return nil
 }

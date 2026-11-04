@@ -8,7 +8,7 @@ import { isEditorTextInput } from './editorTextInput';
 
 export interface ShortcutAction {
     id: ActionId;
-    invoke: () => Promise<unknown> | unknown;
+    invoke: () => unknown;
     isAvailable: () => boolean;
     shortcut?: string;
     shortcutAliases?: readonly string[];
@@ -47,7 +47,7 @@ export function useShellShortcuts(actions: readonly ShellShortcutAction[]): void
                 // The webview's own print must never run, whether or not Export is available.
                 event.preventDefault();
             }
-            if (action === undefined || !action.isAvailable()) {
+            if (!action?.isAvailable()) {
                 return;
             }
             const availability = getActionAvailability(

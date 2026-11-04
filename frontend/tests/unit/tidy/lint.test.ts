@@ -193,3 +193,10 @@ test('Lint handles long interior whitespace without repeated suffix scans', () =
     expect(findings).toEqual([]);
     expect(elapsed).toBeLessThan(1200);
 });
+
+test('emphasis marker decisions preserve UTF-16 offsets around astral characters', () => {
+    expect(rule('😀*word*😀\n', 'emphasis-marker')).toHaveLength(0);
+    expect(rule('a*word*😀\n', 'emphasis-marker')).toHaveLength(0);
+    expect(rule('😀*word*a\n', 'emphasis-marker')).toHaveLength(0);
+    expect(rule('😀 *word* 😀\n', 'emphasis-marker')).toMatchObject([{ startColumn: 4, endColumn: 10 }]);
+});

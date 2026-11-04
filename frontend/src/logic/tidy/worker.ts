@@ -1,5 +1,9 @@
+/// <reference lib="webworker" />
+
 import { runOnText } from './engine';
 import type { WorkerReply, WorkerRequest } from './protocol';
+
+declare const self: DedicatedWorkerGlobalScope;
 
 self.addEventListener('message', (event: MessageEvent<WorkerRequest>) => {
     const { id, op, text, prefs } = event.data;

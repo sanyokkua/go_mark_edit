@@ -7,8 +7,16 @@ import tseslint from 'typescript-eslint';
 
 const sourceFiles = ['frontend/src/**/*.{ts,tsx}'];
 const allFiles = ['frontend/**/*.{js,mjs,cjs,ts,tsx}', 'tools/**/*.{js,mjs,cjs,ts,tsx}'];
-const colourLiteral =
-    /#[0-9a-fA-F]{3,8}\b|\b(?:rgba?|hsla?|hwb|lab|lch|oklab|oklch|color)\s*\(|\b(?:white|black|red|green|blue|yellow|orange|purple|pink|brown|gray|grey|silver|navy|teal|maroon|olive|lime|aqua|cyan|magenta|fuchsia|gold|beige|ivory|coral|salmon|khaki|indigo|violet|crimson|tomato|orchid|plum|tan|wheat)\b/i;
+const namedColours = `
+    white black red green blue yellow orange purple pink brown gray grey silver navy teal maroon olive lime
+    aqua cyan magenta fuchsia gold beige ivory coral salmon khaki indigo violet crimson tomato orchid plum tan wheat
+`
+    .trim()
+    .split(/\s+/);
+const colourLiteral = new RegExp(
+    String.raw`#[0-9a-f]{3,8}\b|\b(?:rgba?|hsla?|hwb|lab|lch|oklab|oklch|color)\s*\(|\b(?:${namedColours.join('|')})\b`,
+    'i',
+);
 
 const userVisibleAttributes =
     'JSXAttribute[name.name=/^(aria-label|aria-description|placeholder|title|alt|aria-valuetext)$/] > Literal[value=/[A-Za-z]{2}/]';

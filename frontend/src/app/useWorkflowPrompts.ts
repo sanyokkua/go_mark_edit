@@ -5,6 +5,30 @@ import type { CloseWorkflow } from './useCloseWorkflow';
 import type { DocumentWrites } from './useDocumentWrites';
 import type { useExternalChanges } from './useExternalChanges';
 
+function normalizationPrompt(close: CloseWorkflow, writes: DocumentWrites, writeVisible: boolean) {
+    if (close.state.phase === 'normalization') {
+        return {
+            id: `close:${close.state.plan.id}:${close.state.request.decisionToken}`,
+            ...close.state.request,
+            onConfirm: () => close.decideNormalization(true),
+            onCancel: () => {
+                void close.decideNormalization(false);
+            },
+        };
+    }
+    if (writeVisible && writes.prompt.phase === 'normalization') {
+        return {
+            id: `write:${writes.prompt.request.decisionToken}`,
+            ...writes.prompt.request,
+            onConfirm: () => writes.decideNormalization(true),
+            onCancel: () => {
+                void writes.decideNormalization(false);
+            },
+        };
+    }
+    return null;
+}
+
 /** Suspended writes retain their owner and intent; resumption only revalidates the prompt. */
 export function useWorkflowPrompts(
     close: CloseWorkflow,
@@ -26,26 +50,7 @@ export function useWorkflowPrompts(
 
     const closeOwnedWriteVisible = close.state.phase === 'saving-active' && writes.closeOwnedPrompt;
     const writeVisible = (closeOwnedWriteVisible || (!close.active && writeReady)) && !writes.validationFailed;
-    const normalization =
-        close.state.phase === 'normalization'
-            ? {
-                  id: `close:${close.state.plan.id}:${close.state.request.decisionToken}`,
-                  ...close.state.request,
-                  onConfirm: () => close.decideNormalization(true),
-                  onCancel: () => {
-                      void close.decideNormalization(false);
-                  },
-              }
-            : writeVisible && writes.prompt.phase === 'normalization'
-              ? {
-                    id: `write:${writes.prompt.request.decisionToken}`,
-                    ...writes.prompt.request,
-                    onConfirm: () => writes.decideNormalization(true),
-                    onCancel: () => {
-                        void writes.decideNormalization(false);
-                    },
-                }
-              : null;
+    const normalization = normalizationPrompt(close, writes, writeVisible);
     const conflict = selectConflictPrompt(close.conflict, writeVisible ? writes.conflict : null, external.conflict);
     return {
         normalization,

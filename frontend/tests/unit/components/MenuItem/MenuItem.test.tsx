@@ -55,3 +55,14 @@ it('activates on plain Enter but leaves Ctrl/Cmd+Enter to window shortcuts', () 
     expect(fireEvent.keyDown(item, { key: 'Enter' })).toBe(false);
     expect(onSelect).toHaveBeenCalledTimes(1);
 });
+
+it('derives checkbox state and respects an explicit role', () => {
+    render(
+        <div role="menu">
+            <MenuItem checked={false} label="Wrap" />
+            <MenuItem checked role="radio" label="Option" />
+        </div>,
+    );
+    expect(screen.getByRole('menuitemcheckbox', { name: 'Wrap' })).toHaveAttribute('data-state', 'unchecked');
+    expect(screen.getByRole('radio', { name: 'Option' })).toHaveAttribute('data-state', 'checked');
+});

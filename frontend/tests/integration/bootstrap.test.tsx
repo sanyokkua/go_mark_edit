@@ -106,6 +106,30 @@ it.each<BootstrapStep>(['bridge', 'model', 'settings', 'window-ready'])(
     },
 );
 
+it.each(['synchronous throw', 'asynchronous rejection'])(
+    'reports a bridge %s without waiting for timeout',
+    async (failureMode) => {
+        jest.useFakeTimers();
+        const failure = Object.assign(new Error('bridge failed'), { category: 'bridge-error' });
+        const loadAdapters = jest.fn((): Promise<BootstrapAdapters> => {
+            if (failureMode === 'synchronous throw') throw failure;
+            return Promise.reject(failure);
+        });
+
+        render(<Harness loadAdapters={loadAdapters} />);
+        expect(loadAdapters).toHaveBeenCalledTimes(1);
+        await waitFor(() => {
+            expect(screen.getByRole('status', { name: 'Bootstrap failure' })).toHaveTextContent(
+                'bridge:bridge-error:false',
+            );
+        });
+        act((): void => jest.advanceTimersByTime(10_000));
+        expect(screen.getByRole('status', { name: 'Bootstrap failure' })).toHaveTextContent(
+            'bridge:bridge-error:false',
+        );
+    },
+);
+
 it('retries only the failed step and ignores a second retry while it is running', async () => {
     const services = adapters();
     const retryModel = deferred<AppModelBootstrapResult>();
@@ -198,6 +222,21 @@ it('ignores the late answer from a timed-out attempt after a fresh retry succeed
         await abandoned.promise;
     });
     expect(screen.getByRole('status', { name: 'Bootstrap status' })).toHaveTextContent('ready');
+});
+
+it('ignores a late rejection after a bridge timeout', async () => {
+    jest.useFakeTimers();
+    const abandoned = deferred<BootstrapAdapters>();
+    render(<Harness loadAdapters={() => abandoned.promise} />);
+
+    act((): void => jest.advanceTimersByTime(10_000));
+    await waitFor(() => {
+        expect(screen.getByRole('status', { name: 'Bootstrap failure' })).toHaveTextContent('bridge:timeout:true');
+    });
+    await act((): void => {
+        abandoned.reject(new Error('late bridge rejection'));
+    });
+    expect(screen.getByRole('status', { name: 'Bootstrap failure' })).toHaveTextContent('bridge:timeout:true');
 });
 
 it('uses the startup failure surface for a held pre-ready step without a stuck notice', async () => {

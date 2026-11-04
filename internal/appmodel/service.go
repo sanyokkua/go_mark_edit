@@ -396,38 +396,49 @@ func (service *AppModelService) RestoreUILayout(ctx context.Context) error {
 		if !found {
 			continue
 		}
-		switch field {
-		case LayoutWindowWidth:
-			if width, ok := value.Value.(int); ok && width >= 375 {
-				restored.WindowWidth = pointerTo(width)
-			}
-		case LayoutWindowHeight:
-			if height, ok := value.Value.(int); ok && height >= 480 {
-				restored.WindowHeight = pointerTo(height)
-			}
-		case LayoutWindowMaximized:
-			if maximized, ok := value.Value.(bool); ok {
-				restored.WindowMaximized = pointerTo(maximized)
-			}
-		case LayoutWorkspaceWidth:
-			if width, ok := value.Value.(int); ok && width >= 0 {
-				restored.SidebarWidth = pointerTo(width)
-			}
-		case LayoutArrangementBackup:
-			if arrangement, ok := value.Value.(string); ok && validArrangement(arrangement) {
-				restored.ViewArrangement = pointerTo(arrangement)
-			}
-		case LayoutWorkspaceHiddenFolders:
-			if show, ok := value.Value.(bool); ok {
-				restored.ShowHiddenFolders = pointerTo(show)
-			}
-		}
+		restoreLayoutField(&restored, field, value.Value)
 	}
 
 	service.mu.Lock()
 	mergeUILayout(&service.state.ui, restored)
 	service.mu.Unlock()
 	return firstReadErr
+}
+
+func restoreLayoutField(restored *apperr.UILayout, field string, value any) {
+	switch field {
+	case LayoutWindowWidth:
+		if width, ok := value.(int); ok && width >= 375 {
+			restored.WindowWidth = pointerTo(width)
+		}
+	case LayoutWindowHeight:
+		if height, ok := value.(int); ok && height >= 480 {
+			restored.WindowHeight = pointerTo(height)
+		}
+	case LayoutWindowMaximized:
+		if maximized, ok := value.(bool); ok {
+			restored.WindowMaximized = pointerTo(maximized)
+		}
+	default:
+		restoreWorkspaceLayoutField(restored, field, value)
+	}
+}
+
+func restoreWorkspaceLayoutField(restored *apperr.UILayout, field string, value any) {
+	switch field {
+	case LayoutWorkspaceWidth:
+		if width, ok := value.(int); ok && width >= 0 {
+			restored.SidebarWidth = pointerTo(width)
+		}
+	case LayoutArrangementBackup:
+		if arrangement, ok := value.(string); ok && validArrangement(arrangement) {
+			restored.ViewArrangement = pointerTo(arrangement)
+		}
+	case LayoutWorkspaceHiddenFolders:
+		if show, ok := value.(bool); ok {
+			restored.ShowHiddenFolders = pointerTo(show)
+		}
+	}
 }
 
 func validArrangement(arrangement string) bool {
@@ -653,41 +664,48 @@ func (service *AppModelService) persistLayout(ctx context.Context, layout apperr
 			return apperr.UILayout{}, classifyLayoutPersistenceError(err)
 		}
 		if !result.Applied {
-			switch field.name {
-			case LayoutWindowWidth:
-				winner, ok := result.Value.Value.(int)
-				if !ok {
-					return apperr.UILayout{}, fmt.Errorf("invalid stored native window width")
-				}
-				acknowledged.WindowWidth = pointerTo(winner)
-			case LayoutWindowHeight:
-				winner, ok := result.Value.Value.(int)
-				if !ok {
-					return apperr.UILayout{}, fmt.Errorf("invalid stored native window height")
-				}
-				acknowledged.WindowHeight = pointerTo(winner)
-			case LayoutWindowMaximized:
-				winner, ok := result.Value.Value.(bool)
-				if !ok {
-					return apperr.UILayout{}, fmt.Errorf("invalid stored native window maximized state")
-				}
-				acknowledged.WindowMaximized = pointerTo(winner)
-			case LayoutWorkspaceWidth:
-				winner, ok := result.Value.Value.(int)
-				if !ok {
-					return apperr.UILayout{}, fmt.Errorf("invalid stored workspace width")
-				}
-				acknowledged.SidebarWidth = pointerTo(winner)
-			case LayoutArrangementBackup:
-				winner, ok := result.Value.Value.(string)
-				if !ok {
-					return apperr.UILayout{}, fmt.Errorf("invalid stored arrangement fallback")
-				}
-				acknowledged.ViewArrangement = pointerTo(winner)
+			if err := acknowledgeLayoutField(&acknowledged, field.name, result.Value.Value); err != nil {
+				return apperr.UILayout{}, err
 			}
 		}
 	}
 	return acknowledged, nil
+}
+
+func acknowledgeLayoutField(acknowledged *apperr.UILayout, field string, value any) error {
+	switch field {
+	case LayoutWindowWidth:
+		winner, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("invalid stored native window width")
+		}
+		acknowledged.WindowWidth = pointerTo(winner)
+	case LayoutWindowHeight:
+		winner, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("invalid stored native window height")
+		}
+		acknowledged.WindowHeight = pointerTo(winner)
+	case LayoutWindowMaximized:
+		winner, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("invalid stored native window maximized state")
+		}
+		acknowledged.WindowMaximized = pointerTo(winner)
+	case LayoutWorkspaceWidth:
+		winner, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("invalid stored workspace width")
+		}
+		acknowledged.SidebarWidth = pointerTo(winner)
+	case LayoutArrangementBackup:
+		winner, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("invalid stored arrangement fallback")
+		}
+		acknowledged.ViewArrangement = pointerTo(winner)
+	}
+	return nil
 }
 
 func classifyLayoutPersistenceError(err error) error {

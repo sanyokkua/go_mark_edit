@@ -96,6 +96,9 @@ receive commands through props and contexts.
 | `frontend/src/ui/widgets/dialogs/`                   | Settings, About, Shortcuts, Insert table, close, conflict and normalization dialogs.                                                              |
 | `frontend/src/ui/widgets/StartupFailure/`            | Per-step startup failure, Retry and Quit.                                                                                                         |
 
+Workspace tree items expose their unreadable, open-in-tab and unsaved states as an accessible
+description in addition to the visible warning and unsaved markers.
+
 ## Shared UI owners and consumer inventory
 
 The following inventory is part of the ownership contract. A change to one shared component must be
@@ -466,7 +469,9 @@ dev and setup. Hooks and CI call the scripts directly. A developer may use the f
   appears. Verification run artifacts live under `.local_tmp_files/runs/`, of which only the 10 newest folders are kept
   (each new run prunes older ones, and stale `e2e-run-*` and `verification-test-*` folders over 24 hours old); the explicit baseline
   record lives under `.local_tmp_files/baseline/` and is created or compared only by
-  `scripts/baseline`. The record is named after the checked-out branch (slashes become dashes), or after the short
+  `scripts/baseline`. The record stores the starting commit, a hash of the binary diff, and untracked
+  paths; the raw diff and NUL-delimited status are retained with the run artifacts. This fixes the
+  dirty-tree evidence to the repository state being measured. The record is named after the checked-out branch (slashes become dashes), or after the short
   commit on a detached HEAD. Required reports that are missing or malformed are UNAVAILABLE or UNRELIABLE,
   never zero; warning counts do not fail a stage.
 - CI (`.github/workflows/`): `push.yml` runs the stages as parallel `ubuntu-24.04` jobs so the wall time

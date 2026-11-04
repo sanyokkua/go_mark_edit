@@ -34,25 +34,8 @@
     margin: 5px 0;
 }
 
-.preview blockquote {
-    background: var(--accent-soft);
-    border-inline-start: 3px solid var(--accent);
-    border-radius: 0 8px 8px 0;
-    color: var(--text);
-    margin: 12px 0;
-    padding: 6px 14px;
-}
-
 .preview :is(h1, h2, h3, h4, h5, h6) {
     line-height: var(--preview-heading-line-height);
-}
-
-.preview h1 {
-    margin: 0 0 12px;
-}
-
-.preview h2 {
-    margin: 20px 0 9px;
 }
 
 .preview :is(p, ul, ol, pre, blockquote, table) {
@@ -65,12 +48,13 @@
     margin: 9px 0;
 }
 
-.preview li {
-    margin: 5px 0;
-}
-
 .preview blockquote {
+    background: var(--accent-soft);
+    border-inline-start: 3px solid var(--accent);
+    border-radius: 0 8px 8px 0;
+    color: var(--text);
     margin: 12px 0;
+    padding: 6px 14px;
 }
 
 .preview :is(ul, ol) {

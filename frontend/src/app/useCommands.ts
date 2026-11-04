@@ -33,6 +33,8 @@ export interface EntryCommandOutcome {
 
 export type WorkspaceCreateOutcome = WorkspaceResult & { openResult?: EntryCommandOutcome };
 
+type LocalDocumentLink = Extract<LinkTarget, { kind: 'localDocument' }>;
+
 /** Owns entry and activation commands. Widgets keep their existing command signatures. */
 export function useCommands(
     { activeBuffer, activation }: Pick<DocumentSession, 'activeBuffer' | 'activation'>,
@@ -132,37 +134,44 @@ export function useCommands(
         [activation, dispatch],
     );
 
+    const publishOpenedLink = useCallback(
+        (result: OpenResult, target: LocalDocumentLink, sourceDocumentId: string, generation: number): void => {
+            const documentId = result.documentId;
+            if (documentId === undefined) return;
+            if (documentId !== sourceDocumentId) {
+                activation.acknowledge(generation, result.activeBuffer);
+                enterReadingForOpen(result, generation);
+                onFocusedDocumentOpen(documentId);
+                const treePath = result.treePath;
+                if (treePath) {
+                    setTreeRevealRequest((previous) => ({
+                        documentId,
+                        path: treePath,
+                        seq: (previous?.seq ?? 0) + 1,
+                    }));
+                }
+            }
+            const fragment = target.fragment;
+            if (fragment !== undefined) {
+                setFragmentRequest((previous) => ({
+                    documentId,
+                    slug: fragment,
+                    seq: (previous?.seq ?? 0) + 1,
+                }));
+            }
+        },
+        [activation, enterReadingForOpen, onFocusedDocumentOpen],
+    );
+
     const openLink = useCallback(
-        async (target: Extract<LinkTarget, { kind: 'localDocument' }>, sourceDocumentId: string): Promise<void> => {
+        async (target: LocalDocumentLink, sourceDocumentId: string): Promise<void> => {
             try {
                 if (!(await flushActiveDocument())) return;
                 const generation = activation.begin();
                 const result = await appModelAdapter.openPreviewLink?.(sourceDocumentId, target.href);
                 if (result === undefined || !activation.isCurrent(generation)) return;
                 if (result.status === 'opened' || result.status === 'focused') {
-                    const documentId = result.documentId;
-                    if (documentId === undefined) return;
-                    if (documentId !== sourceDocumentId) {
-                        activation.acknowledge(generation, result.activeBuffer);
-                        enterReadingForOpen(result, generation);
-                        onFocusedDocumentOpen(documentId);
-                        const treePath = result.treePath;
-                        if (treePath) {
-                            setTreeRevealRequest((previous) => ({
-                                documentId,
-                                path: treePath,
-                                seq: (previous?.seq ?? 0) + 1,
-                            }));
-                        }
-                    }
-                    const fragment = target.fragment;
-                    if (fragment !== undefined) {
-                        setFragmentRequest((previous) => ({
-                            documentId,
-                            slug: fragment,
-                            seq: (previous?.seq ?? 0) + 1,
-                        }));
-                    }
+                    publishOpenedLink(result, target, sourceDocumentId, generation);
                     return;
                 }
                 if (result.status === 'refused') {
@@ -177,7 +186,7 @@ export function useCommands(
                 if (!isBufferSyncError(error)) dispatch(notifyError(parseError(error)));
             }
         },
-        [activation, dispatch, enterReadingForOpen, flushActiveDocument, onFocusedDocumentOpen, reportEntryError],
+        [activation, dispatch, flushActiveDocument, publishOpenedLink, reportEntryError],
     );
 
     const onNewDocument = useCallback(
@@ -404,58 +413,57 @@ export function useCommands(
                 if (result?.error !== undefined && result.error.category !== 'conflict') {
                     reportEntryError(result.error, 'create-workspace-entry');
                 }
-                if (result?.status === 'opened' && kind === 'file') {
-                    // Backend directory paths are absolute and canonical for the host OS.
-                    // A backslash inside a POSIX folder name is an ordinary character.
-                    const separator = parentPath.startsWith('/') ? '/' : '\\';
-                    let openResult: EntryCommandOutcome | undefined;
-                    try {
-                        openResult = await onOpenRecentFile(
-                            `${parentPath}${parentPath.endsWith(separator) ? '' : separator}${name}`,
-                            store.getState().documents.tabSetRevision,
-                            true,
-                            false,
-                        );
-                        if (openResult?.error === undefined) dispatch(leaveReading());
-                    } catch {
-                        dispatch(
-                            notifyToast({
-                                code: 'io',
-                                message: t('workspace.create.createdNotOpened'),
-                                severity: 'error',
-                                subject: name,
-                                title: t('notification.error.io.title'),
-                            }),
-                        );
-                        return { ...result, openResult: { status: 'refused' } };
-                    }
-                    if (openResult?.error?.category === 'capacity-limit') {
-                        reportEntryError(
-                            {
-                                ...openResult.error,
-                                message: `${t('workspace.create.createdNotOpened')} ${openResult.error.message} ${t('workspace.tree.closeTabsFirst')}`,
-                            },
-                            'create-workspace-entry',
-                        );
-                    } else if (
-                        openResult === undefined ||
-                        (openResult.status !== 'opened' &&
-                            openResult.status !== 'focused' &&
-                            openResult.error === undefined)
-                    ) {
-                        dispatch(
-                            notifyToast({
-                                code: 'io',
-                                message: t('workspace.create.createdNotOpened'),
-                                severity: 'error',
-                                subject: name,
-                                title: t('notification.error.io.title'),
-                            }),
-                        );
-                    }
-                    return { ...result, openResult };
+                if (result?.status !== 'opened' || kind !== 'file') return result;
+
+                // Backend directory paths are absolute and canonical for the host OS.
+                // A backslash inside a POSIX folder name is an ordinary character.
+                const separator = parentPath.startsWith('/') ? '/' : '\\';
+                let openResult: EntryCommandOutcome | undefined;
+                try {
+                    openResult = await onOpenRecentFile(
+                        `${parentPath}${parentPath.endsWith(separator) ? '' : separator}${name}`,
+                        store.getState().documents.tabSetRevision,
+                        true,
+                        false,
+                    );
+                    if (openResult?.error === undefined) dispatch(leaveReading());
+                } catch {
+                    dispatch(
+                        notifyToast({
+                            code: 'io',
+                            message: t('workspace.create.createdNotOpened'),
+                            severity: 'error',
+                            subject: name,
+                            title: t('notification.error.io.title'),
+                        }),
+                    );
+                    return { ...result, openResult: { status: 'refused' } };
                 }
-                return result;
+                if (openResult?.error?.category === 'capacity-limit') {
+                    reportEntryError(
+                        {
+                            ...openResult.error,
+                            message: `${t('workspace.create.createdNotOpened')} ${openResult.error.message} ${t('workspace.tree.closeTabsFirst')}`,
+                        },
+                        'create-workspace-entry',
+                    );
+                } else if (
+                    openResult === undefined ||
+                    (openResult.status !== 'opened' &&
+                        openResult.status !== 'focused' &&
+                        openResult.error === undefined)
+                ) {
+                    dispatch(
+                        notifyToast({
+                            code: 'io',
+                            message: t('workspace.create.createdNotOpened'),
+                            severity: 'error',
+                            subject: name,
+                            title: t('notification.error.io.title'),
+                        }),
+                    );
+                }
+                return { ...result, openResult };
             } catch (error) {
                 dispatch(notifyError(parseError(error), 'create-workspace-entry'));
                 return undefined;

@@ -71,12 +71,17 @@ function acceleratorFor(actionId: TabContextAction): string | undefined {
     return binding === undefined ? undefined : formatShortcut(binding, currentPlatform());
 }
 
+function moveTargetIndex(actionId: TabContextAction, index: number): number | undefined {
+    if (actionId === 'move-tab-left') return index - 1;
+    if (actionId === 'move-tab-right') return index + 1;
+    return undefined;
+}
+
 function errorResult(error: ClassifiedError | undefined): string {
     return error?.message ?? 'The tab command could not be completed.';
 }
 
 const TabContextMenu: React.FC<TabContextMenuProps> = ({
-    adapter,
     anchor = { point: { x: 0, y: 0 } },
     document,
     index,
@@ -85,7 +90,6 @@ const TabContextMenu: React.FC<TabContextMenuProps> = ({
     onAction,
     onClose,
 }: TabContextMenuProps): React.JSX.Element => {
-    void adapter;
     const menuActions = actionsForSurface('tab-context')
         .map((entry) => entry.id)
         .filter(isTabContextAction);
@@ -99,37 +103,29 @@ const TabContextMenu: React.FC<TabContextMenuProps> = ({
         ),
         orderedDocumentIds: orderedDocuments.map((entry) => entry.documentId),
     };
-    const availabilityContext = (actionId: TabContextAction): ActionAvailabilityContext => ({
-        documentId: document.documentId,
-        projectedState,
-        tabCommand: true,
-        targetDocumentId: document.documentId,
-        ...(actionId === 'move-tab-left'
-            ? { targetIndex: index - 1 }
-            : actionId === 'move-tab-right'
-              ? { targetIndex: index + 1 }
-              : {}),
-    });
-    const isUnavailable = (actionId: TabContextAction): boolean =>
-        getActionAvailability(actionId, availabilityContext(actionId)).kind !== 'available';
+    const availabilityContext = (actionId: TabContextAction): ActionAvailabilityContext => {
+        const targetIndex = moveTargetIndex(actionId, index);
+        return {
+            documentId: document.documentId,
+            projectedState,
+            tabCommand: true,
+            targetDocumentId: document.documentId,
+            ...(targetIndex === undefined ? {} : { targetIndex }),
+        };
+    };
+    const isUnavailable = (actionId: TabContextAction, context: ActionAvailabilityContext): boolean =>
+        getActionAvailability(actionId, context).kind !== 'available';
 
     const activate = (actionId: TabContextAction): void => {
-        if (isUnavailable(actionId)) return;
+        const context = availabilityContext(actionId);
+        if (isUnavailable(actionId, context)) return;
         void dispatchAction(actionId, {
-            ...availabilityContext(actionId),
+            ...context,
             sessionDocumentId: document.documentId,
             expectedTabSetRevision: tabSetRevision,
             invoke: async (): Promise<unknown> => {
                 try {
-                    return await onAction(
-                        actionId,
-                        document,
-                        actionId === 'move-tab-left'
-                            ? index - 1
-                            : actionId === 'move-tab-right'
-                              ? index + 1
-                              : undefined,
-                    );
+                    return await onAction(actionId, document, context.targetIndex);
                 } catch (error) {
                     return {
                         status: 'unavailable',
@@ -162,7 +158,7 @@ const TabContextMenu: React.FC<TabContextMenuProps> = ({
         >
             {menuActions.map((actionId) => {
                 const entry = getAction(actionId);
-                const disabled = isUnavailable(actionId);
+                const disabled = isUnavailable(actionId, availabilityContext(actionId));
                 const accelerator = acceleratorFor(actionId);
                 return (
                     <MenuItem

@@ -109,6 +109,12 @@ function reportUnavailable(tool, exitCode, status = 'unavailable') {
     };
 }
 
+function diagnosticLocation(file, line, column) {
+    const lineSuffix = line ? `:${line}` : '';
+    const columnSuffix = column ? `:${column}` : '';
+    return `${file}${lineSuffix}${columnSuffix}`;
+}
+
 function parseGolangciReport(report, exitCode) {
     if (!report || !Array.isArray(report.Issues)) return reportUnavailable('golangci-lint', exitCode, 'unreliable');
     const warnings = report.Issues.filter((issue) => String(issue?.Severity || '').toLowerCase() === 'warning').length;
@@ -116,7 +122,7 @@ function parseGolangciReport(report, exitCode) {
         (issue) => {
             const position = issue?.Pos || {};
             const file = position.Filename || 'golangci-lint';
-            const location = `${file}${position.Line ? `:${position.Line}` : ''}${position.Column ? `:${position.Column}` : ''}`;
+            const location = diagnosticLocation(file, position.Line, position.Column);
             return reportFinding('golangci-lint', location, issue.FromLinter, issue.Text);
         },
     );
@@ -134,6 +140,16 @@ function parseGolangciReport(report, exitCode) {
     };
 }
 
+function eslintFileCounts(file, messages) {
+    const errors = Number.isInteger(file?.errorCount)
+        ? file.errorCount
+        : messages.filter((message) => message?.severity >= 2 || message?.fatal).length;
+    const warnings = Number.isInteger(file?.warningCount)
+        ? file.warningCount
+        : messages.filter((message) => message?.severity === 1).length;
+    return { errors, warnings };
+}
+
 function parseEslintReport(report, exitCode) {
     if (!Array.isArray(report)) return reportUnavailable('eslint', exitCode, 'unreliable');
     const findings = [];
@@ -141,15 +157,12 @@ function parseEslintReport(report, exitCode) {
     let warnings = 0;
     for (const file of report) {
         const messages = Array.isArray(file?.messages) ? file.messages : [];
-        errors += Number.isInteger(file?.errorCount)
-            ? file.errorCount
-            : messages.filter((message) => message?.severity >= 2 || message?.fatal).length;
-        warnings += Number.isInteger(file?.warningCount)
-            ? file.warningCount
-            : messages.filter((message) => message?.severity === 1).length;
+        const counts = eslintFileCounts(file, messages);
+        errors += counts.errors;
+        warnings += counts.warnings;
         for (const message of messages) {
             if (message?.severity < 2 && !message?.fatal) continue;
-            const location = `${file.filePath || 'eslint'}${message.line ? `:${message.line}` : ''}${message.column ? `:${message.column}` : ''}`;
+            const location = diagnosticLocation(file.filePath || 'eslint', message.line, message.column);
             findings.push(reportFinding('eslint', location, message.ruleId, message.message));
         }
     }
@@ -162,23 +175,28 @@ function parseEslintReport(report, exitCode) {
     };
 }
 
+function stylelintParseFindings(file) {
+    const parseErrors = Array.isArray(file?.parseErrors) ? file.parseErrors : [];
+    return parseErrors.map((error) => {
+        const location = diagnosticLocation(file.source || 'stylelint', error.line, error.column);
+        return reportFinding('stylelint', location, 'parse-error', error.text);
+    });
+}
+
 function parseStylelintReport(report, exitCode) {
     if (!Array.isArray(report)) return reportUnavailable('stylelint', exitCode, 'unreliable');
     const findings = [];
     let errors = 0;
     let warnings = 0;
     for (const file of report) {
-        const parseErrors = Array.isArray(file?.parseErrors) ? file.parseErrors : [];
-        errors += parseErrors.length;
-        for (const parseError of parseErrors) {
-            const location = `${file.source || 'stylelint'}${parseError.line ? `:${parseError.line}` : ''}${parseError.column ? `:${parseError.column}` : ''}`;
-            findings.push(reportFinding('stylelint', location, 'parse-error', parseError.text));
-        }
+        const parseFindings = stylelintParseFindings(file);
+        errors += parseFindings.length;
+        for (const finding of parseFindings) findings.push(finding);
         const fileWarnings = Array.isArray(file?.warnings) ? file.warnings : [];
         for (const warning of fileWarnings) {
             if (String(warning.severity || 'warning').toLowerCase() === 'error') {
                 errors += 1;
-                const location = `${file.source || 'stylelint'}${warning.line ? `:${warning.line}` : ''}${warning.column ? `:${warning.column}` : ''}`;
+                const location = diagnosticLocation(file.source || 'stylelint', warning.line, warning.column);
                 findings.push(reportFinding('stylelint', location, warning.rule, warning.text));
             } else {
                 warnings += 1;
@@ -194,6 +212,7 @@ function parseStylelintReport(report, exitCode) {
     };
 }
 
+/** @param {string} stage @param {string} line */
 function findingTool(stage, line) {
     if (/golangci|lint/i.test(line)) return 'golangci-lint';
     if (/eslint/i.test(line)) return 'eslint';
@@ -205,15 +224,10 @@ function findingTool(stage, line) {
     if (/jest/i.test(line)) return 'jest';
     if (/go test|--- FAIL|FAIL\s/i.test(line)) return 'go-test';
     if (/build|wails|missing tool/i.test(line)) return 'build';
-    return stage === 'lint'
-        ? 'repo-rules'
-        : stage === 'e2e'
-          ? 'playwright'
-          : stage === 'unit' || stage === 'integration'
-            ? 'go-test'
-            : stage;
+    return { lint: 'repo-rules', e2e: 'playwright', unit: 'go-test', integration: 'go-test' }[stage] ?? stage;
 }
 
+/** @param {string} line */
 function commandTool(line) {
     if (/golangci-lint/i.test(line)) return 'golangci-lint';
     if (/typescript|\btsc\b/i.test(line)) return 'tsc';
@@ -253,10 +267,66 @@ function findingLocation(stage, line) {
     return stage;
 }
 
+/** @param {string} stage @param {string} line */
+function ignoredFindingLine(stage, line) {
+    // Playwright prints every passing title; words inside a title are not diagnostics.
+    if (stage === 'e2e' && /^(?:\[\d+\/\d+\]\s+)?\[[^\]]+\]\s+›\s+tests\/e2e\//.test(line)) return true;
+    if (/^(?:PASS|ok)\b/.test(line)) return true;
+    return /^(?:golangci-lint|ESLint|Stylelint|Go tests)\s+\.+\s+(?:PASS|FAIL|SKIPPED|NOT RUN|UNAVAILABLE|UNRELIABLE)\b/.test(
+        line,
+    );
+}
+
+/** @param {string} line */
+function isFailureLine(line) {
+    if (/^(?:ℹ\s*)?(?:fail(?:ed|ure)?|failed)\s+0\b/i.test(line) || /\b0\s+failed\b/i.test(line)) return false;
+    return /(error|fail|failed|missing tool|not found|cannot|panic|✖|✗|\bFAIL\b)/i.test(line);
+}
+
+/**
+ * @param {string} tool
+ * @param {string} stage
+ * @param {(tool: string, location: string, message: string) => void} addFinding
+ */
+function addStructuredEntryFindings(entry, tool, stage, addFinding) {
+    if (!entry || typeof entry !== 'object') return;
+    const messages = Array.isArray(entry.messages) ? entry.messages : [];
+    const errors = messages.filter((message) => message && (message.severity >= 2 || message.fatal));
+    const location = entry.filePath || stage;
+    for (const message of errors) {
+        const rule = message.ruleId || message.messageId || 'failure';
+        addFinding(tool, `${location}:${rule}`, message.message || rule);
+    }
+    if (errors.length === 0 && (entry.errorCount > 0 || entry.fatalErrorCount > 0)) {
+        addFinding(tool, location, 'reported one or more errors');
+    }
+}
+
+/**
+ * @param {string} line
+ * @param {string} tool
+ * @param {string} stage
+ * @param {(tool: string, location: string, message: string) => void} addFinding
+ */
+function addStructuredFindings(line, tool, stage, addFinding) {
+    if (!line.startsWith('[') && !line.startsWith('{')) return false;
+    try {
+        const parsed = JSON.parse(line);
+        const entries = Array.isArray(parsed) ? parsed : [parsed];
+        for (const entry of entries) addStructuredEntryFindings(entry, tool, stage, addFinding);
+        return true;
+    } catch {
+        // Non-JSON diagnostic lines are handled by the caller.
+        return false;
+    }
+}
+
+/** @param {string} stage @param {string} log */
 function parseFindings(stage, log) {
     const findings = [];
     let activeTool = null;
 
+    /** @param {string} tool @param {string} location @param {string} message */
     function addFinding(tool, location, message) {
         findings.push({
             id: `${tool}:${location}:failure`,
@@ -268,53 +338,14 @@ function parseFindings(stage, log) {
 
     for (const rawLine of log.split('\n')) {
         const line = rawLine.trim();
-        if (!line) continue;
-
-        // Playwright prints every passing title; words inside a title are not diagnostics.
-        if (stage === 'e2e' && /^(?:\[\d+\/\d+\]\s+)?\[[^\]]+\]\s+›\s+tests\/e2e\//.test(line)) continue;
-
-        if (
-            /^(?:golangci-lint|ESLint|Stylelint|Go tests)\s+\.+\s+(?:PASS|FAIL|SKIPPED|NOT RUN|UNAVAILABLE|UNRELIABLE)\b/.test(
-                line,
-            )
-        )
-            continue;
-
-        if (/^(?:PASS|ok)\b/.test(line)) continue;
+        if (!line || ignoredFindingLine(stage, line)) continue;
 
         if (line.startsWith('+ ')) {
             activeTool = commandTool(line);
             continue;
         }
 
-        if (line.startsWith('[') || line.startsWith('{')) {
-            try {
-                const parsed = JSON.parse(line);
-                const entries = Array.isArray(parsed) ? parsed : [parsed];
-                let parsedFinding = false;
-                for (const entry of entries) {
-                    if (!entry || typeof entry !== 'object') continue;
-                    const messages = Array.isArray(entry.messages) ? entry.messages : [];
-                    const errors = messages.filter((message) => message && (message.severity >= 2 || message.fatal));
-                    if (errors.length === 0 && !(entry.errorCount > 0 || entry.fatalErrorCount > 0)) continue;
-                    const tool = activeTool || 'eslint';
-                    const location = entry.filePath || stage;
-                    for (const message of errors) {
-                        const rule = message.ruleId || message.messageId || 'failure';
-                        addFinding(tool, `${location}:${rule}`, message.message || rule);
-                    }
-                    if (errors.length === 0) addFinding(tool, location, 'reported one or more errors');
-                    parsedFinding = true;
-                }
-                if (parsedFinding || Array.isArray(parsed) || (parsed && typeof parsed === 'object')) continue;
-            } catch {
-                // Non-JSON diagnostic lines are handled below.
-            }
-        }
-
-        if (/^(?:ℹ\s*)?(?:fail(?:ed|ure)?|failed)\s+0\b/i.test(line) || /\b0\s+failed\b/i.test(line)) continue;
-
-        if (!/(error|fail|failed|missing tool|not found|cannot|panic|✖|✗|\bFAIL\b)/i.test(line)) continue;
+        if (addStructuredFindings(line, activeTool || 'eslint', stage, addFinding) || !isFailureLine(line)) continue;
         const tool = activeTool || findingTool(stage, line);
         const location = findingLocation(stage, line);
         addFinding(tool, location, line);
@@ -346,48 +377,36 @@ function testCount({ total, passed, failed, skipped, todo = 0 }) {
     };
 }
 
+function isGoTestEvent(event) {
+    return event && typeof event === 'object' && typeof event.Package === 'string' && typeof event.Action === 'string';
+}
+
 function parseGoTestCounts(log) {
     let sawGoEvent = false;
-    let total = 0;
-    let passed = 0;
-    let failed = 0;
-    let skipped = 0;
+    const counts = { run: 0, pass: 0, fail: 0, skip: 0 };
 
     for (const rawLine of log.split('\n')) {
         const line = rawLine.trim();
         if (!line.startsWith('{')) continue;
         try {
             const event = JSON.parse(line);
-            if (
-                event === null ||
-                typeof event !== 'object' ||
-                typeof event.Package !== 'string' ||
-                typeof event.Action !== 'string'
-            )
-                continue;
+            if (!isGoTestEvent(event)) continue;
             sawGoEvent = true;
-            if (typeof event.Test !== 'string') continue;
-            if (event.Action === 'run') total += 1;
-            if (event.Action === 'pass') passed += 1;
-            if (event.Action === 'fail') failed += 1;
-            if (event.Action === 'skip') skipped += 1;
+            if (typeof event.Test === 'string' && Object.hasOwn(counts, event.Action)) counts[event.Action] += 1;
         } catch {
             // Non-JSON diagnostics can be interleaved with Go's JSON event stream.
         }
     }
 
     if (!sawGoEvent) return null;
-    return testCount({ total, passed, failed, skipped });
+    return testCount({ total: counts.run, passed: counts.pass, failed: counts.fail, skipped: counts.skip });
 }
 
 function parseGoTestReport(input, exitCode) {
     const { values, invalidLines } = readJsonLines(input);
     if (values.length === 0 || invalidLines.length > 0) return reportUnavailable('go-test', exitCode, 'unreliable');
 
-    const events = values.filter(
-        (event) =>
-            event && typeof event === 'object' && typeof event.Action === 'string' && typeof event.Package === 'string',
-    );
+    const events = values.filter(isGoTestEvent);
     if (events.length !== values.length) return reportUnavailable('go-test', exitCode, 'unreliable');
 
     const testCounts = parseGoTestCounts(events.map((event) => JSON.stringify(event)).join('\n'));
@@ -528,6 +547,40 @@ function parsePlaywrightTestCounts(report) {
     return testCount(counts);
 }
 
+function* playwrightTests(suite, inheritedFile) {
+    const file = suite.file || inheritedFile;
+    for (const spec of Array.isArray(suite.specs) ? suite.specs : []) {
+        for (const test of Array.isArray(spec.tests) ? spec.tests : []) {
+            yield { file: spec.file || file || 'unknown file', title: spec.title, test };
+        }
+    }
+    for (const child of Array.isArray(suite.suites) ? suite.suites : []) yield* playwrightTests(child, file);
+}
+
+function recordAttemptLifecycle(attempt, lifecycle) {
+    const stdout = (Array.isArray(attempt.stdout) ? attempt.stdout : [])
+        .map((entry) => (typeof entry === 'string' ? entry : entry?.text || ''))
+        .join('');
+    for (const match of stdout.matchAll(/^\[e2e\] (launchMs|relaunchMs|teardownMs)=(\d+)(?:\s|$)/gm)) {
+        const [, phase, duration] = match;
+        lifecycle.records += 1;
+        lifecycle[phase] += Number(duration);
+        if (phase === 'launchMs') lifecycle.starts += 1;
+        if (phase === 'relaunchMs') lifecycle.relaunches += 1;
+    }
+}
+
+function recordPlaywrightTest({ file, title, test }, files, tests, lifecycle) {
+    const attempts = Array.isArray(test.results) ? test.results : [];
+    if (attempts.length === 0) return 0;
+    const retries = attempts.filter((attempt) => attempt.retry > 0).length;
+    const durationMs = attempts.reduce((total, attempt) => total + (Number(attempt.duration) || 0), 0);
+    tests.push({ file, title, durationMs });
+    files.set(file, (files.get(file) || 0) + durationMs);
+    for (const attempt of attempts) recordAttemptLifecycle(attempt, lifecycle);
+    return retries;
+}
+
 function parseE2eTiming(log, report, wallMs) {
     const preparation = log.match(/^\[e2e\] prepareMs=(\d+)(?:\s|$)/m);
     const timing = {
@@ -548,56 +601,19 @@ function parseE2eTiming(log, report, wallMs) {
 
     const files = new Map();
     const tests = [];
-    let starts = 0;
-    let relaunches = 0;
-    let launchMs = 0;
-    let relaunchMs = 0;
-    let teardownMs = 0;
-    let lifecycleRecords = 0;
+    const lifecycle = { records: 0, starts: 0, relaunches: 0, launchMs: 0, relaunchMs: 0, teardownMs: 0 };
     let retries = 0;
-    function visit(suite, inheritedFile) {
-        const file = suite.file || inheritedFile;
-        for (const spec of Array.isArray(suite.specs) ? suite.specs : []) {
-            const name = spec.file || file || 'unknown file';
-            for (const test of Array.isArray(spec.tests) ? spec.tests : []) {
-                const attempts = Array.isArray(test.results) ? test.results : [];
-                retries += attempts.filter((attempt) => attempt.retry > 0).length;
-                const durationMs = attempts.reduce((total, attempt) => total + (Number(attempt.duration) || 0), 0);
-                if (attempts.length > 0) {
-                    tests.push({ file: name, title: spec.title, durationMs });
-                    files.set(name, (files.get(name) || 0) + durationMs);
-                }
-                for (const attempt of attempts) {
-                    const stdout = (Array.isArray(attempt.stdout) ? attempt.stdout : [])
-                        .map((entry) => (typeof entry === 'string' ? entry : entry?.text || ''))
-                        .join('');
-                    for (const match of stdout.matchAll(/^\[e2e\] (launchMs|relaunchMs|teardownMs)=(\d+)(?:\s|$)/gm)) {
-                        const value = Number(match[2]);
-                        lifecycleRecords += 1;
-                        if (match[1] === 'teardownMs') teardownMs += value;
-                        else if (match[1] === 'launchMs') {
-                            starts += 1;
-                            launchMs += value;
-                        } else {
-                            relaunches += 1;
-                            relaunchMs += value;
-                        }
-                    }
-                }
-            }
+    for (const suite of report.suites) {
+        for (const entry of playwrightTests(suite, null)) {
+            retries += recordPlaywrightTest(entry, files, tests, lifecycle);
         }
-        for (const child of Array.isArray(suite.suites) ? suite.suites : []) visit(child, file);
     }
-    for (const suite of report.suites) visit(suite, null);
     timing.retries = retries;
-    if (lifecycleRecords > 0) {
-        timing.starts = starts;
-        timing.relaunches = relaunches;
-        timing.launchMs = launchMs;
-        timing.relaunchMs = relaunchMs;
-        timing.teardownMs = teardownMs;
+    if (lifecycle.records > 0) {
+        const { starts, relaunches, launchMs, relaunchMs, teardownMs } = lifecycle;
+        Object.assign(timing, { starts, relaunches, launchMs, relaunchMs, teardownMs });
     }
-    timing.slowestTests = tests.sort((a, b) => b.durationMs - a.durationMs).slice(0, 3);
+    timing.slowestTests = tests.toSorted((a, b) => b.durationMs - a.durationMs).slice(0, 3);
     timing.slowestFiles = [...files]
         .map(([file, durationMs]) => ({ file, durationMs }))
         .sort((a, b) => b.durationMs - a.durationMs)
@@ -661,6 +677,46 @@ function countCollected(log, findings, testCounts) {
     return log.trim() ? 1 : 0;
 }
 
+function requiredReportFindings(stage, reportsDir, reports) {
+    if (!reportsDir) return [];
+    const tools = { lint: ['golangci-lint', 'eslint', 'stylelint'], unit: ['go-test'], integration: ['go-test'] };
+    return (tools[stage] ?? [])
+        .filter((tool) => reports.find((report) => report.tool === tool)?.status !== 'available')
+        .map((tool) => ({
+            id: `report:${stage}:${tool}:unavailable`,
+            tool,
+            location: `${stage}/${tool}`,
+            message: `${tool} report is unavailable or unreliable`,
+        }));
+}
+
+function testCountFinding(stage, group, status, message) {
+    const tool = stage === 'e2e' ? 'playwright' : { backend: 'go-test', frontend: 'jest' }[group];
+    return {
+        id: `test-count:${stage}:${group}:${status}`,
+        tool,
+        location: `${stage}/${group}`,
+        message,
+    };
+}
+
+function testCountFindings(stage, testCounts) {
+    const unavailable = countUnavailableGroups(testCounts).map((group) =>
+        testCountFinding(stage, group, 'unavailable', `${group} test count is ${testCounts[group].status}`),
+    );
+    const failed = failedTestGroups(testCounts).map(([group, count]) => {
+        const description = pluralize(count.failed, 'failed test');
+        return testCountFinding(stage, group, 'failed', `${group} test count includes ${description}`);
+    });
+    return [...unavailable, ...failed];
+}
+
+function stageVerdict(name, exitCode, findings) {
+    if (exitCode === 0) return 'clean';
+    if (name === 'format' || name === 'build') return 'failing';
+    return findings.length === 0 ? 'unreliable' : 'findings';
+}
+
 function makeStage({
     name,
     command,
@@ -676,72 +732,25 @@ function makeStage({
         name === 'e2e'
             ? parseE2eTiming(log, readJson(path.join(runDir, 'frontend-e2e-playwright.json')), durationMs)
             : undefined;
-    const unavailableGroups = countUnavailableGroups(testCounts);
-    const failedGroups = failedTestGroups(testCounts);
-    const requiredReports = !reportsDir
-        ? []
-        : name === 'lint'
-          ? ['golangci-lint', 'eslint', 'stylelint']
-          : name === 'unit' || name === 'integration'
-            ? ['go-test']
-            : [];
-    const unavailableReports = requiredReports.filter((tool) => {
-        const report = reports.find((entry) => entry.tool === tool);
-        return !report || report.status !== 'available';
-    });
     const reportFindings = reports.flatMap((report) => report.findings || []);
-    const toolsWithReportFindings = new Set(reportFindings.map((finding) => finding.tool));
-    const effectiveExitCode =
-        exitCode === 0 &&
-        (unavailableGroups.length > 0 ||
-            failedGroups.length > 0 ||
-            unavailableReports.length > 0 ||
-            reportFindings.length > 0)
-            ? 1
-            : exitCode;
-    const findings =
-        effectiveExitCode === 0
-            ? []
-            : [
-                  ...parseFindings(name, log).filter((finding) => !toolsWithReportFindings.has(finding.tool)),
-                  ...reportFindings,
-              ];
-    for (const tool of unavailableReports) {
-        findings.push({
-            id: `report:${name}:${tool}:unavailable`,
-            tool,
-            location: `${name}/${tool}`,
-            message: `${tool} report is unavailable or unreliable`,
-        });
-    }
-    for (const group of unavailableGroups) {
-        findings.push({
-            id: `test-count:${name}:${group}:unavailable`,
-            tool: name === 'e2e' ? 'playwright' : group === 'backend' ? 'go-test' : 'jest',
-            location: `${name}/${group}`,
-            message: `${group} test count is ${testCounts[group].status}`,
-        });
-    }
-    for (const [group, count] of failedGroups) {
-        findings.push({
-            id: `test-count:${name}:${group}:failed`,
-            tool: name === 'e2e' ? 'playwright' : group === 'backend' ? 'go-test' : 'jest',
-            location: `${name}/${group}`,
-            message: `${group} test count includes ${count.failed} failed test${count.failed === 1 ? '' : 's'}`,
-        });
+    const requiredFindings = [
+        ...requiredReportFindings(name, reportsDir, reports),
+        ...testCountFindings(name, testCounts),
+    ];
+    const effectiveExitCode = exitCode || (reportFindings.length > 0 || requiredFindings.length > 0 ? 1 : 0);
+    let findings = [];
+    if (effectiveExitCode !== 0) {
+        const toolsWithReportFindings = new Set(reportFindings.map((finding) => finding.tool));
+        const logFindings = parseFindings(name, log).filter((finding) => !toolsWithReportFindings.has(finding.tool));
+        findings = [...logFindings, ...reportFindings, ...requiredFindings];
     }
     const uniqueFindings = [...new Map(findings.map((finding) => [finding.id, finding])).values()];
-    let verdict;
-    if (effectiveExitCode === 0) verdict = 'clean';
-    else if (['format', 'build'].includes(name)) verdict = 'failing';
-    else if (uniqueFindings.length === 0) verdict = 'unreliable';
-    else verdict = 'findings';
     return {
         name,
         commands: [command],
         exitCode: effectiveExitCode,
         durationMs,
-        verdict,
+        verdict: stageVerdict(name, effectiveExitCode, uniqueFindings),
         ...(testCounts ? { testCounts } : {}),
         ...(e2eTiming ? { e2eTiming } : {}),
         collected: countCollected(log, uniqueFindings, testCounts),
@@ -841,68 +850,64 @@ function formatTestCount(label, count) {
     return `${prefix}${count.total} total, ${count.passed} passed, ${count.failed} failed, ${count.skipped} skipped${todo}`;
 }
 
+function formatE2eTiming(timing) {
+    const available = (value) => (value === null ? 'unavailable' : `${value} ms`);
+    const lines = [
+        `  E2E wall: ${available(timing.wallMs)}; preparation: ${available(timing.prepareMs)}`,
+        `  E2E lifecycle (summed across concurrent tests): ${timing.starts ?? 'unavailable'} starts (${timing.relaunches ?? 'unavailable'} relaunches), launch total: ${available(timing.launchMs)}, teardown total: ${available(timing.teardownMs)}`,
+        `  E2E relaunch inclusive total: ${available(timing.relaunchMs)}`,
+        `  E2E outcomes: ${timing.failures ?? 'unavailable'} failures, ${timing.skipped ?? 'unavailable'} skips, ${timing.retries ?? 'unavailable'} retries`,
+    ];
+    for (const [label, entries] of [
+        ['tests', timing.slowestTests],
+        ['files', timing.slowestFiles],
+    ]) {
+        if (entries.length === 0) continue;
+        lines.push(`  Slowest ${label} (summed inclusive durations):`);
+        for (const entry of entries) {
+            const title = entry.title ? ` › ${entry.title}` : '';
+            lines.push(`    ${entry.durationMs} ms  ${entry.file}${title}`);
+        }
+    }
+    return lines;
+}
+
+function summaryStageStatus(stage) {
+    if (!stage) return 'notRun';
+    if (stage.verdict === 'skipped') return 'skipped';
+    return stage.exitCode === 0 ? 'passed' : 'failed';
+}
+
+function formatSummaryStage(name, stage, status) {
+    const labels = { passed: 'PASS', failed: 'FAIL', skipped: 'SKIPPED', notRun: 'NOT RUN' };
+    const skippedByFlag = status === 'skipped' && stage.commands?.some((command) => command.includes('--skip e2e'));
+    const label = skippedByFlag ? 'SKIPPED (--skip e2e)' : labels[status];
+    const lines = [`${dottedLabel(stageDisplayName(name), 19)} ${label}`];
+    for (const group of TEST_GROUPS) {
+        const count = stage?.testCounts?.[group];
+        if (count) lines.push(formatTestCount(group, count));
+    }
+    if (name === 'e2e' && stage?.e2eTiming && status !== 'skipped') lines.push(...formatE2eTiming(stage.e2eTiming));
+    return lines;
+}
+
 function formatSummary(summary, expectedStages = STAGES) {
     const byName = new Map(summary.stages.map((stage) => [stage.name, stage]));
     const lines = [`Run ${summary.runId}`];
-    let passed = 0;
-    let failed = 0;
-    let skipped = 0;
-    let notRun = 0;
-
+    const counts = { passed: 0, failed: 0, skipped: 0, notRun: 0 };
     for (const name of expectedStages) {
         const stage = byName.get(name);
-        let status = 'NOT RUN';
-        if (stage) {
-            if (stage.verdict === 'skipped') {
-                status = stage.commands?.some((command) => command.includes('--skip e2e'))
-                    ? 'SKIPPED (--skip e2e)'
-                    : 'SKIPPED';
-                skipped += 1;
-            } else if (stage.exitCode === 0) {
-                status = 'PASS';
-                passed += 1;
-            } else {
-                status = 'FAIL';
-                failed += 1;
-            }
-        } else {
-            notRun += 1;
-        }
-        if (lines.length > 1) lines.push('');
-        lines.push(`${dottedLabel(stageDisplayName(name), 19)} ${status}`);
-        if (stage?.testCounts) {
-            for (const group of TEST_GROUPS) {
-                if (stage.testCounts[group]) lines.push(formatTestCount(group, stage.testCounts[group]));
-            }
-        }
-        if (name === 'e2e' && stage?.e2eTiming && stage.verdict !== 'skipped') {
-            const timing = stage.e2eTiming;
-            const available = (value) => (value === null ? 'unavailable' : `${value} ms`);
-            lines.push(`  E2E wall: ${available(timing.wallMs)}; preparation: ${available(timing.prepareMs)}`);
-            lines.push(
-                `  E2E lifecycle (summed across concurrent tests): ${timing.starts ?? 'unavailable'} starts (${timing.relaunches ?? 'unavailable'} relaunches), launch total: ${available(timing.launchMs)}, teardown total: ${available(timing.teardownMs)}`,
-            );
-            lines.push(`  E2E relaunch inclusive total: ${available(timing.relaunchMs)}`);
-            lines.push(
-                `  E2E outcomes: ${timing.failures ?? 'unavailable'} failures, ${timing.skipped ?? 'unavailable'} skips, ${timing.retries ?? 'unavailable'} retries`,
-            );
-            for (const [label, entries] of [
-                ['tests', timing.slowestTests],
-                ['files', timing.slowestFiles],
-            ]) {
-                if (entries.length === 0) continue;
-                lines.push(`  Slowest ${label} (summed inclusive durations):`);
-                for (const entry of entries)
-                    lines.push(`    ${entry.durationMs} ms  ${entry.file}${entry.title ? ` › ${entry.title}` : ''}`);
-            }
-        }
+        const status = summaryStageStatus(stage);
+        counts[status] += 1;
+        const stageLines = formatSummaryStage(name, stage, status);
+        if (lines.length > 1) stageLines.unshift('');
+        lines.push(...stageLines);
     }
 
+    const { passed, failed, skipped, notRun } = counts;
     const summaryParts = [`${passed} passed`, `${failed} failed`, `${skipped} skipped`];
     if (notRun) summaryParts.push(`${notRun} not run`);
-    lines.push('');
-    lines.push(`Summary: ${summaryParts.join(', ')}`);
-    lines.push(`Duration: ${summary.durationMs} ms`);
+    lines.push('', `Summary: ${summaryParts.join(', ')}`, `Duration: ${summary.durationMs} ms`);
     return `${lines.join('\n')}\n`;
 }
 
@@ -930,16 +935,18 @@ function commandOutput(command, commandArgs, cwd = process.cwd()) {
     return result.status === 0 ? result.stdout.trim() : 'unavailable';
 }
 
-function gitOutput(args) {
-    const result = spawnSync('git', args, { encoding: 'buffer' });
-    return result.status === 0 ? result.stdout : Buffer.alloc(0);
-}
-
 function baselineCommand(args) {
     const output = args.output;
     const runDir = args['run-dir'];
     const feature = args.feature;
-    if (!output || !runDir || !feature) fail('baseline requires --feature, --run-dir and --output');
+    if (
+        ![output, runDir, feature, args.commit, args['diff-file'], args['status-file']].every(
+            (value) => typeof value === 'string' && value,
+        )
+    )
+        fail('baseline requires --feature, --run-dir, --output, --commit, --diff-file and --status-file');
+    const commit = args.commit;
+    if (!/^[0-9a-f]{40}$/.test(commit)) fail('baseline requires a full commit');
     const stages = stageFiles(runDir);
     if (stages.length !== STAGES.length) fail('baseline requires all six stage records');
     const unreliableCount = stages.flatMap((stage) =>
@@ -956,14 +963,12 @@ function baselineCommand(args) {
             }`,
             3,
         );
-    const diff = args['diff-file'] ? fs.readFileSync(args['diff-file']) : gitOutput(['diff', 'HEAD']);
-    const status = (
-        args['status-file'] ? fs.readFileSync(args['status-file']) : gitOutput(['status', '--porcelain', '-z'])
-    ).toString('utf8');
+    const diff = fs.readFileSync(args['diff-file']);
+    const status = fs.readFileSync(args['status-file']).toString('utf8');
     const untrackedPaths = status
         .split('\0')
         .filter(Boolean)
-        .filter((entry) => entry.slice(0, 2) === '??')
+        .filter((entry) => entry.startsWith('??'))
         .map((entry) => entry.slice(3));
     const frontendRoot = path.join(process.env.REPO_ROOT || process.cwd(), 'frontend');
     const tools = {
@@ -976,10 +981,6 @@ function baselineCommand(args) {
         prettier: commandOutput(path.join(frontendRoot, 'node_modules/.bin/prettier'), ['--version']),
         playwright: commandOutput(path.join(frontendRoot, 'node_modules/.bin/playwright'), ['--version']),
     };
-    const commit = spawnSync('git', ['rev-parse', 'HEAD'], {
-        encoding: 'utf8',
-    }).stdout.trim();
-    if (!/^[0-9a-f]{40}$/.test(commit)) fail('baseline could not determine the full commit');
     const record = {
         schemaVersion: 1,
         feature,

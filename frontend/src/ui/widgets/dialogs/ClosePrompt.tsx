@@ -27,8 +27,8 @@ const ClosePrompt: React.FC<ClosePromptProps> = ({
      * The prompt always uses translated copy and delegates dialog semantics to
      * `ModalShell`, including its accessible title and keyboard dismissal.
      */
-    const title =
-        plan.kind === 'quit' ? t('close.quit.title') : t(isSingle ? 'close.single.title' : 'close.multi.title');
+    const documentTitleKey = isSingle ? 'close.single.title' : 'close.multi.title';
+    const title = t(plan.kind === 'quit' ? 'close.quit.title' : documentTitleKey);
     const choose = (choice: CloseChoice): void => {
         if (busy) return;
         setBusy(true);

@@ -1,5 +1,4 @@
-import { getAction, getActionAvailability, type ActionAvailabilityContext } from './actionRegistry';
-import type { ActionScope } from './actionRegistry';
+import { getAction, getActionAvailability, type ActionAvailabilityContext, type ActionScope } from './actionRegistry';
 import { dispatchAction } from './actionDispatcher';
 
 export type ShellActionId =
@@ -32,7 +31,7 @@ export interface ShellAction {
     availabilityContext?: ActionAvailabilityContext;
     accessibilityKey: string;
     id: ShellActionId;
-    invoke: () => Promise<unknown> | unknown;
+    invoke: () => unknown;
     isAvailable: () => boolean;
     labelKey: string;
     scope: ShellActionScope;

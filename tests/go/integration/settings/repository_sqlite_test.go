@@ -86,39 +86,10 @@ func TestAppearanceAndMarkdownGroupsRoundTripDottedTypedKV(t *testing.T) {
 		EmphasisMarker: EmphasisMarkerAsterisk,
 		HeadingStyle:   HeadingStyleSetext,
 	}
-	if err := service.UpdateAppearance(ctx, wantAppearance); err != nil {
-		t.Fatalf("update appearance: %v", err)
-	}
-	if err := service.UpdateMarkdown(ctx, wantMarkdown); err != nil {
-		t.Fatalf("update markdown: %v", err)
-	}
 	wantFile := apperr.FileSettings{Autosave: false}
-	if err := service.UpdateFile(ctx, wantFile); err != nil {
-		t.Fatalf("update file settings: %v", err)
-	}
+	updateRoundTripGroups(t, ctx, service, wantAppearance, wantMarkdown, wantFile)
 
-	for key, want := range map[string]kv.KVEntry{
-		"appearance.theme":      {Key: "appearance.theme", Value: ThemeGlass, Type: "string"},
-		"appearance.mode":       {Key: "appearance.mode", Value: ModeDark, Type: "string"},
-		"view.defaultOpenMode":  {Key: "view.defaultOpenMode", Value: OpenModeViewer, Type: "string"},
-		"view.readingWidth":     {Key: "view.readingWidth", Value: ReadingWidthFull, Type: "string"},
-		"export.pdfAppearance":  {Key: "export.pdfAppearance", Value: PdfAppearanceClean, Type: "string"},
-		"markdown.standard":     {Key: "markdown.standard", Value: MarkdownMinimal, Type: "string"},
-		"format.onSave":         {Key: "format.onSave", Value: "true", Type: "bool"},
-		"lint.onSave":           {Key: "lint.onSave", Value: "false", Type: "bool"},
-		"format.bulletMarker":   {Key: "format.bulletMarker", Value: BulletMarkerPlus, Type: "string"},
-		"format.emphasisMarker": {Key: "format.emphasisMarker", Value: EmphasisMarkerAsterisk, Type: "string"},
-		"format.headingStyle":   {Key: "format.headingStyle", Value: HeadingStyleSetext, Type: "string"},
-		"file.autosave":         {Key: "file.autosave", Value: "false", Type: "bool"},
-	} {
-		got, getErr := readKVSetting(database, ctx, key)
-		if getErr != nil {
-			t.Fatalf("read persisted key %q: %v", key, getErr)
-		}
-		if got.Key != want.Key || got.Value != want.Value || got.Type != want.Type {
-			t.Fatalf("persisted key %q = %+v, want %+v", key, got, want)
-		}
-	}
+	assertRoundTripKVEntries(t, ctx, database)
 
 	if err := database.Close(); err != nil {
 		t.Fatalf("close settings database before reopen: %v", err)
@@ -182,13 +153,6 @@ func TestStoredSettingsFallbackMatrix(t *testing.T) {
 		File:           DefaultSettings().File,
 	}
 
-	type storedFault struct {
-		name  string
-		key   string
-		value string
-		type_ string
-		omit  bool
-	}
 	testCases := []storedFault{
 		{name: "EC-THEME-3 missing theme", key: "appearance.theme", omit: true},
 		{name: "EC-THEME-3 unsupported theme", key: "appearance.theme", value: "vaporwave", type_: "string"},
@@ -236,73 +200,12 @@ func TestStoredSettingsFallbackMatrix(t *testing.T) {
 
 	for _, testCase := range testCases {
 		t.Run(testCase.name, func(t *testing.T) {
-			ctx := context.Background()
-			database, err := db.Open(ctx, filepath.Join(t.TempDir(), "settings.db"))
-			if err != nil {
-				t.Fatalf("open temporary settings database: %v", err)
-			}
-			t.Cleanup(func() {
-				if closeErr := database.Close(); closeErr != nil {
-					t.Errorf("close temporary settings database: %v", closeErr)
-				}
-			})
-
-			seedCompleteSettings(t, ctx, database, valid, testCase.key)
-			if !testCase.omit {
-				if err := writeKVSetting(database, ctx, kv.KVEntry{
-					Key: testCase.key, Value: testCase.value, Type: testCase.type_,
-				}); err != nil {
-					t.Fatalf("seed corrupt setting %q: %v", testCase.key, err)
-				}
-			}
-
-			want := valid
-			setSettingsScalar(t, &want, testCase.key, settingsScalarValue(DefaultSettings(), testCase.key))
-			got, err := NewSettingsService(NewSqliteSettingsRepository(database)).Get(ctx)
-			if err != nil {
-				t.Fatalf("read fallback settings: %v", err)
-			}
-			if got != want {
-				t.Fatalf("fallback settings = %+v, want %+v", got, want)
-			}
-			if testCase.key == "markdown.standard" && got.Markdown.Standard != MarkdownFull {
-				t.Fatalf("fallback Markdown standard = %q, want full", got.Markdown.Standard)
-			}
+			checkStoredSettingsFallback(t, valid, testCase)
 		})
 	}
 
 	t.Run("EC-SET-2 all empty canonical style scalars preserve boolean siblings", func(t *testing.T) {
-		ctx := context.Background()
-		database, err := db.Open(ctx, filepath.Join(t.TempDir(), "settings.db"))
-		if err != nil {
-			t.Fatalf("open temporary settings database: %v", err)
-		}
-		t.Cleanup(func() {
-			if closeErr := database.Close(); closeErr != nil {
-				t.Errorf("close temporary settings database: %v", closeErr)
-			}
-		})
-
-		seedCompleteSettings(t, ctx, database, valid, "")
-		for _, key := range []string{"format.bulletMarker", "format.emphasisMarker", "format.headingStyle"} {
-			if err := writeKVSetting(database, ctx, kv.KVEntry{
-				Key: key, Value: "", Type: "string",
-			}); err != nil {
-				t.Fatalf("seed empty canonical style %q: %v", key, err)
-			}
-		}
-
-		want := valid
-		want.Markdown.BulletMarker = DefaultSettings().Markdown.BulletMarker
-		want.Markdown.EmphasisMarker = DefaultSettings().Markdown.EmphasisMarker
-		want.Markdown.HeadingStyle = DefaultSettings().Markdown.HeadingStyle
-		got, err := NewSettingsService(NewSqliteSettingsRepository(database)).Get(ctx)
-		if err != nil {
-			t.Fatalf("read independently normalized settings: %v", err)
-		}
-		if got != want {
-			t.Fatalf("settings after empty canonical styles = %+v, want %+v", got, want)
-		}
+		checkEmptyCanonicalStyles(t, valid)
 	})
 }
 
@@ -397,44 +300,8 @@ func TestTypedGroupedDefaultsRoundTripThroughKV(t *testing.T) {
 		Editor:         DefaultSettings().Editor,
 		File:           DefaultSettings().File,
 	}
-	if err := repository.UpdateAppearance(ctx, want.Appearance); err != nil {
-		if closeErr := database.Close(); closeErr != nil {
-			t.Errorf("close settings database after appearance failure: %v", closeErr)
-		}
-		t.Fatalf("update appearance: %v", err)
-	}
-	if err := repository.UpdateMarkdown(ctx, want.Markdown); err != nil {
-		if closeErr := database.Close(); closeErr != nil {
-			t.Errorf("close settings database after markdown failure: %v", closeErr)
-		}
-		t.Fatalf("update markdown: %v", err)
-	}
-	if err := repository.UpdateContentPrivacy(ctx, want.ContentPrivacy); err != nil {
-		if closeErr := database.Close(); closeErr != nil {
-			t.Errorf("close settings database after content privacy failure: %v", closeErr)
-		}
-		t.Fatalf("update content privacy: %v", err)
-	}
-	for key, value := range map[string]string{
-		"appearance.theme":     want.Appearance.Theme,
-		"appearance.mode":      want.Appearance.Mode,
-		"markdown.standard":    want.Markdown.Standard,
-		"content.remotePolicy": want.ContentPrivacy.RemotePolicy,
-	} {
-		stored, getErr := readKVSetting(database, ctx, key)
-		if getErr != nil {
-			if closeErr := database.Close(); closeErr != nil {
-				t.Errorf("close settings database after read failure: %v", closeErr)
-			}
-			t.Fatalf("read typed dotted key %q: %v", key, getErr)
-		}
-		if stored.Value != value || stored.Type != "string" {
-			if closeErr := database.Close(); closeErr != nil {
-				t.Errorf("close settings database after assertion failure: %v", closeErr)
-			}
-			t.Fatalf("stored %q = %+v, want value %q and type %q", key, stored, value, "string")
-		}
-	}
+	updateTypedGroups(t, ctx, database, repository, want)
+	assertTypedDottedKeys(t, ctx, database, want)
 	if err := writeKVSetting(database, ctx, kv.KVEntry{
 		Key: "future.editor.tabSize", Value: "4", Type: "int",
 	}); err != nil {
@@ -833,4 +700,168 @@ func readBoolean(database *db.Database, ctx context.Context, key string, fallbac
 		return fallback, nil
 	}
 	return parsed, nil
+}
+
+type storedFault struct {
+	name  string
+	key   string
+	value string
+	type_ string
+	omit  bool
+}
+
+func checkStoredSettingsFallback(t *testing.T, valid apperr.Settings, testCase storedFault) {
+	t.Helper()
+	ctx := context.Background()
+	database, err := db.Open(ctx, filepath.Join(t.TempDir(), "settings.db"))
+	if err != nil {
+		t.Fatalf("open temporary settings database: %v", err)
+	}
+	t.Cleanup(func() {
+		if closeErr := database.Close(); closeErr != nil {
+			t.Errorf("close temporary settings database: %v", closeErr)
+		}
+	})
+
+	seedCompleteSettings(t, ctx, database, valid, testCase.key)
+	if !testCase.omit {
+		if err := writeKVSetting(database, ctx, kv.KVEntry{
+			Key: testCase.key, Value: testCase.value, Type: testCase.type_,
+		}); err != nil {
+			t.Fatalf("seed corrupt setting %q: %v", testCase.key, err)
+		}
+	}
+
+	want := valid
+	setSettingsScalar(t, &want, testCase.key, settingsScalarValue(DefaultSettings(), testCase.key))
+	got, err := NewSettingsService(NewSqliteSettingsRepository(database)).Get(ctx)
+	if err != nil {
+		t.Fatalf("read fallback settings: %v", err)
+	}
+	if got != want {
+		t.Fatalf("fallback settings = %+v, want %+v", got, want)
+	}
+	if testCase.key == "markdown.standard" && got.Markdown.Standard != MarkdownFull {
+		t.Fatalf("fallback Markdown standard = %q, want full", got.Markdown.Standard)
+	}
+}
+
+func checkEmptyCanonicalStyles(t *testing.T, valid apperr.Settings) {
+	t.Helper()
+	ctx := context.Background()
+	database, err := db.Open(ctx, filepath.Join(t.TempDir(), "settings.db"))
+	if err != nil {
+		t.Fatalf("open temporary settings database: %v", err)
+	}
+	t.Cleanup(func() {
+		if closeErr := database.Close(); closeErr != nil {
+			t.Errorf("close temporary settings database: %v", closeErr)
+		}
+	})
+
+	seedCompleteSettings(t, ctx, database, valid, "")
+	for _, key := range []string{"format.bulletMarker", "format.emphasisMarker", "format.headingStyle"} {
+		if err := writeKVSetting(database, ctx, kv.KVEntry{
+			Key: key, Value: "", Type: "string",
+		}); err != nil {
+			t.Fatalf("seed empty canonical style %q: %v", key, err)
+		}
+	}
+
+	want := valid
+	want.Markdown.BulletMarker = DefaultSettings().Markdown.BulletMarker
+	want.Markdown.EmphasisMarker = DefaultSettings().Markdown.EmphasisMarker
+	want.Markdown.HeadingStyle = DefaultSettings().Markdown.HeadingStyle
+	got, err := NewSettingsService(NewSqliteSettingsRepository(database)).Get(ctx)
+	if err != nil {
+		t.Fatalf("read independently normalized settings: %v", err)
+	}
+	if got != want {
+		t.Fatalf("settings after empty canonical styles = %+v, want %+v", got, want)
+	}
+}
+
+func assertRoundTripKVEntries(t *testing.T, ctx context.Context, database *db.Database) {
+	t.Helper()
+	for key, want := range map[string]kv.KVEntry{
+		"appearance.theme":      {Key: "appearance.theme", Value: ThemeGlass, Type: "string"},
+		"appearance.mode":       {Key: "appearance.mode", Value: ModeDark, Type: "string"},
+		"view.defaultOpenMode":  {Key: "view.defaultOpenMode", Value: OpenModeViewer, Type: "string"},
+		"view.readingWidth":     {Key: "view.readingWidth", Value: ReadingWidthFull, Type: "string"},
+		"export.pdfAppearance":  {Key: "export.pdfAppearance", Value: PdfAppearanceClean, Type: "string"},
+		"markdown.standard":     {Key: "markdown.standard", Value: MarkdownMinimal, Type: "string"},
+		"format.onSave":         {Key: "format.onSave", Value: "true", Type: "bool"},
+		"lint.onSave":           {Key: "lint.onSave", Value: "false", Type: "bool"},
+		"format.bulletMarker":   {Key: "format.bulletMarker", Value: BulletMarkerPlus, Type: "string"},
+		"format.emphasisMarker": {Key: "format.emphasisMarker", Value: EmphasisMarkerAsterisk, Type: "string"},
+		"format.headingStyle":   {Key: "format.headingStyle", Value: HeadingStyleSetext, Type: "string"},
+		"file.autosave":         {Key: "file.autosave", Value: "false", Type: "bool"},
+	} {
+		got, getErr := readKVSetting(database, ctx, key)
+		if getErr != nil {
+			t.Fatalf("read persisted key %q: %v", key, getErr)
+		}
+		if got.Key != want.Key || got.Value != want.Value || got.Type != want.Type {
+			t.Fatalf("persisted key %q = %+v, want %+v", key, got, want)
+		}
+	}
+}
+
+func assertTypedDottedKeys(t *testing.T, ctx context.Context, database *db.Database, want apperr.Settings) {
+	t.Helper()
+	for key, value := range map[string]string{
+		"appearance.theme":     want.Appearance.Theme,
+		"appearance.mode":      want.Appearance.Mode,
+		"markdown.standard":    want.Markdown.Standard,
+		"content.remotePolicy": want.ContentPrivacy.RemotePolicy,
+	} {
+		stored, getErr := readKVSetting(database, ctx, key)
+		if getErr != nil {
+			if closeErr := database.Close(); closeErr != nil {
+				t.Errorf("close settings database after read failure: %v", closeErr)
+			}
+			t.Fatalf("read typed dotted key %q: %v", key, getErr)
+		}
+		if stored.Value != value || stored.Type != "string" {
+			if closeErr := database.Close(); closeErr != nil {
+				t.Errorf("close settings database after assertion failure: %v", closeErr)
+			}
+			t.Fatalf("stored %q = %+v, want value %q and type %q", key, stored, value, "string")
+		}
+	}
+}
+
+func updateRoundTripGroups(t *testing.T, ctx context.Context, service *SettingsService, wantAppearance apperr.AppearanceSettings, wantMarkdown apperr.MarkdownSettings, wantFile apperr.FileSettings) {
+	t.Helper()
+	if err := service.UpdateAppearance(ctx, wantAppearance); err != nil {
+		t.Fatalf("update appearance: %v", err)
+	}
+	if err := service.UpdateMarkdown(ctx, wantMarkdown); err != nil {
+		t.Fatalf("update markdown: %v", err)
+	}
+	if err := service.UpdateFile(ctx, wantFile); err != nil {
+		t.Fatalf("update file settings: %v", err)
+	}
+}
+
+func updateTypedGroups(t *testing.T, ctx context.Context, database *db.Database, repository *SqliteSettingsRepository, want apperr.Settings) {
+	t.Helper()
+	if err := repository.UpdateAppearance(ctx, want.Appearance); err != nil {
+		if closeErr := database.Close(); closeErr != nil {
+			t.Errorf("close settings database after appearance failure: %v", closeErr)
+		}
+		t.Fatalf("update appearance: %v", err)
+	}
+	if err := repository.UpdateMarkdown(ctx, want.Markdown); err != nil {
+		if closeErr := database.Close(); closeErr != nil {
+			t.Errorf("close settings database after markdown failure: %v", closeErr)
+		}
+		t.Fatalf("update markdown: %v", err)
+	}
+	if err := repository.UpdateContentPrivacy(ctx, want.ContentPrivacy); err != nil {
+		if closeErr := database.Close(); closeErr != nil {
+			t.Errorf("close settings database after content privacy failure: %v", closeErr)
+		}
+		t.Fatalf("update content privacy: %v", err)
+	}
 }

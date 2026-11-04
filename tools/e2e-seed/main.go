@@ -61,58 +61,64 @@ func run(args []string) error {
 
 	switch args[1] {
 	case "seed-recents":
-		if len(args) < 3 {
-			return errors.New("seed-recents requires at least one item")
-		}
-		if args[2] == "--typed" {
-			if len(args) < 5 || (len(args)-3)%2 != 0 {
-				return errors.New("seed-recents --typed requires kind/path pairs")
-			}
-			items := make([]apperr.RecentItem, 0, (len(args)-3)/2)
-			for index := 3; index < len(args); index += 2 {
-				if args[index] != "file" && args[index] != "folder" {
-					return fmt.Errorf("invalid recent item kind %q", args[index])
-				}
-				items = append(items, apperr.RecentItem{Kind: args[index], Path: args[index+1]})
-			}
-			return seedRecentItems(context.Background(), profileDir, items)
-		}
-		items := make([]apperr.RecentItem, 0, len(args)-2)
-		for _, path := range args[2:] {
-			items = append(items, apperr.RecentItem{Path: path, Kind: "file"})
-		}
-		return seedRecentItems(context.Background(), profileDir, items)
+		return runSeedRecents(profileDir, args[2:])
 	case "add-trigger":
 		if len(args) != 3 || args[2] != "appearance" {
 			return errors.New("add-trigger requires the appearance target")
 		}
 		return addAppearanceTriggers(context.Background(), profileDir)
 	case "hold-lock":
-		if len(args) != 3 {
-			return errors.New("hold-lock requires a duration in seconds")
-		}
-		duration, err := parseLockDuration(args[2])
-		if err != nil {
-			return err
-		}
-		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-		defer stop()
-		ready := make(chan struct{})
-		done := make(chan error, 1)
-		go func() {
-			done <- holdLock(ctx, profileDir, duration, ready)
-		}()
-		select {
-		case <-ready:
-			if _, err := fmt.Fprintln(os.Stdout, "lock acquired"); err != nil {
-				return err
-			}
-			return <-done
-		case err := <-done:
-			return err
-		}
+		return runHoldLock(profileDir, args[2:])
 	default:
 		return fmt.Errorf("unknown command %q", args[1])
+	}
+}
+
+func runSeedRecents(profileDir string, args []string) error {
+	if len(args) == 0 {
+		return errors.New("seed-recents requires at least one item")
+	}
+	if args[0] == "--typed" {
+		if len(args) < 3 || (len(args)-1)%2 != 0 {
+			return errors.New("seed-recents --typed requires kind/path pairs")
+		}
+		items := make([]apperr.RecentItem, 0, (len(args)-1)/2)
+		for index := 1; index < len(args); index += 2 {
+			if args[index] != "file" && args[index] != "folder" {
+				return fmt.Errorf("invalid recent item kind %q", args[index])
+			}
+			items = append(items, apperr.RecentItem{Kind: args[index], Path: args[index+1]})
+		}
+		return seedRecentItems(context.Background(), profileDir, items)
+	}
+	items := make([]apperr.RecentItem, 0, len(args))
+	for _, path := range args {
+		items = append(items, apperr.RecentItem{Path: path, Kind: "file"})
+	}
+	return seedRecentItems(context.Background(), profileDir, items)
+}
+
+func runHoldLock(profileDir string, args []string) error {
+	if len(args) != 1 {
+		return errors.New("hold-lock requires a duration in seconds")
+	}
+	duration, err := parseLockDuration(args[0])
+	if err != nil {
+		return err
+	}
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+	ready := make(chan struct{})
+	done := make(chan error, 1)
+	go func() { done <- holdLock(ctx, profileDir, duration, ready) }()
+	select {
+	case <-ready:
+		if _, err := fmt.Fprintln(os.Stdout, "lock acquired"); err != nil {
+			return err
+		}
+		return <-done
+	case err := <-done:
+		return err
 	}
 }
 

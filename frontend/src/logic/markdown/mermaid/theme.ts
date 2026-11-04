@@ -50,7 +50,7 @@ export function resolveMermaidTheme(element: Element): string {
         const themeVariables: Record<string, string> = {};
         for (const [variable, token] of Object.entries(tokens)) {
             probe.style.color = `var(${token})`;
-            themeVariables[variable] = rgbColor(window.getComputedStyle(probe).color);
+            themeVariables[variable] = rgbColor(globalThis.getComputedStyle(probe).color);
         }
         const clean = element.closest("[data-print-appearance='clean']") !== null;
         return JSON.stringify({

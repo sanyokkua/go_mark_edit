@@ -23,10 +23,10 @@ const ECHO_TOLERANCE_PX = 1;
 const MIN_CORRECTION_PX = 1;
 
 const animationFrameScheduler: FrameScheduler = {
-    requestFrame: (callback) => window.requestAnimationFrame(callback),
-    cancelFrame: (handle) => window.cancelAnimationFrame(handle),
-    setTimer: (callback, delayMs) => window.setTimeout(callback, delayMs),
-    clearTimer: (handle) => window.clearTimeout(handle),
+    requestFrame: (callback) => globalThis.requestAnimationFrame(callback),
+    cancelFrame: (handle) => globalThis.cancelAnimationFrame(handle),
+    setTimer: (callback, delayMs) => (globalThis as Window & typeof globalThis).setTimeout(callback, delayMs),
+    clearTimer: (handle) => globalThis.clearTimeout(handle),
 };
 
 const otherPane = (pane: ScrollSyncPane): ScrollSyncPane => (pane === 'editor' ? 'preview' : 'editor');
@@ -83,7 +83,7 @@ export function createScrollSyncController(options: {
     const lastWrite: Record<ScrollSyncPane, number | null> = { editor: null, preview: null };
 
     function requestFrame(): void {
-        if (frame === null) frame = scheduler.requestFrame(runFrame);
+        frame ??= scheduler.requestFrame(runFrame);
     }
 
     function runFrame(): void {

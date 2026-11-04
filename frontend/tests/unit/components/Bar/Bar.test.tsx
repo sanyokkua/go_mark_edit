@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, within } from '@testing-library/react';
+import { useState } from 'react';
 
 import Bar from '../../../../src/ui/components/Bar/Bar';
 
@@ -55,4 +56,23 @@ it('relocates measured main content into an overflow Popup', () => {
             value: originalWidth,
         });
     }
+});
+
+function StatefulItem({ name }: { readonly name: string }): React.JSX.Element {
+    const [count, setCount] = useState(0);
+    return (
+        <button type="button" onClick={(): void => setCount(count + 1)}>
+            {name}: {count}
+        </button>
+    );
+}
+
+it('keeps keyed item state with its item when menu bar children reorder', () => {
+    const items = (reverse: boolean): React.ReactNode =>
+        (reverse ? ['Beta', 'Alpha'] : ['Alpha', 'Beta']).map((name) => <StatefulItem key={name} name={name} />);
+    const { rerender } = render(<Bar ariaLabel="Actions" main={items(false)} overflow="menu" role="toolbar" />);
+    fireEvent.click(screen.getByRole('button', { name: 'Alpha: 0' }));
+    rerender(<Bar ariaLabel="Actions" main={items(true)} overflow="menu" role="toolbar" />);
+    expect(screen.getByRole('button', { name: 'Alpha: 1' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Beta: 0' })).toBeInTheDocument();
 });

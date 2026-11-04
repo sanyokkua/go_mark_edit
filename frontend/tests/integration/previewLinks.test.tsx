@@ -573,6 +573,7 @@ it('publishes only a fragment request for a link to the installed document', asy
     (appModelAdapter.openPreviewLink as jest.Mock).mockResolvedValue({
         status: 'focused',
         documentId: 'source',
+        treePath: '/notes/source.md',
         activeBuffer: { documentId: 'source', content: 'stale copy', documentRevision: 0, projectionRevision: 1 },
     });
     const owner = renderHook(useLinkOwner, { wrapper });
@@ -588,6 +589,7 @@ it('publishes only a fragment request for a link to the installed document', asy
         seq: 1,
     });
     expect(owner.result.current.commands.tabRevealRequest).toBeNull();
+    expect(owner.result.current.commands.treeRevealRequest).toBeNull();
 });
 
 it('reports backend link refusals without offering Retry', async () => {

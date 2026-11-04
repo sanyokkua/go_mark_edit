@@ -90,15 +90,17 @@ const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
     };
 
     return (
-        <div
-            className={styles.host}
-            onContextMenu={(event): void => {
-                event.preventDefault();
-                openFromTarget(event.target, { x: event.clientX, y: event.clientY });
-            }}
-            onKeyDown={openFromKeyboard}
-        >
-            {children}
+        <>
+            <div
+                className={styles.host}
+                onContextMenu={(event): void => {
+                    event.preventDefault();
+                    openFromTarget(event.target, { x: event.clientX, y: event.clientY });
+                }}
+                onKeyDown={openFromKeyboard}
+            >
+                {children}
+            </div>
             <Popup
                 anchor={{ point: point ?? { x: 0, y: 0 } }}
                 aria-label={t('editor.contextMenu')}
@@ -142,7 +144,7 @@ const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
                     );
                 })}
             </Popup>
-        </div>
+        </>
     );
 };
 

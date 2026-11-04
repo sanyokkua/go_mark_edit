@@ -68,43 +68,53 @@ function parseSvg(svg: string): Document {
     return documentRef;
 }
 
+type CssFunctionScan = { index: number; depth: number; safe: boolean };
+
+function scanCssFunction(value: string, start: number): CssFunctionScan {
+    let index = start;
+    while (index < value.length && /[a-z0-9_-]/i.test(value[index])) index++;
+    const name = value.slice(start, index).toLowerCase();
+    while (index < value.length && /\s/.test(value[index])) index++;
+    if (value[index] !== '(') return { index: index - 1, depth: 0, safe: true };
+    if (name !== 'url') return { index, depth: 1, safe: safeFunctions.has(name) };
+
+    const close = value.indexOf(')', index + 1);
+    if (close < 0) return { index, depth: 0, safe: false };
+    const target = value
+        .slice(index + 1, close)
+        .trim()
+        .replace(/^(['"])(.*)\1$/s, '$2');
+    return { index: close, depth: 0, safe: /^#[^\s"'()<>]+$/.test(target) };
+}
+
+// Negative results distinguish an unterminated quote from a forbidden line break.
+function quotedCssEnd(value: string, start: number): number {
+    const quote = value[start];
+    for (let index = start + 1; index < value.length; index++) {
+        const character = value[index];
+        if (character === '\n' || character === '\r' || character === '\f') return -2;
+        if (character === quote) return index;
+    }
+    return -1;
+}
+
 /** Reject a whole declaration when a function can load a resource. */
 function safeCssValue(value: string): boolean {
-    let quote = '';
     let depth = 0;
-    for (let index = 0; index < value.length; index++) {
+    let index = 0;
+    while (index < value.length) {
         const character = value[index];
-        if (quote) {
-            if (character === '\n' || character === '\r' || character === '\f') return false;
-            if (character === quote) quote = '';
-            continue;
-        }
         if (character === '"' || character === "'") {
-            quote = character;
+            const end = quotedCssEnd(value, index);
+            if (end < 0) return false;
+            index = end + 1;
             continue;
         }
         if (/[a-z_-]/i.test(character)) {
-            const start = index;
-            while (index < value.length && /[a-z0-9_-]/i.test(value[index])) index++;
-            const name = value.slice(start, index).toLowerCase();
-            while (index < value.length && /\s/.test(value[index])) index++;
-            if (value[index] !== '(') {
-                index--;
-                continue;
-            }
-            if (name === 'url') {
-                const close = value.indexOf(')', index + 1);
-                if (close < 0) return false;
-                const target = value
-                    .slice(index + 1, close)
-                    .trim()
-                    .replace(/^(['"])(.*)\1$/s, '$2');
-                if (!/^#[^\s"'()<>]+$/.test(target)) return false;
-                index = close;
-                continue;
-            }
-            if (!safeFunctions.has(name)) return false;
-            depth++;
+            const scanned = scanCssFunction(value, index);
+            if (!scanned.safe) return false;
+            index = scanned.index + 1;
+            depth += scanned.depth;
             continue;
         }
         if (character === '(') depth++;
@@ -112,8 +122,9 @@ function safeCssValue(value: string): boolean {
             depth -= 1;
             if (depth < 0) return false;
         }
+        index++;
     }
-    return quote === '' && depth === 0;
+    return depth === 0;
 }
 
 function safeDeclaration(segment: string): string {
@@ -198,46 +209,71 @@ function rewriteCssUrls(value: string, replace: (target: string, original: strin
     return parts.join('');
 }
 
+type CssBlock = 'rule' | 'at' | 'drop';
+
+function openCssBlock(selector: string, blocks: CssBlock[], output: string[]): void {
+    const atRule = selector.trim().startsWith('@');
+    const allowedAtRule = /^@(?:-webkit-)?keyframes\b|^@(?:media|supports)\b/i.test(selector.trim());
+    let kind: CssBlock = 'rule';
+    if (blocks.at(-1) === 'drop' || (atRule && !allowedAtRule)) kind = 'drop';
+    else if (atRule) kind = 'at';
+    blocks.push(kind);
+    if (kind !== 'drop') output.push(selector, '{');
+}
+
+function closeCssSegment(
+    segment: string,
+    character: string,
+    stylesheet: boolean,
+    blocks: CssBlock[],
+    output: string[],
+): void {
+    if ((!stylesheet || blocks.at(-1) === 'rule') && blocks.at(-1) !== 'drop') {
+        const safe = safeDeclaration(segment);
+        if (safe) output.push(safe, ';');
+    }
+    if (character === '}' && blocks.pop() !== 'drop') output.push('}');
+}
+
+function cssDepth(depth: number, character: string): number {
+    if (character === '(') return depth + 1;
+    if (character === ')') return depth - 1;
+    return depth;
+}
+
 function sanitizeCss(css: string, stylesheet: boolean): string {
     const normalized = decodeCssEscapes(css);
     const output: string[] = [];
-    const blocks: Array<'rule' | 'at' | 'drop'> = [];
+    const blocks: CssBlock[] = [];
     let quote = '';
     let depth = 0;
     let start = 0;
-    for (let index = 0; index < normalized.length; index++) {
+    let index = 0;
+    while (index < normalized.length) {
         const character = normalized[index];
-        if (quote) {
-            if (character === '\n' || character === '\r' || character === '\f') return '';
-            if (character === quote) quote = '';
-            continue;
-        }
         if (character === '"' || character === "'") {
-            quote = character;
+            const end = quotedCssEnd(normalized, index);
+            if (end === -2) return '';
+            if (end === -1) {
+                quote = character;
+                break;
+            }
+            index = end + 1;
             continue;
         }
-        if (character === '(') depth++;
-        if (character === ')') depth--;
-        if (depth !== 0) continue;
+        depth = cssDepth(depth, character);
+        if (depth !== 0) {
+            index++;
+            continue;
+        }
         if (stylesheet && character === '{') {
-            const selector = normalized.slice(start, index);
-            const atRule = selector.trim().startsWith('@');
-            const allowedAtRule = /^@(?:-webkit-)?keyframes\b|^@(?:media|supports)\b/i.test(selector.trim());
-            const kind = blocks.at(-1) === 'drop' || (atRule && !allowedAtRule) ? 'drop' : atRule ? 'at' : 'rule';
-            blocks.push(kind);
-            if (kind !== 'drop') output.push(selector, '{');
+            openCssBlock(normalized.slice(start, index), blocks, output);
             start = index + 1;
         } else if (character === ';' || (stylesheet && character === '}')) {
-            const segment = normalized.slice(start, index);
-            if ((stylesheet ? blocks.at(-1) === 'rule' : true) && blocks.at(-1) !== 'drop') {
-                const safe = safeDeclaration(segment);
-                if (safe) output.push(safe, ';');
-            }
-            if (character === '}') {
-                if (blocks.pop() !== 'drop') output.push('}');
-            }
+            closeCssSegment(normalized.slice(start, index), character, stylesheet, blocks, output);
             start = index + 1;
         }
+        index++;
     }
     if (!stylesheet && quote === '' && depth === 0) {
         const safe = safeDeclaration(normalized.slice(start));
@@ -246,10 +282,27 @@ function sanitizeCss(css: string, stylesheet: boolean): string {
     return output.join('');
 }
 
+function scrubAttribute(element: Element, attribute: Attr): void {
+    const name = attribute.localName.toLowerCase();
+    if (name.startsWith('on')) {
+        element.removeAttributeNode(attribute);
+    } else if (name === 'href') {
+        if (element.localName.toLowerCase() === 'a' || !attribute.value.trim().startsWith('#')) {
+            element.removeAttributeNode(attribute);
+        }
+    } else if (name === 'style') {
+        attribute.value = sanitizeCss(attribute.value, false);
+    } else if (name !== 'id' && (attribute.value.includes('(') || attribute.value.includes('\\'))) {
+        const value = decodeCssEscapes(attribute.value);
+        if (safeCssValue(value)) attribute.value = canonicalLocalUrls(value);
+        else element.removeAttributeNode(attribute);
+    }
+}
+
 /** Keep Mermaid's geometry and local styles but remove execution and external loads. */
 export function scrubMermaidSvg(svg: string): string {
     const documentRef = parseSvg(svg);
-    for (const element of [...documentRef.querySelectorAll('*')]) {
+    for (const element of documentRef.querySelectorAll('*')) {
         if (forbidden.has(element.localName.toLowerCase())) {
             element.remove();
             continue;
@@ -257,28 +310,13 @@ export function scrubMermaidSvg(svg: string): string {
         if (element.localName.toLowerCase() === 'style') {
             element.textContent = sanitizeCss(element.textContent ?? '', true);
         }
-        for (const attribute of [...element.attributes]) {
-            const name = attribute.localName.toLowerCase();
-            if (name.startsWith('on')) {
-                element.removeAttributeNode(attribute);
-            } else if (name === 'href') {
-                if (element.localName.toLowerCase() === 'a' || !attribute.value.trim().startsWith('#')) {
-                    element.removeAttributeNode(attribute);
-                }
-            } else if (name === 'style') {
-                attribute.value = sanitizeCss(attribute.value, false);
-            } else if (name !== 'id' && (attribute.value.includes('(') || attribute.value.includes('\\'))) {
-                const value = decodeCssEscapes(attribute.value);
-                if (safeCssValue(value)) attribute.value = canonicalLocalUrls(value);
-                else element.removeAttributeNode(attribute);
-            }
-        }
+        for (const attribute of [...element.attributes]) scrubAttribute(element, attribute);
     }
     return new XMLSerializer().serializeToString(documentRef.documentElement);
 }
 
 function escapePattern(value: string): string {
-    return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    return value.replace(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`);
 }
 
 function namespaceCss(css: string, ids: Map<string, string>): string {
@@ -307,6 +345,22 @@ function namespaceCss(css: string, ids: Map<string, string>): string {
     return parts.join('');
 }
 
+function namespaceAttribute(attribute: Attr, ids: Map<string, string>): void {
+    if (attribute.localName === 'id') return;
+    if (attribute.localName === 'href' && attribute.value.startsWith('#')) {
+        attribute.value = `#${ids.get(attribute.value.slice(1)) ?? attribute.value.slice(1)}`;
+    } else if (attribute.localName === 'aria-labelledby' || attribute.localName === 'aria-describedby') {
+        attribute.value = attribute.value
+            .split(/\s+/)
+            .map((id) => ids.get(id) ?? id)
+            .join(' ');
+    } else {
+        attribute.value = rewriteCssUrls(attribute.value, (target, match) =>
+            target.startsWith('#') && ids.has(target.slice(1)) ? `url(#${ids.get(target.slice(1))})` : match,
+        );
+    }
+}
+
 /** Cached SVG needs fresh IDs when identical diagrams appear more than once. */
 export function namespaceMermaidSvg(svg: string, namespace: string): string {
     const documentRef = parseSvg(svg);
@@ -322,21 +376,7 @@ export function namespaceMermaidSvg(svg: string, namespace: string): string {
         if (element.localName.toLowerCase() === 'style') {
             element.textContent = namespaceCss(element.textContent ?? '', ids);
         }
-        for (const attribute of [...element.attributes]) {
-            if (attribute.localName === 'id') continue;
-            if (attribute.localName === 'href' && attribute.value.startsWith('#')) {
-                attribute.value = `#${ids.get(attribute.value.slice(1)) ?? attribute.value.slice(1)}`;
-            } else if (attribute.localName === 'aria-labelledby' || attribute.localName === 'aria-describedby') {
-                attribute.value = attribute.value
-                    .split(/\s+/)
-                    .map((id) => ids.get(id) ?? id)
-                    .join(' ');
-            } else {
-                attribute.value = rewriteCssUrls(attribute.value, (target, match) =>
-                    target.startsWith('#') && ids.has(target.slice(1)) ? `url(#${ids.get(target.slice(1))})` : match,
-                );
-            }
-        }
+        for (const attribute of element.attributes) namespaceAttribute(attribute, ids);
     }
     return new XMLSerializer().serializeToString(documentRef.documentElement);
 }

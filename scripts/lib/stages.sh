@@ -43,7 +43,8 @@ run_unit_stage() {
     local failed=0
     run_reported_command 'Go backend unit tests' go-test "$RUN_DIR/reports/go-unit.jsonl" go test -race -json ./tests/go/unit/... || failed=1
     (cd "$REPO_ROOT/frontend" && run_command 'Jest frontend unit tests' "$REPO_ROOT/frontend/node_modules/.bin/jest" --ci --json --outputFile "$RUN_DIR/frontend-unit-jest.json" --cacheDirectory "$REPO_ROOT/.local_tmp_files/cache/jest-unit" --maxWorkers=50% --config jest.config.mjs --selectProjects unit) || failed=1
-    run_command 'Node verification tool tests' node --test tools/verify/results.test.mjs || failed=1
+    run_command 'Node verification tool tests' node --test \
+        tools/verify/results.test.mjs tools/lint/regex-regression.test.mjs || failed=1
     return "$failed"
 }
 
@@ -55,24 +56,34 @@ run_integration_stage() {
 }
 
 run_e2e_stage() (
-    local state_dir dist_placeholder
-    state_dir="$(mktemp -d "${TMPDIR:-/tmp}/gomarkedit-e2e-state.XXXXXX")"
+    state_dir="$(mktemp -d "${TMPDIR:-/tmp}/gomarkedit-e2e-state.XXXXXX")" || exit
     dist_placeholder="$REPO_ROOT/frontend/dist/.gitkeep"
-    if [[ -f "$dist_placeholder" ]]; then
-        cp "$dist_placeholder" "$state_dir/dist.gitkeep"
+    bindings_dir="$REPO_ROOT/frontend/wailsjs"
+    binding_modes="$state_dir/binding-modes.json"
+    if [[ -f "$dist_placeholder" ]] && ! cp "$dist_placeholder" "$state_dir/dist.gitkeep"; then
+        rm -rf "$state_dir"
+        exit 1
     fi
     cleanup_e2e_stage() {
+        local status=$? cleanup_status=0
         if [[ -f "$state_dir/dist.gitkeep" ]]; then
-            mkdir -p "$(dirname "$dist_placeholder")"
-            cp "$state_dir/dist.gitkeep" "$dist_placeholder"
+            mkdir -p "$(dirname "$dist_placeholder")" &&
+                cp "$state_dir/dist.gitkeep" "$dist_placeholder" || cleanup_status=$?
         else
-            rm -f "$dist_placeholder"
+            rm -f "$dist_placeholder" || cleanup_status=$?
         fi
-        restore_tracked_modes
-        rm -rf "$state_dir"
+        if [[ -f "$binding_modes" ]]; then
+            generated_binding_modes restore "$bindings_dir" "$binding_modes" || cleanup_status=$?
+        fi
+        rm -rf "$state_dir" || cleanup_status=$?
+        if [[ "$status" -ne 0 ]]; then exit "$status"; fi
+        exit "$cleanup_status"
     }
     trap cleanup_e2e_stage EXIT
+    trap 'exit 130' INT
 
-    cd "$REPO_ROOT/frontend"
+    # Playwright restores generated state itself unless it is killed before its cleanup runs.
+    generated_binding_modes capture "$bindings_dir" "$binding_modes" || exit
+    cd "$REPO_ROOT/frontend" || exit
     run_command 'Playwright frontend E2E tests' env PLAYWRIGHT_OUTPUT_DIR="$RUN_DIR/frontend-e2e-results" PLAYWRIGHT_JSON_OUTPUT_NAME="$RUN_DIR/frontend-e2e-playwright.json" "$REPO_ROOT/frontend/node_modules/.bin/playwright" test --config playwright.config.ts --reporter=line,json "$@"
 )

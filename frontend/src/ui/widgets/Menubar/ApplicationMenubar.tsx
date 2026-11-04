@@ -58,7 +58,7 @@ export default function ApplicationMenubar({
     menuState,
     problemsOpen = false,
     onToggleProblems,
-}: ApplicationMenubarProps): React.JSX.Element {
+}: Readonly<ApplicationMenubarProps>): React.JSX.Element {
     const dispatch = useAppDispatch();
     const activeDocument = useAppSelector((state) =>
         state.documents.activeDocumentId === null ? undefined : state.documents.byId[state.documents.activeDocumentId],
@@ -79,13 +79,9 @@ export default function ApplicationMenubar({
     const editorActions = useEditorActionExecutor();
     const settingsMenuProps: SettingsMenuProps = useMemo(
         () => ({
-            editorSettings: editorSettings.settings,
             fileSettings: editorSettings.fileSettings,
             markdownSettings: editorSettings.markdownSettings,
             mode: appearanceSettings.appearance.mode,
-            onEditorSettingsChange: (patch): void => {
-                void editorSettings.update(patch).catch((): void => undefined);
-            },
             onFileSettingsChange: (patch): void => {
                 void editorSettings.updateFile(patch).catch((): void => undefined);
             },
@@ -99,6 +95,22 @@ export default function ApplicationMenubar({
         }),
         [appearanceSettings, editorSettings],
     );
+
+    let onWorkspaceVisibilityChange: ((visible: boolean) => void) | undefined;
+    if (reading) {
+        if (readingSidebarAvailable)
+            onWorkspaceVisibilityChange = (): void => {
+                dispatch(toggleReadingSidebar());
+            };
+    } else {
+        onWorkspaceVisibilityChange = (visible): void => {
+            void dispatch(setWorkspaceVisible(visible))
+                .unwrap()
+                .catch((error: unknown): void => {
+                    dispatch(notifyError(parseError(error)));
+                });
+        };
+    }
 
     return (
         <Menubar
@@ -184,19 +196,7 @@ export default function ApplicationMenubar({
                 scrollSync: editorSettings.settings.scrollSync,
                 wordWrap: editorSettings.settings.wordWrap,
                 workspaceVisible,
-                onWorkspaceVisibilityChange: reading
-                    ? readingSidebarAvailable
-                        ? (): void => {
-                              dispatch(toggleReadingSidebar());
-                          }
-                        : undefined
-                    : (visible): void => {
-                          void dispatch(setWorkspaceVisible(visible))
-                              .unwrap()
-                              .catch((error: unknown): void => {
-                                  dispatch(notifyError(parseError(error)));
-                              });
-                      },
+                onWorkspaceVisibilityChange,
             }}
             writable={menuState.writable}
         />

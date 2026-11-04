@@ -35,9 +35,7 @@ let bootstrapPromise: Promise<AppModelBootstrapResult> | undefined;
 let activeAttempt: BootstrapAttempt | undefined;
 
 export function bootstrapAppModelProjection(appModelAdapter: AppModelAdapter): Promise<AppModelBootstrapResult> {
-    if (bootstrapPromise === undefined) {
-        bootstrapPromise = initializeProjection(appModelAdapter);
-    }
+    bootstrapPromise ??= initializeProjection(appModelAdapter);
     return bootstrapPromise;
 }
 

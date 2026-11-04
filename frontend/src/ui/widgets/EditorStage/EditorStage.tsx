@@ -61,7 +61,7 @@ export interface EditorStageHandle {
 
 export type EditorStageVariant = 'normal' | 'reading';
 
-export interface EditorStageProps {
+export interface EditorStageProps extends Pick<PreviewPaneContentProps, 'onOpenLink'> {
     openDocumentIds?: readonly string[];
     activeBuffer: ActiveBuffer;
     activeDocument?: DocumentMetadata;
@@ -71,7 +71,6 @@ export interface EditorStageProps {
     labelledBy?: string;
     onLiveCursorChange: (cursor: EditorPosition) => void;
     onEditorReady?: (documentId: string) => void;
-    onOpenLink?: PreviewPaneContentProps['onOpenLink'];
     fragmentRequest?: FragmentRequest | null;
     onPreviewRefresh?: (accepted: LivePreviewSnapshot) => Promise<LivePreviewSnapshot>;
     onPreviewWarning: (target: string, reason: string) => void;
@@ -89,7 +88,7 @@ export interface FragmentRequest {
     seq: number;
 }
 
-interface ActiveEditorProps {
+interface ActiveEditorProps extends Pick<PreviewPaneContentProps, 'onOpenLink'> {
     openDocumentIds?: readonly string[];
     activeBuffer: ActiveBuffer;
     adapter: EditorStageAdapter;
@@ -98,7 +97,6 @@ interface ActiveEditorProps {
     handledFragmentRef: { current: number };
     onLiveCursorChange: (cursor: EditorPosition) => void;
     onEditorReady?: (documentId: string) => void;
-    onOpenLink?: PreviewPaneContentProps['onOpenLink'];
     onPreviewWarning: (target: string, reason: string) => void;
     onPreviewScrollHandler: (handler: ((scrollTop: number) => void) | null) => void;
     onScrollPortReady: (port: EditorScrollPort | null) => void;
@@ -187,9 +185,7 @@ const ActiveEditor = forwardRef<ActiveEditorHandle, ActiveEditorProps>(function 
     const synchronizeMountedEditorTheme = useCallback((): void => {
         if (
             visible &&
-            fragmentRequest !== null &&
-            fragmentRequest !== undefined &&
-            fragmentRequest.documentId === activeBuffer.documentId &&
+            fragmentRequest?.documentId === activeBuffer.documentId &&
             fragmentRequest.seq > handledFragmentRef.current
         ) {
             setMountedEditorEpoch((epoch) => epoch + 1);
@@ -270,14 +266,13 @@ const ActiveEditor = forwardRef<ActiveEditorHandle, ActiveEditorProps>(function 
     );
 });
 
-interface LivePreviewProps {
+interface LivePreviewProps extends Pick<PreviewPaneContentProps, 'onOpenLink'> {
     activeBuffer: ActiveBuffer;
     adapter: EditorStageAdapter;
     claimScrollRestore: (documentId: string, variant: EditorStageVariant) => boolean;
     documentPath: string;
     fragmentRequest?: FragmentRequest | null;
     handledFragmentRef: { current: number };
-    onOpenLink?: PreviewPaneContentProps['onOpenLink'];
     onPreviewRefresh?: (accepted: LivePreviewSnapshot) => Promise<LivePreviewSnapshot>;
     onPreviewWarning: (target: string, reason: string) => void;
     onScrollChange: (scrollTop: number) => void;

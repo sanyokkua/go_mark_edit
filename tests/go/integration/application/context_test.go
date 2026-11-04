@@ -34,16 +34,7 @@ func TestApplicationContextInitializesSettingsInTwoPhases(t *testing.T) {
 	holder := NewApplicationContextHolderWithOptions(paths, logger, ApplicationContextOptions{
 		AppModelOptions: []appmodel.AppModelOption{appmodel.WithEmitter(discardingLifecycleEmitter{})},
 	})
-	if holder.SettingsService == nil || holder.SettingsHandler == nil {
-		t.Fatal("phase-one composition must create settings service and handler")
-	}
-	if holder.DB != nil {
-		t.Fatal("phase-one composition must not open persistence")
-	}
-	beforeInit := holder.SettingsHandler.GetSettings(bridge.Request{ID: "settings-before-init"})
-	if beforeInit.Data != nil || beforeInit.Error == nil || beforeInit.Error.Code != apperr.CodeUnsupported {
-		t.Fatalf("phase-one handler result = %+v, want unsupported error without data", beforeInit)
-	}
+	assertPhaseOneSettings(t, holder)
 
 	startupContext := context.WithValue(context.Background(), integrationContextKey{}, "startup")
 	holder.SetContext(startupContext)
@@ -78,30 +69,47 @@ func TestApplicationContextInitializesSettingsInTwoPhases(t *testing.T) {
 		t.Fatalf("persist layout after phase-two Init: %v", err)
 	}
 
-	t.Run("main binding and generated TypeScript surface expose the handler", func(t *testing.T) {
-		_, sourceFile, _, ok := runtime.Caller(0)
-		if !ok {
-			t.Fatal("locate application test source")
-		}
-		repositoryRoot := filepath.Clean(filepath.Join(filepath.Dir(sourceFile), "..", "..", "..", ".."))
-		mainSource, err := os.ReadFile(filepath.Join(repositoryRoot, "main.go"))
-		if err != nil {
-			t.Fatalf("read main binding source: %v", err)
-		}
-		if !strings.Contains(string(mainSource), "applicationContext.SettingsHandler") {
-			t.Fatal("main does not bind the settings handler")
-		}
+	t.Run("main binding and generated TypeScript surface expose the handler", assertSettingsBindingSurface)
+}
 
-		bindings, err := os.ReadFile(filepath.Join(repositoryRoot, "frontend", "wailsjs", "go", "settings", "SettingsHandler.d.ts"))
-		if err != nil {
-			t.Fatalf("read generated settings bindings: %v", err)
+func assertSettingsBindingSurface(t *testing.T) {
+	t.Helper()
+	_, sourceFile, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("locate application test source")
+	}
+	repositoryRoot := filepath.Clean(filepath.Join(filepath.Dir(sourceFile), "..", "..", "..", ".."))
+	mainSource, err := os.ReadFile(filepath.Join(repositoryRoot, "main.go"))
+	if err != nil {
+		t.Fatalf("read main binding source: %v", err)
+	}
+	if !strings.Contains(string(mainSource), "applicationContext.SettingsHandler") {
+		t.Fatal("main does not bind the settings handler")
+	}
+
+	bindings, err := os.ReadFile(filepath.Join(repositoryRoot, "frontend", "wailsjs", "go", "settings", "SettingsHandler.d.ts"))
+	if err != nil {
+		t.Fatalf("read generated settings bindings: %v", err)
+	}
+	for _, method := range []string{"GetSettings", "UpdateAppearance", "UpdateMarkdown", "UpdateContentPrivacy"} {
+		if !strings.Contains(string(bindings), method) {
+			t.Errorf("generated settings bindings omit %s", method)
 		}
-		for _, method := range []string{"GetSettings", "UpdateAppearance", "UpdateMarkdown", "UpdateContentPrivacy"} {
-			if !strings.Contains(string(bindings), method) {
-				t.Errorf("generated settings bindings omit %s", method)
-			}
-		}
-	})
+	}
+}
+
+func assertPhaseOneSettings(t *testing.T, holder *ApplicationContextHolder) {
+	t.Helper()
+	if holder.SettingsService == nil || holder.SettingsHandler == nil {
+		t.Fatal("phase-one composition must create settings service and handler")
+	}
+	if holder.DB != nil {
+		t.Fatal("phase-one composition must not open persistence")
+	}
+	beforeInit := holder.SettingsHandler.GetSettings(bridge.Request{ID: "settings-before-init"})
+	if beforeInit.Data != nil || beforeInit.Error == nil || beforeInit.Error.Code != apperr.CodeUnsupported {
+		t.Fatalf("phase-one handler result = %+v, want unsupported error without data", beforeInit)
+	}
 }
 
 // A frontend readiness acknowledgement may arrive first, but it must not make
@@ -288,15 +296,7 @@ func TestApplicationContextCloseWaitsForInFlightTimerLayoutFlush(t *testing.T) {
 // A corrupt stored dimension falls back on its own, while another valid
 // dimension restores. Oversized values use only public usable-display bounds.
 func TestNativeWindowRestoreFallsBackIndependentlyAndClampsUsableDisplay(t *testing.T) {
-	tests := []struct {
-		name                      string
-		storedWidth, storedHeight int
-		usableWidth, usableHeight int
-		maximized                 any
-		includeMaximized          bool
-		wantWidth, wantHeight     int
-		wantMaximiseCalls         int
-	}{
+	tests := []nativeWindowRestoreCase{
 		{
 			name:        "invalid width keeps default while valid height restores",
 			storedWidth: 374, storedHeight: 720,
@@ -337,31 +337,46 @@ func TestNativeWindowRestoreFallsBackIndependentlyAndClampsUsableDisplay(t *test
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			values := map[string]appmodel.VersionedLayoutValue{
-				appmodel.LayoutWindowWidth:  {Version: 1, Value: test.storedWidth, WriterID: "test", Sequence: 1},
-				appmodel.LayoutWindowHeight: {Version: 1, Value: test.storedHeight, WriterID: "test", Sequence: 1},
-			}
-			if test.includeMaximized {
-				values[appmodel.LayoutWindowMaximized] = appmodel.VersionedLayoutValue{Version: 1, Value: test.maximized, WriterID: "test", Sequence: 1}
-			}
-			repository := lifecycleLayoutRepository{values: values}
-			model := appmodel.NewAppModelServiceForHost(appmodel.WithEmitter(discardingLifecycleEmitter{}), appmodel.AppModelOption{LayoutRepository: repository})
-			native := &lifecycleRecordingNativeWindow{usableWidth: test.usableWidth, usableHeight: test.usableHeight}
-			service := NewNativeWindowService(model, native)
-
-			if err := service.Restore(context.Background()); err != nil {
-				t.Fatalf("restore native window: %v", err)
-			}
-			if native.width != test.wantWidth || native.height != test.wantHeight {
-				t.Fatalf("restored size = %dx%d, want %dx%d", native.width, native.height, test.wantWidth, test.wantHeight)
-			}
-			if native.maximiseCalls != test.wantMaximiseCalls {
-				t.Fatalf("maximise calls = %d, want %d after independent maximized-state fallback", native.maximiseCalls, test.wantMaximiseCalls)
-			}
-			if native.showCalls != 0 {
-				t.Fatalf("restore showed the hidden window %d times, want 0", native.showCalls)
-			}
+			assertNativeWindowRestore(t, test)
 		})
+	}
+}
+
+type nativeWindowRestoreCase struct {
+	name                      string
+	storedWidth, storedHeight int
+	usableWidth, usableHeight int
+	maximized                 any
+	includeMaximized          bool
+	wantWidth, wantHeight     int
+	wantMaximiseCalls         int
+}
+
+func assertNativeWindowRestore(t *testing.T, test nativeWindowRestoreCase) {
+	t.Helper()
+	values := map[string]appmodel.VersionedLayoutValue{
+		appmodel.LayoutWindowWidth:  {Version: 1, Value: test.storedWidth, WriterID: "test", Sequence: 1},
+		appmodel.LayoutWindowHeight: {Version: 1, Value: test.storedHeight, WriterID: "test", Sequence: 1},
+	}
+	if test.includeMaximized {
+		values[appmodel.LayoutWindowMaximized] = appmodel.VersionedLayoutValue{Version: 1, Value: test.maximized, WriterID: "test", Sequence: 1}
+	}
+	repository := lifecycleLayoutRepository{values: values}
+	model := appmodel.NewAppModelServiceForHost(appmodel.WithEmitter(discardingLifecycleEmitter{}), appmodel.AppModelOption{LayoutRepository: repository})
+	native := &lifecycleRecordingNativeWindow{usableWidth: test.usableWidth, usableHeight: test.usableHeight}
+	service := NewNativeWindowService(model, native)
+
+	if err := service.Restore(context.Background()); err != nil {
+		t.Fatalf("restore native window: %v", err)
+	}
+	if native.width != test.wantWidth || native.height != test.wantHeight {
+		t.Fatalf("restored size = %dx%d, want %dx%d", native.width, native.height, test.wantWidth, test.wantHeight)
+	}
+	if native.maximiseCalls != test.wantMaximiseCalls {
+		t.Fatalf("maximise calls = %d, want %d after independent maximized-state fallback", native.maximiseCalls, test.wantMaximiseCalls)
+	}
+	if native.showCalls != 0 {
+		t.Fatalf("restore showed the hidden window %d times, want 0", native.showCalls)
 	}
 }
 

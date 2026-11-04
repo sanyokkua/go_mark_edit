@@ -123,10 +123,9 @@ function lintInline(
         if (node.type !== 'emphasis' && node.type !== 'strong') return;
         const ranges = inlineMarkerRanges(node);
         if (ranges === null) return;
+        const strongParent = parent?.type === 'strong' ? parent : null;
         const marker =
-            node.type === 'strong'
-                ? '**'
-                : expectedEmphasisMarker(node, source, prefs.emphasis, parent?.type === 'strong' ? parent : null);
+            node.type === 'strong' ? '**' : expectedEmphasisMarker(node, source, prefs.emphasis, strongParent);
         if (
             source.slice(ranges.open.from, ranges.open.to) !== marker ||
             source.slice(ranges.close.from, ranges.close.to) !== marker
@@ -152,6 +151,25 @@ function lintHeadings(
     });
 }
 
+function lintTrailingSpace(
+    value: string,
+    from: number,
+    end: number,
+    protectedSpans: SourceRange[],
+    breaks: SourceRange[],
+    add: (rule: LintRule, from: number, to: number) => void,
+): void {
+    const index = trailingHorizontalWhitespaceStart(value);
+    if (index === value.length) return;
+    const whitespace = value.slice(index);
+    const start = from + index;
+    const hardBreak =
+        whitespace.length >= 2 &&
+        /^ +$/u.test(whitespace) &&
+        breaks.some((span) => span.from <= start && span.to > end);
+    if (!overlaps(protectedSpans, start, end) && !hardBreak) add('trailing-space', start, end);
+}
+
 function lintLines(source: string, tree: Root, add: (rule: LintRule, from: number, to: number) => void): void {
     const protectedSpans = protectedRanges(tree, source);
     const breaks = hardBreakRanges(tree);
@@ -166,16 +184,7 @@ function lintLines(source: string, tree: Root, add: (rule: LintRule, from: numbe
             blanks++;
             if (blanks === 2) add('blank-lines', from, after);
         } else blanks = 0;
-        const index = trailingHorizontalWhitespaceStart(value);
-        if (index < value.length) {
-            const whitespace = value.slice(index);
-            const start = from + index;
-            const hardBreak =
-                whitespace.length >= 2 &&
-                /^ +$/u.test(whitespace) &&
-                breaks.some((span) => span.from <= start && span.to > end);
-            if (!overlaps(protectedSpans, start, end) && !hardBreak) add('trailing-space', start, end);
-        }
+        lintTrailingSpace(value, from, end, protectedSpans, breaks, add);
         from = after;
     }
 }

@@ -78,6 +78,98 @@ func TestWorkspaceOpenRefreshFailureRecoveryAndClosePatches(t *testing.T) {
 		appmodel.AppModelOption{RecentItemsRepository: appmodel.NewSqliteRecentItemsRepository(database)},
 	)
 
+	assertWorkspaceOpened(t, ctx, service, emitter, preferences, root)
+
+	assertWorkspaceRefreshRecovery(t, ctx, service, emitter, preferences, root)
+
+	newSession := appmodel.NewAppModelServiceForHost(
+		appmodel.WithEmitter(&recordingEmitter{}),
+		appmodel.AppModelOption{RecentItemsRepository: appmodel.NewSqliteRecentItemsRepository(database)},
+	)
+	newState, err := newSession.GetState(ctx)
+	if err != nil || newState.Snapshot.Workspace != nil {
+		t.Fatalf("new service session workspace = %+v, error=%v; want no persisted tree", newState.Snapshot.Workspace, err)
+	}
+
+	assertWorkspaceClosed(t, ctx, service, emitter)
+}
+
+func assertWorkspaceClosed(t *testing.T, ctx context.Context, service *appmodel.AppModelService, emitter *recordingEmitter) {
+	t.Helper()
+	closed := service.CloseWorkspace(ctx)
+	if closed.Error != nil {
+		t.Fatalf("CloseWorkspace: %+v", closed)
+	}
+	clearPatch := emitter.Patches()[emitter.Count()-1]
+	if clearPatch.Workspace == nil {
+		t.Fatalf("close patch = %+v, want an explicit workspace clear", clearPatch)
+	}
+	encoded, err := json.Marshal(clearPatch)
+	if err != nil || !strings.Contains(string(encoded), `"workspace":null`) {
+		t.Fatalf("close patch JSON = %s, error=%v; want workspace:null", encoded, err)
+	}
+	state, err := service.GetState(ctx)
+	if err != nil || state.Snapshot.Workspace != nil {
+		t.Fatalf("state after close = %+v, error=%v; want no workspace", state.Snapshot.Workspace, err)
+	}
+	encodedSnapshot, err := json.Marshal(state.Snapshot)
+	if err != nil || strings.Contains(string(encodedSnapshot), `"workspace"`) {
+		t.Fatalf("closed snapshot JSON = %s, error=%v; absent workspace must be omitted", encodedSnapshot, err)
+	}
+}
+
+func assertWorkspaceRefreshRecovery(t *testing.T, ctx context.Context, service *appmodel.AppModelService, emitter *recordingEmitter, preferences *workspaceLayoutFixture, root string) {
+	t.Helper()
+	writeWorkspaceFile(t, root, "added.md")
+	if err := os.Remove(filepath.Join(root, "visible.md")); err != nil {
+		t.Fatalf("remove file before refresh: %v", err)
+	}
+	refreshed := service.RefreshWorkspace(ctx)
+	if refreshed.Status != apperr.WorkspaceStatusOpened || refreshed.Workspace == nil || refreshed.Workspace.ShowHiddenFolders {
+		t.Fatalf("RefreshWorkspace = %+v, want refreshed snapshot using latest false setting", refreshed)
+	}
+	if got := workspaceChildNamesFromSnapshot(refreshed.Workspace.Root.Children); !equalStrings(got, []string{"added.md"}) {
+		t.Fatalf("refreshed children = %v, want newly created file with deleted file and hidden folder omitted", got)
+	}
+
+	priorChildren := workspaceChildNamesFromSnapshot(refreshed.Workspace.Root.Children)
+	if err := os.RemoveAll(root); err != nil {
+		t.Fatalf("remove workspace root: %v", err)
+	}
+	failed := service.RefreshWorkspace(ctx)
+	if failed.Status != apperr.WorkspaceStatusRefused || failed.Error == nil || failed.Error.Category != apperr.ClassifiedNotFound {
+		t.Fatalf("RefreshWorkspace for missing root = %+v, want not-found refusal", failed)
+	}
+	state, err := service.GetState(ctx)
+	if err != nil {
+		t.Fatalf("GetState after failed refresh: %v", err)
+	}
+	if state.Snapshot.Workspace == nil || !state.Snapshot.Workspace.Unavailable || !equalStrings(workspaceChildNamesFromSnapshot(state.Snapshot.Workspace.Root.Children), priorChildren) {
+		t.Fatalf("failed refresh state = %+v, want retained unavailable tree", state.Snapshot.Workspace)
+	}
+	if !emitter.Patches()[emitter.Count()-1].Workspace.Snapshot.Unavailable {
+		t.Fatal("failed refresh did not publish unavailable workspace state")
+	}
+
+	if err := os.MkdirAll(root, 0o755); err != nil {
+		t.Fatalf("recreate workspace root: %v", err)
+	}
+	writeWorkspaceFile(t, root, "recovered.md")
+	recovered := service.RefreshWorkspace(ctx)
+	if recovered.Status != apperr.WorkspaceStatusOpened || recovered.Workspace == nil || recovered.Workspace.Unavailable {
+		t.Fatalf("RefreshWorkspace recovery = %+v, want available refreshed tree", recovered)
+	}
+	if got := workspaceChildNamesFromSnapshot(recovered.Workspace.Root.Children); !equalStrings(got, []string{"recovered.md"}) {
+		t.Fatalf("recovered children = %v, want recovered.md", got)
+	}
+	if preferences.calls != 4 {
+		t.Fatalf("hidden preference reads = %d, want one for each successful or failed build attempt", preferences.calls)
+	}
+
+}
+
+func assertWorkspaceOpened(t *testing.T, ctx context.Context, service *appmodel.AppModelService, emitter *recordingEmitter, preferences *workspaceLayoutFixture, root string) {
+	t.Helper()
 	opened := service.OpenWorkspace(ctx, root)
 	if opened.Status != apperr.WorkspaceStatusOpened || opened.Workspace == nil {
 		t.Fatalf("OpenWorkspace = %+v, want opened workspace", opened)
@@ -110,81 +202,6 @@ func TestWorkspaceOpenRefreshFailureRecoveryAndClosePatches(t *testing.T) {
 		t.Fatalf("same-root open = %+v; preference reads=%d patches=%d, want unchanged without another build", unchanged, preferences.calls, emitter.Count())
 	}
 
-	writeWorkspaceFile(t, root, "added.md")
-	if err := os.Remove(filepath.Join(root, "visible.md")); err != nil {
-		t.Fatalf("remove file before refresh: %v", err)
-	}
-	refreshed := service.RefreshWorkspace(ctx)
-	if refreshed.Status != apperr.WorkspaceStatusOpened || refreshed.Workspace == nil || refreshed.Workspace.ShowHiddenFolders {
-		t.Fatalf("RefreshWorkspace = %+v, want refreshed snapshot using latest false setting", refreshed)
-	}
-	if got := workspaceChildNamesFromSnapshot(refreshed.Workspace.Root.Children); !equalStrings(got, []string{"added.md"}) {
-		t.Fatalf("refreshed children = %v, want newly created file with deleted file and hidden folder omitted", got)
-	}
-
-	priorChildren := workspaceChildNamesFromSnapshot(refreshed.Workspace.Root.Children)
-	if err := os.RemoveAll(root); err != nil {
-		t.Fatalf("remove workspace root: %v", err)
-	}
-	failed := service.RefreshWorkspace(ctx)
-	if failed.Status != apperr.WorkspaceStatusRefused || failed.Error == nil || failed.Error.Category != apperr.ClassifiedNotFound {
-		t.Fatalf("RefreshWorkspace for missing root = %+v, want not-found refusal", failed)
-	}
-	state, err = service.GetState(ctx)
-	if err != nil {
-		t.Fatalf("GetState after failed refresh: %v", err)
-	}
-	if state.Snapshot.Workspace == nil || !state.Snapshot.Workspace.Unavailable || !equalStrings(workspaceChildNamesFromSnapshot(state.Snapshot.Workspace.Root.Children), priorChildren) {
-		t.Fatalf("failed refresh state = %+v, want retained unavailable tree", state.Snapshot.Workspace)
-	}
-	if !emitter.Patches()[emitter.Count()-1].Workspace.Snapshot.Unavailable {
-		t.Fatal("failed refresh did not publish unavailable workspace state")
-	}
-
-	if err := os.MkdirAll(root, 0o755); err != nil {
-		t.Fatalf("recreate workspace root: %v", err)
-	}
-	writeWorkspaceFile(t, root, "recovered.md")
-	recovered := service.RefreshWorkspace(ctx)
-	if recovered.Status != apperr.WorkspaceStatusOpened || recovered.Workspace == nil || recovered.Workspace.Unavailable {
-		t.Fatalf("RefreshWorkspace recovery = %+v, want available refreshed tree", recovered)
-	}
-	if got := workspaceChildNamesFromSnapshot(recovered.Workspace.Root.Children); !equalStrings(got, []string{"recovered.md"}) {
-		t.Fatalf("recovered children = %v, want recovered.md", got)
-	}
-	if preferences.calls != 4 {
-		t.Fatalf("hidden preference reads = %d, want one for each successful or failed build attempt", preferences.calls)
-	}
-
-	newSession := appmodel.NewAppModelServiceForHost(
-		appmodel.WithEmitter(&recordingEmitter{}),
-		appmodel.AppModelOption{RecentItemsRepository: appmodel.NewSqliteRecentItemsRepository(database)},
-	)
-	newState, err := newSession.GetState(ctx)
-	if err != nil || newState.Snapshot.Workspace != nil {
-		t.Fatalf("new service session workspace = %+v, error=%v; want no persisted tree", newState.Snapshot.Workspace, err)
-	}
-
-	closed := service.CloseWorkspace(ctx)
-	if closed.Error != nil {
-		t.Fatalf("CloseWorkspace: %+v", closed)
-	}
-	clearPatch := emitter.Patches()[emitter.Count()-1]
-	if clearPatch.Workspace == nil {
-		t.Fatalf("close patch = %+v, want an explicit workspace clear", clearPatch)
-	}
-	encoded, err := json.Marshal(clearPatch)
-	if err != nil || !strings.Contains(string(encoded), `"workspace":null`) {
-		t.Fatalf("close patch JSON = %s, error=%v; want workspace:null", encoded, err)
-	}
-	state, err = service.GetState(ctx)
-	if err != nil || state.Snapshot.Workspace != nil {
-		t.Fatalf("state after close = %+v, error=%v; want no workspace", state.Snapshot.Workspace, err)
-	}
-	encodedSnapshot, err := json.Marshal(state.Snapshot)
-	if err != nil || strings.Contains(string(encodedSnapshot), `"workspace"`) {
-		t.Fatalf("closed snapshot JSON = %s, error=%v; absent workspace must be omitted", encodedSnapshot, err)
-	}
 }
 
 func TestWorkspaceOpenRefusesInvalidPathAndPreferenceReadFailure(t *testing.T) {
@@ -571,25 +588,30 @@ func TestHiddenFolderSetterClassifiesWriteAndPublicationFailures(t *testing.T) {
 		{"publication", false, true, apperr.ClassifiedIOFailure},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			repository := &workspaceWritableLayout{failWrite: test.failWrite}
-			emitter := &workspaceToggleEmitter{}
-			service := appmodel.NewAppModelServiceForHost(appmodel.WithEmitter(emitter), appmodel.AppModelOption{LayoutRepository: repository})
-			if result := service.OpenWorkspace(ctx, root); result.Status != apperr.WorkspaceStatusOpened {
-				t.Fatalf("open = %+v", result)
-			}
-			emitter.fail = test.failPublish
-			result := service.SetWorkspaceHiddenFolders(ctx, true)
-			if result.Status != apperr.WorkspaceStatusRefused || result.Error == nil || result.Error.Category != test.category {
-				t.Fatalf("setter failure = %+v", result)
-			}
-			state, err := service.GetState(ctx)
-			if err != nil || state.Snapshot.Workspace == nil || state.Snapshot.Workspace.ShowHiddenFolders {
-				t.Fatalf("failed setter changed snapshot: %+v/%v", state.Snapshot.Workspace, err)
-			}
-			if test.failPublish && !repository.value {
-				t.Fatal("publication failure should retain persisted setting")
-			}
+			assertHiddenFolderSetterFailure(t, ctx, root, test.failWrite, test.failPublish, test.category)
 		})
+	}
+}
+
+func assertHiddenFolderSetterFailure(t *testing.T, ctx context.Context, root string, failWrite, failPublish bool, category apperr.ClassifiedErrorCategory) {
+	t.Helper()
+	repository := &workspaceWritableLayout{failWrite: failWrite}
+	emitter := &workspaceToggleEmitter{}
+	service := appmodel.NewAppModelServiceForHost(appmodel.WithEmitter(emitter), appmodel.AppModelOption{LayoutRepository: repository})
+	if result := service.OpenWorkspace(ctx, root); result.Status != apperr.WorkspaceStatusOpened {
+		t.Fatalf("open = %+v", result)
+	}
+	emitter.fail = failPublish
+	result := service.SetWorkspaceHiddenFolders(ctx, true)
+	if result.Status != apperr.WorkspaceStatusRefused || result.Error == nil || result.Error.Category != category {
+		t.Fatalf("setter failure = %+v", result)
+	}
+	state, err := service.GetState(ctx)
+	if err != nil || state.Snapshot.Workspace == nil || state.Snapshot.Workspace.ShowHiddenFolders {
+		t.Fatalf("failed setter changed snapshot: %+v/%v", state.Snapshot.Workspace, err)
+	}
+	if failPublish && !repository.value {
+		t.Fatal("publication failure should retain persisted setting")
 	}
 }
 

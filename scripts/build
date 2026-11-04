@@ -92,7 +92,19 @@ fi
 
 cd "$REPO_ROOT"
 build_state_dir="$(mktemp -d "${TMPDIR:-/tmp}/gomarkedit-build.XXXXXX")"
-trap 'rm -rf "$build_state_dir"' EXIT
+bindings_dir="$REPO_ROOT/frontend/wailsjs"
+binding_modes="$build_state_dir/binding-modes.json"
+binding_modes_pending=false
+cleanup_build_state() {
+    local status=$?
+    if [[ "$binding_modes_pending" == true ]] && ! generated_binding_modes restore "$bindings_dir" "$binding_modes"; then
+        printf 'error: could not restore generated binding permissions\n' >&2
+        if [[ "$status" -eq 0 ]]; then status=1; fi
+    fi
+    rm -rf "$build_state_dir"
+    exit "$status"
+}
+trap cleanup_build_state EXIT
 git diff --binary HEAD >"$build_state_dir/before.diff"
 git status --porcelain -z >"$build_state_dir/before.status"
 dist_placeholder="$REPO_ROOT/frontend/dist/.gitkeep"
@@ -100,12 +112,13 @@ if [[ -f "$dist_placeholder" ]]; then
     cp "$dist_placeholder" "$build_state_dir/dist.gitkeep"
 fi
 
+generated_binding_modes capture "$bindings_dir" "$binding_modes"
+binding_modes_pending=true
 wails generate module
 node frontend/scripts/generate-editor-themes.mjs
 
 # Wails can rewrite generated bindings after compiling the frontend. Preserve
 # input timestamps only when the entire resulting tree is byte-identical.
-bindings_dir="$REPO_ROOT/frontend/wailsjs"
 bindings_before="$build_state_dir/bindings-before"
 if [[ -d "$bindings_dir" ]]; then
     cp -pR "$bindings_dir" "$bindings_before"
@@ -140,7 +153,8 @@ if [[ -f "$build_state_dir/dist.gitkeep" ]]; then
     cp "$build_state_dir/dist.gitkeep" "$dist_placeholder"
 fi
 
-restore_tracked_modes
+generated_binding_modes restore "$bindings_dir" "$binding_modes"
+binding_modes_pending=false
 
 if [[ "$(uname -s)" == 'Linux' ]]; then
     cp "$REPO_ROOT"/build/linux/* "$REPO_ROOT/build/appicon.png" "$REPO_ROOT/build/bin/"

@@ -11,6 +11,8 @@ import (
 	"github.com/sanyokkua/go_mark_edit/internal/file"
 )
 
+const openTabSetChangedMessage = "The tab set changed; Open must be retried."
+
 const maxOpenDocuments = 40
 
 const (
@@ -135,7 +137,7 @@ func (service *AppModelService) PrepareOpen(ctx context.Context, path string, ex
 	service.mu.RLock()
 	if service.state.tabSetRevision != expectedTabSetRevision {
 		service.mu.RUnlock()
-		return OpenPreparation{}, bridge.ClassifiedWithID(apperr.ClassifiedConflict, "document", "The tab set changed; Open must be retried.", apperr.RemediationRetry, "")
+		return OpenPreparation{}, bridge.ClassifiedWithID(apperr.ClassifiedConflict, "document", openTabSetChangedMessage, apperr.RemediationRetry, "")
 	}
 	metadataRepository := service.metadata
 	fallbackArrangement := ""
@@ -167,37 +169,18 @@ func (service *AppModelService) PrepareOpen(ctx context.Context, path string, ex
 	if read.Error != nil {
 		return OpenPreparation{}, read.Error
 	}
-	arrangement := openArrangement(fallbackArrangement)
-	splitRatio := defaultSplitRatio
-	if metadataRepository != nil {
-		persisted, found, metadataErr := metadataRepository.ReadView(ctx, read.CanonicalPath.Path)
-		if metadataErr != nil {
-			warning := bridge.ClassifiedWithID(apperr.ClassifiedPersistenceWarning, read.CanonicalPath.Path, "The document opened with default view settings because its saved view could not be read.", apperr.RemediationNone, "")
-			service.emitAsyncError(ctx, apperr.ClassifiedToWire(warning), "document view read failure could not be surfaced")
-		} else if found {
-			arrangement = persisted.Arrangement
-			splitRatio = persisted.SplitRatio
-		}
-	}
+	arrangement, splitRatio := service.openViewSettings(ctx, metadataRepository, read.CanonicalPath.Path, fallbackArrangement)
 
 	service.mu.Lock()
 	defer service.mu.Unlock()
 	if service.state.tabSetRevision != expectedTabSetRevision {
-		return OpenPreparation{}, bridge.ClassifiedWithID(apperr.ClassifiedConflict, "document", "The tab set changed; Open must be retried.", apperr.RemediationRetry, "")
+		return OpenPreparation{}, bridge.ClassifiedWithID(apperr.ClassifiedConflict, "document", openTabSetChangedMessage, apperr.RemediationRetry, "")
 	}
 	identity := read.CanonicalPath.Identity
-	for _, reservation := range service.reservations {
-		if reservation.identity == identity {
-			return OpenPreparation{ReservationID: reservation.id}, nil
-		}
+	if reservationID := service.reservationForIdentityLocked(identity); reservationID != "" {
+		return OpenPreparation{ReservationID: reservationID}, nil
 	}
-	existingDocumentID := ""
-	for documentID, document := range service.state.documents {
-		if document.identity.Equal(identity) || (document.identity.IsZero() && document.metadata.Path == identity.Path && identity.Path != "") {
-			existingDocumentID = documentID
-			break
-		}
-	}
+	existingDocumentID := service.documentForIdentityLocked(identity)
 	novelReservations := countNovelReservations(service.reservations)
 	if existingDocumentID == "" && len(service.state.documents)+novelReservations >= maxOpenDocuments {
 		return OpenPreparation{}, bridge.ClassifiedWithID(apperr.ClassifiedCapacityLimit, "document", "The window already contains 40 documents.", apperr.RemediationNone, "")
@@ -208,6 +191,41 @@ func (service *AppModelService) PrepareOpen(ctx context.Context, path string, ex
 		canonical: read.CanonicalPath, read: read, version: stable.Version, rawHash: stable.RawHash, existingDocumentID: existingDocumentID, arrangement: arrangement, splitRatio: splitRatio,
 	}
 	return OpenPreparation{ReservationID: reservationID}, nil
+}
+
+func (service *AppModelService) reservationForIdentityLocked(identity file.Identity) string {
+	for _, reservation := range service.reservations {
+		if reservation.identity == identity {
+			return reservation.id
+		}
+	}
+	return ""
+}
+
+func (service *AppModelService) documentForIdentityLocked(identity file.Identity) string {
+	for documentID, document := range service.state.documents {
+		if document.identity.Equal(identity) || (document.identity.IsZero() && document.metadata.Path == identity.Path && identity.Path != "") {
+			return documentID
+		}
+	}
+	return ""
+}
+
+func (service *AppModelService) openViewSettings(ctx context.Context, metadataRepository FileMetadataRepository, path, fallbackArrangement string) (string, float64) {
+	arrangement := openArrangement(fallbackArrangement)
+	splitRatio := defaultSplitRatio
+	if metadataRepository != nil {
+		persisted, found, metadataErr := metadataRepository.ReadView(ctx, path)
+		if metadataErr != nil {
+			warning := bridge.ClassifiedWithID(apperr.ClassifiedPersistenceWarning, path, "The document opened with default view settings because its saved view could not be read.", apperr.RemediationNone, "")
+			service.emitAsyncError(ctx, apperr.ClassifiedToWire(warning), "document view read failure could not be surfaced")
+		} else if found {
+			arrangement = persisted.Arrangement
+			splitRatio = persisted.SplitRatio
+		}
+	}
+
+	return arrangement, splitRatio
 }
 
 /*
@@ -234,66 +252,13 @@ func (service *AppModelService) CommitPreparedOpen(ctx context.Context, reservat
 	}
 	if service.state.tabSetRevision != reservation.expectedTabRevision {
 		service.mu.Unlock()
-		classified := bridge.ClassifiedWithID(apperr.ClassifiedConflict, "document", "The tab set changed; Open must be retried.", apperr.RemediationRetry, "")
+		classified := bridge.ClassifiedWithID(apperr.ClassifiedConflict, "document", openTabSetChangedMessage, apperr.RemediationRetry, "")
 		return bridge.FromClassified[apperr.OpenOutcome](classified, apperr.OpenStatusRefused)
 	}
 	before := service.snapshotLocked()
-	documentID := reservation.existingDocumentID
-	status := apperr.OpenStatusOpened
-	changed := false
-	var removedID string
-	if documentID != "" {
-		status = apperr.OpenStatusFocused
-		if service.state.activeDocumentID != documentID {
-			service.state.activeDocumentID = documentID
-			service.state.tabSetRevision++
-			changed = true
-		}
-	} else {
-		documentID = mintDocumentID()
-		document := documentFromClassifiedRead(documentID, reservation.read, reservation.arrangement, reservation.splitRatio, reservation.version, reservation.rawHash)
-		if len(service.state.documents) == 1 && service.state.activeDocumentID != "" {
-			placeholder, exists := service.state.documents[service.state.activeDocumentID]
-			if exists && placeholder.metadata.Path == "" && placeholder.content == "" && !placeholder.metadata.Dirty {
-				removedID = service.state.activeDocumentID
-				delete(service.state.documents, removedID)
-				for index, id := range service.state.orderedDocumentIDs {
-					if id == removedID {
-						service.state.orderedDocumentIDs[index] = documentID
-						break
-					}
-				}
-			} else {
-				service.state.orderedDocumentIDs = append(service.state.orderedDocumentIDs, documentID)
-			}
-		} else {
-			service.state.orderedDocumentIDs = append(service.state.orderedDocumentIDs, documentID)
-		}
-		service.state.documents[documentID] = document
-		service.state.activeDocumentID = documentID
-		service.state.tabSetRevision++
-		changed = true
-	}
-	var promotionWarning *apperr.ClassifiedError
-	if service.recentItems == nil {
-		service.state.recentItems = promoteRecentItem(service.state.recentItems, reservation.canonical.Path, "file")
-		if service.state.recentItemsChanged(before.recentItems) {
-			changed = true
-		}
-	} else {
-		repository := service.recentItems
-		service.mu.Unlock()
-		entries, err := repository.Promote(ctx, reservation.canonical.Path, "file")
-		service.mu.Lock()
-		if err != nil {
-			promotionWarning = bridge.ClassifiedWithID(apperr.ClassifiedPersistenceWarning, reservation.canonical.Path, "The file opened successfully, but recent history could not be updated.", apperr.RemediationNone, "recent-items")
-		} else {
-			service.state.recentItems = append([]apperr.RecentItem(nil), entries...)
-			if service.state.recentItemsChanged(before.recentItems) {
-				changed = true
-			}
-		}
-	}
+	documentID, status, removedID, changed := service.applyPreparedOpenLocked(reservation)
+	promotionWarning, recentChanged := service.promoteOpenRecentLocked(ctx, reservation.canonical.Path, before.recentItems)
+	changed = changed || recentChanged
 	service.updateCanReopenLastFileLocked()
 	if !changed {
 		result := openOutcomeForDocument(status, documentID, service.state.revision, service.state.documents[documentID])
@@ -328,6 +293,77 @@ func (service *AppModelService) CommitPreparedOpen(ctx context.Context, reservat
 	result.Failure = bridge.FailureFromClassified(promotionWarning)
 	service.mu.Unlock()
 	return result
+}
+
+// applyPreparedOpenLocked applies the document transition while the service lock is held.
+func (service *AppModelService) applyPreparedOpenLocked(reservation *openReservation) (string, apperr.OpenStatus, string, bool) {
+	documentID := reservation.existingDocumentID
+	status := apperr.OpenStatusOpened
+	changed := false
+	var removedID string
+	if documentID != "" {
+		status = apperr.OpenStatusFocused
+		if service.state.activeDocumentID != documentID {
+			service.state.activeDocumentID = documentID
+			service.state.tabSetRevision++
+			changed = true
+		}
+	} else {
+		documentID = mintDocumentID()
+		document := documentFromClassifiedRead(documentID, reservation.read, reservation.arrangement, reservation.splitRatio, reservation.version, reservation.rawHash)
+		removedID = service.replaceEmptyPlaceholderLocked(documentID)
+		service.state.documents[documentID] = document
+		service.state.activeDocumentID = documentID
+		service.state.tabSetRevision++
+		changed = true
+	}
+	return documentID, status, removedID, changed
+}
+
+// replaceEmptyPlaceholderLocked replaces the sole empty untitled document, if present.
+func (service *AppModelService) replaceEmptyPlaceholderLocked(documentID string) string {
+	if len(service.state.documents) == 1 && service.state.activeDocumentID != "" {
+		placeholder, exists := service.state.documents[service.state.activeDocumentID]
+		if exists && placeholder.metadata.Path == "" && placeholder.content == "" && !placeholder.metadata.Dirty {
+			removedID := service.state.activeDocumentID
+			delete(service.state.documents, removedID)
+			for index, id := range service.state.orderedDocumentIDs {
+				if id == removedID {
+					service.state.orderedDocumentIDs[index] = documentID
+					break
+				}
+			}
+			return removedID
+		}
+	}
+	service.state.orderedDocumentIDs = append(service.state.orderedDocumentIDs, documentID)
+	return ""
+}
+
+// promoteOpenRecentLocked releases the lock for repository calls and reacquires it before returning.
+func (service *AppModelService) promoteOpenRecentLocked(ctx context.Context, path string, beforeRecent []apperr.RecentItem) (*apperr.ClassifiedError, bool) {
+	recentChanged := false
+	var promotionWarning *apperr.ClassifiedError
+	if service.recentItems == nil {
+		service.state.recentItems = promoteRecentItem(service.state.recentItems, path, "file")
+		if service.state.recentItemsChanged(beforeRecent) {
+			recentChanged = true
+		}
+	} else {
+		repository := service.recentItems
+		service.mu.Unlock()
+		entries, err := repository.Promote(ctx, path, "file")
+		service.mu.Lock()
+		if err != nil {
+			promotionWarning = bridge.ClassifiedWithID(apperr.ClassifiedPersistenceWarning, path, "The file opened successfully, but recent history could not be updated.", apperr.RemediationNone, "recent-items")
+		} else {
+			service.state.recentItems = append([]apperr.RecentItem(nil), entries...)
+			if service.state.recentItemsChanged(beforeRecent) {
+				recentChanged = true
+			}
+		}
+	}
+	return promotionWarning, recentChanged
 }
 
 // ReopenLastFile consumes the newest eligible closed entry only after a

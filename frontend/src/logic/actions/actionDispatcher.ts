@@ -4,6 +4,7 @@ import {
     getAction,
     getActionAvailability,
     type ActionAvailabilityContext,
+    type ActionEntry,
     type ActionId,
     type ActionUnavailableReason,
 } from './actionRegistry';
@@ -149,7 +150,7 @@ function actionResultFromInvocation(
 }
 
 export interface ActionDispatchContext extends ActionAvailabilityContext {
-    invoke?: () => Promise<unknown> | unknown;
+    invoke?: () => unknown;
     applicationFocused?: boolean;
     windowFocused?: boolean;
     editorFocused?: boolean;
@@ -174,6 +175,29 @@ function projectedDocumentIsWritable(context: ActionDispatchContext): boolean {
     return documentId !== undefined && projected?.documents?.[documentId]?.capability === 'writable';
 }
 
+function documentActionUnavailable(actionId: ActionId, action: ActionEntry, context: ActionDispatchContext): boolean {
+    return (
+        action.scope === 'document' &&
+        context.targetPath === undefined &&
+        !tabActionIds.has(actionId) &&
+        !tidyActionIds.has(actionId) &&
+        actionId !== 'export-pdf' &&
+        !(actionId === 'save-as' && getActionAvailability(actionId, context).kind === 'available') &&
+        context.writable !== true &&
+        !projectedDocumentIsWritable(context)
+    );
+}
+
+function focusUnavailableReason(
+    action: ActionEntry,
+    context: ActionDispatchContext,
+): 'unsupported' | 'no-editor' | undefined {
+    if (action.scope === 'application' && context.applicationFocused !== true) return 'unsupported';
+    if (action.scope === 'window' && context.windowFocused !== true) return 'unsupported';
+    if (action.scope === 'editor' && context.editorFocused !== true) return 'no-editor';
+    return undefined;
+}
+
 export async function dispatchAction(actionId: ActionId, context: ActionDispatchContext = {}): Promise<ActionResult> {
     const action = getAction(actionId);
     if (context.markdownSettingsLoaded === false) {
@@ -191,25 +215,9 @@ export async function dispatchAction(actionId: ActionId, context: ActionDispatch
     if (context.commandBarrier === true || context.barrierBlocked === true) {
         return { status: 'unavailable', actionId, reason: 'barrier' };
     }
-    if (action.scope === 'application' && context.applicationFocused !== true) {
-        return { status: 'unavailable', actionId, reason: 'unsupported' };
-    }
-    if (action.scope === 'window' && context.windowFocused !== true) {
-        return { status: 'unavailable', actionId, reason: 'unsupported' };
-    }
-    if (action.scope === 'editor' && context.editorFocused !== true) {
-        return { status: 'unavailable', actionId, reason: 'no-editor' };
-    }
-    if (
-        action.scope === 'document' &&
-        context.targetPath === undefined &&
-        !tabActionIds.has(actionId) &&
-        !tidyActionIds.has(actionId) &&
-        actionId !== 'export-pdf' &&
-        !(actionId === 'save-as' && getActionAvailability(actionId, context).kind === 'available') &&
-        context.writable !== true &&
-        !projectedDocumentIsWritable(context)
-    ) {
+    const focusReason = focusUnavailableReason(action, context);
+    if (focusReason !== undefined) return { status: 'unavailable', actionId, reason: focusReason };
+    if (documentActionUnavailable(actionId, action, context)) {
         return { status: 'unavailable', actionId, reason: 'no-document' };
     }
     if (

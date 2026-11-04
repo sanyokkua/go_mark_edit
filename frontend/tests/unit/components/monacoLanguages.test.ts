@@ -1,4 +1,8 @@
+import { spawnSync } from 'node:child_process';
+import { resolve } from 'node:path';
 import type { languages } from 'monaco-editor';
+
+import { language as diffLanguage } from '../../../src/ui/components/monaco/diff';
 
 const register = jest.fn();
 const registerTokensProviderFactory = jest.fn();
@@ -217,4 +221,103 @@ test('configures Copy Line Down only for Linux and removes its old Linux binding
             when: 'editorTextFocus && !editorReadonly',
         },
     ]);
+});
+
+test('diff hunk recognition rejects long lines with Unicode separators promptly', () => {
+    const rule = diffLanguage.tokenizer.root[1];
+    if (!Array.isArray(rule) || !(rule[0] instanceof RegExp)) throw new Error('Missing diff hunk rule');
+    const script = `const pattern = new RegExp(process.argv[1]);
+        const line = '@@' + '@@'.repeat(30000) + '\\u2028tail';
+        process.exit(pattern.test(line) ? 1 : 0);`;
+    const result = spawnSync(process.execPath, ['-e', script, rule[0].source], { timeout: 1500 });
+    expect(result.error).toBeUndefined();
+    expect(result.status).toBe(0);
+    expect(firstMatch(diffLanguage, '@@ -1 +1 @@ heading')?.text).toBe('@@ -1 +1 @@ heading');
+    expect(firstMatch(diffLanguage, '@@ -1 +1 @@\u2028tail')).toBeUndefined();
+});
+
+test.each([
+    {
+        id: 'makefile',
+        marker: '#',
+        samples: [
+            [
+                'x # plain\u2028# final',
+                [
+                    [0, 'source.makefile'],
+                    [10, 'comment.makefile'],
+                ],
+            ],
+            [
+                '# plain $(left\u2029right)# final',
+                [
+                    [0, 'source.makefile'],
+                    [8, 'variable.makefile'],
+                    [21, 'comment.makefile'],
+                ],
+            ],
+        ],
+    },
+    {
+        id: 'mermaid',
+        marker: '%',
+        samples: [
+            [
+                'x %% plain\u2029%% final',
+                [
+                    [0, 'source.mermaid'],
+                    [11, 'comment.mermaid'],
+                ],
+            ],
+            [
+                '%% plain "a\u2029b" %% final',
+                [
+                    [0, 'source.mermaid'],
+                    [9, 'string.mermaid'],
+                    [14, 'source.mermaid'],
+                    [15, 'comment.mermaid'],
+                ],
+            ],
+            [
+                '%% plain -->|c\u2028d| %% final',
+                [
+                    [0, 'source.mermaid'],
+                    [9, 'operator.mermaid'],
+                    [17, 'source.mermaid'],
+                    [18, 'comment.mermaid'],
+                ],
+            ],
+        ],
+    },
+])('$id tokenization keeps comments responsive across Unicode separators', ({ id, marker, samples }) => {
+    const script = String.raw`
+        import { compile } from './node_modules/monaco-editor/esm/vs/editor/standalone/common/monarch/monarchCompile.js';
+        import { MonarchTokenizer } from './node_modules/monaco-editor/esm/vs/editor/standalone/common/monarch/monarchLexer.js';
+
+        const [id, marker, encodedSamples] = process.argv.slice(1);
+        const { language } = await import('./src/ui/components/monaco/' + id + '.ts');
+        const tokenizer = new MonarchTokenizer(null, null, id, compile(id, language), {
+            getValue: () => 20000,
+            onDidChangeConfiguration: () => ({ dispose() {} }),
+        });
+        const hostileLine = marker.repeat(19990) + '\u2028tail';
+        let state = tokenizer.getInitialState();
+        for (let attempt = 0; attempt < 16; attempt++) {
+            state = tokenizer.tokenize(hostileLine, true, state).endState;
+        }
+        const tokens = JSON.parse(encodedSamples).map((line) => {
+            const result = tokenizer.tokenize(line, true, state);
+            state = result.endState;
+            return result.tokens.map(({ offset, type }) => [offset, type]);
+        });
+        console.log(JSON.stringify(tokens));`;
+    const result = spawnSync(
+        process.execPath,
+        ['--input-type=module', '-e', script, id, marker, JSON.stringify(samples.map(([line]) => line))],
+        { cwd: resolve(__dirname, '../../..'), encoding: 'utf8', timeout: 3000 },
+    );
+    expect(result.error).toBeUndefined();
+    expect(result.stderr).toBe('');
+    expect(result.status).toBe(0);
+    expect(JSON.parse(result.stdout)).toEqual(samples.map(([, tokens]) => tokens));
 });

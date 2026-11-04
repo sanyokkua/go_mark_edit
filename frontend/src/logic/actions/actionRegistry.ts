@@ -525,11 +525,20 @@ const MARKDOWN_SETTINGS_ACTIONS: ReadonlySet<ActionId> = new Set([
 ]);
 const TIDY_ACTIONS: ReadonlySet<ActionId> = new Set(['format', 'compact', 'lint']);
 
-export function getActionAvailability(
+interface AvailabilityState {
+    action: ActionEntry;
+    projected: ProjectedActionState | undefined;
+    orderedDocumentIds: readonly string[] | undefined;
+    documentId: string | undefined;
+    document: ProjectedActionDocument | undefined;
+    hasProjectedDocument: boolean | undefined;
+}
+
+function globalAvailability(
     id: ActionId,
-    context: ActionAvailabilityContext = {},
-): ResolvedActionAvailability {
-    const action = getAction(id);
+    context: ActionAvailabilityContext,
+    action: ActionEntry,
+): ResolvedActionAvailability | undefined {
     if (context.markdownSettingsLoaded === false && MARKDOWN_SETTINGS_ACTIONS.has(id)) {
         return { kind: 'unavailable', reason: 'settings-loading' };
     }
@@ -542,6 +551,13 @@ export function getActionAvailability(
     if (context.commandBarrier === true || context.barrierBlocked === true) {
         return { kind: 'unavailable', reason: 'barrier' };
     }
+    return undefined;
+}
+
+function workspaceAvailability(
+    id: ActionId,
+    context: ActionAvailabilityContext,
+): ResolvedActionAvailability | undefined {
     if (
         id === 'new-file-here' ||
         id === 'new-folder-here' ||
@@ -559,13 +575,15 @@ export function getActionAvailability(
         return { kind: 'available' };
     }
 
-    const projected = projectedStateFor(context);
-    const orderedDocumentIds = projected?.orderedDocumentIds;
-    const documentId = projectedDocumentId(context);
-    const document = projectedDocument(context);
-    const hasProjectedDocument =
-        projected === undefined ? undefined : documentId !== undefined && document !== undefined;
+    return undefined;
+}
 
+function documentAvailability(
+    id: ActionId,
+    context: ActionAvailabilityContext,
+    state: AvailabilityState,
+): ResolvedActionAvailability | undefined {
+    const { documentId, document, hasProjectedDocument } = state;
     if (
         (id === 'toggle-problems' || id === 'distraction-free-reading') &&
         (documentId === undefined || hasProjectedDocument === false)
@@ -584,11 +602,20 @@ export function getActionAvailability(
         return { kind: 'available' };
     }
 
+    return undefined;
+}
+
+function lifecycleAvailability(
+    id: ActionId,
+    context: ActionAvailabilityContext,
+    state: AvailabilityState,
+): ResolvedActionAvailability | undefined {
+    const { projected, hasProjectedDocument } = state;
     if ((id === 'new-file' || id === 'open-file') && isAtTabLimit(context)) {
         return { kind: 'unavailable', reason: 'limit' };
     }
     if (id === 'open-recent') {
-        if (projected?.recentItems !== undefined && projected.recentItems.length === 0) {
+        if (projected?.recentItems?.length === 0) {
             return { kind: 'unavailable', reason: 'no-recent' };
         }
     }
@@ -606,6 +633,15 @@ export function getActionAvailability(
         return { kind: 'unavailable', reason: 'editor-hidden' };
     }
 
+    return undefined;
+}
+
+function editingAvailability(
+    id: ActionId,
+    context: ActionAvailabilityContext,
+    state: AvailabilityState,
+): ResolvedActionAvailability | undefined {
+    const { action, document, hasProjectedDocument } = state;
     if (id === 'save' || id === 'save-as') {
         const protectedSaveAs = id === 'save-as' && document?.capability === 'write-protected-read-only';
         if (context.writable === false && !protectedSaveAs) {
@@ -641,47 +677,66 @@ export function getActionAvailability(
         return { kind: 'unavailable', reason: 'no-document' };
     }
 
-    if (TAB_ACTIONS.has(id)) {
-        if (hasProjectedDocument === false) {
-            return { kind: 'unavailable', reason: 'no-document' };
-        }
-        if (id === 'copy-path' || id === 'reveal-in-file-manager') {
-            if (document?.path === '') return { kind: 'unavailable', reason: 'no-document' };
-            if (id === 'reveal-in-file-manager' && document?.detached === true) {
-                return { kind: 'unavailable', reason: 'no-document' };
+    return undefined;
+}
+
+function moveTabAvailability(
+    id: ActionId,
+    context: ActionAvailabilityContext,
+    state: AvailabilityState,
+): ResolvedActionAvailability | undefined {
+    const { projected, orderedDocumentIds, documentId } = state;
+    if (id === 'move-tab-left' || id === 'move-tab-right') {
+        // A context-menu command may carry an explicit target index before the
+        // caller has a full projection. Let the backend validate that command;
+        // apply edge checks whenever projected tab order is available.
+        if (projected !== undefined) {
+            const targetIndex = targetIndexFor(id, context);
+            if (
+                targetIndex === undefined ||
+                orderedDocumentIds === undefined ||
+                targetIndex < 0 ||
+                targetIndex >= orderedDocumentIds.length
+            ) {
+                return { kind: 'unavailable', reason: 'edge' };
             }
-        }
-        if (id === 'close-others' && orderedDocumentIds !== undefined && orderedDocumentIds.length <= 1) {
-            return { kind: 'unavailable', reason: 'edge' };
-        }
-        if (id === 'close-right' && orderedDocumentIds !== undefined) {
             const currentIndex = documentId === undefined ? -1 : orderedDocumentIds.indexOf(documentId);
-            if (currentIndex < 0 || currentIndex === orderedDocumentIds.length - 1) {
+            if (targetIndex === currentIndex) {
                 return { kind: 'unavailable', reason: 'edge' };
             }
         }
-        if (id === 'move-tab-left' || id === 'move-tab-right') {
-            // A context-menu command may carry an explicit target index before the
-            // caller has a full projection. Let the backend validate that command;
-            // apply edge checks whenever projected tab order is available.
-            if (projected !== undefined) {
-                const targetIndex = targetIndexFor(id, context);
-                if (
-                    targetIndex === undefined ||
-                    orderedDocumentIds === undefined ||
-                    targetIndex < 0 ||
-                    targetIndex >= orderedDocumentIds.length
-                ) {
-                    return { kind: 'unavailable', reason: 'edge' };
-                }
-                const currentIndex = documentId === undefined ? -1 : orderedDocumentIds.indexOf(documentId);
-                if (targetIndex === currentIndex) {
-                    return { kind: 'unavailable', reason: 'edge' };
-                }
-            }
+    }
+    return undefined;
+}
+
+function tabAvailability(
+    id: ActionId,
+    context: ActionAvailabilityContext,
+    state: AvailabilityState,
+): ResolvedActionAvailability | undefined {
+    const { orderedDocumentIds, documentId, document, hasProjectedDocument } = state;
+    if (!TAB_ACTIONS.has(id)) return undefined;
+    if (hasProjectedDocument === false) return { kind: 'unavailable', reason: 'no-document' };
+    if ((id === 'copy-path' || id === 'reveal-in-file-manager') && document?.path === '') {
+        return { kind: 'unavailable', reason: 'no-document' };
+    }
+    if (id === 'reveal-in-file-manager' && document?.detached === true) {
+        return { kind: 'unavailable', reason: 'no-document' };
+    }
+    if (id === 'close-others' && orderedDocumentIds !== undefined && orderedDocumentIds.length <= 1) {
+        return { kind: 'unavailable', reason: 'edge' };
+    }
+    if (id === 'close-right' && orderedDocumentIds !== undefined) {
+        const currentIndex = documentId === undefined ? -1 : orderedDocumentIds.indexOf(documentId);
+        if (currentIndex < 0 || currentIndex === orderedDocumentIds.length - 1) {
+            return { kind: 'unavailable', reason: 'edge' };
         }
     }
+    return moveTabAvailability(id, context, state);
+}
 
+function navigationAvailability(id: ActionId, state: AvailabilityState): ResolvedActionAvailability | undefined {
+    const { projected, orderedDocumentIds, documentId } = state;
     if (id === 'next-tab' || id === 'previous-tab') {
         if (orderedDocumentIds !== undefined && orderedDocumentIds.length < 2) {
             return { kind: 'unavailable', reason: 'edge' };
@@ -691,7 +746,39 @@ export function getActionAvailability(
         }
     }
 
-    return { kind: 'available' };
+    return undefined;
+}
+
+export function getActionAvailability(
+    id: ActionId,
+    context: ActionAvailabilityContext = {},
+): ResolvedActionAvailability {
+    const action = getAction(id);
+    const earlyAvailability = globalAvailability(id, context, action) ?? workspaceAvailability(id, context);
+    if (earlyAvailability !== undefined) return earlyAvailability;
+
+    const projected = projectedStateFor(context);
+    const orderedDocumentIds = projected?.orderedDocumentIds;
+    const documentId = projectedDocumentId(context);
+    const document = projectedDocument(context);
+    const hasProjectedDocument =
+        projected === undefined ? undefined : documentId !== undefined && document !== undefined;
+
+    const state: AvailabilityState = {
+        action,
+        projected,
+        orderedDocumentIds,
+        documentId,
+        document,
+        hasProjectedDocument,
+    };
+    return (
+        documentAvailability(id, context, state) ??
+        lifecycleAvailability(id, context, state) ??
+        editingAvailability(id, context, state) ??
+        tabAvailability(id, context, state) ??
+        navigationAvailability(id, state) ?? { kind: 'available' }
+    );
 }
 
 export function getAction(id: ActionId): ActionEntry {
@@ -730,8 +817,8 @@ export function groupedActionsForSurface(surface: ActionSurface): readonly Actio
     const groups: { groupKey: string; actions: ActionEntry[] }[] = [];
     for (const action of actionsForSurface(surface)) {
         const groupKey = action.surfaceGroupKeys?.[surface] ?? '';
-        const last = groups[groups.length - 1];
-        if (last !== undefined && last.groupKey === groupKey) last.actions.push(action);
+        const last = groups.at(-1);
+        if (last?.groupKey === groupKey) last.actions.push(action);
         else groups.push({ groupKey, actions: [action] });
     }
     return groups;

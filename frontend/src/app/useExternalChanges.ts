@@ -145,17 +145,18 @@ export function useExternalChanges({ session, conflicts, bootstrapStatus, blocke
             try {
                 const result = await documentConflictAdapter.checkExternalChanges(pendingDocumentId);
                 if (disposed) return;
-                setPending((current) =>
-                    (receivedGeneration.current[pendingDocumentId] ?? 0) !== generation ||
-                    current?.preview.documentId !== pendingDocumentId ||
-                    result.error !== undefined
-                        ? current
-                        : result.status === 'detected' && result.preview !== undefined
-                          ? { preview: result.preview, needsRecheck: latest.current.blocked }
-                          : result.status === 'unchanged'
-                            ? null
-                            : current,
-                );
+                setPending((current) => {
+                    if (
+                        (receivedGeneration.current[pendingDocumentId] ?? 0) !== generation ||
+                        current?.preview.documentId !== pendingDocumentId ||
+                        result.error !== undefined
+                    )
+                        return current;
+                    if (result.status === 'detected' && result.preview !== undefined)
+                        return { preview: result.preview, needsRecheck: latest.current.blocked };
+                    if (result.status === 'unchanged') return null;
+                    return current;
+                });
             } catch {
                 // A later foreground event can retry the comparison.
             }
@@ -175,17 +176,13 @@ export function useExternalChanges({ session, conflicts, bootstrapStatus, blocke
                 try {
                     const result = await documentConflictAdapter.checkExternalChanges(pending.preview.documentId);
                     if (disposed) return;
-                    setPending((current) =>
-                        current !== pending
-                            ? current
-                            : result.error !== undefined
-                              ? current
-                              : result.status === 'detected' && result.preview !== undefined
-                                ? { preview: result.preview, needsRecheck: latest.current.blocked }
-                                : result.status === 'unchanged'
-                                  ? null
-                                  : current,
-                    );
+                    setPending((current) => {
+                        if (current !== pending || result.error !== undefined) return current;
+                        if (result.status === 'detected' && result.preview !== undefined)
+                            return { preview: result.preview, needsRecheck: latest.current.blocked };
+                        if (result.status === 'unchanged') return null;
+                        return current;
+                    });
                 } catch {
                     // Keep the identity hidden; the next foreground event retries the check.
                 }

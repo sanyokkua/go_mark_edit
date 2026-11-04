@@ -9,6 +9,11 @@ import (
 	"github.com/sanyokkua/go_mark_edit/internal/logging"
 )
 
+const (
+	folderServiceUnavailableMessage    = "The folder service is unavailable."
+	closePlanServiceUnavailableMessage = "The close plan service is unavailable."
+)
+
 // AppModelServiceAPI is the handler's package-owned service boundary.
 type AppModelServiceAPI interface {
 	GetState(ctx context.Context) (apperr.AppState, error)
@@ -64,7 +69,7 @@ func (handler *AppModelHandler) CreateWorkspaceFile(request bridge.Request, pare
 	return bridge.Once(handler.outcomes, request, func() apperr.WorkspaceResult {
 		service, ok := handler.service.(WorkspaceEntryServiceAPI)
 		if !ok {
-			return workspaceClassifiedRefusal(apperr.ClassifiedSystemCommandFailure, "folder", "The folder service is unavailable.", "")
+			return workspaceClassifiedRefusal(apperr.ClassifiedSystemCommandFailure, "folder", folderServiceUnavailableMessage, "")
 		}
 		return service.CreateWorkspaceFile(handler.context(), parentPath, name)
 	})
@@ -75,7 +80,7 @@ func (handler *AppModelHandler) CreateWorkspaceFolder(request bridge.Request, pa
 	return bridge.Once(handler.outcomes, request, func() apperr.WorkspaceResult {
 		service, ok := handler.service.(WorkspaceEntryServiceAPI)
 		if !ok {
-			return workspaceClassifiedRefusal(apperr.ClassifiedSystemCommandFailure, "folder", "The folder service is unavailable.", "")
+			return workspaceClassifiedRefusal(apperr.ClassifiedSystemCommandFailure, "folder", folderServiceUnavailableMessage, "")
 		}
 		return service.CreateWorkspaceFolder(handler.context(), parentPath, name)
 	})
@@ -86,7 +91,7 @@ func (handler *AppModelHandler) RevealWorkspacePath(request bridge.Request, path
 	return bridge.Once(handler.outcomes, request, func() apperr.RevealResult {
 		service, ok := handler.service.(WorkspaceEntryServiceAPI)
 		if !ok {
-			return bridge.Refused[apperr.RevealResult](apperr.ClassifiedSystemCommandFailure, "", path, "The folder service is unavailable.", apperr.RemediationRetry)
+			return bridge.Refused[apperr.RevealResult](apperr.ClassifiedSystemCommandFailure, "", path, folderServiceUnavailableMessage, apperr.RemediationRetry)
 		}
 		return service.RevealWorkspacePath(handler.context(), path)
 	})
@@ -97,7 +102,7 @@ func (handler *AppModelHandler) CopyWorkspacePath(request bridge.Request, path s
 	return bridge.Once(handler.outcomes, request, func() apperr.CopyPathResult {
 		service, ok := handler.service.(WorkspaceEntryServiceAPI)
 		if !ok {
-			return bridge.Refused[apperr.CopyPathResult](apperr.ClassifiedSystemCommandFailure, "", path, "The folder service is unavailable.", apperr.RemediationRetry)
+			return bridge.Refused[apperr.CopyPathResult](apperr.ClassifiedSystemCommandFailure, "", path, folderServiceUnavailableMessage, apperr.RemediationRetry)
 		}
 		return service.CopyWorkspacePath(handler.context(), path)
 	})
@@ -136,7 +141,7 @@ func (handler *AppModelHandler) ChooseWorkspaceFolder(request bridge.Request) (r
 	return bridge.Once(handler.outcomes, request, func() apperr.FolderChoiceResult {
 		workspaceService, ok := handler.service.(WorkspaceFolderPickerAPI)
 		if !ok {
-			classified := bridge.ClassifiedWithID(apperr.ClassifiedSystemCommandFailure, "folder", "The folder service is unavailable.", apperr.RemediationRetry, "")
+			classified := bridge.ClassifiedWithID(apperr.ClassifiedSystemCommandFailure, "folder", folderServiceUnavailableMessage, apperr.RemediationRetry, "")
 			return apperr.FolderChoiceResult{Status: apperr.FolderChoiceStatusRefused, Error: classified, Failure: bridge.FailureFromClassified(classified)}
 		}
 		return workspaceService.ChooseWorkspaceFolder(handler.context())
@@ -149,7 +154,7 @@ func (handler *AppModelHandler) SetWorkspaceHiddenFolders(request bridge.Request
 	return bridge.Once(handler.outcomes, request, func() apperr.WorkspaceResult {
 		workspaceService, ok := handler.service.(WorkspaceVisibilityServiceAPI)
 		if !ok {
-			return workspaceClassifiedRefusal(apperr.ClassifiedSystemCommandFailure, "folder", "The folder service is unavailable.", "")
+			return workspaceClassifiedRefusal(apperr.ClassifiedSystemCommandFailure, "folder", folderServiceUnavailableMessage, "")
 		}
 		return workspaceService.SetWorkspaceHiddenFolders(handler.context(), show)
 	})
@@ -202,7 +207,7 @@ func (handler *AppModelHandler) OpenWorkspace(request bridge.Request, path strin
 	return bridge.Once(handler.outcomes, request, func() apperr.WorkspaceResult {
 		workspaceService, ok := handler.service.(WorkspaceServiceAPI)
 		if !ok {
-			return workspaceClassifiedRefusal(apperr.ClassifiedSystemCommandFailure, "folder", "The folder service is unavailable.", "")
+			return workspaceClassifiedRefusal(apperr.ClassifiedSystemCommandFailure, "folder", folderServiceUnavailableMessage, "")
 		}
 		return workspaceService.OpenWorkspace(handler.context(), path)
 	})
@@ -214,7 +219,7 @@ func (handler *AppModelHandler) RefreshWorkspace(request bridge.Request) (res ap
 	return bridge.Once(handler.outcomes, request, func() apperr.WorkspaceResult {
 		workspaceService, ok := handler.service.(WorkspaceServiceAPI)
 		if !ok {
-			return workspaceClassifiedRefusal(apperr.ClassifiedSystemCommandFailure, "folder", "The folder service is unavailable.", "")
+			return workspaceClassifiedRefusal(apperr.ClassifiedSystemCommandFailure, "folder", folderServiceUnavailableMessage, "")
 		}
 		return workspaceService.RefreshWorkspace(handler.context())
 	})
@@ -226,7 +231,7 @@ func (handler *AppModelHandler) CloseWorkspace(request bridge.Request) (res appe
 	return bridge.Once(handler.outcomes, request, func() apperr.ClassifiedVoidResult {
 		workspaceService, ok := handler.service.(WorkspaceServiceAPI)
 		if !ok {
-			classified := bridge.ClassifiedWithID(apperr.ClassifiedSystemCommandFailure, "folder", "The folder service is unavailable.", apperr.RemediationNone, "")
+			classified := bridge.ClassifiedWithID(apperr.ClassifiedSystemCommandFailure, "folder", folderServiceUnavailableMessage, apperr.RemediationNone, "")
 			return apperr.ClassifiedVoidResult{Failure: bridge.FailureFromClassified(classified), Error: classified}
 		}
 		return workspaceService.CloseWorkspace(handler.context())
@@ -290,7 +295,7 @@ func (handler *AppModelHandler) PrepareClose(request bridge.Request, kind string
 	return bridge.Once(handler.outcomes, request, func() apperr.ClosePlanResult {
 		planner, ok := handler.service.(ClosePlanServiceAPI)
 		if !ok {
-			return bridge.Refused[apperr.ClosePlanResult](apperr.ClassifiedSystemCommandFailure, "close plan", "The close plan service is unavailable.", apperr.RemediationRetry)
+			return bridge.Refused[apperr.ClosePlanResult](apperr.ClassifiedSystemCommandFailure, "close plan", closePlanServiceUnavailableMessage, apperr.RemediationRetry)
 		}
 		return planner.PrepareClose(handler.context(), apperr.ClosePlanKind(kind), targetDocumentIDs, expectedTabSetRevision)
 	})
@@ -303,7 +308,7 @@ func (handler *AppModelHandler) ResolveClosePlan(request bridge.Request, planID 
 	return bridge.Once(handler.outcomes, request, func() apperr.ClosePlanResult {
 		planner, ok := handler.service.(ClosePlanServiceAPI)
 		if !ok {
-			return bridge.Refused[apperr.ClosePlanResult](apperr.ClassifiedSystemCommandFailure, planID, "The close plan service is unavailable.", apperr.RemediationRetry)
+			return bridge.Refused[apperr.ClosePlanResult](apperr.ClassifiedSystemCommandFailure, planID, closePlanServiceUnavailableMessage, apperr.RemediationRetry)
 		}
 		return planner.ResolveClosePlan(handler.context(), planID, decisions)
 	})
@@ -316,7 +321,7 @@ func (handler *AppModelHandler) ExecuteClosePlan(request bridge.Request, planID 
 	return bridge.Once(handler.outcomes, request, func() apperr.TabTransitionResult {
 		planner, ok := handler.service.(ClosePlanServiceAPI)
 		if !ok {
-			return bridge.Refused[apperr.TabTransitionResult](apperr.ClassifiedSystemCommandFailure, planID, "The close plan service is unavailable.", apperr.RemediationRetry)
+			return bridge.Refused[apperr.TabTransitionResult](apperr.ClassifiedSystemCommandFailure, planID, closePlanServiceUnavailableMessage, apperr.RemediationRetry)
 		}
 		return planner.ExecuteClosePlan(handler.context(), planID)
 	})

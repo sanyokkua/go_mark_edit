@@ -1,4 +1,5 @@
 import { act, fireEvent, render as rtlRender, screen, waitFor, within } from '@testing-library/react';
+import { memo, useEffect } from 'react';
 import { Provider } from 'react-redux';
 
 import { settingsAdapter } from '../../../src/logic/adapter';
@@ -6,7 +7,7 @@ import { useEditorSettings } from '../../../src/logic/settings/editorSettings';
 import { store } from '../../../src/logic/store';
 import { hydrateSettings, resetSettingsProjection } from '../../../src/logic/store/settingsSlice';
 import { resetNotifications } from '../../../src/logic/store/notificationsSlice';
-import AppearanceControls from '../../../src/ui/widgets/AppearanceControls';
+import AppearanceControls, { AppearanceSettingsProvider } from '../../../src/ui/widgets/AppearanceControls';
 import { useAppearanceSettings } from '../../../src/ui/widgets/appearanceSettingsContext';
 import SettingsMenu from '../../../src/ui/widgets/Menubar/SettingsMenu';
 
@@ -79,6 +80,55 @@ function AppearanceHarness(): React.JSX.Element {
         </AppearanceControls>
     );
 }
+
+it('keeps appearance consumers stable across unrelated renders and publishes controlled changes', async () => {
+    const onConsumerRender = jest.fn();
+    const firstOpenChange = jest.fn();
+    const nextOpenChange = jest.fn();
+
+    const Observer = memo(function Observer(): React.JSX.Element {
+        const { open, onOpenChange } = useAppearanceSettings();
+        useEffect(() => {
+            onConsumerRender();
+        });
+
+        return (
+            <>
+                <output aria-label="Settings visibility">{open ? 'Open' : 'Closed'}</output>
+                <button type="button" onClick={() => onOpenChange(true)}>
+                    Open settings
+                </button>
+            </>
+        );
+    });
+
+    const frame = (label: string, onOpenChange: (open: boolean) => void, open = false): React.JSX.Element => (
+        <Provider store={store}>
+            <AppearanceSettingsProvider onSettingsOpenChange={onOpenChange} settingsOpen={open}>
+                <span>{label}</span>
+                <Observer />
+            </AppearanceSettingsProvider>
+        </Provider>
+    );
+
+    const { rerender } = rtlRender(frame('First frame', firstOpenChange));
+    await act(async () => {
+        await Promise.resolve();
+    });
+    const rendersAfterHydration = onConsumerRender.mock.calls.length;
+    rerender(frame('Second frame', firstOpenChange));
+    expect(screen.getByText('Second frame')).toBeVisible();
+    expect(onConsumerRender).toHaveBeenCalledTimes(rendersAfterHydration);
+
+    rerender(frame('Second frame', nextOpenChange));
+    fireEvent.click(screen.getByRole('button', { name: 'Open settings' }));
+    expect(nextOpenChange).toHaveBeenCalledWith(true);
+    expect(firstOpenChange).not.toHaveBeenCalled();
+    expect(screen.getByRole('status', { name: 'Settings visibility' })).toHaveTextContent('Closed');
+
+    rerender(frame('Second frame', nextOpenChange, true));
+    expect(screen.getByRole('status', { name: 'Settings visibility' })).toHaveTextContent('Open');
+});
 
 it('changes appearance from keyboard reachable controls after a successful write', async (): Promise<void> => {
     render(<AppearanceHarness />);

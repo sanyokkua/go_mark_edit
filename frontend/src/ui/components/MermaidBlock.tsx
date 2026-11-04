@@ -17,12 +17,59 @@ interface DisplayedResult {
     result: MermaidResult;
 }
 
-function MermaidBlock({ source, index, sourceLine }: MermaidBlockProps): React.JSX.Element {
+type DiagramLimit = 'tooManyDiagrams' | 'tooLarge';
+
+function diagramLimit(source: string, index: number): DiagramLimit | null {
+    if (index > 50) return 'tooManyDiagrams';
+    if (source.length > 50_000) return 'tooLarge';
+    return null;
+}
+
+function diagramPresentation(limit: DiagramLimit | null, result: MermaidResult | undefined, namespacedSvg: string) {
+    if (limit !== null) {
+        return {
+            state: 'limit',
+            content: <output className={styles.placeholder}>{t(`preview.mermaid.${limit}`)}</output>,
+        };
+    }
+    if (result?.kind === 'svg') {
+        return {
+            state: 'drawn',
+            content: (
+                <div
+                    aria-label={t('preview.mermaid.diagram')}
+                    className={styles.diagram}
+                    role="img"
+                    dangerouslySetInnerHTML={{ __html: namespacedSvg }}
+                />
+            ),
+        };
+    }
+    if (result?.kind === 'error') {
+        return {
+            state: 'error',
+            content: (
+                <div className={styles.error} role="alert">
+                    <strong>
+                        {t(result.stage === 'load' ? 'preview.mermaid.loadError' : 'preview.mermaid.error')}
+                    </strong>
+                    <pre className={styles.errorMessage}>{result.message}</pre>
+                </div>
+            ),
+        };
+    }
+    return {
+        state: 'pending',
+        content: <output className={styles.loading}>{t('preview.mermaid.loading')}</output>,
+    };
+}
+
+function MermaidBlock({ source, index, sourceLine }: Readonly<MermaidBlockProps>): React.JSX.Element {
     const namespace = useId();
     const rootRef = useRef<HTMLDivElement>(null);
     const [theme, setTheme] = useState<string>();
     const [displayed, setDisplayed] = useState<DisplayedResult>();
-    const limit = index > 50 ? 'tooManyDiagrams' : source.length > 50_000 ? 'tooLarge' : null;
+    const limit = diagramLimit(source, index);
 
     useEffect(() => {
         const element = rootRef.current;
@@ -64,8 +111,7 @@ function MermaidBlock({ source, index, sourceLine }: MermaidBlockProps): React.J
         () => (svg === undefined ? '' : namespaceMermaidSvg(svg, namespace)),
         [svg, namespace],
     );
-    const state =
-        limit !== null ? 'limit' : current?.kind === 'svg' ? 'drawn' : current?.kind === 'error' ? 'error' : 'pending';
+    const { state, content } = diagramPresentation(limit, current, namespacedSvg);
     return (
         <div
             ref={rootRef}
@@ -74,29 +120,7 @@ function MermaidBlock({ source, index, sourceLine }: MermaidBlockProps): React.J
             data-mermaid-state={state}
             data-source-line={sourceLine}
         >
-            {limit !== null ? (
-                <div className={styles.placeholder} role="status">
-                    {t(`preview.mermaid.${limit}`)}
-                </div>
-            ) : current?.kind === 'svg' ? (
-                <div
-                    aria-label={t('preview.mermaid.diagram')}
-                    className={styles.diagram}
-                    role="img"
-                    dangerouslySetInnerHTML={{ __html: namespacedSvg }}
-                />
-            ) : current?.kind === 'error' ? (
-                <div className={styles.error} role="alert">
-                    <strong>
-                        {t(current.stage === 'load' ? 'preview.mermaid.loadError' : 'preview.mermaid.error')}
-                    </strong>
-                    <pre className={styles.errorMessage}>{current.message}</pre>
-                </div>
-            ) : (
-                <div className={styles.loading} role="status">
-                    {t('preview.mermaid.loading')}
-                </div>
-            )}
+            {content}
         </div>
     );
 }

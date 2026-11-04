@@ -34,7 +34,8 @@ export function buildScrollMap(input: {
     previewMaxScrollTop: number;
 }): ScrollMap | null {
     const { sourceLines, lineCount, lineTop, editorMaxScrollTop, previewMaxScrollTop } = input;
-    if (!(editorMaxScrollTop > 0) || !(previewMaxScrollTop > 0)) return null;
+    if (editorMaxScrollTop <= 0 || Number.isNaN(editorMaxScrollTop)) return null;
+    if (previewMaxScrollTop <= 0 || Number.isNaN(previewMaxScrollTop)) return null;
 
     let lastAnchor: ScrollAnchor = { editor: 0, preview: 0 };
     let lastLine = 0;

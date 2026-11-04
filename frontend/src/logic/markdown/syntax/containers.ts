@@ -14,8 +14,10 @@ export function remarkContainerSyntax(this: Processor): void {
     const concrete = constructs.filter((construct) => construct?.concrete === true);
     if (concrete.length !== 1) throw new Error('Container directive syntax is unavailable');
     const data = this.data();
-    (data.micromarkExtensions ??= []).push({ flow: { 58: concrete } } as Extension);
-    (data.fromMarkdownExtensions ??= []).push(directiveFromMarkdown());
+    data.micromarkExtensions ??= [];
+    data.micromarkExtensions.push({ flow: { 58: concrete } } as Extension);
+    data.fromMarkdownExtensions ??= [];
+    data.fromMarkdownExtensions.push(directiveFromMarkdown());
 }
 
 /** Rewrite known admonitions as ordinary blockquotes before HTML conversion. */

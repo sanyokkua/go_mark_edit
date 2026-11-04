@@ -83,7 +83,7 @@ export function withSourceLineAttributes(
     const withSourceLine: NonNullable<Schema['attributes']> = { ...attributes };
 
     for (const tag of SOURCE_LINE_TAGS) {
-        withSourceLine[tag] = [...(attributes[tag] ?? []), ['dataSourceLine', /^[1-9][0-9]*$/]];
+        withSourceLine[tag] = [...(attributes[tag] ?? []), ['dataSourceLine', /^[1-9]\d*$/]];
     }
 
     return withSourceLine;

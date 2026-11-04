@@ -66,6 +66,30 @@ it('opens the context Popup from the keyboard-focused editor', () => {
     expect(screen.getByRole('menuitem', { name: 'Cut' })).toHaveFocus();
 });
 
+it.each(['keyboard shortcut', 'right-click'])('keeps the editor as the opener after a %s inside the menu', (input) => {
+    render(
+        <EditorContextMenu>
+            <textarea aria-label="Markdown source" />
+        </EditorContextMenu>,
+    );
+
+    const editor = screen.getByRole('textbox', { name: 'Markdown source' });
+    editor.focus();
+    fireEvent.keyDown(editor, { key: 'F10', shiftKey: true });
+
+    const firstItem = screen.getByRole('menuitem', { name: 'Cut' });
+    expect(firstItem).toHaveFocus();
+    if (input === 'keyboard shortcut') {
+        fireEvent.keyDown(firstItem, { key: 'F10', shiftKey: true });
+    } else {
+        fireEvent.contextMenu(firstItem, { clientX: 250, clientY: 250 });
+    }
+    fireEvent.keyDown(firstItem, { key: 'Escape' });
+
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+    expect(editor).toHaveFocus();
+});
+
 it('clamps context-menu placement and uses the selection captured at opening', async () => {
     Object.defineProperty(window, 'innerWidth', {
         configurable: true,

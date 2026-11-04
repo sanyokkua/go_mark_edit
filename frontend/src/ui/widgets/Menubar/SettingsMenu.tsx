@@ -4,7 +4,7 @@ import { t } from '../../../i18n';
 import { dispatchAction } from '../../../logic/actions/actionDispatcher';
 import { getAction, getActionAvailability, type ActionId } from '../../../logic/actions/actionRegistry';
 import { currentPlatform, formatShortcut } from '../../../logic/actions/shortcutRegistry';
-import type { EditorSettings, FileSettings, MarkdownSettings } from '../../../logic/adapter';
+import type { FileSettings, MarkdownSettings } from '../../../logic/adapter';
 import type { AppearanceChoice, Theme } from '../../../logic/theme/theme';
 import MenuItem, { MenuItemIndicator } from '../../components/MenuItem';
 import { switchTrackClassName } from '../../primitives/Switch';
@@ -25,8 +25,6 @@ export interface SettingsMenuProps {
     triggerLabel?: string;
     anchorRef?: RefObject<HTMLElement | null>;
     anchorElement?: HTMLElement | null;
-    editorSettings?: EditorSettings;
-    onEditorSettingsChange?: (patch: Partial<EditorSettings>) => void;
     fileSettings?: FileSettings;
     onFileSettingsChange?: (patch: Partial<FileSettings>) => void;
     markdownSettings?: MarkdownSettings;
@@ -265,6 +263,10 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({
     };
 
     const anchor = { trigger: anchorElement ?? triggerElement };
+    const markdownAction = (patch: Partial<MarkdownSettings>): ActionId => {
+        if (patch.standard !== undefined) return 'markdown-standard';
+        return patch.formatOnSave === undefined ? 'lint-on-save' : 'format-on-save';
+    };
 
     return (
         <div className={styles.menu} data-settings-menu-root>
@@ -313,14 +315,7 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({
                         onMarkdownSettingsChange === undefined
                             ? undefined
                             : (patch): void =>
-                                  dispatchSettingsAction(
-                                      patch.standard !== undefined
-                                          ? 'markdown-standard'
-                                          : patch.formatOnSave === undefined
-                                            ? 'lint-on-save'
-                                            : 'format-on-save',
-                                      () => onMarkdownSettingsChange(patch),
-                                  )
+                                  dispatchSettingsAction(markdownAction(patch), () => onMarkdownSettingsChange(patch))
                     }
                     onModeChange={(nextMode): void =>
                         dispatchSettingsAction('appearance', () => onModeChange(nextMode))

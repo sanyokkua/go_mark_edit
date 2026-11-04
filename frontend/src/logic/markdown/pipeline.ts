@@ -67,7 +67,7 @@ export function createPipeline(standard: MarkdownStandard, source?: string): Mar
     // Entities, escapes and HTML can produce autolinks after decoding, so keep GFM
     // for any such source rather than attempting to parse it in this preflight.
     // Task markers can span normalized line endings, so check only their opener.
-    if (standard !== 'minimal' && source !== undefined && !/[|~@:<&\\]|www\.|\[\^|\[[\sxX]/i.test(source)) {
+    if (standard !== 'minimal' && source !== undefined && !/[|~@:<&\\]|www\.|\[\^|\[[\sx]/i.test(source)) {
         return prosePipelineByStandard[standard];
     }
     return pipelineByStandard[standard];

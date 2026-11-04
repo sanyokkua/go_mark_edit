@@ -16,7 +16,7 @@ jest.mock('../../src/logic/adapter', () => ({
     documentConflictAdapter: { checkExternalChanges: jest.fn() },
 }));
 
-import { appModelAdapter, documentWriteAdapter } from '../../src/logic/adapter';
+import { appModelAdapter, documentConflictAdapter, documentWriteAdapter } from '../../src/logic/adapter';
 import { useDocumentWrites } from '../../src/app/useDocumentWrites';
 import type { ConflictCommands } from '../../src/app/useConflictCommands';
 import { useDocumentSession } from '../../src/app/useDocumentSession';
@@ -283,6 +283,39 @@ it('formats the active working copy before Save and lints only after its commit'
     await waitFor(() => expect(order).toEqual(['format', 'flush', 'state', 'save', 'reconcile', 'lint']));
 });
 
+it('saves the original target at its snapshot revision when another tab becomes active', async () => {
+    const tidy: TidyCommands = {
+        run: jest.fn().mockResolvedValue({ kind: 'edits', edits: [] }),
+        cancel: jest.fn(),
+        documentChanged: jest.fn(),
+    };
+    const state = stableState();
+    const switched = {
+        ...state,
+        activeBuffer: { documentId: 'two', content: 'Another document', documentRevision: 7 },
+        snapshot: {
+            ...state.snapshot,
+            activeDocumentId: 'two',
+            documents: { one: documentFixture('one', 2), two: documentFixture('two', 7) },
+        },
+    };
+    const flush = jest.mocked(appModelAdapter.flushActiveSession!);
+    flush.mockResolvedValue(undefined);
+    jest.mocked(appModelAdapter.getState).mockResolvedValue(switched);
+    const save = jest.mocked(documentWriteAdapter.save);
+    save.mockResolvedValue(committed);
+    jest.mocked(appModelAdapter.reconcileCommittedWrite).mockResolvedValue(switched);
+    const owner = setup(tidy);
+    await act(async () => {
+        await owner.result.current.onSave();
+    });
+
+    expect(flush.mock.calls).toEqual([['one']]);
+    expect(save.mock.calls).toEqual([['one', 2, '']]);
+    expect(tidy.run).toHaveBeenCalledTimes(1);
+    expect(tidy.run).toHaveBeenCalledWith('format', { origin: 'on-save', documentId: 'one' });
+});
+
 it('formats before Save As and lints the active document after Save As commits', async () => {
     const order: string[] = [];
     let revision = 1;
@@ -431,6 +464,57 @@ it('continues a close-owned conflict Keep mine with one Format and post-commit L
     expect(documentWriteAdapter.save).toHaveBeenNthCalledWith(1, 'one', 1, '');
     expect(documentWriteAdapter.save).toHaveBeenNthCalledWith(2, 'one', 1, 'mine-1');
     expect(operations).toEqual(['format', 'lint']);
+});
+
+it('keeps a close pending when a refused conflict decision returns a newer comparison', async () => {
+    const preview = conflictFixture('one', 1);
+    const refreshed = { ...preview, detectedDiskVersion: { ...preview.detectedDiskVersion, modifiedUnixNano: '300' } };
+    const tidy: TidyCommands = {
+        run: jest.fn().mockResolvedValue({ kind: 'edits', edits: [] }),
+        cancel: jest.fn(),
+        documentChanged: jest.fn(),
+    };
+    jest.mocked(appModelAdapter.flushActiveSession!).mockResolvedValue(undefined);
+    jest.mocked(appModelAdapter.getState).mockResolvedValue(stableState());
+    const save = jest.mocked(documentWriteAdapter.save);
+    save.mockResolvedValueOnce({ status: 'conflict', conflict: preview }).mockResolvedValueOnce(committed);
+    jest.mocked(appModelAdapter.reconcileCommittedWrite).mockResolvedValue(stableState());
+    const execute = jest
+        .fn()
+        .mockResolvedValueOnce({
+            status: 'refused',
+            preview: refreshed,
+            error: {
+                category: 'conflict',
+                message: 'The file changed again.',
+                remediations: ['Retry'],
+                documentId: 'one',
+                dedupKey: 'changed-again',
+            },
+        })
+        .mockResolvedValueOnce({ status: 'authorized', decisionToken: 'refreshed-mine' });
+    const owner = setup(tidy, execute);
+    let outcome: { status: string } | undefined;
+    act(() => {
+        void owner.result.current.saveForClose('one').then((value) => {
+            outcome = value;
+        });
+    });
+    await waitFor(() => expect(owner.result.current.conflict?.preview).toEqual(preview));
+    await act(async () => owner.result.current.conflict?.onDecision('keep-mine'));
+
+    expect(store.getState().notifications.items).toEqual(
+        expect.arrayContaining([expect.objectContaining({ severity: 'error', message: 'The file changed again.' })]),
+    );
+    expect(owner.result.current.closeOwnedPrompt).toBe(true);
+    expect(owner.result.current.conflict?.preview).toEqual(refreshed);
+    expect(outcome).toBeUndefined();
+    expect(save).toHaveBeenCalledTimes(1);
+
+    await act(async () => owner.result.current.conflict?.onDecision('keep-mine'));
+    expect(execute).toHaveBeenNthCalledWith(2, 'keep-mine', refreshed);
+    expect(save).toHaveBeenNthCalledWith(2, 'one', 1, 'refreshed-mine');
+    expect(outcome).toEqual({ status: 'saved', writtenContentRevision: 2 });
 });
 
 it('prioritizes a close-owned conflict and then restores the original explicit Save intent', async () => {
@@ -786,7 +870,7 @@ it('keeps a close-owned Save pending through normalization and finishes after on
     expect(operations).toEqual(['format', 'lint']);
 });
 
-it('does not resume close after a committed write needs recovery', async () => {
+it('reports a committed save warning without resuming a close that needs recovery', async () => {
     const tidy: TidyCommands = {
         run: jest.fn(async (op): Promise<TidyCommandOutcome> =>
             op === 'format' ? { kind: 'edits', edits: [] } : { kind: 'findings', findings: [], total: 0 },
@@ -799,7 +883,7 @@ it('does not resume close after a committed write needs recovery', async () => {
         activeBuffer,
         snapshot: { revision: 1, activeDocumentId: 'one', documents: { one: documentFixture('one', 1) } },
     });
-    (documentWriteAdapter.save as jest.Mock).mockResolvedValue(committed);
+    (documentWriteAdapter.save as jest.Mock).mockResolvedValue({ ...committed, warning: 'durability' });
     (appModelAdapter.reconcileCommittedWrite as jest.Mock).mockResolvedValue({
         savedOnDisk: true,
         message: 'Recovery needed',
@@ -812,6 +896,9 @@ it('does not resume close after a committed write needs recovery', async () => {
     });
     expect(outcome).toEqual({ status: 'recovery' });
     expect(tidy.run).toHaveBeenCalledTimes(1);
+    const notifications = store.getState().notifications;
+    expect(notifications.banners.map((notice) => notice.code)).toEqual(['recovery']);
+    expect(notifications.items.map((notice) => notice.code)).toEqual(['save-warning-durability', 'save-success']);
 });
 
 it('skips Format with a read-only reason when saving a protected document as a copy', async () => {
@@ -887,6 +974,62 @@ it('aborts repeated saves on buffer sync failure without adding save error notic
     });
     expect(documentWriteAdapter.save).not.toHaveBeenCalled();
     expect(store.getState().notifications.items).toHaveLength(0);
+});
+
+it('locks a retry while delivering the buffer and revalidates without a second Save', async () => {
+    const preview = conflictFixture('one', 1);
+    const refreshed = { ...preview, detectedDiskVersion: { ...preview.detectedDiskVersion, modifiedUnixNano: '300' } };
+    const tidy: TidyCommands = {
+        run: jest.fn().mockResolvedValue({ kind: 'edits', edits: [] }),
+        cancel: jest.fn(),
+        documentChanged: jest.fn(),
+    };
+    let releaseFlush!: () => void;
+    const pendingFlush = new Promise<void>((resolve) => {
+        releaseFlush = resolve;
+    });
+    const flush = jest.mocked(appModelAdapter.flushActiveSession!);
+    flush.mockResolvedValueOnce(undefined).mockReturnValueOnce(pendingFlush);
+    jest.mocked(appModelAdapter.getState).mockResolvedValue(stableState());
+    jest.mocked(documentWriteAdapter.save).mockResolvedValue({ status: 'conflict', conflict: preview });
+    const check = jest.mocked(documentConflictAdapter.checkExternalChanges);
+    check
+        .mockResolvedValueOnce({
+            status: 'refused',
+            error: {
+                category: 'io-failure',
+                message: 'Could not revalidate',
+                remediations: ['Retry'],
+                documentId: 'one',
+                dedupKey: 'retry-check',
+            },
+        })
+        .mockResolvedValueOnce({ status: 'detected', preview: refreshed });
+
+    const owner = setup(tidy);
+    await act(async () => {
+        await owner.result.current.onSave();
+        expect(await owner.result.current.revalidatePrompt()).toBe(false);
+    });
+    expect(owner.result.current.validationFailed).toBe(true);
+    expect(owner.result.current.conflict).toBeNull();
+
+    let retry!: Promise<boolean>;
+    act(() => {
+        retry = owner.result.current.retryWrite('save', 'one');
+    });
+    await expect(owner.result.current.retryWrite('save', 'one')).resolves.toBe(false);
+    expect(check).toHaveBeenCalledTimes(1);
+    await act(async () => {
+        releaseFlush();
+        expect(await retry).toBe(true);
+    });
+
+    expect(flush.mock.calls).toEqual([['one'], ['one']]);
+    expect(check.mock.calls).toEqual([['one'], ['one']]);
+    expect(documentWriteAdapter.save).toHaveBeenCalledTimes(1);
+    expect(owner.result.current.validationFailed).toBe(false);
+    expect(owner.result.current.conflict?.preview).toEqual(refreshed);
 });
 
 it('keeps a conflict choice open without a duplicate error when buffer delivery fails', async () => {

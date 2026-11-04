@@ -50,30 +50,7 @@ func TestResolvePathsSeparatesDevelopmentFromProduction(t *testing.T) {
 	resolvedConfigDirs := make(map[string]string, len(cases))
 	for _, tt := range cases {
 		t.Run(tt.name, func(t *testing.T) {
-			service := NewFileUtilsService(tt.isDev)
-			configDir, err := service.GetAppConfigDir()
-			if err != nil {
-				t.Fatalf("resolve config directory: %v", err)
-			}
-			logsDir, err := service.GetAppLogsDir()
-			if err != nil {
-				t.Fatalf("resolve logs directory: %v", err)
-			}
-			databasePath, err := service.GetAppDatabaseFilePath()
-			if err != nil {
-				t.Fatalf("resolve database path: %v", err)
-			}
-
-			wantConfigDir := filepath.Join(configRoot, tt.appName)
-			if configDir != wantConfigDir {
-				t.Fatalf("config directory = %q, want %q", configDir, wantConfigDir)
-			}
-			if logsDir != filepath.Join(wantConfigDir, "logs") {
-				t.Fatalf("logs directory = %q, want %q", logsDir, filepath.Join(wantConfigDir, "logs"))
-			}
-			if databasePath != filepath.Join(wantConfigDir, "settings.db") {
-				t.Fatalf("database path = %q, want %q", databasePath, filepath.Join(wantConfigDir, "settings.db"))
-			}
+			configDir := assertResolvedAppPaths(t, configRoot, tt.appName, tt.isDev)
 			resolvedConfigDirs[tt.name] = configDir
 		})
 	}
@@ -132,29 +109,7 @@ func TestCanonicalizeDocumentPath(t *testing.T) {
 		}
 	}
 
-	unsafeName := "bad-\x01-\x7f-\u202e.md"
-	unsafePath := filepath.Join(root, unsafeName)
-	// Windows forbids control characters in filenames, so exercise the
-	// existing-file path only on platforms that can create this fixture.
-	if runtime.GOOS != "windows" {
-		if err := os.WriteFile(unsafePath, []byte("unsafe\n"), 0o644); err != nil {
-			t.Fatalf("write hostile-name file: %v", err)
-		}
-		unsafeCanonical, err := CanonicalizeDocumentPath(unsafePath)
-		if err != nil {
-			t.Fatalf("canonicalize hostile name: %v", err)
-		}
-		assertEscapedHostileDisplayName(t, unsafeCanonical.DisplayName)
-	}
-	// Windows cannot use the hostile control-character filename as a candidate.
-	if runtime.GOOS == "windows" {
-		return
-	}
-	unsafeCandidate, err := CanonicalizeCandidateDocumentPath(unsafePath)
-	if err != nil {
-		t.Fatalf("canonicalize hostile candidate name: %v", err)
-	}
-	assertEscapedHostileDisplayName(t, unsafeCandidate.DisplayName)
+	assertHostileDocumentPaths(t, root)
 }
 
 func TestExistingPathIdentityUsesFilesystemObject(t *testing.T) {
@@ -219,4 +174,60 @@ func TestCandidatePathRejectsInspectionFailure(t *testing.T) {
 	if _, err := CanonicalizeCandidateDocumentPath(filepath.Join(t.TempDir(), "invalid\x00.md")); err == nil {
 		t.Fatal("invalid path inspection must fail rather than become a missing candidate")
 	}
+}
+
+func assertResolvedAppPaths(t *testing.T, configRoot, appName string, isDev bool) string {
+	t.Helper()
+	service := NewFileUtilsService(isDev)
+	configDir, err := service.GetAppConfigDir()
+	if err != nil {
+		t.Fatalf("resolve config directory: %v", err)
+	}
+	logsDir, err := service.GetAppLogsDir()
+	if err != nil {
+		t.Fatalf("resolve logs directory: %v", err)
+	}
+	databasePath, err := service.GetAppDatabaseFilePath()
+	if err != nil {
+		t.Fatalf("resolve database path: %v", err)
+	}
+
+	wantConfigDir := filepath.Join(configRoot, appName)
+	if configDir != wantConfigDir {
+		t.Fatalf("config directory = %q, want %q", configDir, wantConfigDir)
+	}
+	if logsDir != filepath.Join(wantConfigDir, "logs") {
+		t.Fatalf("logs directory = %q, want %q", logsDir, filepath.Join(wantConfigDir, "logs"))
+	}
+	if databasePath != filepath.Join(wantConfigDir, "settings.db") {
+		t.Fatalf("database path = %q, want %q", databasePath, filepath.Join(wantConfigDir, "settings.db"))
+	}
+	return configDir
+}
+
+func assertHostileDocumentPaths(t *testing.T, root string) {
+	t.Helper()
+	unsafeName := "bad-\x01-\x7f-\u202e.md"
+	unsafePath := filepath.Join(root, unsafeName)
+	// Windows forbids control characters in filenames, so exercise the
+	// existing-file path only on platforms that can create this fixture.
+	if runtime.GOOS != "windows" {
+		if err := os.WriteFile(unsafePath, []byte("unsafe\n"), 0o644); err != nil {
+			t.Fatalf("write hostile-name file: %v", err)
+		}
+		unsafeCanonical, err := CanonicalizeDocumentPath(unsafePath)
+		if err != nil {
+			t.Fatalf("canonicalize hostile name: %v", err)
+		}
+		assertEscapedHostileDisplayName(t, unsafeCanonical.DisplayName)
+	}
+	// Windows cannot use the hostile control-character filename as a candidate.
+	if runtime.GOOS == "windows" {
+		return
+	}
+	unsafeCandidate, err := CanonicalizeCandidateDocumentPath(unsafePath)
+	if err != nil {
+		t.Fatalf("canonicalize hostile candidate name: %v", err)
+	}
+	assertEscapedHostileDisplayName(t, unsafeCandidate.DisplayName)
 }

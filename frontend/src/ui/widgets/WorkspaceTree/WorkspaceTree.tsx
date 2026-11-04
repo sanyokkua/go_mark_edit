@@ -60,7 +60,7 @@ export interface WorkspaceTreeProps {
     revealRequest?: { documentId: string; path: string; seq: number } | null;
 }
 
-export default function WorkspaceTree({ revealRequest }: WorkspaceTreeProps): React.JSX.Element {
+export default function WorkspaceTree({ revealRequest }: Readonly<WorkspaceTreeProps>): React.JSX.Element {
     const { onOpenFolder } = useWorkspaceTreeCommands();
     const workspace = useAppSelector((state) => state.workspace.snapshot);
     const reading = useAppSelector((state) => state.workspace.reading);
@@ -69,13 +69,12 @@ export default function WorkspaceTree({ revealRequest }: WorkspaceTreeProps): Re
     return <OpenWorkspaceTree workspace={workspace} reading={reading} revealRequest={revealRequest} />;
 }
 
-interface OpenWorkspaceTreeProps {
+interface OpenWorkspaceTreeProps extends Pick<WorkspaceTreeProps, 'revealRequest'> {
     workspace: WorkspaceSnapshot;
     reading: boolean;
-    revealRequest?: WorkspaceTreeProps['revealRequest'];
 }
 
-function OpenWorkspaceTree({ workspace, reading, revealRequest }: OpenWorkspaceTreeProps): React.JSX.Element {
+function OpenWorkspaceTree({ workspace, reading, revealRequest }: Readonly<OpenWorkspaceTreeProps>): React.JSX.Element {
     const {
         onCloseFolder,
         onRefreshWorkspace,
@@ -127,40 +126,44 @@ function OpenWorkspaceTree({ workspace, reading, revealRequest }: OpenWorkspaceT
         activePath,
         localPath: null,
     }));
-    if (selection.activePath !== activePath) {
-        const previousPath = selection.localPath ?? selection.activePath;
-        setSelection({
-            activePath,
-            localPath:
-                activePath !== null && ancestorPaths(workspace.root, activePath) !== undefined
-                    ? null
-                    : previousPath !== null && ancestorPaths(workspace.root, previousPath) !== undefined
-                      ? previousPath
-                      : null,
-        });
-    } else if (
-        revealRequest != null &&
-        revealRequest.seq !== consumedReveal?.seq &&
-        revealRequest.documentId === activeDocumentId &&
-        activePath !== null
-    ) {
+    const reconcileSelection = (): void => {
+        if (selection.activePath !== activePath) {
+            const previousPath = selection.localPath ?? selection.activePath;
+            const activePathInTree = activePath !== null && ancestorPaths(workspace.root, activePath) !== undefined;
+            const localPath =
+                !activePathInTree && previousPath !== null && ancestorPaths(workspace.root, previousPath) !== undefined
+                    ? previousPath
+                    : null;
+            setSelection({ activePath, localPath });
+            return;
+        }
+
+        if (
+            revealRequest == null ||
+            revealRequest.seq === consumedReveal?.seq ||
+            revealRequest.documentId !== activeDocumentId ||
+            activePath === null
+        )
+            return;
+
         const ancestors = ancestorPaths(workspace.root, revealRequest.path);
         setConsumedReveal({ path: ancestors === undefined ? null : revealRequest.path, seq: revealRequest.seq });
-        if (ancestors !== undefined) {
-            setCollapsedRootPaths((paths) => {
-                if (!paths.has(workspace.rootPath)) return paths;
-                const next = new Set(paths);
-                next.delete(workspace.rootPath);
-                return next;
-            });
-            setExpandedPaths((paths) => {
-                const next = new Set(paths);
-                for (const path of ancestors) next.add(path);
-                return next;
-            });
-            setSelection({ activePath, localPath: revealRequest.path });
-        }
-    }
+        if (ancestors === undefined) return;
+
+        setCollapsedRootPaths((paths) => {
+            if (!paths.has(workspace.rootPath)) return paths;
+            const next = new Set(paths);
+            next.delete(workspace.rootPath);
+            return next;
+        });
+        setExpandedPaths((paths) => {
+            const next = new Set(paths);
+            for (const path of ancestors) next.add(path);
+            return next;
+        });
+        setSelection({ activePath, localPath: revealRequest.path });
+    };
+    reconcileSelection();
     const selectedPath = selection.activePath === activePath ? (selection.localPath ?? activePath) : activePath;
     const selectedNode = selectedPath === null ? undefined : findNode(workspace.root, selectedPath);
     const headerTarget = selectedNode?.isDir && !selectedNode.unreadable ? selectedNode : workspace.root;
@@ -174,7 +177,9 @@ function OpenWorkspaceTree({ workspace, reading, revealRequest }: OpenWorkspaceT
     const visibleFocusedPath = rows.some((row) => row.path === focusedPath) ? focusedPath : workspace.rootPath;
     useLayoutEffect(() => {
         if (reading || !focusOwnedByTree.current) return;
-        if ([...rowElements.current.values()].some((row) => row === document.activeElement)) return;
+        const activeElement = document.activeElement;
+        const registeredRows: readonly Element[] = [...rowElements.current.values()];
+        if (activeElement !== null && registeredRows.includes(activeElement)) return;
         rowElements.current.get(visibleFocusedPath)?.focus();
     }, [reading, visibleFocusedPath, workspace]);
     useLayoutEffect(() => {
@@ -236,6 +241,79 @@ function OpenWorkspaceTree({ workspace, reading, revealRequest }: OpenWorkspaceT
         },
         [workspace.root, workspace.rootPath, focusedPath, visibleExpandedPaths],
     );
+    const renderTreeBody = (): React.JSX.Element => {
+        if (reading) {
+            return <p className={styles.message}>{t('workspace.tree.loading')}</p>;
+        }
+        if (workspace.unavailable) {
+            return (
+                <div className={styles.unavailable}>
+                    <Banner
+                        notification={{
+                            id: 0,
+                            kind: 'error',
+                            title: t('workspace.tree.unavailable'),
+                            message: '',
+                            actions: [],
+                        }}
+                    />
+                    <div className={styles.actions}>
+                        <Button
+                            variant="secondary"
+                            onClick={(): void => {
+                                void onCloseFolder();
+                            }}
+                        >
+                            {t('workspace.tree.closeFolder')}
+                        </Button>
+                        <Button
+                            variant="secondary"
+                            onClick={(): void => {
+                                void onRefreshWorkspace();
+                            }}
+                        >
+                            {t('workspace.tree.retry')}
+                        </Button>
+                    </div>
+                </div>
+            );
+        }
+        return (
+            <div className={styles.body}>
+                <ul className={styles.nodes} role="tree" aria-label={t('workspace.tree.label')}>
+                    <WorkspaceTreeNode
+                        node={workspace.root}
+                        depth={0}
+                        expandedPaths={visibleExpandedPaths}
+                        selectedPath={selectedPath}
+                        focusedPath={visibleFocusedPath}
+                        openPaths={openPaths}
+                        dirtyPaths={dirtyPaths}
+                        onToggle={toggle}
+                        onSelect={(path): void => setSelection({ activePath, localPath: path })}
+                        onOpenFile={(path): void => {
+                            void onOpenTreeFile(path, tabSetRevision);
+                        }}
+                        onFocusRow={(path): void => {
+                            focusOwnedByTree.current = true;
+                            setFocusedPath(path);
+                        }}
+                        onKeyDownRow={onKeyDownRow}
+                        onContextMenu={(node, point): void => {
+                            onTreeContextMenu?.(node, point);
+                            setContextMenu({ node, point });
+                        }}
+                        registerRow={(path, element): void => {
+                            if (element === null) rowElements.current.delete(path);
+                            else rowElements.current.set(path, element);
+                        }}
+                    />
+                </ul>
+                {emptyResult ? <p className={styles.message}>{t('workspace.tree.empty')}</p> : null}
+            </div>
+        );
+    };
+
     return (
         <div className={styles.tree}>
             <div className={styles.header}>
@@ -275,72 +353,7 @@ function OpenWorkspaceTree({ workspace, reading, revealRequest }: OpenWorkspaceT
                     variant="icon"
                 />
             </div>
-            {reading ? (
-                <p className={styles.message}>{t('workspace.tree.loading')}</p>
-            ) : workspace.unavailable ? (
-                <div className={styles.unavailable}>
-                    <Banner
-                        notification={{
-                            id: 0,
-                            kind: 'error',
-                            title: t('workspace.tree.unavailable'),
-                            message: '',
-                            actions: [],
-                        }}
-                    />
-                    <div className={styles.actions}>
-                        <Button
-                            variant="secondary"
-                            onClick={(): void => {
-                                void onCloseFolder();
-                            }}
-                        >
-                            {t('workspace.tree.closeFolder')}
-                        </Button>
-                        <Button
-                            variant="secondary"
-                            onClick={(): void => {
-                                void onRefreshWorkspace();
-                            }}
-                        >
-                            {t('workspace.tree.retry')}
-                        </Button>
-                    </div>
-                </div>
-            ) : (
-                <div className={styles.body}>
-                    <ul className={styles.nodes} role="tree" aria-label={t('workspace.tree.label')}>
-                        <WorkspaceTreeNode
-                            node={workspace.root}
-                            depth={0}
-                            expandedPaths={visibleExpandedPaths}
-                            selectedPath={selectedPath}
-                            focusedPath={visibleFocusedPath}
-                            openPaths={openPaths}
-                            dirtyPaths={dirtyPaths}
-                            onToggle={toggle}
-                            onSelect={(path): void => setSelection({ activePath, localPath: path })}
-                            onOpenFile={(path): void => {
-                                void onOpenTreeFile(path, tabSetRevision);
-                            }}
-                            onFocusRow={(path): void => {
-                                focusOwnedByTree.current = true;
-                                setFocusedPath(path);
-                            }}
-                            onKeyDownRow={onKeyDownRow}
-                            onContextMenu={(node, point): void => {
-                                onTreeContextMenu?.(node, point);
-                                setContextMenu({ node, point });
-                            }}
-                            registerRow={(path, element): void => {
-                                if (element === null) rowElements.current.delete(path);
-                                else rowElements.current.set(path, element);
-                            }}
-                        />
-                    </ul>
-                    {emptyResult ? <p className={styles.message}>{t('workspace.tree.empty')}</p> : null}
-                </div>
-            )}
+            {renderTreeBody()}
             {workspace.truncated ? <p className={styles.message}>{t('workspace.tree.truncated')}</p> : null}
             <div className={styles.chips}>
                 {workspace.filterSuffixes.map((suffix) => (

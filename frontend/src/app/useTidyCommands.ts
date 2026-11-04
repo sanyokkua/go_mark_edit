@@ -43,6 +43,12 @@ function tidyPreferences(settings: ReturnType<typeof useEditorSettings>['markdow
     };
 }
 
+function markerMessage(finding: LintFinding): string {
+    const ruleLabel = t(`lint.rule.${finding.rule}.label`);
+    const severityLabel = t(`problems.severity.${finding.severity}`);
+    return `${ruleLabel} · ${severityLabel}\n${t(finding.message.key, finding.message.args)}\n${t(finding.hint)}`;
+}
+
 function markerFor(finding: LintFinding): EditorMarker {
     return {
         startLine: finding.startLine,
@@ -50,8 +56,50 @@ function markerFor(finding: LintFinding): EditorMarker {
         endLine: finding.endLine,
         endColumn: finding.endColumn,
         severity: finding.severity,
-        message: `${t(`lint.rule.${finding.rule}.label`)} · ${t(`problems.severity.${finding.severity}`)}\n${t(finding.message.key, finding.message.args)}\n${t(finding.hint)}`,
+        message: markerMessage(finding),
     };
+}
+
+function isStaleRun(
+    captured: ActiveRun,
+    latest: {
+        activeBuffer: { documentId: string } | null;
+        projectedDocumentId: string | null;
+        commands: DocumentCommandAPI | null;
+        externalEpoch: number;
+    },
+    now: ReturnType<DocumentCommandAPI['getContent']>,
+): boolean {
+    return (
+        captured.invalidated ||
+        latest.activeBuffer?.documentId !== captured.documentId ||
+        latest.projectedDocumentId !== captured.documentId ||
+        latest.commands !== captured.commands ||
+        latest.externalEpoch !== captured.externalEpoch ||
+        now.status !== 'available' ||
+        normalize(now.value) !== captured.text
+    );
+}
+
+function applyTidyOutcome(
+    outcome: TidyOutcome,
+    commands: DocumentCommandAPI,
+    documentId: string,
+    text: string,
+): TidyOutcome {
+    if (
+        outcome.kind === 'edits' &&
+        outcome.edits.length > 0 &&
+        commands.applyEdits(outcome.edits).status !== 'available'
+    )
+        return { kind: 'failed' };
+    if (outcome.kind === 'findings') {
+        const markers = outcome.findings.slice(0, 1000).map(markerFor);
+        if (commands.setMarkers(markers).status === 'available') {
+            problemsSummary.replace(documentId, outcome.findings, outcome.total, text);
+        } else return { kind: 'failed' };
+    }
+    return outcome;
 }
 
 export function useTidyCommands(): TidyCommands {
@@ -187,28 +235,8 @@ export function useTidyCommands(): TidyCommands {
                 if (handle.signal.aborted) outcome = { kind: 'cancelled' };
                 const latest = current.current;
                 const now = selectedCommands.getContent();
-                if (
-                    captured.invalidated ||
-                    latest.activeBuffer?.documentId !== documentId ||
-                    latest.projectedDocumentId !== documentId ||
-                    latest.commands !== captured.commands ||
-                    latest.externalEpoch !== captured.externalEpoch ||
-                    now.status !== 'available' ||
-                    normalize(now.value) !== text
-                )
-                    outcome = { kind: 'stale' };
-                if (
-                    outcome.kind === 'edits' &&
-                    outcome.edits.length > 0 &&
-                    selectedCommands.applyEdits(outcome.edits).status !== 'available'
-                )
-                    outcome = { kind: 'failed' };
-                if (outcome.kind === 'findings') {
-                    const markers = outcome.findings.slice(0, 1000).map(markerFor);
-                    if (selectedCommands.setMarkers(markers).status === 'available') {
-                        problemsSummary.replace(documentId, outcome.findings, outcome.total, text);
-                    } else outcome = { kind: 'failed' };
-                }
+                if (isStaleRun(captured, latest, now)) outcome = { kind: 'stale' };
+                outcome = applyTidyOutcome(outcome, selectedCommands, documentId, text);
                 if (
                     origin === 'user' &&
                     (outcome.kind === 'refused' ||

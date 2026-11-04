@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 
 import Bar from '../Bar';
 import type { PopupAnchor } from '../Popup';
@@ -22,6 +22,7 @@ export interface TabBarTab {
     readonly controls?: string;
     readonly labelParts?: TabBarLabelParts;
     readonly modifiedLabel?: string;
+    readonly readOnlyLabel?: string;
     readonly tabId?: string;
     readonly title?: string;
     readonly writeInFlight?: boolean;
@@ -48,15 +49,25 @@ const TAB_DRAG_EDGE_SCROLL_STEP_PX = 12;
 const TAB_DRAG_EDGE_SCROLL_INTERVAL_MS = 16;
 
 function prefersReducedMotion(): boolean {
+    const browserWindow = globalThis.window;
     return (
-        typeof window !== 'undefined' &&
-        typeof window.matchMedia === 'function' &&
-        window.matchMedia('(prefers-reduced-motion: reduce)').matches
+        browserWindow !== undefined &&
+        typeof browserWindow.matchMedia === 'function' &&
+        browserWindow.matchMedia('(prefers-reduced-motion: reduce)').matches
     );
 }
 
 function targetIndexForSlot(slot: number, fromIndex: number): number {
     return slot > fromIndex ? slot - 1 : slot;
+}
+
+function tabPresentation(tab: TabBarTab, descriptionPrefix: string) {
+    const conflictLabel = tab.conflictBlocked ? tab.conflictLabel : undefined;
+    const accessibleLabel = conflictLabel ? `${tab.label} · ${conflictLabel}` : tab.label;
+    const readOnlyLabel = tab.readOnly ? (tab.readOnlyLabel ?? 'Read-only') : undefined;
+    const description = readOnlyLabel && tab.title ? `${readOnlyLabel} · ${tab.title}` : readOnlyLabel;
+    const descriptionId = description === undefined ? undefined : `${descriptionPrefix}-${encodeURIComponent(tab.id)}`;
+    return { accessibleLabel, conflictLabel, description, descriptionId, readOnlyLabel };
 }
 
 function insertionIndicator(slot: number): React.JSX.Element {
@@ -84,6 +95,7 @@ const TabBar: React.FC<TabBarProps> = ({
     revealRequest,
     tabs,
 }: TabBarProps): React.JSX.Element => {
+    const descriptionPrefix = useId();
     const stripRef = useRef<HTMLDivElement | null>(null);
     const tabRefs = useRef(new Map<string, HTMLButtonElement>());
     const previousRevealState = useRef<{
@@ -176,11 +188,11 @@ const TabBar: React.FC<TabBarProps> = ({
             setTabsOverflowing(strip.scrollWidth > strip.clientWidth);
         };
         measure();
-        window.addEventListener('resize', measure);
+        globalThis.addEventListener('resize', measure);
         const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(measure);
         observer?.observe(strip);
         return (): void => {
-            window.removeEventListener('resize', measure);
+            globalThis.removeEventListener('resize', measure);
             observer?.disconnect();
         };
     }, [tabs]);
@@ -302,7 +314,10 @@ const TabBar: React.FC<TabBarProps> = ({
             if (event.key === 'Home' || event.key === 'End') {
                 event.preventDefault();
                 const target = event.key === 'Home' ? tabs[0] : tabs.at(-1);
-                if (target !== undefined) focusDocument(target.id);
+                if (target !== undefined) {
+                    focusDocument(target.id);
+                    onActivate(target.id);
+                }
                 return;
             }
             if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
@@ -334,6 +349,8 @@ const TabBar: React.FC<TabBarProps> = ({
                 >
                     {tabs.flatMap((tab, index) => {
                         const labelParts = tab.labelParts;
+                        const { accessibleLabel, conflictLabel, description, descriptionId, readOnlyLabel } =
+                            tabPresentation(tab, descriptionPrefix);
                         const item = (
                             <div
                                 className={styles.tabItem}
@@ -344,8 +361,8 @@ const TabBar: React.FC<TabBarProps> = ({
                             >
                                 <button
                                     aria-controls={tab.controls}
-                                    aria-label={`${tab.label}${tab.conflictBlocked && tab.conflictLabel ? ` · ${tab.conflictLabel}` : ''}`}
-                                    aria-readonly={tab.readOnly ? true : undefined}
+                                    aria-label={accessibleLabel}
+                                    aria-describedby={descriptionId}
                                     aria-selected={tab.active}
                                     className={styles.tab}
                                     data-document-id={tab.id}
@@ -394,13 +411,13 @@ const TabBar: React.FC<TabBarProps> = ({
                                         className={`${styles.modifiedDot} ${tab.writeInFlight ? styles.modifiedDotMuted : ''}`}
                                         data-write-in-flight={tab.writeInFlight || undefined}
                                     />
-                                    {tab.conflictBlocked && tab.conflictLabel ? (
+                                    {conflictLabel ? (
                                         <span
-                                            aria-label={tab.conflictLabel}
+                                            aria-label={conflictLabel}
                                             className={styles.modifiedDot}
                                             data-conflict-blocked
                                         >
-                                            {tab.conflictLabel}
+                                            {conflictLabel}
                                         </span>
                                     ) : null}
                                     <span aria-hidden="true" className={styles.tabLabel}>
@@ -417,7 +434,17 @@ const TabBar: React.FC<TabBarProps> = ({
                                             </>
                                         )}
                                     </span>
+                                    {readOnlyLabel !== undefined ? (
+                                        <span aria-hidden="true" className={styles.readOnlyMarker} title={description}>
+                                            {readOnlyLabel}
+                                        </span>
+                                    ) : null}
                                 </button>
+                                {descriptionId === undefined ? null : (
+                                    <span id={descriptionId} hidden>
+                                        {description}
+                                    </span>
+                                )}
                                 <button
                                     aria-label={tab.closeLabel ?? `Close ${tab.label}`}
                                     className={styles.tabClose}

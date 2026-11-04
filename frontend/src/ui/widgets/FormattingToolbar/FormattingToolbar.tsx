@@ -1,4 +1,4 @@
-import { createContext, Fragment, useCallback, useContext } from 'react';
+import { createContext, Fragment, useCallback, useContext, useMemo } from 'react';
 
 import { t } from '../../../i18n';
 import { useEditingProjection } from '../../../logic/hooks/useEditingProjection';
@@ -84,47 +84,52 @@ interface ActionButtonProps {
     onActivate: (entry: ActionEntry) => void;
 }
 
-const ActionButton: React.FC<ActionButtonProps> = ({ entry, onActivate }: ActionButtonProps): React.JSX.Element => {
-    const { projectedState, markdownSettingsLoaded, editorShown, slot, cancel } = useContext(ToolbarProjectionContext);
-    const overflowMenu = useContext(OverflowMenuContext);
-    const availability = getActionAvailability(entry.id, {
-        projectedState,
-        markdownSettingsLoaded,
-        editorShown,
-        slotBusy: slot.state === 'running',
-    });
+interface OverflowActionProps extends ActionButtonProps {
+    availability: ReturnType<typeof getActionAvailability>;
+    cancellable: boolean;
+    cancel?: () => void;
+    icon?: IconName;
+    progress: { done: number; total: number } | null;
+}
+
+function OverflowAction({
+    entry,
+    onActivate,
+    availability,
+    cancellable,
+    cancel,
+    icon,
+    progress,
+}: Readonly<OverflowActionProps>): React.JSX.Element {
     const unavailable = availability.kind === 'unavailable';
-    const icon = textualControlIds.has(entry.id) ? undefined : (entry.id as IconName);
-    // The toolbar's Format control carries the progress and Cancel of whichever tidy run is active.
-    const cancellable =
-        slot.state === 'running' && slot.progress !== null && (entry.id === 'format' || slot.kind === entry.id);
-    const progress = slot.state === 'running' ? slot.progress : null;
-    if (overflowMenu) {
-        const binding = entry.shortcut;
-        return (
-            <MenuItem
-                accelerator={binding === undefined ? undefined : formatShortcut(binding, currentPlatform())}
-                data-action-id={entry.id}
-                data-icon={icon === undefined ? undefined : entry.id}
-                disabled={cancellable ? false : unavailable}
-                icon={icon === undefined ? undefined : <Icon name={icon} />}
-                label={cancellable ? t('tidy.cancel') : t(entry.labelKey)}
-                title={
-                    cancellable
-                        ? t('tidy.running')
-                        : unavailable
-                          ? t(actionUnavailableLabelKey(availability.reason))
-                          : undefined
-                }
-                trailing={cancellable && progress !== null ? `${progress.done}/${progress.total}` : undefined}
-                onMouseDown={(event): void => {
-                    if (!unavailable) event.preventDefault();
-                }}
-                onSelect={(): void => (cancellable ? cancel?.() : onActivate(entry))}
-            />
-        );
-    }
-    return cancellable ? (
+    let title: string | undefined;
+    if (cancellable) title = t('tidy.running');
+    else if (unavailable) title = t(actionUnavailableLabelKey(availability.reason));
+    const binding = entry.shortcut;
+    return (
+        <MenuItem
+            accelerator={binding === undefined ? undefined : formatShortcut(binding, currentPlatform())}
+            data-action-id={entry.id}
+            data-icon={icon === undefined ? undefined : entry.id}
+            disabled={cancellable ? false : unavailable}
+            icon={icon === undefined ? undefined : <Icon name={icon} />}
+            label={cancellable ? t('tidy.cancel') : t(entry.labelKey)}
+            title={title}
+            trailing={cancellable && progress !== null ? `${progress.done}/${progress.total}` : undefined}
+            onMouseDown={(event): void => {
+                if (!unavailable) event.preventDefault();
+            }}
+            onSelect={(): void => (cancellable ? cancel?.() : onActivate(entry))}
+        />
+    );
+}
+
+function RunningAction({
+    entry,
+    cancel,
+    progress,
+}: Readonly<Pick<OverflowActionProps, 'entry' | 'cancel' | 'progress'>>): React.JSX.Element {
+    return (
         <span className={styles.runningControl}>
             <ToolButton
                 aria-label={t('tidy.cancel')}
@@ -135,11 +140,43 @@ const ActionButton: React.FC<ActionButtonProps> = ({ entry, onActivate }: Action
                 variant="text"
                 onActivate={cancel}
             />
-            <span role="status" aria-label={t('tidy.running')} className={styles.progress}>
+            <output aria-label={t('tidy.running')} className={styles.progress}>
                 {progress?.done}/{progress?.total}
-            </span>
+            </output>
         </span>
-    ) : (
+    );
+}
+
+const ActionButton: React.FC<ActionButtonProps> = ({ entry, onActivate }: ActionButtonProps): React.JSX.Element => {
+    const { projectedState, markdownSettingsLoaded, editorShown, slot, cancel } = useContext(ToolbarProjectionContext);
+    const overflowMenu = useContext(OverflowMenuContext);
+    const availability = getActionAvailability(entry.id, {
+        projectedState,
+        markdownSettingsLoaded,
+        editorShown,
+        slotBusy: slot.state === 'running',
+    });
+    const icon = textualControlIds.has(entry.id) ? undefined : (entry.id as IconName);
+    // The toolbar's Format control carries the progress and Cancel of whichever tidy run is active.
+    const cancellable =
+        slot.state === 'running' && slot.progress !== null && (entry.id === 'format' || slot.kind === entry.id);
+    const progress = slot.state === 'running' ? slot.progress : null;
+    if (overflowMenu) {
+        return (
+            <OverflowAction
+                entry={entry}
+                onActivate={onActivate}
+                availability={availability}
+                cancellable={cancellable}
+                cancel={cancel}
+                icon={icon}
+                progress={progress}
+            />
+        );
+    }
+    if (cancellable) return <RunningAction entry={entry} cancel={cancel} progress={progress} />;
+    const unavailable = availability.kind === 'unavailable';
+    return (
         <ToolButton
             aria-label={t(entry.accessibilityKey)}
             className={styles.action}
@@ -225,16 +262,20 @@ const FormattingToolbar: React.FC<FormattingToolbarProps> = ({
         [execute],
     );
 
+    const cancel = useCallback((): void => tidyCommands?.cancel(), [tidyCommands]);
+    const projection = useMemo(
+        () => ({
+            projectedState: toolbarProjection,
+            markdownSettingsLoaded: markdownSettings !== undefined,
+            editorShown,
+            slot,
+            cancel: tidyCommands === null ? undefined : cancel,
+        }),
+        [toolbarProjection, markdownSettings, editorShown, slot, tidyCommands, cancel],
+    );
+
     return (
-        <ToolbarProjectionContext.Provider
-            value={{
-                projectedState: toolbarProjection,
-                markdownSettingsLoaded: markdownSettings !== undefined,
-                editorShown,
-                slot,
-                cancel: tidyCommands === null ? undefined : () => tidyCommands.cancel(),
-            }}
-        >
+        <ToolbarProjectionContext.Provider value={projection}>
             <Bar
                 ariaLabel={t('editor.toolbar')}
                 className={styles.toolbar}

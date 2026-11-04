@@ -251,28 +251,8 @@ func ClassifyDocumentBytes(raw []byte, mode os.FileMode) ClassifiedRead {
 }
 
 func classifyLineEndings(data []byte) (LineEnding, int, int, LineEnding, bool) {
-	lfCount, crlfCount := 0, 0
-	var first LineEnding
-	loneCR := false
-	for index := 0; index < len(data); index++ {
-		switch data[index] {
-		case '\r':
-			if index+1 < len(data) && data[index+1] == '\n' {
-				crlfCount++
-				if first == "" {
-					first = LineEndingCRLF
-				}
-				index++
-				continue
-			}
-			loneCR = true
-		case '\n':
-			lfCount++
-			if first == "" {
-				first = LineEndingLF
-			}
-		}
-	}
+	lfCount, crlfCount, first, loneCR := countLineEndings(data)
+
 	lineEnding := LineEndingNone
 	switch {
 	case lfCount > 0 && crlfCount == 0:
@@ -283,6 +263,32 @@ func classifyLineEndings(data []byte) (LineEnding, int, int, LineEnding, bool) {
 		lineEnding = LineEndingMixed
 	}
 	return lineEnding, lfCount, crlfCount, first, loneCR
+}
+
+func countLineEndings(data []byte) (int, int, LineEnding, bool) {
+	lfCount, crlfCount := 0, 0
+	var first LineEnding
+	loneCR := false
+	for index := 0; index < len(data); index++ {
+		if data[index] == '\r' {
+			if index+1 >= len(data) || data[index+1] != '\n' {
+				loneCR = true
+				continue
+			}
+			crlfCount++
+			index++
+			if first == "" {
+				first = LineEndingCRLF
+			}
+		} else if data[index] == '\n' {
+			lfCount++
+			if first == "" {
+				first = LineEndingLF
+			}
+		}
+	}
+
+	return lfCount, crlfCount, first, loneCR
 }
 
 func normalizeCRLF(content string) string {

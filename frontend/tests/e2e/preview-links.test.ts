@@ -526,7 +526,7 @@ test('preview links activate and reveal documents in and outside the folder', as
         .poll(() => getState(page).then((state) => state.data?.activeBuffer?.content))
         .toBe(`${savedSource}\nUnsaved source edit.`);
     await expect(page.locator('[data-editor-surface] .view-lines')).toContainText('Unsaved source edit.');
-    await expect(page.getByRole('treeitem', { name: 'a.md' })).toHaveAttribute('aria-description', /Unsaved changes/u);
+    await expect(page.getByRole('treeitem', { name: 'a.md' })).toHaveAccessibleDescription(/Unsaved changes/u);
     expect(await readFile(source, 'utf8')).toBe(savedSource);
     await clickWithoutNavigation(page, page.getByRole('link', { name: 'sibling' }), originalUrl);
     await expectActiveDocument(page, 'b.md', 'Sibling document');

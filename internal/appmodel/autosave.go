@@ -155,46 +155,15 @@ func (service *AppModelService) flushAutosaveMode(documentID string, runSchedule
 			service.mu.Unlock()
 			return
 		}
-		document := service.state.documents[documentID]
-		var entry *autosaveTimerEntry
-		var done chan struct{}
-		if document != nil {
-			entry = document.autosave
-			done = document.autosaveInFlight
-		}
-		if entry != nil && done == nil {
-			if !runScheduled {
-				service.cancelAutosaveLocked(documentID)
-				service.mu.Unlock()
-				return
-			}
-			// A close is an accepted flush boundary: stopping
-			// the debounce timer alone would strand the latest working copy.
-			// Leave the entry visible while runAutosave claims it so a timer
-			// callback racing this call cannot start a second write.
-			if entry.timer != nil {
-				entry.timer.Stop()
-			}
-			revision, generation := entry.revision, entry.generation
-			service.mu.Unlock()
-			outcome := service.runAutosave(documentID, revision, generation)
-			// runAutosave declines a document that is no longer autosave-eligible
-			// — detached, read-only, or its path cleared — and leaves the entry in
-			// place when it declines. Looping on an entry nothing will ever claim
-			// spins forever, which is a hung close rather than the completed flush
-			// this invariant requires. If the entry survived, nothing can run it:
-			// cancel the debounce and stop.
-			service.mu.Lock()
-			remainingDocument := service.state.documents[documentID]
-			if service.cancelUnusableAutosaveLocked(documentID, remainingDocument, entry, outcome) {
-				service.mu.Unlock()
-				return
-			}
-			service.mu.Unlock()
-			continue
-		}
-		if entry != nil && done != nil && !runScheduled {
+		entry, done := service.autosavePendingLocked(documentID)
+		if entry != nil && !runScheduled {
 			service.cancelAutosaveLocked(documentID)
+		}
+		if entry != nil && done == nil && runScheduled {
+			if service.flushScheduledAutosave(documentID, entry) {
+				return
+			}
+			continue
 		}
 		service.mu.Unlock()
 		if done != nil {
@@ -203,6 +172,34 @@ func (service *AppModelService) flushAutosaveMode(documentID string, runSchedule
 		}
 		return
 	}
+}
+
+func (service *AppModelService) autosavePendingLocked(documentID string) (*autosaveTimerEntry, chan struct{}) {
+	document := service.state.documents[documentID]
+	if document == nil {
+		return nil, nil
+	}
+	return document.autosave, document.autosaveInFlight
+}
+
+// flushScheduledAutosave releases the model lock around the write and
+// returns whether the surviving intent was permanently unusable.
+func (service *AppModelService) flushScheduledAutosave(documentID string, entry *autosaveTimerEntry) bool {
+	// Keep the entry visible until runAutosave claims it so a racing timer
+	// cannot start a second write.
+	if entry.timer != nil {
+		entry.timer.Stop()
+	}
+	revision, generation := entry.revision, entry.generation
+	service.mu.Unlock()
+	outcome := service.runAutosave(documentID, revision, generation)
+	service.mu.Lock()
+	remainingDocument := service.state.documents[documentID]
+	// A permanently ineligible entry cannot be claimed; keeping it would spin
+	// the close flush forever. A fenced claim may still be restored instead.
+	unusable := service.cancelUnusableAutosaveLocked(documentID, remainingDocument, entry, outcome)
+	service.mu.Unlock()
+	return unusable
 }
 
 // cancelUnusableAutosaveLocked drops only a permanently unusable intent. A

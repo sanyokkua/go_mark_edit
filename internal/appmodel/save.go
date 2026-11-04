@@ -14,6 +14,12 @@ import (
 	"github.com/sanyokkua/go_mark_edit/internal/file"
 )
 
+const (
+	saveDocumentNotFoundMessage = "The document could not be found."
+	saveDocumentChangedMessage  = "The document changed before it could be saved."
+	saveDocumentReadOnlyMessage = "The document is read-only and cannot be saved."
+)
+
 type saveReservation struct {
 	id       string
 	identity file.Identity
@@ -61,15 +67,15 @@ func (service *AppModelService) save(ctx context.Context, documentID string, exp
 	document, ok := service.state.documents[documentID]
 	if !ok {
 		service.mu.RUnlock()
-		return bridge.Refused[apperr.WriteResult](service.documentLabel(documentID), documentID, apperr.ClassifiedNotFound, "The document could not be found.", apperr.RemediationNone)
+		return bridge.Refused[apperr.WriteResult](service.documentLabel(documentID), documentID, apperr.ClassifiedNotFound, saveDocumentNotFoundMessage, apperr.RemediationNone)
 	}
 	if document.metadata.ContentRevision != expectedContentRevision {
 		service.mu.RUnlock()
-		return bridge.Refused[apperr.WriteResult](service.documentLabel(documentID), documentID, apperr.ClassifiedConflict, "The document changed before it could be saved.", apperr.RemediationRetry)
+		return bridge.Refused[apperr.WriteResult](service.documentLabel(documentID), documentID, apperr.ClassifiedConflict, saveDocumentChangedMessage, apperr.RemediationRetry)
 	}
 	if document.metadata.Capability != string(file.CapabilityWritable) {
 		service.mu.RUnlock()
-		return bridge.Refused[apperr.WriteResult](service.documentLabel(documentID), documentID, apperr.ClassifiedPermissionDenied, "The document is read-only and cannot be saved.", apperr.RemediationNone)
+		return bridge.Refused[apperr.WriteResult](service.documentLabel(documentID), documentID, apperr.ClassifiedPermissionDenied, saveDocumentReadOnlyMessage, apperr.RemediationNone)
 	}
 	path := document.metadata.Path
 	// Save refuses before disk access when it has no
@@ -111,29 +117,88 @@ func (service *AppModelService) save(ctx context.Context, documentID string, exp
 
 // SaveAs chooses and validates a target before any target or model mutation occurs.
 func (service *AppModelService) SaveAs(ctx context.Context, documentID string, expectedContentRevision uint64, decisionToken string) apperr.WriteResult {
+	source, result := service.saveAsSource(documentID, expectedContentRevision, decisionToken)
+	if result.Status != "" {
+		return result
+	}
+	sourcePath, sourceIdentity, protectedSource := source.path, source.identity, source.protected
+	dialog, defaultDirectory, defaultFilename := source.dialog, source.defaultDirectory, source.defaultFilename
+	protectedSource, result = service.prepareSaveAsSource(ctx, documentID, expectedContentRevision, decisionToken, sourcePath, protectedSource)
+	if result.Status != "" {
+		return result
+	}
+
+	candidate, result := service.chooseSaveAsTarget(ctx, documentID, dialog, defaultDirectory, defaultFilename)
+	if result.Status != "" {
+		return result
+	}
+
+	if result := service.checkProtectedSaveAsTarget(documentID, sourcePath, sourceIdentity, protectedSource, candidate); result.Status != "" {
+		return result
+	}
+
+	reservationID, conflict := service.reserveSaveTarget(documentID, candidate)
+	if conflict != nil {
+		return bridge.FromClassified[apperr.WriteResult](conflict, apperr.WriteStatusConflict)
+	}
+	defer service.releaseSaveTarget(reservationID)
+
+	expectedVersion, expectedHash, result := service.inspectSaveAsTarget(ctx, documentID, candidate, dialog)
+	if result.Status != "" {
+		return result
+	}
+
+	if result := service.checkSaveAsSource(documentID, sourcePath, candidate, expectedVersion); result.Status != "" {
+		return result
+	}
+
+	snapshot, result := service.snapshotForWrite(documentID, expectedContentRevision, decisionToken, candidate.Path, true)
+	if result.Status != "" {
+		return result
+	}
+	snapshot.identity = candidate.Identity
+	snapshot.expectedVersion = expectedVersion
+	snapshot.expectedRawHash = expectedHash
+	if result := service.checkSaveAsTargetUnchanged(documentID, candidate, expectedVersion, expectedHash); result.Status != "" {
+		return result
+	}
+
+	return service.executeWrite(ctx, snapshot, SaveOriginSaveAs)
+}
+
+type saveAsSource struct {
+	path             string
+	identity         file.Identity
+	protected        bool
+	dialog           DocumentSaveDialog
+	defaultFilename  string
+	defaultDirectory string
+}
+
+func (service *AppModelService) saveAsSource(documentID string, expectedContentRevision uint64, decisionToken string) (saveAsSource, apperr.WriteResult) {
 	service.mu.RLock()
 	if service.shutdownDraining {
 		service.mu.RUnlock()
-		return bridge.Refused[apperr.WriteResult](apperr.ClassifiedConflict, "application", "The application is finishing an earlier close request.", apperr.RemediationRetry)
+		return saveAsSource{}, bridge.Refused[apperr.WriteResult](apperr.ClassifiedConflict, "application", "The application is finishing an earlier close request.", apperr.RemediationRetry)
 	}
 	document, ok := service.state.documents[documentID]
 	if !ok {
 		service.mu.RUnlock()
-		return bridge.Refused[apperr.WriteResult](service.documentLabel(documentID), documentID, apperr.ClassifiedNotFound, "The document could not be found.", apperr.RemediationNone)
+		return saveAsSource{}, bridge.Refused[apperr.WriteResult](service.documentLabel(documentID), documentID, apperr.ClassifiedNotFound, saveDocumentNotFoundMessage, apperr.RemediationNone)
 	}
 	if document.metadata.ContentRevision != expectedContentRevision {
 		service.mu.RUnlock()
-		return bridge.Refused[apperr.WriteResult](service.documentLabel(documentID), documentID, apperr.ClassifiedConflict, "The document changed before it could be saved.", apperr.RemediationRetry)
+		return saveAsSource{}, bridge.Refused[apperr.WriteResult](service.documentLabel(documentID), documentID, apperr.ClassifiedConflict, saveDocumentChangedMessage, apperr.RemediationRetry)
 	}
 	if document.metadata.Capability != string(file.CapabilityWritable) && document.metadata.Capability != string(file.CapabilityWriteProtectedReadOnly) {
 		service.mu.RUnlock()
-		return bridge.Refused[apperr.WriteResult](service.documentLabel(documentID), documentID, apperr.ClassifiedPermissionDenied, "The document is read-only and cannot be saved.", apperr.RemediationNone)
+		return saveAsSource{}, bridge.Refused[apperr.WriteResult](service.documentLabel(documentID), documentID, apperr.ClassifiedPermissionDenied, saveDocumentReadOnlyMessage, apperr.RemediationNone)
 	}
 	if document.metadata.LineEnding == string(file.LineEndingMixed) {
 		authorization, authorized := normalizationAuthorizationForLocked(document, decisionToken)
 		if !authorized || authorization.documentID != documentID || authorization.contentRevision != expectedContentRevision || authorization.proposedEnding != document.normalizationEnding {
 			service.mu.RUnlock()
-			return service.RequestNormalization(documentID, expectedContentRevision)
+			return saveAsSource{}, service.RequestNormalization(documentID, expectedContentRevision)
 		}
 	}
 	sourcePath := document.metadata.Path
@@ -151,37 +216,24 @@ func (service *AppModelService) SaveAs(ctx context.Context, documentID string, e
 		defaultDirectory = ""
 	}
 	service.mu.RUnlock()
+	return saveAsSource{path: sourcePath, identity: sourceIdentity, protected: protectedSource, dialog: dialog, defaultFilename: defaultFilename, defaultDirectory: defaultDirectory}, apperr.WriteResult{}
+}
+
+func (service *AppModelService) prepareSaveAsSource(ctx context.Context, documentID string, revision uint64, token, sourcePath string, protectedSource bool) (bool, apperr.WriteResult) {
 	if sourcePath != "" && !protectedSource {
 		if read, err := service.readStable(sourcePath); err == nil && read.Version.Exists && read.Read.Capability == file.CapabilityWriteProtectedReadOnly {
 			protectedSource = true
 		}
 	}
 	if sourcePath != "" && !protectedSource {
-		if result := service.prepareWriteDisk(ctx, documentID, expectedContentRevision, decisionToken); result.Status != "" {
-			return result
+		if result := service.prepareWriteDisk(ctx, documentID, revision, token); result.Status != "" {
+			return protectedSource, result
 		}
 	}
-	if dialog == nil {
-		return bridge.Refused[apperr.WriteResult](service.documentLabel(documentID), documentID, apperr.ClassifiedSystemCommandFailure, "The Save dialog is unavailable.", apperr.RemediationRetry)
-	}
-	selected, err := dialog.ChooseSaveFile(ctx, SaveDialogRequest{DefaultDirectory: defaultDirectory, DefaultFilename: defaultFilename, Title: "Save Markdown document"})
-	if err != nil {
-		return bridge.Refused[apperr.WriteResult](service.documentLabel(documentID), documentID, apperr.ClassifiedSystemCommandFailure, "The Save dialog could not be opened.", apperr.RemediationRetry)
-	}
-	if strings.TrimSpace(selected) == "" {
-		return apperr.WriteResult{Status: apperr.WriteStatusCancelled}
-	}
-	if filepath.Ext(selected) == "" {
-		selected += ".md"
-	}
-	if !file.IsSupportedDocumentSuffix(selected) {
-		return bridge.Refused[apperr.WriteResult](service.documentLabel(documentID), documentID, apperr.ClassifiedUnsupportedInput, "The selected save name has an unsupported suffix.", apperr.RemediationNone)
-	}
-	candidate, err := file.CanonicalizeCandidateDocumentPath(selected)
-	if err != nil {
-		return bridge.Refused[apperr.WriteResult](service.documentLabel(documentID), documentID, apperr.ClassifiedIOFailure, "The Save As target could not be resolved.", apperr.RemediationRetry)
-	}
+	return protectedSource, apperr.WriteResult{}
+}
 
+func (service *AppModelService) checkProtectedSaveAsTarget(documentID, sourcePath string, sourceIdentity file.Identity, protectedSource bool, candidate file.CanonicalDocumentPath) apperr.WriteResult {
 	if protectedSource {
 		if currentSource, err := file.CanonicalizeDocumentPath(sourcePath); err == nil {
 			sourceIdentity = currentSource.Identity
@@ -191,38 +243,55 @@ func (service *AppModelService) SaveAs(ctx context.Context, documentID string, e
 		return bridge.Refused[apperr.WriteResult](service.documentLabel(documentID), documentID, apperr.ClassifiedPermissionDenied, "The write-protected source cannot be overwritten.", apperr.RemediationNone)
 	}
 
-	reservationID, conflict := service.reserveSaveTarget(documentID, candidate)
-	if conflict != nil {
-		return bridge.FromClassified[apperr.WriteResult](conflict, apperr.WriteStatusConflict)
-	}
-	defer service.releaseSaveTarget(reservationID)
+	return apperr.WriteResult{}
+}
 
+func (service *AppModelService) checkSaveAsTargetUnchanged(documentID string, candidate file.CanonicalDocumentPath, expectedVersion file.DiskVersion, expectedHash string) apperr.WriteResult {
+	currentVersion, versionErr := service.currentDiskVersion(candidate.Path)
+	if versionErr != nil || !currentVersion.Equal(expectedVersion) {
+		return bridge.Conflict[apperr.WriteResult](service.documentLabel(documentID), documentID, apperr.ClassifiedConflict, "The Save As target changed after confirmation.", apperr.RemediationNone)
+	}
+	if expectedHash != "" {
+		currentHash, hashErr := rawBytesHash(candidate.Path)
+		if hashErr != nil || currentHash != expectedHash {
+			return bridge.Conflict[apperr.WriteResult](service.documentLabel(documentID), documentID, apperr.ClassifiedConflict, "The Save As target bytes changed after confirmation.", apperr.RemediationNone)
+		}
+	}
+	return apperr.WriteResult{}
+}
+
+func (service *AppModelService) inspectSaveAsTarget(ctx context.Context, documentID string, candidate file.CanonicalDocumentPath, dialog DocumentSaveDialog) (file.DiskVersion, string, apperr.WriteResult) {
 	expectedVersion, versionErr := service.currentDiskVersion(candidate.Path)
 	if versionErr != nil {
-		return bridge.Refused[apperr.WriteResult](service.documentLabel(documentID), documentID, apperr.ClassifiedIOFailure, "The Save As target could not be inspected.", apperr.RemediationRetry)
+		return file.DiskVersion{}, "", bridge.Refused[apperr.WriteResult](service.documentLabel(documentID), documentID, apperr.ClassifiedIOFailure, "The Save As target could not be inspected.", apperr.RemediationRetry)
 	}
 	expectedHash := ""
 	if expectedVersion.Exists {
 		confirmed, confirmErr := dialog.ConfirmOverwrite(ctx, candidate.DisplayName)
 		if confirmErr != nil {
-			return bridge.Refused[apperr.WriteResult](service.documentLabel(documentID), documentID, apperr.ClassifiedSystemCommandFailure, "The overwrite confirmation could not be shown.", apperr.RemediationRetry)
+			return file.DiskVersion{}, "", bridge.Refused[apperr.WriteResult](service.documentLabel(documentID), documentID, apperr.ClassifiedSystemCommandFailure, "The overwrite confirmation could not be shown.", apperr.RemediationRetry)
 		}
 		if !confirmed {
-			return apperr.WriteResult{Status: apperr.WriteStatusCancelled}
+			return file.DiskVersion{}, "", apperr.WriteResult{Status: apperr.WriteStatusCancelled}
 		}
 		expectedVersion, versionErr = service.currentDiskVersion(candidate.Path)
 		if versionErr != nil {
-			return bridge.Refused[apperr.WriteResult](service.documentLabel(documentID), documentID, apperr.ClassifiedIOFailure, "The Save As target could not be inspected after confirmation.", apperr.RemediationRetry)
+			return file.DiskVersion{}, "", bridge.Refused[apperr.WriteResult](service.documentLabel(documentID), documentID, apperr.ClassifiedIOFailure, "The Save As target could not be inspected after confirmation.", apperr.RemediationRetry)
 		}
+		var err error
 		expectedHash, err = service.stableRawBytesHash(candidate.Path, expectedVersion)
 		if err != nil {
 			if errors.Is(err, errTargetDiskChanged) {
-				return bridge.Conflict[apperr.WriteResult](service.documentLabel(documentID), documentID, apperr.ClassifiedConflict, "The Save As target changed after confirmation.", apperr.RemediationNone)
+				return file.DiskVersion{}, "", bridge.Conflict[apperr.WriteResult](service.documentLabel(documentID), documentID, apperr.ClassifiedConflict, "The Save As target changed after confirmation.", apperr.RemediationNone)
 			}
-			return bridge.Refused[apperr.WriteResult](service.documentLabel(documentID), documentID, apperr.ClassifiedIOFailure, "The Save As target could not be read.", apperr.RemediationRetry)
+			return file.DiskVersion{}, "", bridge.Refused[apperr.WriteResult](service.documentLabel(documentID), documentID, apperr.ClassifiedIOFailure, "The Save As target could not be read.", apperr.RemediationRetry)
 		}
 	}
 
+	return expectedVersion, expectedHash, apperr.WriteResult{}
+}
+
+func (service *AppModelService) checkSaveAsSource(documentID, sourcePath string, candidate file.CanonicalDocumentPath, expectedVersion file.DiskVersion) apperr.WriteResult {
 	// The source may become protected while either native dialog is open.
 	// Compare the current source identity with the inspected target and use the
 	// target version's mode: that same version is checked again by the atomic
@@ -241,25 +310,32 @@ func (service *AppModelService) SaveAs(ctx context.Context, documentID string, e
 		}
 	}
 
-	snapshot, result := service.snapshotForWrite(documentID, expectedContentRevision, decisionToken, candidate.Path, true)
-	if result.Status != "" {
-		return result
+	return apperr.WriteResult{}
+}
+
+func (service *AppModelService) chooseSaveAsTarget(ctx context.Context, documentID string, dialog DocumentSaveDialog, defaultDirectory, defaultFilename string) (file.CanonicalDocumentPath, apperr.WriteResult) {
+	if dialog == nil {
+		return file.CanonicalDocumentPath{}, bridge.Refused[apperr.WriteResult](service.documentLabel(documentID), documentID, apperr.ClassifiedSystemCommandFailure, "The Save dialog is unavailable.", apperr.RemediationRetry)
 	}
-	snapshot.identity = candidate.Identity
-	snapshot.expectedVersion = expectedVersion
-	snapshot.expectedRawHash = expectedHash
-	currentVersion, versionErr := service.currentDiskVersion(candidate.Path)
-	if versionErr != nil || !currentVersion.Equal(expectedVersion) {
-		return bridge.Conflict[apperr.WriteResult](service.documentLabel(documentID), documentID, apperr.ClassifiedConflict, "The Save As target changed after confirmation.", apperr.RemediationNone)
+	selected, err := dialog.ChooseSaveFile(ctx, SaveDialogRequest{DefaultDirectory: defaultDirectory, DefaultFilename: defaultFilename, Title: "Save Markdown document"})
+	if err != nil {
+		return file.CanonicalDocumentPath{}, bridge.Refused[apperr.WriteResult](service.documentLabel(documentID), documentID, apperr.ClassifiedSystemCommandFailure, "The Save dialog could not be opened.", apperr.RemediationRetry)
 	}
-	if expectedHash != "" {
-		currentHash, hashErr := rawBytesHash(candidate.Path)
-		if hashErr != nil || currentHash != expectedHash {
-			return bridge.Conflict[apperr.WriteResult](service.documentLabel(documentID), documentID, apperr.ClassifiedConflict, "The Save As target bytes changed after confirmation.", apperr.RemediationNone)
-		}
+	if strings.TrimSpace(selected) == "" {
+		return file.CanonicalDocumentPath{}, apperr.WriteResult{Status: apperr.WriteStatusCancelled}
+	}
+	if filepath.Ext(selected) == "" {
+		selected += ".md"
+	}
+	if !file.IsSupportedDocumentSuffix(selected) {
+		return file.CanonicalDocumentPath{}, bridge.Refused[apperr.WriteResult](service.documentLabel(documentID), documentID, apperr.ClassifiedUnsupportedInput, "The selected save name has an unsupported suffix.", apperr.RemediationNone)
+	}
+	candidate, err := file.CanonicalizeCandidateDocumentPath(selected)
+	if err != nil {
+		return file.CanonicalDocumentPath{}, bridge.Refused[apperr.WriteResult](service.documentLabel(documentID), documentID, apperr.ClassifiedIOFailure, "The Save As target could not be resolved.", apperr.RemediationRetry)
 	}
 
-	return service.executeWrite(ctx, snapshot, SaveOriginSaveAs)
+	return candidate, apperr.WriteResult{}
 }
 
 // RequestNormalization creates a single-use revision-bound mixed-ending authorization.
@@ -268,7 +344,7 @@ func (service *AppModelService) RequestNormalization(documentID string, expected
 	defer service.mu.Unlock()
 	document, ok := service.state.documents[documentID]
 	if !ok {
-		return bridge.Refused[apperr.WriteResult](service.safeDocumentLabelLocked(documentID), documentID, apperr.ClassifiedNotFound, "The document could not be found.", apperr.RemediationNone)
+		return bridge.Refused[apperr.WriteResult](service.safeDocumentLabelLocked(documentID), documentID, apperr.ClassifiedNotFound, saveDocumentNotFoundMessage, apperr.RemediationNone)
 	}
 	if document.metadata.ContentRevision != expectedContentRevision || document.metadata.LineEnding != string(file.LineEndingMixed) {
 		return bridge.Refused[apperr.WriteResult](service.safeDocumentLabelLocked(documentID), documentID, apperr.ClassifiedConflict, "The normalization request is no longer valid.", apperr.RemediationRetry)
@@ -315,13 +391,13 @@ func (service *AppModelService) snapshotForWrite(documentID string, expectedCont
 	defer service.mu.Unlock()
 	document, ok := service.state.documents[documentID]
 	if !ok {
-		return writeSnapshot{}, bridge.Refused[apperr.WriteResult](service.safeDocumentLabelLocked(documentID), documentID, apperr.ClassifiedNotFound, "The document could not be found.", apperr.RemediationNone)
+		return writeSnapshot{}, bridge.Refused[apperr.WriteResult](service.safeDocumentLabelLocked(documentID), documentID, apperr.ClassifiedNotFound, saveDocumentNotFoundMessage, apperr.RemediationNone)
 	}
 	if document.metadata.ContentRevision != expectedContentRevision {
-		return writeSnapshot{}, bridge.Refused[apperr.WriteResult](service.safeDocumentLabelLocked(documentID), documentID, apperr.ClassifiedConflict, "The document changed before it could be saved.", apperr.RemediationRetry)
+		return writeSnapshot{}, bridge.Refused[apperr.WriteResult](service.safeDocumentLabelLocked(documentID), documentID, apperr.ClassifiedConflict, saveDocumentChangedMessage, apperr.RemediationRetry)
 	}
 	if document.metadata.Capability != string(file.CapabilityWritable) && (!targetPathAdopted || document.metadata.Capability != string(file.CapabilityWriteProtectedReadOnly)) {
-		return writeSnapshot{}, bridge.Refused[apperr.WriteResult](service.safeDocumentLabelLocked(documentID), documentID, apperr.ClassifiedPermissionDenied, "The document is read-only and cannot be saved.", apperr.RemediationNone)
+		return writeSnapshot{}, bridge.Refused[apperr.WriteResult](service.safeDocumentLabelLocked(documentID), documentID, apperr.ClassifiedPermissionDenied, saveDocumentReadOnlyMessage, apperr.RemediationNone)
 	}
 	if !targetPathAdopted && document.metadata.Path != targetPath {
 		return writeSnapshot{}, bridge.Refused[apperr.WriteResult](service.safeDocumentLabelLocked(documentID), documentID, apperr.ClassifiedConflict, "The document path changed before it could be saved.", apperr.RemediationRetry)
@@ -356,27 +432,10 @@ func (service *AppModelService) executeWrite(ctx context.Context, snapshot write
 	ctx = service.runtimeContextOr(ctx)
 	encoded, err := encodeWrite(snapshot, origin, service.normalizationEndingFor(snapshot.documentID))
 	if err != nil {
-		if errors.Is(err, file.ErrCodecInvalidUTF8) || errors.Is(err, file.ErrCodecNULByte) || errors.Is(err, file.ErrCodecLoneCR) || errors.Is(err, file.ErrCodecMixedLineEndings) || errors.Is(err, file.ErrCodecUnsupportedEncoding) {
-			return bridge.Refused[apperr.WriteResult](documentLabelFromMetadata(snapshot.metadata), snapshot.documentID, apperr.ClassifiedUnsupportedInput, "The document could not be encoded for saving: "+err.Error()+".", apperr.RemediationNone)
-		}
-		return bridge.Refused[apperr.WriteResult](documentLabelFromMetadata(snapshot.metadata), snapshot.documentID, apperr.ClassifiedIOFailure, "The document could not be encoded for saving.", apperr.RemediationRetry)
+		return writeEncodingFailure(snapshot, err)
 	}
 	if !service.setWriteInFlightForPlan(ctx, snapshot.documentID, true, snapshot.closePlanID, origin) {
-		service.mu.RLock()
-		documentClosing := false
-		documentExists := false
-		if document := service.state.documents[snapshot.documentID]; document != nil {
-			documentExists = true
-			documentClosing = document.closing
-		}
-		service.mu.RUnlock()
-		if documentClosing {
-			return bridge.Refused[apperr.WriteResult](documentLabelFromMetadata(snapshot.metadata), snapshot.documentID, apperr.ClassifiedConflict, "The document is closing and cannot accept a new write.", apperr.RemediationRetry)
-		}
-		if !documentExists {
-			return bridge.Refused[apperr.WriteResult](documentLabelFromMetadata(snapshot.metadata), snapshot.documentID, apperr.ClassifiedNotFound, "The document was closed before the save started.", apperr.RemediationNone)
-		}
-		return bridge.Refused[apperr.WriteResult](documentLabelFromMetadata(snapshot.metadata), snapshot.documentID, apperr.ClassifiedConflict, "The document could not accept the save.", apperr.RemediationRetry)
+		return service.writeAdmissionFailure(snapshot)
 	}
 	defer service.setWriteInFlight(ctx, snapshot.documentID, false)
 	coordinator := service.writeCoordinator(snapshot.documentID)
@@ -398,23 +457,7 @@ func (service *AppModelService) executeWrite(ctx context.Context, snapshot write
 		}
 	}
 	if !committedToDisk {
-		category := apperr.ClassifiedIOFailure
-		message := "The document could not be saved."
-		remediation := apperr.RemediationRetry
-		if atomicErr, ok := replaceErr.(*file.AtomicReplaceError); ok && atomicErr.Classified != nil {
-			category = atomicErr.Classified.Category
-			message = atomicErr.Classified.Message
-			// Carry the classification's own remediation rather than re-deciding it
-			// here. This hardcoded Retry for whatever category the atomic replace
-			// produced, which is how a permission-denied write came to offer one.
-			// An atomic-replace classification carries one action by construction
-			// (newAtomicReplaceError names a single row), so the first is the whole set.
-			remediation = atomicErr.Classified.Remediation()
-		}
-		if category == apperr.ClassifiedConflict {
-			return bridge.Conflict[apperr.WriteResult](documentLabelFromMetadata(snapshot.metadata), snapshot.documentID, apperr.ClassifiedConflict, message, apperr.RemediationNone)
-		}
-		return bridge.Refused[apperr.WriteResult](documentLabelFromMetadata(snapshot.metadata), snapshot.documentID, category, message, remediation)
+		return writeCommitFailure(snapshot, replaceErr)
 	}
 
 	service.mu.Lock()
@@ -424,6 +467,107 @@ func (service *AppModelService) executeWrite(ctx context.Context, snapshot write
 		return bridge.Refused[apperr.WriteResult](documentLabelFromMetadata(snapshot.metadata), snapshot.documentID, apperr.ClassifiedNotFound, "The document was closed before the save completed.", apperr.RemediationNone)
 	}
 	before := service.snapshotLocked()
+	recentRepository, shouldPromoteRecent := service.applySavedDocumentLocked(snapshot, encoded, committed, origin, document)
+	patch := service.documentPatchLocked(snapshot.documentID)
+	projectionRevision := service.state.revision
+	resyncRequired := false
+	if err := service.publishCommittedLocked(ctx, before, patch); err != nil {
+		resyncRequired = true
+	}
+	var metadataWarning *apperr.ClassifiedError
+	if shouldPromoteRecent && service.metadata != nil && document.canonicalPath != "" {
+		view := document.metadata.View
+		if err := service.metadata.WriteView(ctx, document.canonicalPath, FileViewMetadata{Arrangement: view.Arrangement, SplitRatio: view.SplitRatio}); err != nil {
+			metadataWarning = bridge.ClassifiedWithID(apperr.ClassifiedPersistenceWarning, document.canonicalPath, "The document was saved, but its view settings could not be stored.", apperr.RemediationNone, snapshot.documentID)
+		}
+	}
+	service.mu.Unlock()
+
+	outcome := &apperr.CommittedWriteOutcome{
+		DocumentID:                  snapshot.documentID,
+		WrittenContentRevision:      snapshot.contentRevision,
+		CommittedProjectionRevision: projectionRevision,
+		TargetPath:                  snapshot.path,
+		TargetPathAdopted:           snapshot.targetPathAdopted,
+		LineEndingOutcome:           encoded.lineEndingOutcome,
+		BOMOutcome:                  encoded.bomOutcome,
+		ResyncRequired:              resyncRequired || replaceErr != nil,
+	}
+	return service.committedWriteResult(ctx, outcome, replaceErr, recentRepository, metadataWarning)
+}
+
+func (service *AppModelService) committedWriteResult(ctx context.Context, outcome *apperr.CommittedWriteOutcome, replaceErr error, recentRepository RecentItemsRepository, metadataWarning *apperr.ClassifiedError) apperr.WriteResult {
+	var promotionWarning *apperr.ClassifiedError
+	if recentRepository != nil {
+		entries, promoteErr := recentRepository.Promote(ctx, outcome.TargetPath, "file")
+		if promoteErr != nil {
+			promotionWarning = bridge.ClassifiedWithID(apperr.ClassifiedPersistenceWarning, outcome.TargetPath, "The document was saved successfully, but recent history could not be updated.", apperr.RemediationNone, "recent-items")
+		} else {
+			_ = service.publishRecentItems(ctx, entries)
+		}
+	}
+	result := apperr.WriteResult{Status: apperr.WriteStatusCommitted, Data: outcome, Error: metadataWarning}
+	if metadataWarning != nil {
+		result.Warning = apperr.WriteWarningViewState
+	}
+	if promotionWarning != nil {
+		result.Error = promotionWarning
+		result.Warning = apperr.WriteWarningRecentItems
+	}
+	if replaceErr != nil {
+		result.Warning = apperr.WriteWarningDurability
+		result.Error = bridge.ClassifiedWithID(apperr.ClassifiedPersistenceWarning, outcome.TargetPath, "The document was saved, but the save could not be confirmed on disk.", apperr.RemediationNone, outcome.DocumentID)
+	}
+	result.Failure = bridge.FailureFromClassified(result.Error)
+	return result
+}
+
+func writeEncodingFailure(snapshot writeSnapshot, err error) apperr.WriteResult {
+	if errors.Is(err, file.ErrCodecInvalidUTF8) || errors.Is(err, file.ErrCodecNULByte) || errors.Is(err, file.ErrCodecLoneCR) || errors.Is(err, file.ErrCodecMixedLineEndings) || errors.Is(err, file.ErrCodecUnsupportedEncoding) {
+		return bridge.Refused[apperr.WriteResult](documentLabelFromMetadata(snapshot.metadata), snapshot.documentID, apperr.ClassifiedUnsupportedInput, "The document could not be encoded for saving: "+err.Error()+".", apperr.RemediationNone)
+	}
+	return bridge.Refused[apperr.WriteResult](documentLabelFromMetadata(snapshot.metadata), snapshot.documentID, apperr.ClassifiedIOFailure, "The document could not be encoded for saving.", apperr.RemediationRetry)
+}
+
+func (service *AppModelService) writeAdmissionFailure(snapshot writeSnapshot) apperr.WriteResult {
+	service.mu.RLock()
+	documentClosing := false
+	documentExists := false
+	if document := service.state.documents[snapshot.documentID]; document != nil {
+		documentExists = true
+		documentClosing = document.closing
+	}
+	service.mu.RUnlock()
+	if documentClosing {
+		return bridge.Refused[apperr.WriteResult](documentLabelFromMetadata(snapshot.metadata), snapshot.documentID, apperr.ClassifiedConflict, "The document is closing and cannot accept a new write.", apperr.RemediationRetry)
+	}
+	if !documentExists {
+		return bridge.Refused[apperr.WriteResult](documentLabelFromMetadata(snapshot.metadata), snapshot.documentID, apperr.ClassifiedNotFound, "The document was closed before the save started.", apperr.RemediationNone)
+	}
+	return bridge.Refused[apperr.WriteResult](documentLabelFromMetadata(snapshot.metadata), snapshot.documentID, apperr.ClassifiedConflict, "The document could not accept the save.", apperr.RemediationRetry)
+}
+
+func writeCommitFailure(snapshot writeSnapshot, replaceErr error) apperr.WriteResult {
+	category := apperr.ClassifiedIOFailure
+	message := "The document could not be saved."
+	remediation := apperr.RemediationRetry
+	if atomicErr, ok := replaceErr.(*file.AtomicReplaceError); ok && atomicErr.Classified != nil {
+		category = atomicErr.Classified.Category
+		message = atomicErr.Classified.Message
+		// Carry the classification's own remediation rather than re-deciding it
+		// here. This hardcoded Retry for whatever category the atomic replace
+		// produced, which is how a permission-denied write came to offer one.
+		// An atomic-replace classification carries one action by construction
+		// (newAtomicReplaceError names a single row), so the first is the whole set.
+		remediation = atomicErr.Classified.Remediation()
+	}
+	if category == apperr.ClassifiedConflict {
+		return bridge.Conflict[apperr.WriteResult](documentLabelFromMetadata(snapshot.metadata), snapshot.documentID, apperr.ClassifiedConflict, message, apperr.RemediationNone)
+	}
+	return bridge.Refused[apperr.WriteResult](documentLabelFromMetadata(snapshot.metadata), snapshot.documentID, category, message, remediation)
+}
+
+func (service *AppModelService) applySavedDocumentLocked(snapshot writeSnapshot, encoded encodedWrite, committed CommittedWriteResult, origin SaveOrigin, document *DocumentRecord) (RecentItemsRepository, bool) {
 	// AtomicReplace commits every write via rename-over-target, which gives the
 	// target path a new on-disk identity each time and frees the old one for
 	// filesystem reuse. document.identity must track that on every save, not
@@ -468,52 +612,7 @@ func (service *AppModelService) executeWrite(ctx context.Context, snapshot write
 		service.state.recentItems = promoteRecentItem(service.state.recentItems, snapshot.path, "file")
 		service.updateCanReopenLastFileLocked()
 	}
-	patch := service.documentPatchLocked(snapshot.documentID)
-	projectionRevision := service.state.revision
-	resyncRequired := false
-	if err := service.publishCommittedLocked(ctx, before, patch); err != nil {
-		resyncRequired = true
-	}
-	var metadataWarning *apperr.ClassifiedError
-	if shouldPromoteRecent && service.metadata != nil && document.canonicalPath != "" {
-		view := document.metadata.View
-		if err := service.metadata.WriteView(ctx, document.canonicalPath, FileViewMetadata{Arrangement: view.Arrangement, SplitRatio: view.SplitRatio}); err != nil {
-			metadataWarning = bridge.ClassifiedWithID(apperr.ClassifiedPersistenceWarning, document.canonicalPath, "The document was saved, but its view settings could not be stored.", apperr.RemediationNone, snapshot.documentID)
-		}
-	}
-	service.mu.Unlock()
-
-	var promotionWarning *apperr.ClassifiedError
-	if recentRepository != nil {
-		entries, promoteErr := recentRepository.Promote(ctx, snapshot.path, "file")
-		if promoteErr != nil {
-			promotionWarning = bridge.ClassifiedWithID(apperr.ClassifiedPersistenceWarning, snapshot.path, "The document was saved successfully, but recent history could not be updated.", apperr.RemediationNone, "recent-items")
-		} else {
-			_ = service.publishRecentItems(ctx, entries)
-		}
-	}
-	if replaceErr != nil {
-		resyncRequired = true
-	}
-	result := apperr.WriteResult{Status: apperr.WriteStatusCommitted, Data: &apperr.CommittedWriteOutcome{
-		DocumentID: snapshot.documentID, WrittenContentRevision: snapshot.contentRevision,
-		CommittedProjectionRevision: projectionRevision, TargetPath: snapshot.path,
-		TargetPathAdopted: snapshot.targetPathAdopted, LineEndingOutcome: encoded.lineEndingOutcome,
-		BOMOutcome: encoded.bomOutcome, ResyncRequired: resyncRequired,
-	}, Error: metadataWarning}
-	if metadataWarning != nil {
-		result.Warning = apperr.WriteWarningViewState
-	}
-	if promotionWarning != nil {
-		result.Error = promotionWarning
-		result.Warning = apperr.WriteWarningRecentItems
-	}
-	if replaceErr != nil {
-		result.Warning = apperr.WriteWarningDurability
-		result.Error = bridge.ClassifiedWithID(apperr.ClassifiedPersistenceWarning, snapshot.path, "The document was saved, but the save could not be confirmed on disk.", apperr.RemediationNone, snapshot.documentID)
-	}
-	result.Failure = bridge.FailureFromClassified(result.Error)
-	return result
+	return recentRepository, shouldPromoteRecent
 }
 
 // emitCommittedSaveWarning surfaces warnings when the caller cannot return the write result.
@@ -656,6 +755,15 @@ func encodeWrite(snapshot writeSnapshot, origin SaveOrigin, normalizationEnding 
 	if err != nil {
 		return encodedWrite{}, err
 	}
+	lineOutcome := writeLineEndingOutcome(snapshot, origin, ending)
+	bomOutcome := apperr.BOMOutcomeAbsent
+	if bom == file.BOMPresent {
+		bomOutcome = apperr.BOMOutcomePreserved
+	}
+	return encodedWrite{data: data, lineEndingOutcome: lineOutcome, bomOutcome: bomOutcome}, nil
+}
+
+func writeLineEndingOutcome(snapshot writeSnapshot, origin SaveOrigin, ending string) apperr.LineEndingOutcome {
 	lineOutcome := apperr.LineEndingPreservedLF
 	if snapshot.metadata.Path == "" {
 		lineOutcome = apperr.LineEndingNewLF
@@ -675,11 +783,7 @@ func encodeWrite(snapshot writeSnapshot, origin SaveOrigin, normalizationEnding 
 			lineOutcome = apperr.LineEndingNormalizedLF
 		}
 	}
-	bomOutcome := apperr.BOMOutcomeAbsent
-	if bom == file.BOMPresent {
-		bomOutcome = apperr.BOMOutcomePreserved
-	}
-	return encodedWrite{data: data, lineEndingOutcome: lineOutcome, bomOutcome: bomOutcome}, nil
+	return lineOutcome
 }
 
 func (service *AppModelService) reserveSaveTarget(documentID string, candidate file.CanonicalDocumentPath) (string, *apperr.ClassifiedError) {

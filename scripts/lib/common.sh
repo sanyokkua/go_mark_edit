@@ -229,14 +229,33 @@ baseline_name() {
     printf '%s\n' "${branch//\//-}"
 }
 
-restore_tracked_modes() {
-    local mode path
-    while IFS=$'\t' read -r mode path; do
-        [[ -z "$path" ]] && continue
-        case "$mode" in
-            100755) chmod 755 "$REPO_ROOT/$path" ;;
-            100644) chmod 644 "$REPO_ROOT/$path" ;;
-            *) printf 'warning: unsupported tracked mode %s for %s\n' "$mode" "$path" >&2 ;;
-        esac
-    done < <(git -C "$REPO_ROOT" ls-files -s -- frontend/wailsjs/ | awk '{print $1 "\t" $4}')
+# Wails rewrites its generated tree with executable permissions. Keep the
+# working tree's original modes while leaving any content changes visible.
+generated_binding_modes() {
+    node --input-type=module - "$@" <<'NODE'
+import { chmodSync, lstatSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
+import { join, relative } from 'node:path';
+
+const [operation, directory, manifest] = process.argv.slice(2);
+const files = lstatSync(directory, { throwIfNoEntry: false })?.isDirectory()
+    ? readdirSync(directory, { recursive: true, withFileTypes: true }).filter((entry) => entry.isFile())
+    : [];
+
+if (operation === 'capture') {
+    const modes = files.map((entry) => {
+        const path = join(entry.parentPath, entry.name);
+        return [relative(directory, path), lstatSync(path).mode & 0o7777];
+    });
+    writeFileSync(manifest, JSON.stringify(modes));
+} else {
+    const modes = new Map(JSON.parse(readFileSync(manifest, 'utf8')));
+    for (const entry of files) {
+        const path = join(entry.parentPath, entry.name);
+        const mode = modes.get(relative(directory, path));
+        if (mode === undefined) continue;
+        const current = lstatSync(path, { throwIfNoEntry: false });
+        if (current?.isFile() && mode !== (current.mode & 0o7777)) chmodSync(path, mode);
+    }
+}
+NODE
 }

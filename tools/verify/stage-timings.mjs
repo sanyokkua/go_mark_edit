@@ -6,7 +6,11 @@ import path from 'node:path';
 const runsDirectory = process.argv[2] ?? '.local_tmp_files/runs';
 const rows = [];
 if (existsSync(runsDirectory)) {
-    for (const run of readdirSync(runsDirectory).sort()) {
+    const runs = readdirSync(runsDirectory).sort((a, b) => {
+        if (a === b) return 0;
+        return a < b ? -1 : 1;
+    });
+    for (const run of runs) {
         const summaryPath = path.join(runsDirectory, run, 'summary.json');
         if (!existsSync(summaryPath)) continue;
         const summary = JSON.parse(readFileSync(summaryPath, 'utf8'));

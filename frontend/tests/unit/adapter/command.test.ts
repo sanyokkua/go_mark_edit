@@ -28,6 +28,45 @@ afterEach((): void => {
     jest.useRealTimers();
 });
 
+it('rejects synchronous command throws and removes the pending command', async () => {
+    jest.useFakeTimers();
+    const noticeOwner = notices();
+    const failure = new Error('synchronous failure');
+    const invoker = createCommandInvoker({ isReady: () => true, noticeOwner, uuid: () => 'sync-failure' });
+    const command = invoker.bind(
+        'GetState',
+        (): Promise<never> => {
+            throw failure;
+        },
+        { expectedArity: 0 },
+    );
+
+    await expect(command()).rejects.toBe(failure);
+    expect(invoker.retry('sync-failure')).toBe(false);
+    jest.advanceTimersByTime(10_000);
+    expect(noticeOwner.show).not.toHaveBeenCalled();
+});
+
+it('rejects asynchronous command failures and withdraws their notice', async () => {
+    jest.useFakeTimers();
+    const noticeOwner = notices();
+    const failure = new Error('asynchronous failure');
+    let rejectCommand: (error: Error) => void = () => undefined;
+    const pending = new Promise<never>((_resolve, reject) => {
+        rejectCommand = reject;
+    });
+    const invoker = createCommandInvoker({ isReady: () => true, noticeOwner, uuid: () => 'async-failure' });
+    const command = invoker.bind('GetState', () => pending, { expectedArity: 0 });
+
+    const result = command();
+    jest.advanceTimersByTime(10_000);
+    expect(noticeOwner.show).toHaveBeenCalledTimes(1);
+    rejectCommand(failure);
+    await expect(result).rejects.toBe(failure);
+    expect(noticeOwner.withdraw).toHaveBeenCalledWith('async-failure');
+    expect(invoker.retry('async-failure')).toBe(false);
+});
+
 it('attaches a fresh bridge request id to every command call', () => {
     const recorder = createCommandRecorder();
     const invoker = createCommandInvoker({

@@ -11,7 +11,7 @@ function insideFence(linesAbove: readonly string[]): boolean {
         if (fence === null) {
             const open = FENCE_OPEN.exec(line);
             if (open !== null) fence = { marker: open[1][0], length: open[1].length };
-        } else if (new RegExp(`^ {0,3}${fence.marker}{${fence.length},}[ \\t]*$`, 'u').test(line)) {
+        } else if (new RegExp(String.raw`^ {0,3}${fence.marker}{${fence.length},}[ \t]*$`, 'u').test(line)) {
             fence = null;
         }
     }
@@ -46,12 +46,9 @@ export function continueList(lines: readonly string[], position: EditorPosition)
 
     const outerIndent = quoted.quote === '' ? '' : quoted.indent + quoted.quote;
     const innerIndent = quoted.quote === '' ? quoted.indent + item.indent : item.indent;
-    const body =
-        item.kind === 'numbered-list'
-            ? `${Number(marker[2]) + 1}${marker[3]} `
-            : item.kind === 'task-list'
-              ? `${marker[1]} [ ] `
-              : `${marker[1]} `;
+    let body = `${marker[1]} `;
+    if (item.kind === 'numbered-list') body = `${Number(marker[2]) + 1}${marker[3]} `;
+    else if (item.kind === 'task-list') body = `${marker[1]} [ ] `;
     const text = `\n${outerIndent}${innerIndent}${body}`;
     return {
         range: { start: position, end: position },

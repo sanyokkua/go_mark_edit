@@ -61,7 +61,7 @@ function physicalKeyToken(event: KeyboardLikeEvent): string | undefined {
     const code = event.code;
     if (code === undefined) return undefined;
     if (/^Key[A-Z]$/.test(code)) return code.slice(3);
-    if (/^Digit[0-9]$/.test(code)) return code.slice(5);
+    if (/^Digit\d$/.test(code)) return code.slice(5);
     const punctuation: Record<string, string> = {
         Comma: ',',
         Period: '.',

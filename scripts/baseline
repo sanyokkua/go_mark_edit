@@ -24,11 +24,13 @@ while [[ $# -gt 0 ]]; do
     shift
 done
 
+cd "$REPO_ROOT"
 feature="$(baseline_name)"
 baseline_path="$REPO_ROOT/.local_tmp_files/baseline/$feature.json"
 new_run_dir baseline >/dev/null
 printf '[gomarkedit] artifacts: %s\n' "$RUN_DIR"
-git diff --binary HEAD >"$RUN_DIR/initial.diff"
+initial_commit="$(git rev-parse HEAD)"
+git diff --binary "$initial_commit" -- >"$RUN_DIR/initial.diff"
 git status --porcelain -z >"$RUN_DIR/initial.status"
 
 failed=0
@@ -64,6 +66,7 @@ else
     node "$REPO_ROOT/tools/verify/results.mjs" baseline \
         --feature "$feature" \
         --run-dir "$RUN_DIR" \
+        --commit "$initial_commit" \
         --diff-file "$RUN_DIR/initial.diff" \
         --status-file "$RUN_DIR/initial.status" \
         --output "$baseline_path"

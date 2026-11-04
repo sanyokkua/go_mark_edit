@@ -21,8 +21,6 @@ export interface NotificationNotice {
     readonly tone?: NotificationTone;
 }
 
-export type LegacyNotificationSeverity = NotificationTone;
-
 export interface LegacyNotificationRemediation {
     readonly action: string;
     readonly labelKey: string;
@@ -38,7 +36,7 @@ export interface LegacyNotification {
     readonly refreshGeneration?: number;
     readonly remediations: readonly LegacyNotificationRemediation[];
     readonly persistent?: boolean;
-    readonly severity: LegacyNotificationSeverity;
+    readonly severity: NotificationTone;
     readonly subject?: string;
     readonly title: string;
 }

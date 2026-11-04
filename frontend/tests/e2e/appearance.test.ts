@@ -237,16 +237,21 @@ test('keeps compact Settings theme rows labeled, stacked, and frame-bounded', as
 test('applies the pre-paint theme mirror before backend reconciliation and keeps Settings focused', async ({ app }) => {
     await app.page.addInitScript(() => {
         const writes: Array<{ mode: string | null; theme: string | null }> = [];
-        const setAttribute = Element.prototype.setAttribute;
-        Element.prototype.setAttribute = function (name: string, value: string): void {
-            setAttribute.call(this, name, value);
-            if (this === document.documentElement && (name === 'data-theme' || name === 'data-mode')) {
-                writes.push({
-                    mode: this.getAttribute('data-mode'),
-                    theme: this.getAttribute('data-theme'),
-                });
+        const observer = new MutationObserver((records) => {
+            for (const record of records) {
+                if (record.target === document.documentElement) {
+                    writes.push({
+                        mode: document.documentElement.getAttribute('data-mode'),
+                        theme: document.documentElement.getAttribute('data-theme'),
+                    });
+                }
             }
-        };
+        });
+        observer.observe(document, {
+            attributes: true,
+            attributeFilter: ['data-theme', 'data-mode'],
+            subtree: true,
+        });
         localStorage.setItem('gme.theme', JSON.stringify({ version: 1, theme: 'minimal', mode: 'dark' }));
         (
             globalThis as typeof globalThis & {

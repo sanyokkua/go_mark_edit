@@ -6,29 +6,28 @@ import type { TextEdit, TidyOutcome } from './protocol';
 
 type TreeValue = string | number | boolean | null | TreeValue[] | { [key: string]: TreeValue };
 
-function normalize(value: unknown): TreeValue {
-    if (Array.isArray(value)) {
-        const children = value.map(normalize);
-        const merged: TreeValue[] = [];
-        for (const child of children) {
-            const previous = merged.at(-1);
-            if (
-                typeof child === 'object' &&
-                child !== null &&
-                !Array.isArray(child) &&
-                child.type === 'text' &&
-                typeof previous === 'object' &&
-                previous !== null &&
-                !Array.isArray(previous) &&
-                previous.type === 'text' &&
-                typeof previous.value === 'string' &&
-                typeof child.value === 'string'
-            ) {
-                previous.value += child.value;
-            } else merged.push(child);
-        }
-        return merged;
+function isTextNode(value: TreeValue | undefined): value is { [key: string]: TreeValue; value: string } {
+    return (
+        typeof value === 'object' &&
+        value !== null &&
+        !Array.isArray(value) &&
+        value.type === 'text' &&
+        typeof value.value === 'string'
+    );
+}
+
+function normalizeArray(value: unknown[]): TreeValue[] {
+    const merged: TreeValue[] = [];
+    for (const child of value.map(normalize)) {
+        const previous = merged.at(-1);
+        if (isTextNode(child) && isTextNode(previous)) previous.value += child.value;
+        else merged.push(child);
     }
+    return merged;
+}
+
+function normalize(value: unknown): TreeValue {
+    if (Array.isArray(value)) return normalizeArray(value);
     if (typeof value === 'object' && value !== null) {
         const result: { [key: string]: TreeValue } = {};
         for (const [key, item] of Object.entries(value)) {

@@ -537,7 +537,9 @@ test('keeps each tab’s undo history when switching documents', async ({ app })
     await openRecentFromLauncher(page, 'undo-a.md');
     await openRecentFromFileMenu(page, 'undo-b.md');
     await disableAutosave(page);
-    await page.getByRole('tab', { name: 'undo-a.md' }).click();
+    const firstTab = page.getByRole('tab', { name: 'undo-a.md' });
+    const lastTab = page.getByRole('tab', { name: 'undo-b.md' });
+    await firstTab.click();
     await expect(page.locator('[data-editor-surface] .view-lines').first()).toHaveText('Alpha');
     const editor = page.locator('[data-editor-surface] textarea').first();
     await page.locator('[data-editor-surface] .view-lines').first().click();
@@ -545,11 +547,13 @@ test('keeps each tab’s undo history when switching documents', async ({ app })
     await editor.press('End');
     await page.keyboard.insertText('abc');
     await expect.poll(() => activeBufferContent(page)).toBe('Alphaabc');
-    await page.getByRole('tab', { name: 'undo-b.md' }).click();
+    await firstTab.press('End');
     await expect.poll(() => activeBufferContent(page)).toBe('Beta');
+    await expect(lastTab).toBeFocused();
     await expect(page.locator('[data-editor-surface] .view-lines').first()).toHaveText('Beta');
-    await page.getByRole('tab', { name: 'undo-a.md' }).click();
+    await lastTab.press('Home');
     await expect.poll(() => activeBufferContent(page)).toBe('Alphaabc');
+    await expect(firstTab).toBeFocused();
     await expect(page.locator('[data-editor-surface] .view-lines').first()).toHaveText('Alphaabc');
     await page.locator('[data-editor-surface] .view-lines').first().click();
     await editor.press(`${await editorModifier(page)}+z`);
@@ -826,6 +830,35 @@ for (const dismissFirst of [false, true]) {
         }
     });
 }
+
+test('keeps a long read-only marker and filename within the tab', async ({ app }) => {
+    const filename = 'Detailed documentation about the next product release.md';
+    const source = await app.writeDocument(filename, '# Read-only\n');
+    await chmod(source, 0o444);
+    await app.seedRecents([source]);
+    await app.launch();
+    await openRecentFromLauncher(app.page, filename);
+
+    const tab = app.page.getByRole('tab', { name: filename });
+    await expect(tab).toHaveAccessibleDescription(`Read-only · ${await realpath(source)}`);
+    const marker = tab.getByText('Read-only', { exact: true });
+    await expect(marker).toBeVisible();
+    // Only English is bundled, so use a longer translation to exercise the real tab geometry.
+    const layout = await marker.evaluate((element) => {
+        const tabButton = element.closest('[role="tab"]')!;
+        const basename = [...tabButton.children].find((child) =>
+            child.textContent?.includes('Detailed documentation'),
+        )!;
+        element.textContent = 'Nur mit eingeschränkten Leseberechtigungen verfügbar';
+        return {
+            tabRight: tabButton.getBoundingClientRect().right,
+            markerRight: element.getBoundingClientRect().right,
+            basenameWidth: basename.getBoundingClientRect().width,
+        };
+    });
+    expect(layout.basenameWidth).toBeGreaterThan(20);
+    expect(layout.markerRight).toBeLessThanOrEqual(layout.tabRight + 1);
+});
 
 test('Save As copies an opened write-protected file and makes the copy editable', async ({ app }) => {
     const original = '# Protected\n\n- item\n';

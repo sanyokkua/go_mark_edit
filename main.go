@@ -194,18 +194,7 @@ func newAppOptions(applicationContext *application.ApplicationContextHolder) *op
 }
 
 func newAppOptionsWithLogger(applicationContext *application.ApplicationContextHolder, appLogger *logging.Logger, overrides ...nativeRuntimePorts) *options.App {
-	ports := productionNativeRuntimePorts()
-	if len(overrides) > 0 {
-		if overrides[0].showStartupRecoveryWindow != nil {
-			ports.showStartupRecoveryWindow = overrides[0].showStartupRecoveryWindow
-		}
-		if overrides[0].emitNativeCloseRequest != nil {
-			ports.emitNativeCloseRequest = overrides[0].emitNativeCloseRequest
-		}
-		if overrides[0].quitNativeApplication != nil {
-			ports.quitNativeApplication = overrides[0].quitNativeApplication
-		}
-	}
+	ports := nativePortsWithOverrides(overrides)
 	applicationContext.SetNativeWindow(wailsNativeWindow{})
 	applicationContext.ConfigureShutdown(
 		application.WithCloseRequestedEmitter(ports.emitNativeCloseRequest),
@@ -235,23 +224,7 @@ func newAppOptionsWithLogger(applicationContext *application.ApplicationContextH
 		PreviewHandler: application.NewPreviewImageHandler(applicationContext.AppModelService),
 		Menu:           nativeMenuForPlatform(goruntime.GOOS),
 		OnFileOpen:     applicationContext.AcceptOpenRequest,
-		OnStartup: func(ctx context.Context) {
-			applicationContext.SetContext(ctx)
-			if err := applicationContext.Init(ctx); err != nil {
-				if appLogger != nil {
-					appLogger.Error(err.Error())
-				}
-				ports.showStartupRecoveryWindow(ctx)
-				return
-			}
-			if err := applicationContext.RestoreNativeWindow(ctx); err != nil {
-				if appLogger != nil {
-					appLogger.Error(err.Error())
-				}
-				ports.showStartupRecoveryWindow(ctx)
-				return
-			}
-		},
+		OnStartup:      startupApplication(applicationContext, appLogger, ports.showStartupRecoveryWindow),
 		OnShutdown: func(_ context.Context) {
 			_ = applicationContext.Close()
 			if appLogger != nil {
@@ -265,6 +238,39 @@ func newAppOptionsWithLogger(applicationContext *application.ApplicationContextH
 		EnumBind: []interface{}{apperr.AllErrorCodes},
 		Logger:   appLogger,
 	})
+}
+
+func nativePortsWithOverrides(overrides []nativeRuntimePorts) nativeRuntimePorts {
+	ports := productionNativeRuntimePorts()
+	if len(overrides) == 0 {
+		return ports
+	}
+	if overrides[0].showStartupRecoveryWindow != nil {
+		ports.showStartupRecoveryWindow = overrides[0].showStartupRecoveryWindow
+	}
+	if overrides[0].emitNativeCloseRequest != nil {
+		ports.emitNativeCloseRequest = overrides[0].emitNativeCloseRequest
+	}
+	if overrides[0].quitNativeApplication != nil {
+		ports.quitNativeApplication = overrides[0].quitNativeApplication
+	}
+	return ports
+}
+
+func startupApplication(applicationContext *application.ApplicationContextHolder, appLogger *logging.Logger, showRecovery func(context.Context)) func(context.Context) {
+	return func(ctx context.Context) {
+		applicationContext.SetContext(ctx)
+		err := applicationContext.Init(ctx)
+		if err == nil {
+			err = applicationContext.RestoreNativeWindow(ctx)
+		}
+		if err != nil {
+			if appLogger != nil {
+				appLogger.Error(err.Error())
+			}
+			showRecovery(ctx)
+		}
+	}
 }
 
 type wailsNativeWindow struct{}

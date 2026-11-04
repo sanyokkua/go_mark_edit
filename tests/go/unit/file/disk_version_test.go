@@ -81,23 +81,7 @@ func TestDiskVersionFromPathTable(t *testing.T) {
 		t.Fatalf("mode = %04o, want filesystem-reported writable mode %04o", present.Mode, observedInfo.Mode().Perm())
 	}
 
-	if err := os.Chmod(path, 0o400); err != nil {
-		t.Fatalf("change mode: %v", err)
-	}
-	modeChanged, err := CurrentDiskVersion(path)
-	if err != nil {
-		t.Fatalf("stat mode-changed path: %v", err)
-	}
-	if present.Equal(modeChanged) {
-		t.Fatalf("mode change was not detected: before=%+v after=%+v", present, modeChanged)
-	}
-	changedInfo, err := os.Stat(path)
-	if err != nil {
-		t.Fatalf("stat document after chmod: %v", err)
-	}
-	if modeChanged.Mode != changedInfo.Mode().Perm() || modeChanged.Mode == present.Mode {
-		t.Fatalf("changed mode = %04o, want filesystem-reported mode different from %04o", modeChanged.Mode, present.Mode)
-	}
+	assertDiskVersionModeChange(t, path, present)
 
 	if err := os.Remove(path); err != nil {
 		t.Fatalf("remove document: %v", err)
@@ -191,4 +175,26 @@ func TestCurrentDiskVersionRejectsInvalidPath(t *testing.T) {
 	if _, err := CurrentDiskVersion(""); err == nil {
 		t.Fatal("empty path should return an error")
 	}
+}
+
+func assertDiskVersionModeChange(t *testing.T, path string, present DiskVersion) {
+	t.Helper()
+	if err := os.Chmod(path, 0o400); err != nil {
+		t.Fatalf("change mode: %v", err)
+	}
+	modeChanged, err := CurrentDiskVersion(path)
+	if err != nil {
+		t.Fatalf("stat mode-changed path: %v", err)
+	}
+	if present.Equal(modeChanged) {
+		t.Fatalf("mode change was not detected: before=%+v after=%+v", present, modeChanged)
+	}
+	changedInfo, err := os.Stat(path)
+	if err != nil {
+		t.Fatalf("stat document after chmod: %v", err)
+	}
+	if modeChanged.Mode != changedInfo.Mode().Perm() || modeChanged.Mode == present.Mode {
+		t.Fatalf("changed mode = %04o, want filesystem-reported mode different from %04o", modeChanged.Mode, present.Mode)
+	}
+
 }

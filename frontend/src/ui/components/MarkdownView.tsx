@@ -34,7 +34,7 @@ interface PreviewImageProps {
     title?: string;
 }
 
-function PreviewImage({ alt, source, title }: PreviewImageProps): React.JSX.Element {
+function PreviewImage({ alt, source, title }: Readonly<PreviewImageProps>): React.JSX.Element {
     const [failedSource, setFailedSource] = useState<string>();
     if (source === undefined || failedSource === source) {
         return renderImageFallback(alt);
@@ -129,8 +129,7 @@ const components: Components = {
             </div>
         );
     },
-    img: function PreviewResolvedImage({ alt, node: _node, src, title }): React.JSX.Element {
-        void _node;
+    img: function PreviewResolvedImage({ alt, src, title }): React.JSX.Element {
         const { imageSourceResolver } = useContext(PreviewRuntimeContext);
         let source: string | undefined;
         if (src !== undefined) {
@@ -262,12 +261,10 @@ class CommittedPreview extends Component<CommittedPreviewProps, CommittedPreview
     render(): React.JSX.Element | null {
         const { candidate, committedPreview, documentId } = this.props;
         if (candidate === null) return null;
-        const retained =
-            this.committed?.documentId === documentId
-                ? this.committed
-                : committedPreview?.documentId === documentId
-                  ? committedPreview
-                  : null;
+        let retained: CommittedMarkdownPreview | null | undefined = this.committed;
+        if (retained?.documentId !== documentId) {
+            retained = committedPreview?.documentId === documentId ? committedPreview : null;
+        }
         if (candidate.failed || this.state.failed) {
             return retained === null || retained === undefined ? (
                 <p role="alert">{t('preview.renderError.empty')}</p>

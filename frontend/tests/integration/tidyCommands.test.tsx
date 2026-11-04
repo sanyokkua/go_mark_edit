@@ -916,6 +916,22 @@ it('turns an editor read error after the worker resolves into a failed outcome',
     expect(slotSnapshot()).toEqual({ state: 'idle' });
 });
 
+it('reports a failed outcome when the editor becomes unavailable while applying edits', async () => {
+    const pending = deferred<TidyOutcome>();
+    mockRunTidy.mockReturnValue(pending.promise);
+    render(view({ documentId: 'first', content: 'line \n' }));
+    await screen.findByRole('textbox', { name: 'Markdown source' });
+    fireEvent.click(screen.getByRole('button', { name: 'Format' }));
+    const runtime = runtimes.at(-1)!;
+    const model = runtime.editor.getModel();
+    jest.spyOn(runtime.editor, 'getModel').mockReturnValueOnce(model).mockReturnValueOnce(null);
+    await settle(pending, { kind: 'edits', edits: [{ from: 0, to: 1, text: 'X' }] });
+    expect(screen.getByRole('status', { name: 'Tidy outcome' })).toHaveTextContent('failed');
+    expect(runtime.content).toBe('line \n');
+    expect(noticeCodes()).toContain('tidy-failed');
+    expect(slotSnapshot()).toEqual({ state: 'idle' });
+});
+
 it('runs the same Markdown lint and formatting for .txt and .md active documents', async () => {
     mockRunTidy.mockImplementation((value) => {
         const request = value as TidyRequest;

@@ -11,7 +11,12 @@ import (
 	"github.com/sanyokkua/go_mark_edit/internal/file"
 )
 
-const closePlanNoLongerCurrent = "The close plan is no longer current."
+const (
+	closePlanNoLongerCurrent = "The close plan is no longer current."
+	closePlanResource        = "close plan"
+	closePlanInactive        = "The close plan is no longer active."
+	closePlanDocumentClosed  = "The document is no longer open."
+)
 
 // closePlan is the backend-owned, revision-bound transaction. The exported
 // summary is rebuilt on every response; callers cannot mutate this source of
@@ -53,30 +58,30 @@ type closePlanTarget struct {
 // writes, discards, or removes a document as a consequence of planning.
 func (service *AppModelService) PrepareClose(ctx context.Context, kind apperr.ClosePlanKind, targetDocumentIDs []string, expectedTabSetRevision uint64) apperr.ClosePlanResult {
 	if !validClosePlanKind(kind) {
-		return bridge.Refused[apperr.ClosePlanResult](apperr.ClassifiedUnsupportedInput, "close plan", "The close operation is not supported.", apperr.RemediationNone)
+		return bridge.Refused[apperr.ClosePlanResult](apperr.ClassifiedUnsupportedInput, closePlanResource, "The close operation is not supported.", apperr.RemediationNone)
 	}
 
 	service.mu.Lock()
 	if err := service.validateCloseOwnershipLocked(""); err != nil {
 		service.mu.Unlock()
-		return bridge.Refused[apperr.ClosePlanResult](apperr.ClassifiedConflict, "close plan", err.Error(), apperr.RemediationRetry)
+		return bridge.Refused[apperr.ClosePlanResult](apperr.ClassifiedConflict, closePlanResource, err.Error(), apperr.RemediationRetry)
 	}
 	nativeCloseID := ""
 	if kind == apperr.ClosePlanQuit {
 		if service.pendingClose == nil || service.pendingClose.Owner != apperr.PendingCloseOwnerFrontend {
 			service.mu.Unlock()
-			return bridge.Refused[apperr.ClosePlanResult](apperr.ClassifiedConflict, "close plan", "The frontend does not own a quit request.", apperr.RemediationRetry)
+			return bridge.Refused[apperr.ClosePlanResult](apperr.ClassifiedConflict, closePlanResource, "The frontend does not own a quit request.", apperr.RemediationRetry)
 		}
 		nativeCloseID = service.pendingClose.ID
 	}
 	if service.state.tabSetRevision != expectedTabSetRevision {
 		service.mu.Unlock()
-		return bridge.Refused[apperr.ClosePlanResult](apperr.ClassifiedConflict, "close plan", "The tab set changed; close must be retried.", apperr.RemediationRetry)
+		return bridge.Refused[apperr.ClosePlanResult](apperr.ClassifiedConflict, closePlanResource, "The tab set changed; close must be retried.", apperr.RemediationRetry)
 	}
 	requested, err := closePlanTargetOrderLocked(service.state.orderedDocumentIDs, service.state.documents, kind, targetDocumentIDs)
 	if err != nil {
 		service.mu.Unlock()
-		return bridge.Refused[apperr.ClosePlanResult](apperr.ClassifiedNotFound, "close plan", err.Error(), apperr.RemediationNone)
+		return bridge.Refused[apperr.ClosePlanResult](apperr.ClassifiedNotFound, closePlanResource, err.Error(), apperr.RemediationNone)
 	}
 	if result := service.reuseOrSupersedeClosePlanLocked(kind, nativeCloseID, expectedTabSetRevision, requested); result != nil {
 		service.mu.Unlock()
@@ -94,14 +99,14 @@ func (service *AppModelService) PrepareClose(ctx context.Context, kind apperr.Cl
 	service.mu.Lock()
 	defer service.mu.Unlock()
 	if err := service.validateCloseOwnershipLocked(nativeCloseID); err != nil {
-		return bridge.Refused[apperr.ClosePlanResult](apperr.ClassifiedConflict, "close plan", err.Error(), apperr.RemediationRetry)
+		return bridge.Refused[apperr.ClosePlanResult](apperr.ClassifiedConflict, closePlanResource, err.Error(), apperr.RemediationRetry)
 	}
 	if service.state.tabSetRevision != expectedTabSetRevision {
-		return bridge.Refused[apperr.ClosePlanResult](apperr.ClassifiedConflict, "close plan", "The tab set changed while autosave work drained.", apperr.RemediationRetry)
+		return bridge.Refused[apperr.ClosePlanResult](apperr.ClassifiedConflict, closePlanResource, "The tab set changed while autosave work drained.", apperr.RemediationRetry)
 	}
 	for _, documentID := range requested {
 		if _, ok := service.state.documents[documentID]; !ok {
-			return bridge.Refused[apperr.ClosePlanResult](apperr.ClassifiedNotFound, documentID, "The document is no longer open.", apperr.RemediationNone)
+			return bridge.Refused[apperr.ClosePlanResult](apperr.ClassifiedNotFound, documentID, closePlanDocumentClosed, apperr.RemediationNone)
 		}
 	}
 
@@ -149,7 +154,7 @@ func (service *AppModelService) reuseOrSupersedeClosePlanLocked(kind apperr.Clos
 		result := closePlanSummaryResult(existing)
 		return &result
 	case existing.summary.Status == apperr.ClosePlanExecuting:
-		result := bridge.Refused[apperr.ClosePlanResult](apperr.ClassifiedConflict, "close plan", "A close is already saving; wait for it to finish.", apperr.RemediationRetry)
+		result := bridge.Refused[apperr.ClosePlanResult](apperr.ClassifiedConflict, closePlanResource, "A close is already saving; wait for it to finish.", apperr.RemediationRetry)
 		return &result
 	default:
 		service.invalidateClosePlanLocked(existing, apperr.ClosePlanCancelled)
@@ -167,7 +172,7 @@ func (service *AppModelService) ResolveClosePlan(ctx context.Context, planID str
 	plan := service.closePlans[planID]
 	if plan == nil || service.activeClosePlan != planID {
 		service.mu.Unlock()
-		return bridge.Refused[apperr.ClosePlanResult](apperr.ClassifiedNotFound, planID, "The close plan is no longer active.", apperr.RemediationNone)
+		return bridge.Refused[apperr.ClosePlanResult](apperr.ClassifiedNotFound, planID, closePlanInactive, apperr.RemediationNone)
 	}
 	if err := service.validateCloseOwnershipLocked(plan.nativeCloseID); err != nil {
 		service.mu.Unlock()
@@ -196,6 +201,191 @@ func (service *AppModelService) ResolveClosePlan(ctx context.Context, planID str
 		service.mu.Unlock()
 		return result
 	}
+	setClosePlanDecisionsLocked(plan, choices, decisions)
+	targets := append([]closePlanTarget(nil), plan.targets...)
+	service.mu.Unlock()
+
+	if result := service.resolveClosePlanNormalization(planID, targets); result != nil {
+		return *result
+	}
+
+	if result := service.resolveClosePlanSaveTargets(ctx, planID, targets); result != nil {
+		return *result
+	}
+
+	if result := service.inspectClosePlanTargets(ctx, planID, targets); result != nil {
+		return *result
+	}
+
+	service.mu.Lock()
+	plan = service.closePlans[planID]
+	if plan == nil || service.activeClosePlan != planID {
+		service.mu.Unlock()
+		return bridge.Refused[apperr.ClosePlanResult](apperr.ClassifiedConflict, planID, closePlanInactive, apperr.RemediationRetry)
+	}
+	if err := service.validateClosePlanLocked(plan); err != nil {
+		service.mu.Unlock()
+		return bridge.Refused[apperr.ClosePlanResult](apperr.ClassifiedConflict, planID, err.Error(), apperr.RemediationRetry)
+	}
+	plan.summary.Status = apperr.ClosePlanReady
+	result := closePlanSummaryResult(plan)
+	service.mu.Unlock()
+	return result
+}
+
+func (service *AppModelService) resolveClosePlanNormalization(planID string, targets []closePlanTarget) *apperr.ClosePlanResult {
+	// Required mixed-ending authorizations are collected before any conflict
+	// inspection or write. The returned token is intentionally single-use and
+	// remains bound to this exact plan target revision.
+	for index := range targets {
+		if targets[index].choice != apperr.CloseChoiceSave {
+			continue
+		}
+		service.mu.Lock()
+		current := service.closePlans[planID]
+		if current == nil || service.activeClosePlan != planID {
+			service.mu.Unlock()
+			return closePlanResultPointer(bridge.Refused[apperr.ClosePlanResult](apperr.ClassifiedConflict, planID, closePlanInactive, apperr.RemediationRetry))
+		}
+		if err := service.validateClosePlanLocked(current); err != nil {
+			service.mu.Unlock()
+			return closePlanResultPointer(bridge.Refused[apperr.ClosePlanResult](apperr.ClassifiedConflict, planID, err.Error(), apperr.RemediationRetry))
+		}
+		target := &current.targets[index]
+		document := service.state.documents[target.documentID]
+		if document == nil || document.metadata.ContentRevision != target.contentRevision {
+			service.invalidateClosePlanLocked(current, apperr.ClosePlanFailed)
+			service.mu.Unlock()
+			return closePlanResultPointer(bridge.Refused[apperr.ClosePlanResult](apperr.ClassifiedConflict, target.documentID, "The document changed while the close plan was being resolved.", apperr.RemediationRetry))
+		}
+		if document.metadata.LineEnding == "mixed" && !validNormalizationTokenLocked(service, target.normalizationToken, target.documentID, target.contentRevision) {
+			requested := service.requestNormalizationLocked(target.documentID, target.contentRevision)
+			target.normalizationToken = requested.DecisionToken
+			service.setNormalizationRequirementLocked(&current.summary.Targets[index], requested)
+			result := closePlanSummaryResult(current)
+			service.mu.Unlock()
+			return &result
+		}
+		service.mu.Unlock()
+	}
+
+	return nil
+}
+
+func (service *AppModelService) resolveClosePlanSaveTargets(ctx context.Context, planID string, targets []closePlanTarget) *apperr.ClosePlanResult {
+	// Save As is a native decision, so collect its target and overwrite
+	// confirmation before the first batch write. The reservation remains held
+	// by the plan until execution succeeds or the plan is invalidated.
+	for index := range targets {
+		if targets[index].choice != apperr.CloseChoiceSave {
+			continue
+		}
+		if result := service.resolveClosePlanSaveTarget(ctx, planID, index); result != nil {
+			return result
+		}
+	}
+
+	return nil
+}
+
+func (service *AppModelService) inspectClosePlanTargets(ctx context.Context, planID string, targets []closePlanTarget) *apperr.ClosePlanResult {
+	// Inspect every path-backed save before any write starts. This queues an
+	// external conflict for the UI and accepts a Keep-mine token on a later
+	// resolution pass without allowing an earlier target to be written first.
+	for index := range targets {
+		if targets[index].choice != apperr.CloseChoiceSave {
+			continue
+		}
+		if result := service.inspectClosePlanTarget(ctx, planID, index); result != nil {
+			return result
+		}
+	}
+	return nil
+}
+
+func (service *AppModelService) resolveClosePlanSaveTarget(ctx context.Context, planID string, index int) *apperr.ClosePlanResult {
+	service.mu.RLock()
+	current := service.closePlans[planID]
+	needsSaveAs := current != nil && index < len(current.targets) && current.targets[index].savePath == ""
+	document := (*openDocument)(nil)
+	if current != nil && index < len(current.targets) {
+		document = service.state.documents[current.targets[index].documentID]
+	}
+	pathless := document != nil && document.metadata.Path == ""
+	service.mu.RUnlock()
+	if !needsSaveAs || !pathless {
+		return nil
+	}
+	classified, cancelled := service.resolveClosePlanSaveAs(ctx, planID, index)
+	if classified != nil {
+		return closePlanResultPointer(bridge.FromClassified[apperr.ClosePlanResult](classified))
+	}
+	if cancelled {
+		service.mu.Lock()
+		current = service.closePlans[planID]
+		if current == nil || service.validateCloseOwnershipLocked(current.nativeCloseID) != nil {
+			service.mu.Unlock()
+			return closePlanResultPointer(bridge.Refused[apperr.ClosePlanResult](apperr.ClassifiedConflict, planID, closePlanNoLongerCurrent, apperr.RemediationRetry))
+		}
+		result := closePlanSummaryResult(current)
+		service.mu.Unlock()
+		return &result
+	}
+	return nil
+}
+
+func (service *AppModelService) inspectClosePlanTarget(ctx context.Context, planID string, index int) *apperr.ClosePlanResult {
+	service.mu.Lock()
+	current := service.closePlans[planID]
+	if current == nil || service.activeClosePlan != planID {
+		service.mu.Unlock()
+		return closePlanResultPointer(bridge.Refused[apperr.ClosePlanResult](apperr.ClassifiedConflict, planID, closePlanInactive, apperr.RemediationRetry))
+	}
+	if err := service.validateClosePlanLocked(current); err != nil {
+		service.mu.Unlock()
+		return closePlanResultPointer(bridge.Refused[apperr.ClosePlanResult](apperr.ClassifiedConflict, planID, err.Error(), apperr.RemediationRetry))
+	}
+	target := current.targets[index]
+	service.mu.Unlock()
+	decisionToken := target.normalizationToken
+	result := service.prepareWriteDisk(ctx, target.documentID, target.contentRevision, decisionToken)
+	if result.Status == apperr.WriteStatusConflict {
+		service.mu.Lock()
+		current = service.closePlans[planID]
+		if current == nil || service.activeClosePlan != planID || service.validateClosePlanLocked(current) != nil {
+			service.mu.Unlock()
+			return closePlanResultPointer(bridge.Refused[apperr.ClosePlanResult](apperr.ClassifiedConflict, planID, closePlanNoLongerCurrent, apperr.RemediationRetry))
+		}
+		current.summary.Targets[index].Conflict = result.Conflict
+		response := closePlanSummaryResult(current)
+		service.mu.Unlock()
+		return &response
+	}
+	service.mu.Lock()
+	current = service.closePlans[planID]
+	if current == nil || service.activeClosePlan != planID || service.validateClosePlanLocked(current) != nil {
+		service.mu.Unlock()
+		return closePlanResultPointer(bridge.Refused[apperr.ClosePlanResult](apperr.ClassifiedConflict, planID, closePlanNoLongerCurrent, apperr.RemediationRetry))
+	}
+	if current != nil && index < len(current.summary.Targets) {
+		current.summary.Targets[index].Conflict = nil
+	}
+	service.mu.Unlock()
+	if result.Status == apperr.WriteStatusRefused {
+		category := apperr.ClassifiedIOFailure
+		if result.Error != nil {
+			category = result.Error.Category
+		}
+		return closePlanResultPointer(bridge.Refused[apperr.ClosePlanResult](category, target.documentID, "The close plan could not inspect the file.", apperr.RemediationRetry))
+	}
+	return nil
+}
+
+func closePlanResultPointer(result apperr.ClosePlanResult) *apperr.ClosePlanResult {
+	return &result
+}
+
+func setClosePlanDecisionsLocked(plan *closePlan, choices map[string]apperr.CloseChoice, decisions []apperr.ClosePlanDecision) {
 	for index := range plan.targets {
 		plan.targets[index].choice = choices[plan.targets[index].documentID]
 		plan.summary.Targets[index].Choice = plan.targets[index].choice
@@ -208,148 +398,6 @@ func (service *AppModelService) ResolveClosePlan(ctx context.Context, planID str
 			}
 		}
 	}
-	targets := append([]closePlanTarget(nil), plan.targets...)
-	service.mu.Unlock()
-
-	// Required mixed-ending authorizations are collected before any conflict
-	// inspection or write. The returned token is intentionally single-use and
-	// remains bound to this exact plan target revision.
-	for index := range targets {
-		if targets[index].choice != apperr.CloseChoiceSave {
-			continue
-		}
-		service.mu.Lock()
-		current := service.closePlans[planID]
-		if current == nil || service.activeClosePlan != planID {
-			service.mu.Unlock()
-			return bridge.Refused[apperr.ClosePlanResult](apperr.ClassifiedConflict, planID, "The close plan is no longer active.", apperr.RemediationRetry)
-		}
-		if err := service.validateClosePlanLocked(current); err != nil {
-			service.mu.Unlock()
-			return bridge.Refused[apperr.ClosePlanResult](apperr.ClassifiedConflict, planID, err.Error(), apperr.RemediationRetry)
-		}
-		target := &current.targets[index]
-		document := service.state.documents[target.documentID]
-		if document == nil || document.metadata.ContentRevision != target.contentRevision {
-			service.invalidateClosePlanLocked(current, apperr.ClosePlanFailed)
-			service.mu.Unlock()
-			return bridge.Refused[apperr.ClosePlanResult](apperr.ClassifiedConflict, target.documentID, "The document changed while the close plan was being resolved.", apperr.RemediationRetry)
-		}
-		if document.metadata.LineEnding == "mixed" && !validNormalizationTokenLocked(service, target.normalizationToken, target.documentID, target.contentRevision) {
-			requested := service.requestNormalizationLocked(target.documentID, target.contentRevision)
-			target.normalizationToken = requested.DecisionToken
-			service.setNormalizationRequirementLocked(&current.summary.Targets[index], requested)
-			result := closePlanSummaryResult(current)
-			service.mu.Unlock()
-			return result
-		}
-		service.mu.Unlock()
-	}
-
-	// Save As is a native decision, so collect its target and overwrite
-	// confirmation before the first batch write. The reservation remains held
-	// by the plan until execution succeeds or the plan is invalidated.
-	for index := range targets {
-		if targets[index].choice != apperr.CloseChoiceSave {
-			continue
-		}
-		service.mu.RLock()
-		current := service.closePlans[planID]
-		needsSaveAs := current != nil && index < len(current.targets) && current.targets[index].savePath == ""
-		document := (*openDocument)(nil)
-		if current != nil && index < len(current.targets) {
-			document = service.state.documents[current.targets[index].documentID]
-		}
-		pathless := document != nil && document.metadata.Path == ""
-		service.mu.RUnlock()
-		if !needsSaveAs || !pathless {
-			continue
-		}
-		classified, cancelled := service.resolveClosePlanSaveAs(ctx, planID, index)
-		if classified != nil {
-			return bridge.FromClassified[apperr.ClosePlanResult](classified)
-		}
-		if cancelled {
-			service.mu.Lock()
-			current = service.closePlans[planID]
-			if current == nil || service.validateCloseOwnershipLocked(current.nativeCloseID) != nil {
-				service.mu.Unlock()
-				return bridge.Refused[apperr.ClosePlanResult](apperr.ClassifiedConflict, planID, closePlanNoLongerCurrent, apperr.RemediationRetry)
-			}
-			result := closePlanSummaryResult(current)
-			service.mu.Unlock()
-			return result
-		}
-	}
-
-	// Inspect every path-backed save before any write starts. This queues an
-	// external conflict for the UI and accepts a Keep-mine token on a later
-	// resolution pass without allowing an earlier target to be written first.
-	for index := range targets {
-		if targets[index].choice != apperr.CloseChoiceSave {
-			continue
-		}
-		service.mu.Lock()
-		current := service.closePlans[planID]
-		if current == nil || service.activeClosePlan != planID {
-			service.mu.Unlock()
-			return bridge.Refused[apperr.ClosePlanResult](apperr.ClassifiedConflict, planID, "The close plan is no longer active.", apperr.RemediationRetry)
-		}
-		if err := service.validateClosePlanLocked(current); err != nil {
-			service.mu.Unlock()
-			return bridge.Refused[apperr.ClosePlanResult](apperr.ClassifiedConflict, planID, err.Error(), apperr.RemediationRetry)
-		}
-		target := current.targets[index]
-		service.mu.Unlock()
-		decisionToken := target.normalizationToken
-		result := service.prepareWriteDisk(ctx, target.documentID, target.contentRevision, decisionToken)
-		if result.Status == apperr.WriteStatusConflict {
-			service.mu.Lock()
-			current = service.closePlans[planID]
-			if current == nil || service.activeClosePlan != planID || service.validateClosePlanLocked(current) != nil {
-				service.mu.Unlock()
-				return bridge.Refused[apperr.ClosePlanResult](apperr.ClassifiedConflict, planID, closePlanNoLongerCurrent, apperr.RemediationRetry)
-			}
-			if current != nil {
-				current.summary.Targets[index].Conflict = result.Conflict
-			}
-			response := closePlanSummaryResult(current)
-			service.mu.Unlock()
-			return response
-		}
-		service.mu.Lock()
-		current = service.closePlans[planID]
-		if current == nil || service.activeClosePlan != planID || service.validateClosePlanLocked(current) != nil {
-			service.mu.Unlock()
-			return bridge.Refused[apperr.ClosePlanResult](apperr.ClassifiedConflict, planID, closePlanNoLongerCurrent, apperr.RemediationRetry)
-		}
-		if current != nil && index < len(current.summary.Targets) {
-			current.summary.Targets[index].Conflict = nil
-		}
-		service.mu.Unlock()
-		if result.Status == apperr.WriteStatusRefused {
-			category := apperr.ClassifiedIOFailure
-			if result.Error != nil {
-				category = result.Error.Category
-			}
-			return bridge.Refused[apperr.ClosePlanResult](category, target.documentID, "The close plan could not inspect the file.", apperr.RemediationRetry)
-		}
-	}
-
-	service.mu.Lock()
-	plan = service.closePlans[planID]
-	if plan == nil || service.activeClosePlan != planID {
-		service.mu.Unlock()
-		return bridge.Refused[apperr.ClosePlanResult](apperr.ClassifiedConflict, planID, "The close plan is no longer active.", apperr.RemediationRetry)
-	}
-	if err := service.validateClosePlanLocked(plan); err != nil {
-		service.mu.Unlock()
-		return bridge.Refused[apperr.ClosePlanResult](apperr.ClassifiedConflict, planID, err.Error(), apperr.RemediationRetry)
-	}
-	plan.summary.Status = apperr.ClosePlanReady
-	result := closePlanSummaryResult(plan)
-	service.mu.Unlock()
-	return result
 }
 
 // ExecuteClosePlan serializes requested saves in tab order. Ordinary closes
@@ -360,7 +408,7 @@ func (service *AppModelService) ExecuteClosePlan(ctx context.Context, planID str
 	plan := service.closePlans[planID]
 	if plan == nil || service.activeClosePlan != planID {
 		service.mu.Unlock()
-		return bridge.Refused[apperr.TabTransitionResult](apperr.ClassifiedNotFound, planID, "The close plan is no longer active.", apperr.RemediationNone)
+		return bridge.Refused[apperr.TabTransitionResult](apperr.ClassifiedNotFound, planID, closePlanInactive, apperr.RemediationNone)
 	}
 	if err := service.validateCloseOwnershipLocked(plan.nativeCloseID); err != nil {
 		service.mu.Unlock()
@@ -379,33 +427,8 @@ func (service *AppModelService) ExecuteClosePlan(ctx context.Context, planID str
 	targets := append([]closePlanTarget(nil), plan.targets...)
 	service.mu.Unlock()
 
-	for _, target := range targets {
-		if target.choice != apperr.CloseChoiceSave {
-			continue
-		}
-		result := apperr.WriteResult{}
-		if target.savePath != "" {
-			result = service.executeClosePlanSaveAs(ctx, target, planID)
-		} else {
-			result = service.save(ctx, target.documentID, target.contentRevision, target.normalizationToken, planID)
-		}
-		if result.Status == apperr.WriteStatusCommitted {
-			service.emitCommittedSaveWarning(ctx, result)
-		}
-		if result.Status != apperr.WriteStatusCommitted {
-			service.mu.Lock()
-			if current := service.closePlans[planID]; current != nil {
-				service.invalidateClosePlanLocked(current, apperr.ClosePlanFailed)
-			}
-			service.mu.Unlock()
-			category := apperr.ClassifiedIOFailure
-			message := "A close-plan save failed; all tabs remain open."
-			if result.Error != nil {
-				category = result.Error.Category
-				message = result.Error.Message
-			}
-			return bridge.Refused[apperr.TabTransitionResult](category, target.documentID, message, apperr.RemediationRetry)
-		}
+	if result := service.executeClosePlanSaves(ctx, planID, targets); result != nil {
+		return *result
 	}
 
 	service.mu.Lock()
@@ -424,18 +447,10 @@ func (service *AppModelService) ExecuteClosePlan(ctx context.Context, planID str
 		ids = append(ids, target.documentID)
 	}
 	if plan.summary.Kind == apperr.ClosePlanQuit {
-		for index := range plan.targets {
-			target := &plan.targets[index]
-			document := service.state.documents[target.documentID]
-			dirty := service.effectiveDocumentMetadataLocked(document).Dirty
-			if (target.choice == apperr.CloseChoiceSave && (dirty || document.detached)) ||
-				(target.choice != apperr.CloseChoiceSave && (dirty != target.dirty || document.detached != target.detached)) {
-				service.invalidateClosePlanLocked(plan, apperr.ClosePlanFailed)
-				service.mu.Unlock()
-				return bridge.Refused[apperr.TabTransitionResult](apperr.ClassifiedConflict, planID, "A document's save state changed during the quit plan.", apperr.RemediationRetry)
-			}
-			target.dirty = dirty
-			target.detached = document.detached
+		if !service.updatePreparedQuitTargetsLocked(plan) {
+			service.invalidateClosePlanLocked(plan, apperr.ClosePlanFailed)
+			service.mu.Unlock()
+			return bridge.Refused[apperr.TabTransitionResult](apperr.ClassifiedConflict, planID, "A document's save state changed during the quit plan.", apperr.RemediationRetry)
 		}
 		plan.summary.Status = apperr.ClosePlanComplete
 		service.releaseClosePlanReservationsLocked(plan)
@@ -446,6 +461,10 @@ func (service *AppModelService) ExecuteClosePlan(ctx context.Context, planID str
 	revision, nativeCloseID := plan.summary.TabSetRevision, plan.nativeCloseID
 	service.mu.Unlock()
 
+	return service.finishClosePlan(ctx, planID, ids, revision, nativeCloseID)
+}
+
+func (service *AppModelService) finishClosePlan(ctx context.Context, planID string, ids []string, revision uint64, nativeCloseID string) apperr.TabTransitionResult {
 	transition := service.closeDocuments(ctx, ids, &revision, nativeCloseID)
 	service.mu.Lock()
 	if transition.Error == nil {
@@ -462,6 +481,59 @@ func (service *AppModelService) ExecuteClosePlan(ctx context.Context, planID str
 	}
 	service.mu.Unlock()
 	return transition
+}
+
+func (service *AppModelService) updatePreparedQuitTargetsLocked(plan *closePlan) bool {
+	for index := range plan.targets {
+		target := &plan.targets[index]
+		document := service.state.documents[target.documentID]
+		dirty := service.effectiveDocumentMetadataLocked(document).Dirty
+		if (target.choice == apperr.CloseChoiceSave && (dirty || document.detached)) ||
+			(target.choice != apperr.CloseChoiceSave && (dirty != target.dirty || document.detached != target.detached)) {
+			return false
+		}
+		target.dirty = dirty
+		target.detached = document.detached
+	}
+	return true
+}
+
+func (service *AppModelService) executeClosePlanSaves(ctx context.Context, planID string, targets []closePlanTarget) *apperr.TabTransitionResult {
+	for _, target := range targets {
+		if target.choice != apperr.CloseChoiceSave {
+			continue
+		}
+		result := apperr.WriteResult{}
+		if target.savePath != "" {
+			result = service.executeClosePlanSaveAs(ctx, target, planID)
+		} else {
+			result = service.save(ctx, target.documentID, target.contentRevision, target.normalizationToken, planID)
+		}
+		if result.Status == apperr.WriteStatusCommitted {
+			service.emitCommittedSaveWarning(ctx, result)
+		}
+		if result.Status != apperr.WriteStatusCommitted {
+			return service.failClosePlanSave(planID, target.documentID, result)
+		}
+	}
+
+	return nil
+}
+
+func (service *AppModelService) failClosePlanSave(planID, documentID string, result apperr.WriteResult) *apperr.TabTransitionResult {
+	service.mu.Lock()
+	if current := service.closePlans[planID]; current != nil {
+		service.invalidateClosePlanLocked(current, apperr.ClosePlanFailed)
+	}
+	service.mu.Unlock()
+	category := apperr.ClassifiedIOFailure
+	message := "A close-plan save failed; all tabs remain open."
+	if result.Error != nil {
+		category = result.Error.Category
+		message = result.Error.Message
+	}
+	refusal := bridge.Refused[apperr.TabTransitionResult](category, documentID, message, apperr.RemediationRetry)
+	return &refusal
 }
 
 // ClaimPreparedQuit validates the completed plan and transfers the close to
@@ -541,7 +613,7 @@ func (service *AppModelService) resolveClosePlanSaveAs(ctx context.Context, plan
 	plan := service.closePlans[planID]
 	if plan == nil || service.activeClosePlan != planID || index < 0 || index >= len(plan.targets) || service.validateClosePlanLocked(plan) != nil {
 		service.mu.RUnlock()
-		return bridge.Classified(apperr.ClassifiedConflict, planID, "The close plan is no longer active.", apperr.RemediationRetry), false
+		return bridge.Classified(apperr.ClassifiedConflict, planID, closePlanInactive, apperr.RemediationRetry), false
 	}
 	target := plan.targets[index]
 	document := service.state.documents[target.documentID]
@@ -550,12 +622,7 @@ func (service *AppModelService) resolveClosePlanSaveAs(ctx context.Context, plan
 		service.mu.RUnlock()
 		return bridge.Classified(apperr.ClassifiedConflict, target.documentID, "The document changed while Save As was being prepared.", apperr.RemediationRetry), false
 	}
-	defaultFilename := document.metadata.DisplayName
-	if defaultFilename == "" {
-		defaultFilename = "Untitled.md"
-	} else if filepath.Ext(defaultFilename) == "" {
-		defaultFilename += ".md"
-	}
+	defaultFilename := closeSaveDefaultFilename(document.metadata.DisplayName)
 	service.mu.RUnlock()
 	if dialog == nil {
 		return bridge.Classified(apperr.ClassifiedSystemCommandFailure, target.documentID, "The Save dialog is unavailable.", apperr.RemediationNone), false
@@ -568,11 +635,7 @@ func (service *AppModelService) resolveClosePlanSaveAs(ctx context.Context, plan
 		return stale, false
 	}
 	if strings.TrimSpace(selected) == "" {
-		service.mu.Lock()
-		if current := service.closePlans[planID]; current != nil && service.activeClosePlan == planID && service.validateClosePlanLocked(current) == nil {
-			service.invalidateClosePlanLocked(current, apperr.ClosePlanCancelled)
-		}
-		service.mu.Unlock()
+		service.cancelResolvingClosePlan(planID)
 		return nil, true
 	}
 	if filepath.Ext(selected) == "" {
@@ -585,6 +648,20 @@ func (service *AppModelService) resolveClosePlanSaveAs(ctx context.Context, plan
 	if err != nil {
 		return bridge.Classified(apperr.ClassifiedIOFailure, target.documentID, "The Save As target could not be resolved.", apperr.RemediationRetry), false
 	}
+	return service.reserveClosePlanSaveAs(ctx, planID, index, target, candidate, dialog)
+}
+
+func closeSaveDefaultFilename(displayName string) string {
+	defaultFilename := displayName
+	if defaultFilename == "" {
+		defaultFilename = "Untitled.md"
+	} else if filepath.Ext(defaultFilename) == "" {
+		defaultFilename += ".md"
+	}
+	return defaultFilename
+}
+
+func (service *AppModelService) reserveClosePlanSaveAs(ctx context.Context, planID string, index int, target closePlanTarget, candidate file.CanonicalDocumentPath, dialog DocumentSaveDialog) (*apperr.ClassifiedError, bool) {
 	reservationID, conflict := service.reserveSaveTarget(target.documentID, candidate)
 	if conflict != nil {
 		return conflict, false
@@ -604,33 +681,11 @@ func (service *AppModelService) resolveClosePlanSaveAs(ctx context.Context, plan
 	}
 	expectedHash := ""
 	if expectedVersion.Exists {
-		confirmed, confirmErr := dialog.ConfirmOverwrite(ctx, candidate.DisplayName)
-		if confirmErr != nil {
-			service.releaseSaveTarget(reservationID)
-			return bridge.Classified(apperr.ClassifiedSystemCommandFailure, target.documentID, "The overwrite confirmation could not be shown.", apperr.RemediationRetry), false
-		}
-		if stale := service.validateResolvingClosePlan(planID); stale != nil {
-			service.releaseSaveTarget(reservationID)
-			return stale, false
-		}
-		if !confirmed {
-			service.releaseSaveTarget(reservationID)
-			service.mu.Lock()
-			if current := service.closePlans[planID]; current != nil && service.activeClosePlan == planID && service.validateClosePlanLocked(current) == nil {
-				service.invalidateClosePlanLocked(current, apperr.ClosePlanCancelled)
-			}
-			service.mu.Unlock()
-			return nil, true
-		}
-		expectedVersion, err = file.CurrentDiskVersion(candidate.Path)
-		if err != nil {
-			service.releaseSaveTarget(reservationID)
-			return bridge.Classified(apperr.ClassifiedIOFailure, target.documentID, "The Save As target could not be inspected after confirmation.", apperr.RemediationRetry), false
-		}
-		expectedHash, err = stableRawBytesHash(candidate.Path, expectedVersion)
-		if err != nil {
-			service.releaseSaveTarget(reservationID)
-			return bridge.Classified(apperr.ClassifiedConflict, target.documentID, "The Save As target changed after confirmation.", apperr.RemediationRetry), false
+		var classified *apperr.ClassifiedError
+		var cancelled bool
+		expectedVersion, expectedHash, classified, cancelled = service.confirmClosePlanOverwrite(ctx, planID, target.documentID, candidate, reservationID, dialog)
+		if classified != nil || cancelled {
+			return classified, cancelled
 		}
 	}
 
@@ -649,6 +704,43 @@ func (service *AppModelService) resolveClosePlanSaveAs(ctx context.Context, plan
 	current.summary.Targets[index].SavePath = candidate.Path
 	service.mu.Unlock()
 	return nil, false
+}
+
+func (service *AppModelService) confirmClosePlanOverwrite(ctx context.Context, planID, documentID string, candidate file.CanonicalDocumentPath, reservationID string, dialog DocumentSaveDialog) (file.DiskVersion, string, *apperr.ClassifiedError, bool) {
+	confirmed, confirmErr := dialog.ConfirmOverwrite(ctx, candidate.DisplayName)
+	if confirmErr != nil {
+		service.releaseSaveTarget(reservationID)
+		return file.DiskVersion{}, "", bridge.Classified(apperr.ClassifiedSystemCommandFailure, documentID, "The overwrite confirmation could not be shown.", apperr.RemediationRetry), false
+	}
+	if stale := service.validateResolvingClosePlan(planID); stale != nil {
+		service.releaseSaveTarget(reservationID)
+		return file.DiskVersion{}, "", stale, false
+	}
+	if !confirmed {
+		service.releaseSaveTarget(reservationID)
+		service.cancelResolvingClosePlan(planID)
+		return file.DiskVersion{}, "", nil, true
+	}
+	expectedVersion, err := file.CurrentDiskVersion(candidate.Path)
+	if err != nil {
+		service.releaseSaveTarget(reservationID)
+		return file.DiskVersion{}, "", bridge.Classified(apperr.ClassifiedIOFailure, documentID, "The Save As target could not be inspected after confirmation.", apperr.RemediationRetry), false
+	}
+	expectedHash, err := stableRawBytesHash(candidate.Path, expectedVersion)
+	if err != nil {
+		service.releaseSaveTarget(reservationID)
+		return file.DiskVersion{}, "", bridge.Classified(apperr.ClassifiedConflict, documentID, "The Save As target changed after confirmation.", apperr.RemediationRetry), false
+	}
+
+	return expectedVersion, expectedHash, nil, false
+}
+
+func (service *AppModelService) cancelResolvingClosePlan(planID string) {
+	service.mu.Lock()
+	if current := service.closePlans[planID]; current != nil && service.activeClosePlan == planID && service.validateClosePlanLocked(current) == nil {
+		service.invalidateClosePlanLocked(current, apperr.ClosePlanCancelled)
+	}
+	service.mu.Unlock()
 }
 
 func (service *AppModelService) invalidateClosePlanLocked(plan *closePlan, status apperr.ClosePlanStatus) {
@@ -672,11 +764,11 @@ func (service *AppModelService) closeDocuments(ctx context.Context, documentIDs 
 	service.mu.Lock()
 	if err := service.validateCloseOwnershipLocked(expectedNativeCloseID); err != nil {
 		service.mu.Unlock()
-		return bridge.Refused[apperr.TabTransitionResult](apperr.ClassifiedConflict, "close plan", err.Error(), apperr.RemediationRetry)
+		return bridge.Refused[apperr.TabTransitionResult](apperr.ClassifiedConflict, closePlanResource, err.Error(), apperr.RemediationRetry)
 	}
 	if expectedTabSetRevision != nil && service.state.tabSetRevision != *expectedTabSetRevision {
 		service.mu.Unlock()
-		return bridge.Refused[apperr.TabTransitionResult](apperr.ClassifiedConflict, "close plan", "The tab set changed before tabs could be removed.", apperr.RemediationRetry)
+		return bridge.Refused[apperr.TabTransitionResult](apperr.ClassifiedConflict, closePlanResource, "The tab set changed before tabs could be removed.", apperr.RemediationRetry)
 	}
 	if len(documentIDs) == 0 {
 		result := service.tabTransitionSuccess(apperr.TabTransitionClosed, "")
@@ -778,7 +870,7 @@ func (service *AppModelService) sealCloseDocumentsLocked(documentIDs []string) (
 		document, ok := service.state.documents[documentID]
 		if !ok {
 			service.clearClosingLocked(closeIDs)
-			result := bridge.Refused[apperr.TabTransitionResult](apperr.ClassifiedNotFound, documentID, "The document is no longer open.", apperr.RemediationNone)
+			result := bridge.Refused[apperr.TabTransitionResult](apperr.ClassifiedNotFound, documentID, closePlanDocumentClosed, apperr.RemediationNone)
 			return nil, nil, &result
 		}
 		if document.closing {
@@ -798,18 +890,18 @@ func (service *AppModelService) sealCloseDocumentsLocked(documentIDs []string) (
 func (service *AppModelService) validateSealedCloseLocked(closeIDs []string, expectedTabSetRevision *uint64, expectedNativeCloseID string) *apperr.TabTransitionResult {
 	if err := service.validateCloseOwnershipLocked(expectedNativeCloseID); err != nil {
 		service.clearClosingLocked(closeIDs)
-		result := bridge.Refused[apperr.TabTransitionResult](apperr.ClassifiedConflict, "close plan", err.Error(), apperr.RemediationRetry)
+		result := bridge.Refused[apperr.TabTransitionResult](apperr.ClassifiedConflict, closePlanResource, err.Error(), apperr.RemediationRetry)
 		return &result
 	}
 	if expectedTabSetRevision != nil && service.state.tabSetRevision != *expectedTabSetRevision {
 		service.clearClosingLocked(closeIDs)
-		result := bridge.Refused[apperr.TabTransitionResult](apperr.ClassifiedConflict, "close plan", "The tab set changed before tabs could be removed.", apperr.RemediationRetry)
+		result := bridge.Refused[apperr.TabTransitionResult](apperr.ClassifiedConflict, closePlanResource, "The tab set changed before tabs could be removed.", apperr.RemediationRetry)
 		return &result
 	}
 	for _, documentID := range closeIDs {
 		if _, ok := service.state.documents[documentID]; !ok {
 			service.clearClosingLocked(closeIDs)
-			result := bridge.Refused[apperr.TabTransitionResult](apperr.ClassifiedNotFound, documentID, "The document is no longer open.", apperr.RemediationNone)
+			result := bridge.Refused[apperr.TabTransitionResult](apperr.ClassifiedNotFound, documentID, closePlanDocumentClosed, apperr.RemediationNone)
 			return &result
 		}
 	}
@@ -864,6 +956,10 @@ func normalizeCloseDecisions(plan *closePlan, decisions []apperr.ClosePlanDecisi
 		}
 		choices[decision.DocumentID] = decision.Choice
 	}
+	return applyCloseChoices(plan, choices, allChoice)
+}
+
+func applyCloseChoices(plan *closePlan, choices map[string]apperr.CloseChoice, allChoice apperr.CloseChoice) (map[string]apperr.CloseChoice, bool, error) {
 	if allChoice != "" {
 		value := apperr.CloseChoiceSave
 		if allChoice == apperr.CloseChoiceDiscardAll {
@@ -913,7 +1009,7 @@ func closePlanTargetIDs(summary apperr.ClosePlanSummary) []string {
 
 func closePlanSummaryResult(plan *closePlan) apperr.ClosePlanResult {
 	if plan == nil {
-		return bridge.Refused[apperr.ClosePlanResult](apperr.ClassifiedNotFound, "close plan", "The close plan is no longer active.", apperr.RemediationNone)
+		return bridge.Refused[apperr.ClosePlanResult](apperr.ClassifiedNotFound, closePlanResource, closePlanInactive, apperr.RemediationNone)
 	}
 	summary := plan.summary
 	/*

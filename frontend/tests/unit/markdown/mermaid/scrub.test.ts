@@ -35,6 +35,20 @@ it('removes executable and externally loading SVG content while retaining local 
     expect(diagram.querySelector('stop')?.getAttribute('stop-color')).toBe('rgb(1, 2, 3)');
 });
 
+it('removes consecutive hostile attributes without skipping later attributes', () => {
+    const source = `<svg xmlns="http://www.w3.org/2000/svg"><rect onclick="a()" onload="b()" fill="url(https://example.org/a)" stroke="url(https://example.org/b)" width="10"/></svg>`;
+    const rect = svg(scrubMermaidSvg(source)).querySelector('rect');
+    expect(rect?.getAttributeNames()).toEqual(['width']);
+    expect(rect?.getAttribute('width')).toBe('10');
+});
+
+it('preserves completed CSS while discarding an unterminated quoted declaration', () => {
+    const source = `<svg xmlns="http://www.w3.org/2000/svg"><style>rect{fill:red} .x{font-family:'open</style><rect style="fill:red;font-family:'open"/></svg>`;
+    const diagram = svg(scrubMermaidSvg(source));
+    expect(diagram.querySelector('style')?.textContent).toBe('rect{fill:red;} .x{');
+    expect(diagram.querySelector('rect')?.getAttribute('style')).toBe('fill:red;');
+});
+
 it('rewrites every local ID reference for each diagram instance', () => {
     const source = `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
       <style>#node { fill: url('#paint'); }</style>
@@ -189,4 +203,18 @@ it('handles long unterminated CSS comments without quadratic work', () => {
     const elapsed = performance.now() - start;
     expect(result).toBe(`font-family:'${value}';fill:red`);
     expect(elapsed).toBeLessThan(1200);
+});
+
+it('keeps balanced safe CSS functions and rejects malformed or external function values', () => {
+    const source = `<svg xmlns="http://www.w3.org/2000/svg"><rect style="fill:rgb(1,calc(2 + 3),4);stroke:url('#paint');filter:unknown(red);opacity:calc(1));color:blue"/></svg>`;
+    expect(svg(scrubMermaidSvg(source)).querySelector('rect')?.getAttribute('style')).toBe(
+        'fill:rgb(1,calc(2 + 3),4);stroke:url(#paint);',
+    );
+});
+
+it('retains allowed nested stylesheet rules and discards disallowed at-rule contents', () => {
+    const source = `<svg xmlns="http://www.w3.org/2000/svg"><style>@media screen {.a{fill:red}@font-face{src:url(#x)} .b{stroke:url(#x)}} @supports (display:grid) {.c{opacity:.5}}</style></svg>`;
+    expect(svg(scrubMermaidSvg(source)).querySelector('style')?.textContent).toBe(
+        '@media screen {.a{fill:red;} .b{stroke:url(#x);}} @supports (display:grid) {.c{opacity:.5;}}',
+    );
 });

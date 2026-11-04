@@ -87,10 +87,16 @@
     display: inline-flex;
     flex: 0 0 auto;
     font: inherit;
+    max-block-size: 100%;
     white-space: nowrap;
 }
 
 @media (max-width: 376px) {
+    .statusBar:has(> .responsiveItem[data-write-in-flight='true']) {
+        column-gap: var(--status-bar-item-gap);
+        padding-inline: var(--status-bar-item-gap);
+    }
+
     /* Priorities 0 and 1 remain in the row; the full inventory stays available
      in the Details Popup. The data-driven fallback mirrors the measured
      minimum-window drop order used by the native shell. */

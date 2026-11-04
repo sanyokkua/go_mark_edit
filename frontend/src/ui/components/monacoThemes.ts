@@ -17,15 +17,14 @@ export function registerGeneratedThemes(engine: MonacoThemeEngine): void {
     registered = true;
 }
 
-export function themeNameFromRoot(root: Element): ThemeName {
-    const theme = root.getAttribute('data-theme');
-    const mode = root.getAttribute('data-mode');
+export function themeNameFromRoot(root: HTMLElement): ThemeName {
+    const { theme = null, mode = null } = root.dataset;
     const candidate = `gme-${theme}-${mode}` as ThemeName;
     return candidate in generatedEditorThemes ? candidate : 'gme-material-light';
 }
 
 export function observeRootTheme(
-    root: Element,
+    root: HTMLElement,
     engine: Pick<MonacoThemeEngine, 'setTheme'>,
     afterApply?: () => void,
 ): () => void {

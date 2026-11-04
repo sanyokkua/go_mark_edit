@@ -32,18 +32,7 @@ func TestRefreshingRecentItemsPublishesOnlyChangedCrossWindowHistoryAndPrunesMis
 	if got := service.RefreshRecentItems(ctx); got.Error != nil || len(got.RecentItems) != 0 {
 		t.Fatalf("initial refresh = %+v", got)
 	}
-	path := filepath.Join(t.TempDir(), "other-window.md")
-	if err := os.WriteFile(path, []byte("content"), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	otherWindow := NewAppModelServiceForHost(WithEmitter(&recordingEmitter{}), AppModelOption{RecentItemsRepository: repository})
-	otherState, err := otherWindow.GetState(ctx)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if opened := otherWindow.OpenPath(ctx, path, otherState.Snapshot.TabSetRevision); opened.Status != apperr.OpenStatusOpened {
-		t.Fatalf("other window open = %+v", opened)
-	}
+	path := openRecentInOtherWindow(t, ctx, repository)
 	before := emitter.Count()
 	got := service.RefreshRecentItems(ctx)
 	if got.Error != nil || len(got.RecentItems) != 1 || got.RecentItems[0].Path != canonicalPath(t, path) {
@@ -77,6 +66,23 @@ func TestRefreshingRecentItemsPublishesOnlyChangedCrossWindowHistoryAndPrunesMis
 	if err != nil || len(stored) != 0 {
 		t.Fatalf("stored = %+v, %v", stored, err)
 	}
+}
+
+func openRecentInOtherWindow(t *testing.T, ctx context.Context, repository *SqliteRecentItemsRepository) string {
+	t.Helper()
+	path := filepath.Join(t.TempDir(), "other-window.md")
+	if err := os.WriteFile(path, []byte("content"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	otherWindow := NewAppModelServiceForHost(WithEmitter(&recordingEmitter{}), AppModelOption{RecentItemsRepository: repository})
+	otherState, err := otherWindow.GetState(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if opened := otherWindow.OpenPath(ctx, path, otherState.Snapshot.TabSetRevision); opened.Status != apperr.OpenStatusOpened {
+		t.Fatalf("other window open = %+v", opened)
+	}
+	return path
 }
 
 func TestClearingRecentItemsPersistsEmptyListAndRecomputesReopenAvailability(t *testing.T) {

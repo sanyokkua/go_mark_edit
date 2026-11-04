@@ -90,18 +90,8 @@
     border: 0;
     color: var(--muted);
     font: inherit;
-}
-
-.tab,
-.tabClose,
-.tabAdd,
-.contextMenuItem {
     cursor: pointer;
     white-space: nowrap;
-}
-
-.contextMenuItem {
-    padding: var(--tab-padding);
 }
 
 .tab {
@@ -124,13 +114,16 @@
     vertical-align: bottom;
 }
 
+.readOnlyMarker {
+    flex: none;
+    max-inline-size: calc(var(--tab-max-width) / 3);
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
 .tab[aria-selected='true'] {
     color: var(--tab-active-color);
     box-shadow: none;
-}
-
-.tabClose {
-    color: var(--faint);
 }
 
 .tabAdd {
@@ -145,10 +138,13 @@
     padding: 0;
     text-align: center;
     white-space: normal;
+    block-size: var(--tab-add-size);
+    inline-size: var(--tab-add-size);
 }
 
 .tabClose {
     align-items: center;
+    color: var(--faint);
     display: inline-flex;
     justify-content: center;
     min-inline-size: 0;
@@ -157,11 +153,6 @@
 
 .tabCloseGlyph {
     display: block;
-}
-
-.tabAdd {
-    block-size: var(--tab-add-size);
-    inline-size: var(--tab-add-size);
 }
 
 .modifiedDot {

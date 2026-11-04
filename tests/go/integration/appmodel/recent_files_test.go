@@ -18,17 +18,7 @@ func TestRecentItemsPromoteInMRUOrderAndPruneMissingEntries(t *testing.T) {
 	}
 	defer func() { _ = database.Close() }()
 	repository := NewSqliteRecentItemsRepository(database)
-	paths := make([]string, 0, 11)
-	for index := 0; index < 11; index++ {
-		path := filepath.Join(t.TempDir(), "note.md")
-		if err := os.WriteFile(path, []byte("note\n"), 0o640); err != nil {
-			t.Fatalf("write recent fixture %d: %v", index, err)
-		}
-		paths = append(paths, path)
-		if _, err := repository.Promote(context.Background(), path, "file"); err != nil {
-			t.Fatalf("promote recent fixture %d: %v", index, err)
-		}
-	}
+	paths := promoteRecentFixtures(t, repository)
 	entries, err := repository.List(context.Background())
 	if err != nil {
 		t.Fatalf("list recent files: %v", err)
@@ -46,30 +36,7 @@ func TestRecentItemsPromoteInMRUOrderAndPruneMissingEntries(t *testing.T) {
 	if len(entries) != 9 || entries[0] != (apperr.RecentItem{Path: canonicalPath(t, paths[9]), Kind: "file"}) {
 		t.Fatalf("pruned recent entries = %v, want stale newest removed lazily", entries)
 	}
-	folder := filepath.Join(t.TempDir(), "workspace")
-	if err := os.Mkdir(folder, 0o750); err != nil {
-		t.Fatalf("create recent folder: %v", err)
-	}
-	if _, err := repository.Promote(context.Background(), folder, "folder"); err != nil {
-		t.Fatalf("promote recent folder: %v", err)
-	}
-	entries, err = repository.List(context.Background())
-	if err != nil {
-		t.Fatalf("list mixed recent items: %v", err)
-	}
-	if len(entries) != 10 || entries[0] != (apperr.RecentItem{Path: folder, Kind: "folder"}) {
-		t.Fatalf("mixed recent entries = %v, want the folder newest and retained", entries)
-	}
-	if _, err := repository.Promote(context.Background(), folder, "folder"); err != nil {
-		t.Fatalf("re-promote recent folder: %v", err)
-	}
-	entries, err = repository.List(context.Background())
-	if err != nil {
-		t.Fatalf("list deduplicated folder: %v", err)
-	}
-	if len(entries) != 10 || entries[0] != (apperr.RecentItem{Path: folder, Kind: "folder"}) {
-		t.Fatalf("deduplicated recent entries = %v", entries)
-	}
+	assertRecentFolderPromotionAndDeduplication(t, repository)
 	if err := repository.Clear(context.Background()); err != nil {
 		t.Fatalf("clear recent items: %v", err)
 	}
@@ -188,4 +155,48 @@ func canonicalPath(t *testing.T, path string) string {
 		t.Fatalf("canonicalize %q: %v", path, err)
 	}
 	return canonical
+}
+
+func promoteRecentFixtures(t *testing.T, repository *SqliteRecentItemsRepository) []string {
+	t.Helper()
+	paths := make([]string, 0, 11)
+	for index := 0; index < 11; index++ {
+		path := filepath.Join(t.TempDir(), "note.md")
+		if err := os.WriteFile(path, []byte("note\n"), 0o640); err != nil {
+			t.Fatalf("write recent fixture %d: %v", index, err)
+		}
+		paths = append(paths, path)
+		if _, err := repository.Promote(context.Background(), path, "file"); err != nil {
+			t.Fatalf("promote recent fixture %d: %v", index, err)
+		}
+	}
+	return paths
+}
+
+func assertRecentFolderPromotionAndDeduplication(t *testing.T, repository *SqliteRecentItemsRepository) {
+	t.Helper()
+	folder := filepath.Join(t.TempDir(), "workspace")
+	if err := os.Mkdir(folder, 0o750); err != nil {
+		t.Fatalf("create recent folder: %v", err)
+	}
+	if _, err := repository.Promote(context.Background(), folder, "folder"); err != nil {
+		t.Fatalf("promote recent folder: %v", err)
+	}
+	entries, err := repository.List(context.Background())
+	if err != nil {
+		t.Fatalf("list mixed recent items: %v", err)
+	}
+	if len(entries) != 10 || entries[0] != (apperr.RecentItem{Path: folder, Kind: "folder"}) {
+		t.Fatalf("mixed recent entries = %v, want the folder newest and retained", entries)
+	}
+	if _, err := repository.Promote(context.Background(), folder, "folder"); err != nil {
+		t.Fatalf("re-promote recent folder: %v", err)
+	}
+	entries, err = repository.List(context.Background())
+	if err != nil {
+		t.Fatalf("list deduplicated folder: %v", err)
+	}
+	if len(entries) != 10 || entries[0] != (apperr.RecentItem{Path: folder, Kind: "folder"}) {
+		t.Fatalf("deduplicated recent entries = %v", entries)
+	}
 }

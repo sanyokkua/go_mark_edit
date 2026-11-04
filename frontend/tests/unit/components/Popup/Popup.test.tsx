@@ -95,3 +95,39 @@ it('opens its trigger on plain Enter but leaves Ctrl/Cmd+Enter to window shortcu
     expect(fireEvent.keyDown(trigger, { key: 'Enter' })).toBe(false);
     expect(onOpen).toHaveBeenCalledTimes(1);
 });
+
+it.each([
+    ['last', 'Beta'],
+    ['[data-focus-target]', 'Beta'],
+])('focuses the requested %s target', async (initialFocus, expected) => {
+    render(
+        <Popup
+            anchor={{ point: { x: 40, y: 40 } }}
+            initialFocus={initialFocus}
+            open
+            role="menu"
+            size="menu"
+            onOpenChange={jest.fn()}
+        >
+            <MenuItem label="Alpha" />
+            <MenuItem data-focus-target label="Beta" />
+        </Popup>,
+    );
+    await waitFor(() => expect(screen.getByRole('menuitem', { name: expected })).toHaveFocus());
+});
+
+it('focuses the popup itself when requested', async () => {
+    render(
+        <Popup
+            anchor={{ point: { x: 40, y: 40 } }}
+            initialFocus="popup"
+            open
+            role="menu"
+            size="menu"
+            onOpenChange={jest.fn()}
+        >
+            <MenuItem label="Alpha" />
+        </Popup>,
+    );
+    await waitFor(() => expect(screen.getByRole('menu')).toHaveFocus());
+});

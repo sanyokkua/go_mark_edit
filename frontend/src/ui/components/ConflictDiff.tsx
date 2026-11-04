@@ -13,7 +13,7 @@ interface ConflictDiffProps {
 type DiffStatus = 'loading' | 'ready' | 'incomplete' | 'error';
 
 /** A transient read-only Monaco view; neither model participates in the document command seam. */
-export default function ConflictDiff({ onDisk, yours }: ConflictDiffProps): React.JSX.Element {
+export default function ConflictDiff({ onDisk, yours }: Readonly<ConflictDiffProps>): React.JSX.Element {
     const hostRef = useRef<HTMLDivElement | null>(null);
     const editorRef = useRef<editor.IStandaloneDiffEditor | null>(null);
     const [status, setStatus] = useState<DiffStatus>('loading');
@@ -107,10 +107,14 @@ export default function ConflictDiff({ onDisk, yours }: ConflictDiffProps): Reac
                     {t('conflict.nextChange')}
                 </Button>
             </div>
-            {status === 'loading' ? <p role="status">{t('conflict.diffLoading')}</p> : null}
+            {status === 'loading' ? (
+                <p>
+                    <output>{t('conflict.diffLoading')}</output>
+                </p>
+            ) : null}
             {status === 'incomplete' ? (
-                <p className={styles.notice} role="status">
-                    {t('conflict.diffIncomplete')}
+                <p className={styles.notice}>
+                    <output>{t('conflict.diffIncomplete')}</output>
                 </p>
             ) : null}
             {status === 'error' ? (

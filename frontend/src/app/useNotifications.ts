@@ -31,6 +31,11 @@ type NotificationCommands = Pick<
     requestQuit: () => void;
 };
 
+function noticeKind(code: string, severity: string): NotificationNotice['kind'] {
+    if (code === 'command-stuck') return 'stuck';
+    return severity === 'error' ? 'error' : 'warning';
+}
+
 /** Maps the notification projection and routes remediation to the command's owner. */
 export function useNotifications({
     retryWrite,
@@ -52,22 +57,22 @@ export function useNotifications({
     const banners = useAppSelector((state) => state.notifications.banners);
     const [remediationAnnouncement, setRemediationAnnouncement] = useState('');
     const tabRemediationRef = useRef<TabRemediationExecutor | undefined>(undefined);
-    const timers = useRef<number[]>([]);
+    const timers = useRef<ReturnType<typeof globalThis.setTimeout>[]>([]);
     const mounted = useRef(false);
     useEffect(() => {
         mounted.current = true;
         return () => {
             mounted.current = false;
-            timers.current.forEach(window.clearTimeout);
+            timers.current.forEach(globalThis.clearTimeout);
         };
     }, []);
     const announceRemediation = useCallback((message: string): void => {
         if (!mounted.current) return;
-        timers.current.forEach(window.clearTimeout);
+        timers.current.forEach(globalThis.clearTimeout);
         setRemediationAnnouncement('');
         timers.current = [
-            window.setTimeout(() => setRemediationAnnouncement(message), 0),
-            window.setTimeout(() => setRemediationAnnouncement(''), 3000),
+            globalThis.setTimeout(() => setRemediationAnnouncement(message), 0),
+            globalThis.setTimeout(() => setRemediationAnnouncement(''), 3000),
         ];
     }, []);
 
@@ -81,11 +86,10 @@ export function useNotifications({
                 case 'open-folder':
                     return remediation.path === undefined ? onOpenFolder() : onOpenWorkspacePath(remediation.path);
                 case 'open-recent':
-                    return remediation.path === undefined
-                        ? undefined
-                        : remediation.kind === undefined
-                          ? onOpenRecentFile(remediation.path, revision)
-                          : onOpenRecentItem({ path: remediation.path, kind: remediation.kind }, revision);
+                    if (remediation.path === undefined) return undefined;
+                    return remediation.kind === undefined
+                        ? onOpenRecentFile(remediation.path, revision)
+                        : onOpenRecentItem({ path: remediation.path, kind: remediation.kind }, revision);
                 case 'reopen-last':
                     return onReopenLastFile(revision);
                 case 'activate-document':
@@ -109,69 +113,89 @@ export function useNotifications({
     );
     const onRemediate = useCallback(
         async (remediation: NotificationRemediation, notificationId: number, safeSubject: string): Promise<void> => {
+            function remediateCommand(): void {
+                const requestId = remediation.requestId;
+                if (requestId === undefined) return;
+                if (remediation.action === 'retry-command') {
+                    commandAdapter?.retry(requestId);
+                } else if (remediation.action === 'cancel-command') {
+                    commandAdapter?.cancel(requestId);
+                }
+            }
+            async function copyPath(): Promise<void> {
+                const documentId = remediation.documentId;
+                if (documentId === undefined) return;
+                const result = await appModelAdapter.copyPath?.(documentId);
+                if (result?.error !== undefined) {
+                    reportClassifiedError(dispatch, result.error, t('notification.error.io.title'), {
+                        intent: 'copy-path',
+                    });
+                    return;
+                }
+                if (result?.status !== 'copied') return;
+                dispatch(dismissNotification(notificationId));
+                announceRemediation(t('editor.tab.copiedPath', { filename: safeSubject }));
+            }
+            async function revealDocument(): Promise<void> {
+                const documentId = remediation.documentId;
+                if (documentId === undefined) return;
+                const result = await appModelAdapter.revealInFileManager?.(documentId);
+                if (result?.error !== undefined) {
+                    reportClassifiedError(dispatch, result.error, t('notification.error.io.title'), {
+                        intent: 'reveal',
+                    });
+                    return;
+                }
+                if (result?.status !== 'revealed') return;
+                dispatch(dismissNotification(notificationId));
+            }
+            async function revealWorkspacePath(): Promise<void> {
+                const path = remediation.path;
+                if (path === undefined || path === '') return;
+                try {
+                    const result = await appModelAdapter.revealWorkspacePath?.(path);
+                    if (result?.error !== undefined) {
+                        reportClassifiedError(dispatch, result.error, t('notification.error.io.title'), {
+                            intent: 'reveal-workspace-path',
+                            retry: { path },
+                        });
+                        return;
+                    }
+                    if (result?.status === 'revealed') dispatch(dismissNotification(notificationId));
+                } catch (error) {
+                    dispatch(notifyError(parseError(error), 'reveal-workspace-path'));
+                }
+            }
+            async function retryEntry(): Promise<void> {
+                const state = await appModelAdapter.getState();
+                const revision = state.snapshot.tabSetRevision ?? 0;
+                const result = await retryEntryCommand(remediation, revision);
+                if (result === undefined) return;
+                if (result.error !== undefined) {
+                    if (remediation.intent === 'activate-document') {
+                        reportClassifiedError(dispatch, result.error, t('editor.tabs'), {
+                            intent: 'activate-document',
+                            retry: { documentId: remediation.documentId },
+                        });
+                    }
+                    return;
+                }
+                dispatch(dismissNotification(notificationId));
+            }
             switch (remediation.intent) {
-                case 'command': {
-                    const requestId = remediation.requestId;
-                    if (requestId === undefined) return;
-                    if (remediation.action === 'retry-command') {
-                        commandAdapter?.retry(requestId);
-                    } else if (remediation.action === 'cancel-command') {
-                        commandAdapter?.cancel(requestId);
-                    }
-                    return;
-                }
-                case 'copy-path': {
-                    const documentId = remediation.documentId;
-                    if (documentId === undefined) return;
-                    const result = await appModelAdapter.copyPath?.(documentId);
-                    if (result?.error !== undefined) {
-                        reportClassifiedError(dispatch, result.error, t('notification.error.io.title'), {
-                            intent: 'copy-path',
-                        });
-                        return;
-                    }
-                    if (result?.status !== 'copied') return;
-                    dispatch(dismissNotification(notificationId));
-                    announceRemediation(t('editor.tab.copiedPath', { filename: safeSubject }));
-                    return;
-                }
-                case 'reveal': {
-                    const documentId = remediation.documentId;
-                    if (documentId === undefined) return;
-                    const result = await appModelAdapter.revealInFileManager?.(documentId);
-                    if (result?.error !== undefined) {
-                        reportClassifiedError(dispatch, result.error, t('notification.error.io.title'), {
-                            intent: 'reveal',
-                        });
-                        return;
-                    }
-                    if (result?.status !== 'revealed') return;
-                    dispatch(dismissNotification(notificationId));
-                    return;
-                }
+                case 'command':
+                    return remediateCommand();
+                case 'copy-path':
+                    return copyPath();
+                case 'reveal':
+                    return revealDocument();
                 case 'refresh-workspace': {
                     const result = await onRefreshWorkspace();
                     if (result?.error === undefined) dispatch(dismissNotification(notificationId));
                     return;
                 }
-                case 'reveal-workspace-path': {
-                    const path = remediation.path;
-                    if (path === undefined || path === '') return;
-                    try {
-                        const result = await appModelAdapter.revealWorkspacePath?.(path);
-                        if (result?.error !== undefined) {
-                            reportClassifiedError(dispatch, result.error, t('notification.error.io.title'), {
-                                intent: 'reveal-workspace-path',
-                                retry: { path },
-                            });
-                            return;
-                        }
-                        if (result?.status === 'revealed') dispatch(dismissNotification(notificationId));
-                    } catch (error) {
-                        dispatch(notifyError(parseError(error), 'reveal-workspace-path'));
-                    }
-                    return;
-                }
+                case 'reveal-workspace-path':
+                    return revealWorkspacePath();
                 case 'create-workspace-entry':
                 case 'copy-workspace-path':
                     return;
@@ -180,23 +204,8 @@ export function useNotifications({
                 case 'open-folder':
                 case 'open-recent':
                 case 'reopen-last':
-                case 'activate-document': {
-                    const state = await appModelAdapter.getState();
-                    const revision = state.snapshot.tabSetRevision ?? 0;
-                    const result = await retryEntryCommand(remediation, revision);
-                    if (result === undefined) return;
-                    if (result.error !== undefined) {
-                        if (remediation.intent === 'activate-document') {
-                            reportClassifiedError(dispatch, result.error, t('editor.tabs'), {
-                                intent: 'activate-document',
-                                retry: { documentId: remediation.documentId },
-                            });
-                        }
-                        return;
-                    }
-                    dispatch(dismissNotification(notificationId));
-                    return;
-                }
+                case 'activate-document':
+                    return retryEntry();
                 case 'reorder-document': {
                     const state = await appModelAdapter.getState();
                     const handled = await tabRemediationRef.current?.(remediation, state.snapshot.tabSetRevision ?? 0);
@@ -254,12 +263,7 @@ export function useNotifications({
                 id: notification.id,
                 code: notification.code,
                 count: notification.count,
-                kind:
-                    notification.code === 'command-stuck'
-                        ? ('stuck' as const)
-                        : notification.severity === 'error'
-                          ? ('error' as const)
-                          : ('warning' as const),
+                kind: noticeKind(notification.code, notification.severity),
                 message: notification.message,
                 persistent: notification.persistent,
                 tone: notification.severity,

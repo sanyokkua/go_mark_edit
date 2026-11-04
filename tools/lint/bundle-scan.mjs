@@ -2,19 +2,19 @@ import { readdir, readFile } from 'node:fs/promises';
 import { extname, relative, resolve } from 'node:path';
 
 const bundleRoot = resolve(process.argv[2] ?? resolve(import.meta.dirname, '../../frontend/dist'));
-const testFile = /(?:^|[/.])(?:[^/]*\.(?:test|spec)|tests?)(?:[/.]|$)/i;
+const testFile = /(?:\.(?:test|spec)|(?:^|[/.])tests?)(?=[/.]|$)/i;
 const textExtensions = new Set(['.css', '.html', '.js', '.json', '.map', '.mjs', '.svg', '.ts', '.tsx']);
 
 const remoteUrl = '(https?:\\/\\/[^\\s\\"\'`)<>{}]+|\\/\\/[^\\s\\"\'`)<>{}]+)';
 const resourcePatterns = {
-    '.css': [new RegExp(`(?:@import\\s+(?:url\\(\\s*)?|url\\(\\s*['"]?)${remoteUrl}`, 'gi')],
-    '.html': [new RegExp(`\\b(?:src|href|poster)\\s*=\\s*['"]\\s*${remoteUrl}`, 'gi')],
+    '.css': [new RegExp(String.raw`(?:@import\s+(?:url\(\s*)?|url\(\s*['"]?)${remoteUrl}`, 'gi')],
+    '.html': [new RegExp(String.raw`\b(?:src|href|poster)\s*=\s*['"]\s*${remoteUrl}`, 'gi')],
     '.js': [
-        new RegExp(`\\b(?:src|href)\\s*[:=]\\s*['"]\\s*${remoteUrl}`, 'gi'),
-        new RegExp(`\\b(?:src|href)\\s*:\\s*['"]\\s*${remoteUrl}`, 'gi'),
-        new RegExp(`\\b(?:importScripts|fetch|import|Worker|SharedWorker)\\s*\\(\\s*['"]\\s*${remoteUrl}`, 'gi'),
-        new RegExp(`\\bnew\\s+URL\\s*\\(\\s*['"]\\s*${remoteUrl}`, 'gi'),
-        new RegExp(`\\.setAttribute\\s*\\(\\s*['"](?:src|href)['"]\\s*,\\s*['"]\\s*${remoteUrl}`, 'gi'),
+        new RegExp(String.raw`\b(?:src|href)\s*[:=]\s*['"]\s*${remoteUrl}`, 'gi'),
+        new RegExp(String.raw`\b(?:src|href)\s*:\s*['"]\s*${remoteUrl}`, 'gi'),
+        new RegExp(String.raw`\b(?:importScripts|fetch|import|Worker|SharedWorker)\s*\(\s*['"]\s*${remoteUrl}`, 'gi'),
+        new RegExp(String.raw`\bnew\s+URL\s*\(\s*['"]\s*${remoteUrl}`, 'gi'),
+        new RegExp(String.raw`\.setAttribute\s*\(\s*['"](?:src|href)['"]\s*,\s*['"]\s*${remoteUrl}`, 'gi'),
     ],
     '.json': [],
     '.map': [],

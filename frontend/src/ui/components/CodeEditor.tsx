@@ -145,11 +145,11 @@ function isBeforeOrEqual(first: EditorPosition, second: EditorPosition): boolean
 function plainLintHover(message: string): IMarkdownString {
     return {
         value: message
-            .replace(/&/gu, '&amp;')
-            .replace(/</gu, '&lt;')
-            .replace(/>/gu, '&gt;')
-            .replace(/([\\`*_{}[\]()#+\-.!|~])/gu, '\\$1')
-            .replace(/\n/gu, '  \n'),
+            .replaceAll('&', '&amp;')
+            .replaceAll('<', '&lt;')
+            .replaceAll('>', '&gt;')
+            .replace(/([\\`*_{}[\]()#+\-.!|~])/gu, String.raw`\$1`)
+            .replaceAll('\n', '  \n'),
         isTrusted: false,
         supportHtml: false,
     };
@@ -165,7 +165,7 @@ function toMonacoRange(range: EditorRange): IRange {
 }
 
 function getEditorFontSize(): number {
-    const value = window.getComputedStyle(document.documentElement).getPropertyValue('--editor-font-size');
+    const value = globalThis.getComputedStyle(document.documentElement).getPropertyValue('--editor-font-size');
     const fontSize = Number.parseFloat(value);
 
     return Number.isFinite(fontSize) && fontSize > 0 ? fontSize : 14;
@@ -192,7 +192,7 @@ function applyEdit(
     edits: Array<{ range: IRange; text: string }>,
     selection?: EditorSelection,
 ): boolean {
-    if (editorInstance === null || editorInstance.getModel() === null) {
+    if (!editorInstance?.getModel()) {
         return false;
     }
 
@@ -212,7 +212,7 @@ function applyEdit(
 function lineStarts(text: string): number[] {
     const starts = [0];
     for (let index = 0; index < text.length; index += 1) {
-        if (text.charCodeAt(index) === 10) starts.push(index + 1);
+        if (text.codePointAt(index) === 10) starts.push(index + 1);
     }
     return starts;
 }
@@ -471,7 +471,7 @@ const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(function CodeEd
             const viewState = viewStateRef.current;
 
             if (viewState !== null) {
-                restoreViewStateFrameRef.current = window.requestAnimationFrame((): void => {
+                restoreViewStateFrameRef.current = globalThis.requestAnimationFrame((): void => {
                     editorRef.current?.restoreViewState?.(viewState);
                     viewStateRef.current = null;
                     restoreViewStateFrameRef.current = undefined;
@@ -481,7 +481,7 @@ const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(function CodeEd
 
         return (): void => {
             if (restoreViewStateFrameRef.current !== undefined) {
-                window.cancelAnimationFrame(restoreViewStateFrameRef.current);
+                globalThis.cancelAnimationFrame(restoreViewStateFrameRef.current);
                 restoreViewStateFrameRef.current = undefined;
             }
         };
@@ -505,8 +505,7 @@ const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(function CodeEd
             },
             showFind(): boolean {
                 const instance = editorRef.current;
-                if (instance === null || instance.getModel() === null || instance.getAction('actions.find') === null)
-                    return false;
+                if (!instance?.getModel() || instance.getAction('actions.find') === null) return false;
                 instance.trigger('gomarkedit', 'actions.find', null);
                 return true;
             },
@@ -514,8 +513,7 @@ const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(function CodeEd
                 const instance = editorRef.current;
                 if (
                     readOnlyRef.current ||
-                    instance === null ||
-                    instance.getModel() === null ||
+                    !instance?.getModel() ||
                     instance.getAction('editor.action.startFindReplaceAction') === null
                 )
                     return false;
@@ -589,7 +587,7 @@ const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(function CodeEd
                 if (editorRef.current?.getModel() === null || editorRef.current === null || monacoRef.current === null)
                     return false;
                 if (restoreViewStateFrameRef.current !== undefined) {
-                    window.cancelAnimationFrame(restoreViewStateFrameRef.current);
+                    globalThis.cancelAnimationFrame(restoreViewStateFrameRef.current);
                     restoreViewStateFrameRef.current = undefined;
                 }
                 viewStateRef.current = null;

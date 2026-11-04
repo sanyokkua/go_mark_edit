@@ -99,10 +99,11 @@ it('replaces the Format control with Cancel while any tidy run, here Compact, sh
         expect(within(toolbar).queryByRole('button', { name: 'Compact' })).not.toBeInTheDocument();
         expect(within(toolbar).queryByRole('button', { name: 'Format' })).not.toBeInTheDocument();
         expect(control).toHaveAttribute('data-action-id', 'format');
+        expect(within(toolbar).getByRole('status', { name: 'Tidying document…' }).tagName).toBe('OUTPUT');
         fireEvent.click(control);
         expect(cancel).toHaveBeenCalledTimes(1);
     } finally {
-        slot?.release();
+        act(() => slot?.release());
     }
 });
 

@@ -61,6 +61,10 @@ func (option AppModelOption) apply(service *AppModelService) {
 	if option.Logger != nil {
 		service.logger = *option.Logger
 	}
+	option.applyRepositoriesAndPorts(service)
+}
+
+func (option AppModelOption) applyRepositoriesAndPorts(service *AppModelService) {
 	if option.LayoutRepository != nil {
 		service.layout = option.LayoutRepository
 	}

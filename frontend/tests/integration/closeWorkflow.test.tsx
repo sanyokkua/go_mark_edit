@@ -5,13 +5,20 @@ import { Provider } from 'react-redux';
 jest.mock('../../src/logic/adapter', () => ({
     appModelAdapter: { getState: jest.fn(), flushActiveSession: jest.fn() },
     closePlanAdapter: { prepareClose: jest.fn(), resolveClosePlan: jest.fn(), executeClosePlan: jest.fn() },
+    documentConflictAdapter: { reloadFromDisk: jest.fn() },
 }));
 
-import { appModelAdapter, closePlanAdapter, type NativeLifecycleAdapter } from '../../src/logic/adapter';
+import {
+    appModelAdapter,
+    closePlanAdapter,
+    documentConflictAdapter,
+    type NativeLifecycleAdapter,
+} from '../../src/logic/adapter';
 import { store } from '../../src/logic/store';
 import { resetNotifications } from '../../src/logic/store/notificationsSlice';
 import { hydrateProjection, resetProjection } from '../../src/logic/store/appModelProjectionActions';
 import { bootstrapAppModelProjection, disposeAppModelProjection } from '../../src/logic/store/appModelProjection';
+import type { ClosePlanSummary } from '../../src/logic/store/appModelTypes';
 import type { WireError } from '../../src/logic/utils/parseError';
 import { useDocumentSession } from '../../src/app/useDocumentSession';
 import { useCloseWorkflow } from '../../src/app/useCloseWorkflow';
@@ -220,7 +227,13 @@ it.each(['prepare', 'resolve', 'execute'] as const)(
     },
 );
 
-it('cancels the old close plan before saving the active target and revalidates remaining choices', async () => {
+it.each([
+    {
+        label: 'continues the close after saving the active target and revalidating remaining choices',
+        reordered: false,
+    },
+    { label: 'refuses a refreshed close plan that reorders the original targets', reordered: true },
+])('$label', async ({ reordered }) => {
     const oldPlan = {
         id: 'old',
         kind: 'window',
@@ -262,9 +275,9 @@ it('cancels the old close plan before saving the active target and revalidates r
         },
     });
     (appModelAdapter.flushActiveSession as jest.Mock).mockResolvedValue(undefined);
-    (closePlanAdapter.prepareClose as jest.Mock)
-        .mockResolvedValueOnce({ data: oldPlan })
-        .mockResolvedValueOnce({ data: freshPlan });
+    (closePlanAdapter.prepareClose as jest.Mock).mockResolvedValueOnce({ data: oldPlan }).mockResolvedValueOnce({
+        data: reordered ? { ...freshPlan, targets: freshPlan.targets.toReversed() } : freshPlan,
+    });
     (closePlanAdapter.executeClosePlan as jest.Mock).mockResolvedValue({ status: 'closed', orderedDocumentIds: [] });
     const events: string[] = [];
     const writes = {
@@ -296,6 +309,15 @@ it('cancels the old close plan before saving the active target and revalidates r
     });
     expect(events.slice(0, 2)).toEqual(['resolve-old', 'active-save']);
     expect(closePlanAdapter.prepareClose).toHaveBeenLastCalledWith('window', ['one', 'two'], 3);
+    if (reordered) {
+        expect(closePlanAdapter.resolveClosePlan).toHaveBeenCalledTimes(1);
+        expect(closePlanAdapter.executeClosePlan).not.toHaveBeenCalled();
+        expect(owner.result.current.state.phase).toBe('failed');
+        expect(store.getState().notifications.items).toEqual(
+            expect.arrayContaining([expect.objectContaining({ subject: 'close:changed:old' })]),
+        );
+        return;
+    }
     expect(closePlanAdapter.resolveClosePlan).toHaveBeenCalledWith('fresh', [{ choice: 'save', documentId: 'two' }]);
     expect(closePlanAdapter.executeClosePlan).toHaveBeenCalledWith('fresh');
 });
@@ -541,7 +563,13 @@ it('keeps the tab open when an edit queued during post-save Lint changes the sav
     expect(store.getState().documents.orderedIds).toEqual(['one']);
 });
 
-it('reports formatting skipped for a completed background Save before a later batch refusal', async () => {
+it.each([
+    {
+        label: 'reports formatting skipped for a completed background Save before a later batch refusal',
+        probeFails: false,
+    },
+    { label: 'preserves the batch refusal without reporting an unconfirmed background Save', probeFails: true },
+])('$label', async ({ probeFails }) => {
     const plan = {
         id: 'plan',
         kind: 'window',
@@ -566,18 +594,22 @@ it('reports formatting skipped for a completed background Save before a later ba
         }),
     );
     (appModelAdapter.flushActiveSession as jest.Mock).mockResolvedValue(undefined);
-    (appModelAdapter.getState as jest.Mock).mockResolvedValue({
-        snapshot: {
-            revision: 3,
-            tabSetRevision: 0,
-            activeDocumentId: null,
-            orderedDocumentIds: ['one', 'two'],
-            documents: {
-                one: { ...documentFixture('one', 1), dirty: false, status: 'saved' },
-                two: documentFixture('two', 1),
+    jest.mocked(appModelAdapter.getState).mockImplementation(async () => {
+        if (probeFails) throw new Error('Could not verify the background write');
+        return {
+            activeBuffer: null,
+            snapshot: {
+                revision: 3,
+                tabSetRevision: 0,
+                activeDocumentId: null,
+                orderedDocumentIds: ['one', 'two'],
+                documents: {
+                    one: { ...documentFixture('one', 1), dirty: false, status: 'saved' },
+                    two: documentFixture('two', 1),
+                },
+                ui: {},
             },
-            ui: {},
-        },
+        };
     });
     (closePlanAdapter.prepareClose as jest.Mock).mockResolvedValue({ data: plan });
     (closePlanAdapter.resolveClosePlan as jest.Mock).mockResolvedValue({
@@ -601,9 +633,12 @@ it('reports formatting skipped for a completed background Save before a later ba
     await act(async () => {
         await owner.result.current.choose('save-all');
     });
-    expect(writes.notifyInactiveFormatSkipped).toHaveBeenCalledTimes(1);
-    expect(writes.notifyInactiveFormatSkipped).toHaveBeenCalledWith('one');
+    expect(appModelAdapter.getState).toHaveBeenCalledTimes(1);
+    expect(writes.notifyInactiveFormatSkipped.mock.calls).toEqual(probeFails ? [] : [['one']]);
     expect(closePlanAdapter.executeClosePlan).toHaveBeenCalledWith('plan');
+    expect(owner.result.current.state.phase).toBe('failed');
+    expect(store.getState().documents.orderedIds).toEqual(['one', 'two']);
+    expect(store.getState().notifications.items.map(({ message }) => message)).toEqual(['The second write failed.']);
 });
 
 it('reports closed only after the existing window plan closes every tab', async () => {
@@ -1091,6 +1126,77 @@ it('refuses repeated closes on buffer sync failure without duplicate operation e
     });
     expect(closePlanAdapter.prepareClose).not.toHaveBeenCalled();
     expect(store.getState().notifications.items).toHaveLength(0);
+});
+
+it('cancels a background close plan before reloading and prepares the original target again', async () => {
+    const preview = conflictFixture('two', 1);
+    const target = { documentId: 'two', title: 'two.md', contentRevision: 1, dirty: true };
+    const old: ClosePlanSummary = {
+        id: 'old',
+        kind: 'single',
+        status: 'collecting',
+        tabSetRevision: 1,
+        targets: [target],
+    };
+    const fresh: ClosePlanSummary = {
+        ...old,
+        id: 'fresh',
+        status: 'ready',
+        tabSetRevision: 2,
+        targets: [{ ...target, contentRevision: 2, dirty: false }],
+    };
+    const prepare = jest.mocked(closePlanAdapter.prepareClose);
+    const resolve = jest.mocked(closePlanAdapter.resolveClosePlan);
+    const reload = jest.mocked(documentConflictAdapter.reloadFromDisk);
+    const getState = jest.mocked(appModelAdapter.getState);
+    const execute = jest.mocked(closePlanAdapter.executeClosePlan);
+    prepare.mockResolvedValueOnce({ data: old }).mockResolvedValueOnce({ data: fresh });
+    resolve
+        .mockResolvedValueOnce({ data: { ...old, targets: [{ ...target, choice: 'save', conflict: preview }] } })
+        .mockResolvedValueOnce({ data: { ...old, status: 'cancelled' } })
+        .mockResolvedValueOnce({ data: fresh });
+    reload.mockResolvedValueOnce({ status: 'reloaded', documentRevision: 2 });
+    getState.mockResolvedValueOnce({
+        activeBuffer: null,
+        snapshot: {
+            revision: 2,
+            tabSetRevision: 2,
+            activeDocumentId: 'one',
+            orderedDocumentIds: ['one', 'two'],
+            documents: { one: documentFixture(), two: { ...documentFixture('two', 2), dirty: false } },
+            ui: {},
+        },
+    });
+    execute.mockResolvedValueOnce({ status: 'closed', orderedDocumentIds: ['one'] });
+    const writes = { saveForClose: jest.fn() };
+    const owner = renderCloseWorkflow(writes);
+
+    await act(async () => {
+        await owner.result.current.onCloseDocument('two', 1);
+        await owner.result.current.choose('save');
+    });
+    expect(owner.result.current.conflict?.preview).toEqual(preview);
+    await act(async () => owner.result.current.conflict?.onDecision('reload'));
+
+    expect(resolve.mock.calls).toEqual([
+        ['old', [{ choice: 'save', documentId: 'two' }]],
+        ['old', [{ choice: 'cancel' }]],
+        ['fresh', []],
+    ]);
+    expect(reload).toHaveBeenCalledWith('two', 1, preview.detectedDiskVersion);
+    expect(prepare).toHaveBeenNthCalledWith(2, 'single', ['two'], 2);
+    expect(execute).toHaveBeenCalledWith('fresh');
+    const continuation = [
+        resolve.mock.invocationCallOrder[1],
+        reload.mock.invocationCallOrder[0],
+        getState.mock.invocationCallOrder[0],
+        prepare.mock.invocationCallOrder[1],
+        resolve.mock.invocationCallOrder[2],
+        execute.mock.invocationCallOrder[0],
+    ];
+    expect(continuation).toEqual(continuation.toSorted((a, b) => a - b));
+    expect(writes.saveForClose).not.toHaveBeenCalled();
+    expect(owner.result.current.state.phase).toBe('idle');
 });
 
 it('routes a close-induced activation conflict through the external conflict owner', async () => {

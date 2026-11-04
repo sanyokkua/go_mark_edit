@@ -59,6 +59,25 @@ export function isInsideDocumentFolder(path: string, documentPath: string): bool
     return path !== folder && path.startsWith(`${folder}/`);
 }
 
+function classifyLocalLink(href: string, trimmed: string, documentPath?: string): LinkTarget {
+    const fragmentStart = trimmed.indexOf('#');
+    const pathAndQuery = fragmentStart < 0 ? trimmed : trimmed.slice(0, fragmentStart);
+    const queryStart = pathAndQuery.indexOf('?');
+    const path = decodePath(queryStart < 0 ? pathAndQuery : pathAndQuery.slice(0, queryStart));
+    const fragment = fragmentStart < 0 ? undefined : decodePath(trimmed.slice(fragmentStart + 1));
+    if (path === undefined || path === '' || (fragmentStart >= 0 && fragment === undefined)) {
+        return refused(href, 'malformed');
+    }
+    if (/^[\\/]{2}/u.test(path)) return refused(href, 'network-path');
+    if (documentPath === undefined || documentPath === '') {
+        if (!path.startsWith('/') && !path.startsWith('\\') && !/^[a-z]:[\\/]/iu.test(path)) {
+            return refused(href, 'untitled-document');
+        }
+    }
+
+    return fragment === undefined ? { kind: 'localDocument', href } : { kind: 'localDocument', href, fragment };
+}
+
 export function classifyLink(href: string, documentPath?: string): LinkTarget {
     const trimmed = href.trim();
     if (trimmed === '') return refused(href, 'empty');
@@ -76,20 +95,5 @@ export function classifyLink(href: string, documentPath?: string): LinkTarget {
         return refused(href, 'scheme');
     }
 
-    const fragmentStart = trimmed.indexOf('#');
-    const pathAndQuery = fragmentStart < 0 ? trimmed : trimmed.slice(0, fragmentStart);
-    const queryStart = pathAndQuery.indexOf('?');
-    const path = decodePath(queryStart < 0 ? pathAndQuery : pathAndQuery.slice(0, queryStart));
-    const fragment = fragmentStart < 0 ? undefined : decodePath(trimmed.slice(fragmentStart + 1));
-    if (path === undefined || path === '' || (fragmentStart >= 0 && fragment === undefined)) {
-        return refused(href, 'malformed');
-    }
-    if (/^[\\/]{2}/u.test(path)) return refused(href, 'network-path');
-    if (documentPath === undefined || documentPath === '') {
-        if (!path.startsWith('/') && !path.startsWith('\\') && !/^[a-z]:[\\/]/iu.test(path)) {
-            return refused(href, 'untitled-document');
-        }
-    }
-
-    return fragment === undefined ? { kind: 'localDocument', href } : { kind: 'localDocument', href, fragment };
+    return classifyLocalLink(href, trimmed, documentPath);
 }

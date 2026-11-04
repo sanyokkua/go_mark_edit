@@ -2,6 +2,13 @@ import { fireEvent, render, screen, within } from '@testing-library/react';
 
 import StatusBar, { type StatusFact } from '../../src/ui/components/StatusBar';
 
+it('exposes the document status and details control without overriding a footer role', () => {
+    render(<StatusBar />);
+    const status = screen.getByRole('status', { name: 'Document status' });
+    expect(status.matches('footer[role="status"]')).toBe(false);
+    expect(within(status).getByRole('button', { name: 'Document details' })).toBeEnabled();
+});
+
 it('omits the legacy Markdown standard until it is supplied', () => {
     render(<StatusBar saveIdentity="Saved" />);
     const status = screen.getByRole('status');

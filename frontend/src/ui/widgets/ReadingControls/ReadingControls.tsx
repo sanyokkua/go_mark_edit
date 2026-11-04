@@ -40,10 +40,10 @@ function useEdgeHover(
             });
         };
         const onLeave = (): void => update({ top: false, left: false });
-        window.addEventListener('mousemove', onMove);
+        globalThis.addEventListener('mousemove', onMove);
         document.documentElement.addEventListener('mouseleave', onLeave);
         return (): void => {
-            window.removeEventListener('mousemove', onMove);
+            globalThis.removeEventListener('mousemove', onMove);
             document.documentElement.removeEventListener('mouseleave', onLeave);
         };
     }, [sidebarRef, tabsRef]);

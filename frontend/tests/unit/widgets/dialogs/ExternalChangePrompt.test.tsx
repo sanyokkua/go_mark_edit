@@ -142,12 +142,12 @@ it('isolates and escapes the basename it derives from a path', () => {
             open
             preview={preview({
                 displayName: undefined,
-                path: '/tmp/reports/re‮gnp.md',
+                path: '/tmp/reports/re\u202Egnp.md',
             })}
         />,
     );
 
     const message = screen.getByText(/changed outside GoMarkEdit/u);
-    expect(message.textContent).not.toContain('‮');
-    expect(message.textContent).toContain('⁨re\\u202Egnp.md⁩');
+    expect(message.textContent).not.toContain('\u202E');
+    expect(message.textContent).toContain('\u2068re\\u202Egnp.md\u2069');
 });

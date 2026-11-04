@@ -47,9 +47,37 @@ export function AppFrame({
     shell,
     printRequest,
     children,
-}: AppFrameProps): React.JSX.Element {
+}: Readonly<AppFrameProps>): React.JSX.Element {
     const ready = bootstrap.status === 'ready';
     const reading = useAppSelector((state) => state.reading.active);
+
+    const renderContent = (): React.JSX.Element | null => {
+        if (bootstrap.status === 'failed') {
+            return (
+                <StartupFailure
+                    failure={bootstrap.failure}
+                    isRetrying={bootstrap.isRetrying}
+                    onQuit={onQuit}
+                    onRetry={onRetry}
+                />
+            );
+        }
+        if (!ready) return null;
+        return (
+            <>
+                {recovery !== null ? (
+                    <section aria-label={t('recovery.title')} role="alert">
+                        <p>{recovery.message}</p>
+                        <Button variant="secondary" onClick={onQuit}>
+                            {t('recovery.quit.action')}
+                        </Button>
+                    </section>
+                ) : null}
+                <AppShell {...shell} />
+            </>
+        );
+    };
+
     return (
         <div className="application-frame">
             <AppearanceSettingsProvider settingsOpen={settingsOpen} onSettingsOpenChange={onSettingsOpenChange}>
@@ -67,26 +95,7 @@ export function AppFrame({
             </AppearanceSettingsProvider>
             <div className="application-content">
                 <Notifications banners={ready ? banners : []} notices={ready ? notices : []} onDismiss={onDismiss} />
-                {bootstrap.status === 'failed' ? (
-                    <StartupFailure
-                        failure={bootstrap.failure}
-                        isRetrying={bootstrap.isRetrying}
-                        onQuit={onQuit}
-                        onRetry={onRetry}
-                    />
-                ) : ready ? (
-                    <>
-                        {recovery !== null ? (
-                            <section aria-label={t('recovery.title')} role="alert">
-                                <p>{recovery.message}</p>
-                                <Button variant="secondary" onClick={onQuit}>
-                                    {t('recovery.quit.action')}
-                                </Button>
-                            </section>
-                        ) : null}
-                        <AppShell {...shell} />
-                    </>
-                ) : null}
+                {renderContent()}
             </div>
             {children}
         </div>

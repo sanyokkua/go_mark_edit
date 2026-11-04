@@ -26,56 +26,11 @@ func TestSettingsHandlerRejectsUnsupportedGroupUpdatesWithoutWriting(t *testing.
 	}
 
 	t.Run("appearance enum values", func(t *testing.T) {
-		testCases := []struct {
-			name  string
-			input apperr.AppearanceSettings
-		}{
-			{name: "theme", input: apperr.AppearanceSettings{Theme: "vaporwave", Mode: original.Appearance.Mode, DefaultOpenMode: original.Appearance.DefaultOpenMode, ReadingWidth: original.Appearance.ReadingWidth, PdfAppearance: original.Appearance.PdfAppearance}},
-			{name: "mode", input: apperr.AppearanceSettings{Theme: original.Appearance.Theme, Mode: "midnight", DefaultOpenMode: original.Appearance.DefaultOpenMode, ReadingWidth: original.Appearance.ReadingWidth, PdfAppearance: original.Appearance.PdfAppearance}},
-			{name: "default open mode", input: apperr.AppearanceSettings{Theme: original.Appearance.Theme, Mode: original.Appearance.Mode, DefaultOpenMode: "split", ReadingWidth: original.Appearance.ReadingWidth, PdfAppearance: original.Appearance.PdfAppearance}},
-			{name: "reading width", input: apperr.AppearanceSettings{Theme: original.Appearance.Theme, Mode: original.Appearance.Mode, DefaultOpenMode: original.Appearance.DefaultOpenMode, ReadingWidth: "wide", PdfAppearance: original.Appearance.PdfAppearance}},
-			{name: "pdf appearance", input: apperr.AppearanceSettings{Theme: original.Appearance.Theme, Mode: original.Appearance.Mode, DefaultOpenMode: original.Appearance.DefaultOpenMode, ReadingWidth: original.Appearance.ReadingWidth, PdfAppearance: "glossy"}},
-		}
-		for _, testCase := range testCases {
-			t.Run(testCase.name, func(t *testing.T) {
-				repository := fakeSettingsRepository{appearance: original.Appearance, markdown: original.Markdown, contentPrivacy: original.ContentPrivacy}
-				handler := NewSettingsHandler(NewSettingsService(&repository), nil, nil)
-
-				result := handler.UpdateAppearance(settingsRequest("appearance-"+testCase.name), testCase.input)
-				if result.Error == nil || result.Error.Code != apperr.CodeValidation {
-					t.Fatalf("invalid appearance envelope = %+v, want validation error", result)
-				}
-				if repository.appearance != original.Appearance || repository.appearanceUpdates != 0 {
-					t.Fatalf("appearance after rejected update = %+v with %d writes, want %+v and zero writes", repository.appearance, repository.appearanceUpdates, original.Appearance)
-				}
-			})
-		}
+		checkRejectedAppearanceEnums(t, original)
 	})
 
 	t.Run("markdown enum and style values", func(t *testing.T) {
-		testCases := []struct {
-			name  string
-			input apperr.MarkdownSettings
-		}{
-			{name: "standard", input: apperr.MarkdownSettings{Standard: "plain-text", FormatOnSave: original.Markdown.FormatOnSave, LintOnSave: original.Markdown.LintOnSave, BulletMarker: original.Markdown.BulletMarker, EmphasisMarker: original.Markdown.EmphasisMarker, HeadingStyle: original.Markdown.HeadingStyle}},
-			{name: "bullet marker", input: apperr.MarkdownSettings{Standard: original.Markdown.Standard, FormatOnSave: original.Markdown.FormatOnSave, LintOnSave: original.Markdown.LintOnSave, BulletMarker: "•", EmphasisMarker: original.Markdown.EmphasisMarker, HeadingStyle: original.Markdown.HeadingStyle}},
-			{name: "emphasis marker", input: apperr.MarkdownSettings{Standard: original.Markdown.Standard, FormatOnSave: original.Markdown.FormatOnSave, LintOnSave: original.Markdown.LintOnSave, BulletMarker: original.Markdown.BulletMarker, EmphasisMarker: "~", HeadingStyle: original.Markdown.HeadingStyle}},
-			{name: "heading style", input: apperr.MarkdownSettings{Standard: original.Markdown.Standard, FormatOnSave: original.Markdown.FormatOnSave, LintOnSave: original.Markdown.LintOnSave, BulletMarker: original.Markdown.BulletMarker, EmphasisMarker: original.Markdown.EmphasisMarker, HeadingStyle: "underlined"}},
-		}
-		for _, testCase := range testCases {
-			t.Run(testCase.name, func(t *testing.T) {
-				repository := fakeSettingsRepository{appearance: original.Appearance, markdown: original.Markdown, contentPrivacy: original.ContentPrivacy}
-				handler := NewSettingsHandler(NewSettingsService(&repository), nil, nil)
-
-				result := handler.UpdateMarkdown(settingsRequest("markdown-"+testCase.name), testCase.input)
-				if result.Error == nil || result.Error.Code != apperr.CodeValidation {
-					t.Fatalf("invalid markdown envelope = %+v, want validation error", result)
-				}
-				if repository.markdown != original.Markdown || repository.markdownUpdates != 0 {
-					t.Fatalf("markdown after rejected update = %+v with %d writes, want %+v and zero writes", repository.markdown, repository.markdownUpdates, original.Markdown)
-				}
-			})
-		}
+		checkRejectedMarkdownEnums(t, original)
 	})
 }
 
@@ -113,81 +68,146 @@ func TestSettingsHandlerReturnsRecoveredResultEnvelope(t *testing.T) {
 	})
 
 	t.Run("all bound methods recover panics", func(t *testing.T) {
-		panicCases := []struct {
-			name string
-			call func(*SettingsHandler) *apperr.WireError
-		}{
-			{
-				name: "update appearance",
-				call: func(handler *SettingsHandler) *apperr.WireError {
-					return handler.UpdateAppearance(settingsRequest("panic"), DefaultSettings().Appearance).Error
-				},
-			},
-			{
-				name: "reset appearance",
-				call: func(handler *SettingsHandler) *apperr.WireError {
-					return handler.ResetAppearance(settingsRequest("panic")).Error
-				},
-			},
-			{
-				name: "update markdown",
-				call: func(handler *SettingsHandler) *apperr.WireError {
-					return handler.UpdateMarkdown(settingsRequest("panic"), DefaultSettings().Markdown).Error
-				},
-			},
-			{
-				name: "update content privacy",
-				call: func(handler *SettingsHandler) *apperr.WireError {
-					return handler.UpdateContentPrivacy(settingsRequest("panic"), DefaultSettings().ContentPrivacy).Error
-				},
-			},
-			{
-				name: "update file",
-				call: func(handler *SettingsHandler) *apperr.WireError {
-					return handler.UpdateFile(settingsRequest("panic"), DefaultSettings().File).Error
-				},
-			},
-		}
-		for _, panicCase := range panicCases {
-			t.Run(panicCase.name, func(t *testing.T) {
-				handler := NewSettingsHandler(NewSettingsService(&fakeSettingsRepository{panicOperation: panicCase.name}), nil, nil)
-
-				wire := panicCase.call(handler)
-				if wire == nil || wire.Code != apperr.CodeInternal {
-					t.Fatalf("panic envelope error = %+v, want internal", wire)
-				}
-			})
-		}
+		checkBoundMethodsRecoverPanics(t)
 	})
 
 	t.Run("bound methods take no handler context", func(t *testing.T) {
-		handlerType := reflect.TypeOf((*SettingsHandler)(nil))
-		contextType := reflect.TypeOf((*context.Context)(nil)).Elem()
-		methods := map[string]reflect.Type{
-			"GetSettings":          reflect.TypeOf(apperr.SettingsResult{}),
-			"ResetAppearance":      reflect.TypeOf(apperr.VoidResult{}),
-			"UpdateAppearance":     reflect.TypeOf(apperr.VoidResult{}),
-			"UpdateMarkdown":       reflect.TypeOf(apperr.VoidResult{}),
-			"UpdateContentPrivacy": reflect.TypeOf(apperr.VoidResult{}),
-			"UpdateFile":           reflect.TypeOf(apperr.VoidResult{}),
-		}
-		for name, resultType := range methods {
-			method, ok := handlerType.MethodByName(name)
-			if !ok {
-				t.Fatalf("SettingsHandler has no bound method %s", name)
-			}
-			if method.Type.NumOut() != 1 || method.Type.Out(0) != resultType {
-				t.Fatalf("%s result signature = %s, want one %s", name, method.Type, resultType)
-			}
-			for index := 1; index < method.Type.NumIn(); index++ {
-				if method.Type.In(index) == contextType {
-					t.Fatalf("%s accepts context.Context at argument %d", name, index)
-				}
-			}
-		}
+		checkBoundMethodsHaveNoContext(t)
 	})
 }
 
 func settingsRequest(id string) bridge.Request {
 	return bridge.Request{ID: id}
+}
+
+func checkRejectedAppearanceEnums(t *testing.T, original apperr.Settings) {
+	t.Helper()
+	testCases := []struct {
+		name  string
+		input apperr.AppearanceSettings
+	}{
+		{name: "theme", input: apperr.AppearanceSettings{Theme: "vaporwave", Mode: original.Appearance.Mode, DefaultOpenMode: original.Appearance.DefaultOpenMode, ReadingWidth: original.Appearance.ReadingWidth, PdfAppearance: original.Appearance.PdfAppearance}},
+		{name: "mode", input: apperr.AppearanceSettings{Theme: original.Appearance.Theme, Mode: "midnight", DefaultOpenMode: original.Appearance.DefaultOpenMode, ReadingWidth: original.Appearance.ReadingWidth, PdfAppearance: original.Appearance.PdfAppearance}},
+		{name: "default open mode", input: apperr.AppearanceSettings{Theme: original.Appearance.Theme, Mode: original.Appearance.Mode, DefaultOpenMode: "split", ReadingWidth: original.Appearance.ReadingWidth, PdfAppearance: original.Appearance.PdfAppearance}},
+		{name: "reading width", input: apperr.AppearanceSettings{Theme: original.Appearance.Theme, Mode: original.Appearance.Mode, DefaultOpenMode: original.Appearance.DefaultOpenMode, ReadingWidth: "wide", PdfAppearance: original.Appearance.PdfAppearance}},
+		{name: "pdf appearance", input: apperr.AppearanceSettings{Theme: original.Appearance.Theme, Mode: original.Appearance.Mode, DefaultOpenMode: original.Appearance.DefaultOpenMode, ReadingWidth: original.Appearance.ReadingWidth, PdfAppearance: "glossy"}},
+	}
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			repository := fakeSettingsRepository{appearance: original.Appearance, markdown: original.Markdown, contentPrivacy: original.ContentPrivacy}
+			handler := NewSettingsHandler(NewSettingsService(&repository), nil, nil)
+
+			result := handler.UpdateAppearance(settingsRequest("appearance-"+testCase.name), testCase.input)
+			if result.Error == nil || result.Error.Code != apperr.CodeValidation {
+				t.Fatalf("invalid appearance envelope = %+v, want validation error", result)
+			}
+			if repository.appearance != original.Appearance || repository.appearanceUpdates != 0 {
+				t.Fatalf("appearance after rejected update = %+v with %d writes, want %+v and zero writes", repository.appearance, repository.appearanceUpdates, original.Appearance)
+			}
+		})
+	}
+}
+
+func checkRejectedMarkdownEnums(t *testing.T, original apperr.Settings) {
+	t.Helper()
+	testCases := []struct {
+		name  string
+		input apperr.MarkdownSettings
+	}{
+		{name: "standard", input: apperr.MarkdownSettings{Standard: "plain-text", FormatOnSave: original.Markdown.FormatOnSave, LintOnSave: original.Markdown.LintOnSave, BulletMarker: original.Markdown.BulletMarker, EmphasisMarker: original.Markdown.EmphasisMarker, HeadingStyle: original.Markdown.HeadingStyle}},
+		{name: "bullet marker", input: apperr.MarkdownSettings{Standard: original.Markdown.Standard, FormatOnSave: original.Markdown.FormatOnSave, LintOnSave: original.Markdown.LintOnSave, BulletMarker: "•", EmphasisMarker: original.Markdown.EmphasisMarker, HeadingStyle: original.Markdown.HeadingStyle}},
+		{name: "emphasis marker", input: apperr.MarkdownSettings{Standard: original.Markdown.Standard, FormatOnSave: original.Markdown.FormatOnSave, LintOnSave: original.Markdown.LintOnSave, BulletMarker: original.Markdown.BulletMarker, EmphasisMarker: "~", HeadingStyle: original.Markdown.HeadingStyle}},
+		{name: "heading style", input: apperr.MarkdownSettings{Standard: original.Markdown.Standard, FormatOnSave: original.Markdown.FormatOnSave, LintOnSave: original.Markdown.LintOnSave, BulletMarker: original.Markdown.BulletMarker, EmphasisMarker: original.Markdown.EmphasisMarker, HeadingStyle: "underlined"}},
+	}
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			repository := fakeSettingsRepository{appearance: original.Appearance, markdown: original.Markdown, contentPrivacy: original.ContentPrivacy}
+			handler := NewSettingsHandler(NewSettingsService(&repository), nil, nil)
+
+			result := handler.UpdateMarkdown(settingsRequest("markdown-"+testCase.name), testCase.input)
+			if result.Error == nil || result.Error.Code != apperr.CodeValidation {
+				t.Fatalf("invalid markdown envelope = %+v, want validation error", result)
+			}
+			if repository.markdown != original.Markdown || repository.markdownUpdates != 0 {
+				t.Fatalf("markdown after rejected update = %+v with %d writes, want %+v and zero writes", repository.markdown, repository.markdownUpdates, original.Markdown)
+			}
+		})
+	}
+}
+
+func checkBoundMethodsRecoverPanics(t *testing.T) {
+	t.Helper()
+	panicCases := []struct {
+		name string
+		call func(*SettingsHandler) *apperr.WireError
+	}{
+		{
+			name: "update appearance",
+			call: func(handler *SettingsHandler) *apperr.WireError {
+				return handler.UpdateAppearance(settingsRequest("panic"), DefaultSettings().Appearance).Error
+			},
+		},
+		{
+			name: "reset appearance",
+			call: func(handler *SettingsHandler) *apperr.WireError {
+				return handler.ResetAppearance(settingsRequest("panic")).Error
+			},
+		},
+		{
+			name: "update markdown",
+			call: func(handler *SettingsHandler) *apperr.WireError {
+				return handler.UpdateMarkdown(settingsRequest("panic"), DefaultSettings().Markdown).Error
+			},
+		},
+		{
+			name: "update content privacy",
+			call: func(handler *SettingsHandler) *apperr.WireError {
+				return handler.UpdateContentPrivacy(settingsRequest("panic"), DefaultSettings().ContentPrivacy).Error
+			},
+		},
+		{
+			name: "update file",
+			call: func(handler *SettingsHandler) *apperr.WireError {
+				return handler.UpdateFile(settingsRequest("panic"), DefaultSettings().File).Error
+			},
+		},
+	}
+	for _, panicCase := range panicCases {
+		t.Run(panicCase.name, func(t *testing.T) {
+			handler := NewSettingsHandler(NewSettingsService(&fakeSettingsRepository{panicOperation: panicCase.name}), nil, nil)
+
+			wire := panicCase.call(handler)
+			if wire == nil || wire.Code != apperr.CodeInternal {
+				t.Fatalf("panic envelope error = %+v, want internal", wire)
+			}
+		})
+	}
+}
+
+func checkBoundMethodsHaveNoContext(t *testing.T) {
+	t.Helper()
+	handlerType := reflect.TypeOf((*SettingsHandler)(nil))
+	contextType := reflect.TypeOf((*context.Context)(nil)).Elem()
+	methods := map[string]reflect.Type{
+		"GetSettings":          reflect.TypeOf(apperr.SettingsResult{}),
+		"ResetAppearance":      reflect.TypeOf(apperr.VoidResult{}),
+		"UpdateAppearance":     reflect.TypeOf(apperr.VoidResult{}),
+		"UpdateMarkdown":       reflect.TypeOf(apperr.VoidResult{}),
+		"UpdateContentPrivacy": reflect.TypeOf(apperr.VoidResult{}),
+		"UpdateFile":           reflect.TypeOf(apperr.VoidResult{}),
+	}
+	for name, resultType := range methods {
+		method, ok := handlerType.MethodByName(name)
+		if !ok {
+			t.Fatalf("SettingsHandler has no bound method %s", name)
+		}
+		if method.Type.NumOut() != 1 || method.Type.Out(0) != resultType {
+			t.Fatalf("%s result signature = %s, want one %s", name, method.Type, resultType)
+		}
+		for index := 1; index < method.Type.NumIn(); index++ {
+			if method.Type.In(index) == contextType {
+				t.Fatalf("%s accepts context.Context at argument %d", name, index)
+			}
+		}
+	}
 }

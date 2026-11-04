@@ -165,6 +165,44 @@ test('clears the prior document summary on activation and publishes fresh clean 
     app.expectNoForeignRequests();
 });
 
+test('keeps Details within the minimum-width status row while saving stale findings', async ({ app }) => {
+    const source = '# Findings\n';
+    const page = await openDocument(app, 'saving-findings.md', source);
+    await page.setViewportSize({ width: 375, height: 720 });
+    const row = page.getByRole('status', { name: 'Document status' });
+    await expect(row).toContainText('Markdown · Full');
+
+    await page.evaluate(async (source) => {
+        const storePath = '/src/logic/store/index.ts';
+        const actionsPath = '/src/logic/store/appModelProjectionActions.ts';
+        const summaryPath = '/src/logic/operations/problemsSummary.ts';
+        const { store } = (await import(/* @vite-ignore */ storePath)) as typeof import('../../src/logic/store');
+        const { applyStatePatch } = (await import(
+            /* @vite-ignore */ actionsPath
+        )) as typeof import('../../src/logic/store/appModelProjectionActions');
+        const summary = (await import(
+            /* @vite-ignore */ summaryPath
+        )) as typeof import('../../src/logic/operations/problemsSummary');
+        const { activeDocumentId, byId, revision } = store.getState().documents;
+        const document = activeDocumentId === null ? undefined : byId[activeDocumentId];
+        if (document === undefined) throw new Error('Expected an active document');
+
+        // Hold the projected write state so the check does not race the filesystem write.
+        summary.replace(document.documentId, [], 12_000, source);
+        summary.markStale(document.documentId, `X${source}`);
+        store.dispatch(
+            applyStatePatch({
+                revision: revision + 1,
+                documents: { upsert: { [document.documentId]: { ...document, writeInFlight: true } } },
+            }),
+        );
+    }, source);
+
+    await expect(row.getByRole('button', { name: /12,000 problems.*out of date/u })).toBeInViewport({ ratio: 1 });
+    await expect(row.getByText('Saving', { exact: true })).toBeInViewport({ ratio: 1 });
+    await expect(row.getByRole('button', { name: 'Document details' })).toBeInViewport({ ratio: 1 });
+});
+
 for (const count of [1500, 12000] as const) {
     test(`shows the exact total and bounded rows when Lint finds ${count.toLocaleString('en-US')} issues`, async ({
         app,

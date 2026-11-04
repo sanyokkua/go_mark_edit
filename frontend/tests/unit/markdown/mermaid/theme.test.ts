@@ -30,6 +30,21 @@ it('captures concrete rgb colours and dark mode before a later root-theme change
     expect(first).not.toEqual(second);
 });
 
+it('reads dark mode from a namespaced ancestor', () => {
+    const ancestor = document.createElementNS('urn:example', 'preview');
+    ancestor.setAttribute('data-mode', 'dark');
+    const preview = document.createElement('div');
+    ancestor.appendChild(preview);
+    const getComputed = jest
+        .spyOn(window, 'getComputedStyle')
+        .mockReturnValue({ color: 'rgb(20, 21, 22)' } as CSSStyleDeclaration);
+    try {
+        expect(JSON.parse(resolveMermaidTheme(preview))).toMatchObject({ darkMode: true });
+    } finally {
+        getComputed.mockRestore();
+    }
+});
+
 it('uses the elevated opaque surface for diagram nodes when the preview surface is translucent', () => {
     const colors: Record<string, string> = {
         '--surface': 'rgb(255, 255, 255)',

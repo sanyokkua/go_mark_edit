@@ -39,15 +39,7 @@ func TestNewDocumentDefaultsAndNoWrite(t *testing.T) {
 		t.Fatalf("New acknowledgement/state identity = %q/%q, want the new active document", outcome.Data.DocumentID, after.Snapshot.ActiveDocumentID)
 	}
 	metadata := after.Snapshot.Documents[documentID]
-	if metadata.Title != "Untitled" || metadata.DisplayName != "Untitled" || metadata.Path != "" {
-		t.Fatalf("New metadata identity = %+v, want empty untitled path", metadata)
-	}
-	if metadata.Encoding != "utf-8" || metadata.BOM != "absent" || metadata.LineEnding != "lf" || metadata.Capability != "writable" {
-		t.Fatalf("New file characteristics = %+v", metadata)
-	}
-	if metadata.Dirty || metadata.View.Arrangement != ArrangementEditor || !metadata.View.EditorVisible || metadata.View.PreviewVisible {
-		t.Fatalf("New defaults = %+v, want clean Editor-only document", metadata)
-	}
+	assertNewDocumentMetadata(t, metadata)
 	if len(after.Snapshot.RecentItems) != 0 || after.Snapshot.CanReopenLastFile {
 		t.Fatalf("New changed recent state = %+v", after.Snapshot)
 	}
@@ -60,6 +52,19 @@ func TestNewDocumentDefaultsAndNoWrite(t *testing.T) {
 	patch := emitter.patches[published]
 	if patch.Documents == nil || patch.Documents.Upsert[documentID].Path != "" || patch.ActiveDocument == nil || !patch.ActiveDocument.Present {
 		t.Fatalf("New patch = %+v, want metadata/order/active transition", patch)
+	}
+}
+
+func assertNewDocumentMetadata(t *testing.T, metadata apperr.DocumentMetadata) {
+	t.Helper()
+	if metadata.Title != "Untitled" || metadata.DisplayName != "Untitled" || metadata.Path != "" {
+		t.Fatalf("New metadata identity = %+v, want empty untitled path", metadata)
+	}
+	if metadata.Encoding != "utf-8" || metadata.BOM != "absent" || metadata.LineEnding != "lf" || metadata.Capability != "writable" {
+		t.Fatalf("New file characteristics = %+v", metadata)
+	}
+	if metadata.Dirty || metadata.View.Arrangement != ArrangementEditor || !metadata.View.EditorVisible || metadata.View.PreviewVisible {
+		t.Fatalf("New defaults = %+v, want clean Editor-only document", metadata)
 	}
 }
 
@@ -122,16 +127,7 @@ func TestNewDocumentRefusesStaleOrFortyFirst(t *testing.T) {
 
 	emitter := &recordingEmitter{}
 	service := NewAppModelServiceForHost(WithEmitter(emitter))
-	for count := 0; count < 40; count++ {
-		state, stateErr := service.GetState(context.Background())
-		if stateErr != nil {
-			t.Fatalf("GetState at document %d: %v", count, stateErr)
-		}
-		outcome := service.NewDocument(context.Background(), state.Snapshot.TabSetRevision)
-		if outcome.Error != nil || outcome.Data == nil {
-			t.Fatalf("New document %d = %+v", count+1, outcome)
-		}
-	}
+	fillDocumentCapacity(t, service)
 	beforeFortyFirst, err := service.GetState(context.Background())
 	if err != nil {
 		t.Fatalf("GetState before 41st New: %v", err)
@@ -150,5 +146,19 @@ func TestNewDocumentRefusesStaleOrFortyFirst(t *testing.T) {
 	}
 	if len(afterFortyFirst.Snapshot.Documents) != 40 || len(afterFortyFirst.Snapshot.OrderedDocumentIDs) != 40 || len(emitter.patches) != patchesBefore {
 		t.Fatalf("41st New changed state: documents=%d order=%d patches=%d", len(afterFortyFirst.Snapshot.Documents), len(afterFortyFirst.Snapshot.OrderedDocumentIDs), len(emitter.patches))
+	}
+}
+
+func fillDocumentCapacity(t *testing.T, service *AppModelService) {
+	t.Helper()
+	for count := 0; count < 40; count++ {
+		state, stateErr := service.GetState(context.Background())
+		if stateErr != nil {
+			t.Fatalf("GetState at document %d: %v", count, stateErr)
+		}
+		outcome := service.NewDocument(context.Background(), state.Snapshot.TabSetRevision)
+		if outcome.Error != nil || outcome.Data == nil {
+			t.Fatalf("New document %d = %+v", count+1, outcome)
+		}
 	}
 }

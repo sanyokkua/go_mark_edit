@@ -23,7 +23,7 @@ export default function SplitDivider({
     onResize,
     onCommit,
     valueText,
-}: SplitDividerProps): React.JSX.Element {
+}: Readonly<SplitDividerProps>): React.JSX.Element {
     const onPointerDown = useHorizontalResize({
         value,
         identity,

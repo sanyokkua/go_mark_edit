@@ -53,7 +53,8 @@ function translationKey(prefix: string, value: string): string {
 }
 
 function viewportWidth(): number {
-    return typeof window === 'undefined' ? Number.POSITIVE_INFINITY : window.innerWidth;
+    const browserWindow = globalThis.window;
+    return browserWindow === undefined ? Number.POSITIVE_INFINITY : browserWindow.innerWidth;
 }
 
 function legacyFacts(props: StatusBarProps): StatusFact[] {
@@ -219,13 +220,13 @@ const StatusBar: React.FC<StatusBarProps> = (props: StatusBarProps): React.JSX.E
 
     useEffect((): (() => void) => {
         const onResize = (): void => setCurrentWidth(viewportWidth());
-        window.addEventListener('resize', onResize);
-        return (): void => window.removeEventListener('resize', onResize);
+        globalThis.addEventListener('resize', onResize);
+        return (): void => globalThis.removeEventListener('resize', onResize);
     }, []);
 
     return (
         <div className={styles.dock} data-status-dock="true">
-            <footer
+            <div
                 aria-label={t('status.ariaLabel')}
                 className={styles.statusBar}
                 data-status-state={status}
@@ -246,7 +247,7 @@ const StatusBar: React.FC<StatusBarProps> = (props: StatusBarProps): React.JSX.E
                 >
                     {t('status.details')}
                 </PopupTrigger>
-            </footer>
+            </div>
             <Popup
                 anchor={{ trigger: detailsTrigger }}
                 aria-label={t('status.details')}

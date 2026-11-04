@@ -62,85 +62,120 @@ func TestHandlerReturnsTypedResultsAndRecoversPanics(t *testing.T) {
 
 	for _, method := range []string{"GetState", "NewDocument", "OpenDocument", "OpenPreviewLink", "ActivateDocument", "ReorderDocument", "CloseDocument", "CopyPath", "RevealInFileManager", "UpdateBuffer", "SetDocView", "SetUILayout", "Save", "SaveAs", "CancelNormalization"} {
 		t.Run(method+" recovers without emitting a patch", func(t *testing.T) {
-			service := &fakeAppModelService{panicOn: method}
-			panickingHandler := NewAppModelHandler(service, nil, nil)
-
-			var result apperr.VoidResult
-			switch method {
-			case "GetState":
-				stateResult := panickingHandler.GetState(boundRequest(method))
-				if stateResult.Data != nil || stateResult.Error == nil || stateResult.Error.Code != apperr.CodeInternal {
-					t.Fatalf("panic result = %+v, want an internal envelope without data", stateResult)
-				}
-			case "NewDocument":
-				transition := panickingHandler.NewDocument(boundRequest(method), 0)
-				if transition.Data != nil || transition.Category != apperr.ClassifiedInternal {
-					t.Fatalf("panic result = %+v, want a classified internal transition error", transition)
-				}
-			case "ActivateDocument":
-				transition := panickingHandler.ActivateDocument(boundRequest(method), "doc", 0)
-				if transition.Data != nil || transition.Error == nil || transition.Error.Category != apperr.ClassifiedSystemCommandFailure {
-					t.Fatalf("panic result = %+v, want classified activation refusal", transition)
-				}
-			case "ReorderDocument":
-				transition := panickingHandler.ReorderDocument(boundRequest(method), "doc", 0, 0)
-				if transition.Error == nil || transition.Error.Category != apperr.ClassifiedSystemCommandFailure {
-					t.Fatalf("panic result = %+v, want classified reorder refusal", transition)
-				}
-			case "CloseDocument":
-				transition := panickingHandler.CloseDocument(boundRequest(method), "doc", 0)
-				if transition.Error == nil || transition.Error.Category != apperr.ClassifiedSystemCommandFailure {
-					t.Fatalf("panic result = %+v, want classified close refusal", transition)
-				}
-			case "CopyPath":
-				pathResult := panickingHandler.CopyPath(boundRequest(method), "doc")
-				if pathResult.Error == nil || pathResult.Error.Category != apperr.ClassifiedSystemCommandFailure {
-					t.Fatalf("panic result = %+v, want classified copy refusal", pathResult)
-				}
-			case "RevealInFileManager":
-				revealResult := panickingHandler.RevealInFileManager(boundRequest(method), "doc")
-				if revealResult.Error == nil || revealResult.Error.Category != apperr.ClassifiedSystemCommandFailure {
-					t.Fatalf("panic result = %+v, want classified reveal refusal", revealResult)
-				}
-			case "OpenDocument":
-				opened := panickingHandler.OpenDocument(boundRequest(method), 0)
-				if opened.Status != apperr.OpenStatusRefused || opened.Error == nil || opened.Error.Category != apperr.ClassifiedSystemCommandFailure {
-					t.Fatalf("panic result = %+v, want a classified dialog error", opened)
-				}
-			case "OpenPreviewLink":
-				opened := panickingHandler.OpenPreviewLink(boundRequest(method), "doc", "./next.md")
-				if opened.Status != apperr.OpenStatusRefused || opened.Error == nil || opened.Error.Category != apperr.ClassifiedSystemCommandFailure {
-					t.Fatalf("panic result = %+v, want a classified preview-link error", opened)
-				}
-			case "UpdateBuffer":
-				result = panickingHandler.UpdateBuffer(boundRequest(method), "doc", "content")
-			case "SetDocView":
-				result = panickingHandler.SetDocView(boundRequest(method), "doc", validDocView(true, true))
-			case "SetUILayout":
-				result = panickingHandler.SetUILayout(boundRequest(method), apperr.UILayout{})
-			case "Save":
-				writeResult := panickingHandler.Save(boundRequest(method), "doc", 1, "")
-				if writeResult.Status != apperr.WriteStatusRefused || writeResult.Error == nil || writeResult.Error.Category != apperr.ClassifiedSystemCommandFailure {
-					t.Fatalf("panic result = %+v, want classified Save refusal", writeResult)
-				}
-			case "SaveAs":
-				writeResult := panickingHandler.SaveAs(boundRequest(method), "doc", 1, "")
-				if writeResult.Status != apperr.WriteStatusRefused || writeResult.Error == nil || writeResult.Error.Category != apperr.ClassifiedSystemCommandFailure {
-					t.Fatalf("panic result = %+v, want classified Save As refusal", writeResult)
-				}
-			case "CancelNormalization":
-				cancelled := panickingHandler.CancelNormalization(boundRequest(method), "doc", "token")
-				if cancelled.Error == nil || cancelled.Error.Category != apperr.ClassifiedSystemCommandFailure {
-					t.Fatalf("panic result = %+v, want a classified dismissal refusal", cancelled)
-				}
-			}
-			if method != "GetState" && method != "NewDocument" && method != "OpenDocument" && method != "OpenPreviewLink" && method != "ActivateDocument" && method != "ReorderDocument" && method != "CloseDocument" && method != "CopyPath" && method != "RevealInFileManager" && method != "Save" && method != "SaveAs" && method != "CancelNormalization" && (result.Error == nil || result.Error.Code != apperr.CodeInternal) {
-				t.Fatalf("panic result = %+v, want an internal envelope", result)
-			}
-			if service.emissions != 0 {
-				t.Fatalf("recovered %s panic emitted %d patches, want none", method, service.emissions)
-			}
+			assertHandlerRecoversPanic(t, method)
 		})
+	}
+}
+
+func assertHandlerRecoversPanic(t *testing.T, method string) {
+	t.Helper()
+	service := &fakeAppModelService{panicOn: method}
+	panickingHandler := NewAppModelHandler(service, nil, nil)
+
+	var result apperr.VoidResult
+	assertHandlerStateAndDocumentPanics(t, panickingHandler, method)
+	assertHandlerTabPanics(t, panickingHandler, method)
+	assertHandlerPathAndOpenPanics(t, panickingHandler, method, &result)
+	assertHandlerEditAndWritePanics(t, panickingHandler, method, &result)
+	if handlerPanicReturnsVoid(method) && (result.Error == nil || result.Error.Code != apperr.CodeInternal) {
+		t.Fatalf("panic result = %+v, want an internal envelope", result)
+	}
+	if service.emissions != 0 {
+		t.Fatalf("recovered %s panic emitted %d patches, want none", method, service.emissions)
+	}
+}
+
+func handlerPanicReturnsVoid(method string) bool {
+	return method != "GetState" && method != "NewDocument" && method != "OpenDocument" && method != "OpenPreviewLink" && method != "ActivateDocument" && method != "ReorderDocument" && method != "CloseDocument" && method != "CopyPath" && method != "RevealInFileManager" && method != "Save" && method != "SaveAs" && method != "CancelNormalization"
+}
+
+func assertHandlerStateAndDocumentPanics(t *testing.T, panickingHandler *AppModelHandler, method string) {
+	t.Helper()
+	switch method {
+	case "GetState":
+		stateResult := panickingHandler.GetState(boundRequest(method))
+		if stateResult.Data != nil || stateResult.Error == nil || stateResult.Error.Code != apperr.CodeInternal {
+			t.Fatalf("panic result = %+v, want an internal envelope without data", stateResult)
+		}
+	case "NewDocument":
+		transition := panickingHandler.NewDocument(boundRequest(method), 0)
+		if transition.Data != nil || transition.Category != apperr.ClassifiedInternal {
+			t.Fatalf("panic result = %+v, want a classified internal transition error", transition)
+		}
+	case "ActivateDocument":
+		transition := panickingHandler.ActivateDocument(boundRequest(method), "doc", 0)
+		if transition.Data != nil || transition.Error == nil || transition.Error.Category != apperr.ClassifiedSystemCommandFailure {
+			t.Fatalf("panic result = %+v, want classified activation refusal", transition)
+		}
+	}
+}
+
+func assertHandlerTabPanics(t *testing.T, panickingHandler *AppModelHandler, method string) {
+	t.Helper()
+	switch method {
+	case "ReorderDocument":
+		transition := panickingHandler.ReorderDocument(boundRequest(method), "doc", 0, 0)
+		if transition.Error == nil || transition.Error.Category != apperr.ClassifiedSystemCommandFailure {
+			t.Fatalf("panic result = %+v, want classified reorder refusal", transition)
+		}
+	case "CloseDocument":
+		transition := panickingHandler.CloseDocument(boundRequest(method), "doc", 0)
+		if transition.Error == nil || transition.Error.Category != apperr.ClassifiedSystemCommandFailure {
+			t.Fatalf("panic result = %+v, want classified close refusal", transition)
+		}
+	}
+}
+
+func assertHandlerPathAndOpenPanics(t *testing.T, panickingHandler *AppModelHandler, method string, result *apperr.VoidResult) {
+	t.Helper()
+	switch method {
+	case "CopyPath":
+		pathResult := panickingHandler.CopyPath(boundRequest(method), "doc")
+		if pathResult.Error == nil || pathResult.Error.Category != apperr.ClassifiedSystemCommandFailure {
+			t.Fatalf("panic result = %+v, want classified copy refusal", pathResult)
+		}
+	case "RevealInFileManager":
+		revealResult := panickingHandler.RevealInFileManager(boundRequest(method), "doc")
+		if revealResult.Error == nil || revealResult.Error.Category != apperr.ClassifiedSystemCommandFailure {
+			t.Fatalf("panic result = %+v, want classified reveal refusal", revealResult)
+		}
+	case "OpenDocument":
+		opened := panickingHandler.OpenDocument(boundRequest(method), 0)
+		if opened.Status != apperr.OpenStatusRefused || opened.Error == nil || opened.Error.Category != apperr.ClassifiedSystemCommandFailure {
+			t.Fatalf("panic result = %+v, want a classified dialog error", opened)
+		}
+	case "OpenPreviewLink":
+		opened := panickingHandler.OpenPreviewLink(boundRequest(method), "doc", "./next.md")
+		if opened.Status != apperr.OpenStatusRefused || opened.Error == nil || opened.Error.Category != apperr.ClassifiedSystemCommandFailure {
+			t.Fatalf("panic result = %+v, want a classified preview-link error", opened)
+		}
+	case "UpdateBuffer":
+		*result = panickingHandler.UpdateBuffer(boundRequest(method), "doc", "content")
+	}
+}
+
+func assertHandlerEditAndWritePanics(t *testing.T, panickingHandler *AppModelHandler, method string, result *apperr.VoidResult) {
+	t.Helper()
+	switch method {
+	case "SetDocView":
+		*result = panickingHandler.SetDocView(boundRequest(method), "doc", validDocView(true, true))
+	case "SetUILayout":
+		*result = panickingHandler.SetUILayout(boundRequest(method), apperr.UILayout{})
+	case "Save":
+		writeResult := panickingHandler.Save(boundRequest(method), "doc", 1, "")
+		if writeResult.Status != apperr.WriteStatusRefused || writeResult.Error == nil || writeResult.Error.Category != apperr.ClassifiedSystemCommandFailure {
+			t.Fatalf("panic result = %+v, want classified Save refusal", writeResult)
+		}
+	case "SaveAs":
+		writeResult := panickingHandler.SaveAs(boundRequest(method), "doc", 1, "")
+		if writeResult.Status != apperr.WriteStatusRefused || writeResult.Error == nil || writeResult.Error.Category != apperr.ClassifiedSystemCommandFailure {
+			t.Fatalf("panic result = %+v, want classified Save As refusal", writeResult)
+		}
+	case "CancelNormalization":
+		cancelled := panickingHandler.CancelNormalization(boundRequest(method), "doc", "token")
+		if cancelled.Error == nil || cancelled.Error.Category != apperr.ClassifiedSystemCommandFailure {
+			t.Fatalf("panic result = %+v, want a classified dismissal refusal", cancelled)
+		}
 	}
 }
 

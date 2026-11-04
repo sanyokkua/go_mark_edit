@@ -15,48 +15,7 @@ func TestOpenAppliesAdditiveMigrationsAndGeneratedStoreQueries(t *testing.T) {
 	defer cancel()
 	path := filepath.Join(t.TempDir(), "settings.db")
 
-	const simultaneousOpeners = 8
-	type openResult struct {
-		database *Database
-		err      error
-	}
-	start := make(chan struct{})
-	opened := make(chan openResult, simultaneousOpeners)
-	for range simultaneousOpeners {
-		go func() {
-			<-start
-			database, err := Open(ctx, path)
-			opened <- openResult{database: database, err: err}
-		}()
-	}
-	close(start)
-
-	databases := make([]*Database, 0, simultaneousOpeners)
-	for range simultaneousOpeners {
-		select {
-		case result := <-opened:
-			if result.err != nil {
-				for _, database := range databases {
-					_ = database.Close()
-				}
-				t.Fatalf("concurrent first open: %v", result.err)
-			}
-			databases = append(databases, result.database)
-		case <-ctx.Done():
-			for _, database := range databases {
-				_ = database.Close()
-			}
-			t.Fatalf("concurrent first opens did not converge: %v", ctx.Err())
-		}
-	}
-	t.Cleanup(func() {
-		for _, database := range databases {
-			if err := database.Close(); err != nil {
-				t.Errorf("close concurrently opened database: %v", err)
-			}
-		}
-	})
-	database := databases[0]
+	database := openConcurrentMigratedDatabases(t, ctx, path)
 
 	var tableCount int
 	if err := database.DB.QueryRowContext(ctx, `
@@ -114,5 +73,53 @@ func TestOpenAppliesAdditiveMigrationsAndGeneratedStoreQueries(t *testing.T) {
 
 	if err := database.DB.PingContext(ctx); err != nil && err != sql.ErrConnDone {
 		t.Fatalf("migrated database is not usable: %v", err)
+	}
+}
+
+func openConcurrentMigratedDatabases(t *testing.T, ctx context.Context, path string) *Database {
+	t.Helper()
+	const simultaneousOpeners = 8
+	type openResult struct {
+		database *Database
+		err      error
+	}
+	start := make(chan struct{})
+	opened := make(chan openResult, simultaneousOpeners)
+	for range simultaneousOpeners {
+		go func() {
+			<-start
+			database, err := Open(ctx, path)
+			opened <- openResult{database: database, err: err}
+		}()
+	}
+	close(start)
+
+	databases := make([]*Database, 0, simultaneousOpeners)
+	for range simultaneousOpeners {
+		select {
+		case result := <-opened:
+			if result.err != nil {
+				closeDatabasesIgnoringErrors(databases)
+				t.Fatalf("concurrent first open: %v", result.err)
+			}
+			databases = append(databases, result.database)
+		case <-ctx.Done():
+			closeDatabasesIgnoringErrors(databases)
+			t.Fatalf("concurrent first opens did not converge: %v", ctx.Err())
+		}
+	}
+	t.Cleanup(func() {
+		for _, database := range databases {
+			if err := database.Close(); err != nil {
+				t.Errorf("close concurrently opened database: %v", err)
+			}
+		}
+	})
+	return databases[0]
+}
+
+func closeDatabasesIgnoringErrors(databases []*Database) {
+	for _, database := range databases {
+		_ = database.Close()
 	}
 }

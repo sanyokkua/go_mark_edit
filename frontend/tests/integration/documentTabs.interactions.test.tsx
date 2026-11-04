@@ -251,11 +251,7 @@ it('keeps exactly one tab in the roving tabindex and moves it with the selection
     expect(screen.getByRole('tab', { name: /three\.md/u })).toHaveAttribute('aria-selected', 'true');
 });
 
-/*
- * gap 2 — Home and End are handled on the tablist (DocumentTabs.tsx:465) and move
- * DOM focus only; they deliberately do not activate, so no backend command is issued.
- */
-it('moves tab-strip focus to the first and last tab with Home and End', () => {
+it('focuses and activates the first and last tab with Home and End', async () => {
     hydrate(
         [
             documentFor('one', '/repo/one.md'),
@@ -264,17 +260,38 @@ it('moves tab-strip focus to the first and last tab with Home and End', () => {
         ],
         'two',
     );
-    const activateDocument = jest.fn(async () => ({}));
+    const activateDocument = jest.fn((documentId: string, expectedTabSetRevision: number) => {
+        const { revision, tabSetRevision } = store.getState().documents;
+        expect(expectedTabSetRevision).toBe(tabSetRevision);
+        store.dispatch(
+            applyStatePatch({
+                revision: revision + 1,
+                tabSetRevision: tabSetRevision + 1,
+                activeDocumentId: documentId,
+            }),
+        );
+        return Promise.resolve({});
+    });
     renderTabs({ activateDocument });
 
-    const tablist = screen.getByRole('tablist');
-    fireEvent.keyDown(tablist, { key: 'End' });
-    expect(screen.getByRole('tab', { name: /three\.md/u })).toHaveFocus();
+    const middle = screen.getByRole('tab', { name: /two\.md/u });
+    const last = screen.getByRole('tab', { name: /three\.md/u });
+    const first = screen.getByRole('tab', { name: /one\.md/u });
+    middle.focus();
+    fireEvent.keyDown(middle, { key: 'End' });
+    await waitFor(() => expect(last).toHaveAttribute('aria-selected', 'true'));
+    expect(last).toHaveFocus();
+    expect(last).toHaveAttribute('tabindex', '0');
 
-    fireEvent.keyDown(tablist, { key: 'Home' });
-    expect(screen.getByRole('tab', { name: /one\.md/u })).toHaveFocus();
-
-    expect(activateDocument).not.toHaveBeenCalled();
+    fireEvent.keyDown(last, { key: 'Home' });
+    await waitFor(() => expect(first).toHaveAttribute('aria-selected', 'true'));
+    expect(first).toHaveFocus();
+    expect(first).toHaveAttribute('tabindex', '0');
+    expect(last).toHaveAttribute('tabindex', '-1');
+    expect(activateDocument.mock.calls).toEqual([
+        ['three', 4],
+        ['one', 5],
+    ]);
 });
 
 /*
