@@ -865,7 +865,7 @@ export function createAppModelAdapter(bindings: AppModelBindings, runtime: AppMo
             ) {
                 return;
             }
-            if (activeSession !== undefined && activeSession.documentId === documentId) {
+            if (activeSession?.documentId === documentId) {
                 if (
                     expectedActivationToken !== undefined &&
                     !Object.is(expectedActivationToken, activeSession.activationToken)

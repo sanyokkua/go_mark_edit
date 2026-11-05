@@ -9,26 +9,10 @@ import {
     type ProjectedActionState,
 } from '../../logic/actions/actionRegistry';
 import { currentPlatform, formatShortcut } from '../../logic/actions/shortcutRegistry';
-import type {
-    ClassifiedError,
-    DocumentMetadata,
-    PathCommandResult,
-    TabTransitionResult,
-} from '../../logic/store/appModelTypes';
+import type { ClassifiedError, DocumentMetadata } from '../../logic/store/appModelTypes';
 import type { PopupAnchor } from '../components/Popup';
 import MenuItem from '../components/MenuItem';
 import Popup from '../components/Popup';
-
-export interface TabContextAdapter {
-    closeDocument?: (documentId: string, expectedTabSetRevision: number) => Promise<TabTransitionResult>;
-    reorderDocument?: (
-        documentId: string,
-        targetIndex: number,
-        expectedTabSetRevision: number,
-    ) => Promise<TabTransitionResult>;
-    copyPath?: (documentId: string) => Promise<PathCommandResult>;
-    revealInFileManager?: (documentId: string) => Promise<PathCommandResult>;
-}
 
 export type TabContextAction =
     | 'close-tab'
@@ -52,7 +36,6 @@ function isTabContextAction(actionId: ActionId): actionId is TabContextAction {
 }
 
 export interface TabContextMenuProps {
-    adapter: TabContextAdapter;
     anchor?: PopupAnchor;
     document: DocumentMetadata;
     index: number;

@@ -168,7 +168,10 @@ export function useTidyCommands(): TidyCommands {
     }, [activeBuffer?.documentId, commands, externalEpoch]);
 
     const showOutcomeNotice = useCallback(
-        (kind: 'refused' | 'failed' | 'cancelled' | 'stale', documentId: string): void => {
+        (origin: 'user' | 'on-save', outcome: TidyOutcome, documentId: string): void => {
+            if (origin !== 'user') return;
+            const { kind } = outcome;
+            if (kind !== 'refused' && kind !== 'failed' && kind !== 'cancelled' && kind !== 'stale') return;
             dispatch(
                 notifyToast({
                     code: `tidy-${kind}`,
@@ -203,8 +206,9 @@ export function useTidyCommands(): TidyCommands {
             try {
                 content = selectedCommands.getContent();
             } catch {
-                if (origin === 'user') showOutcomeNotice('failed', documentId);
-                return { kind: 'failed' };
+                const outcome: TidyOutcome = { kind: 'failed' };
+                showOutcomeNotice(origin, outcome, documentId);
+                return outcome;
             }
             if (content.status !== 'available') return { kind: 'failed' };
             const text = normalize(content.value);
@@ -237,18 +241,12 @@ export function useTidyCommands(): TidyCommands {
                 const now = selectedCommands.getContent();
                 if (isStaleRun(captured, latest, now)) outcome = { kind: 'stale' };
                 outcome = applyTidyOutcome(outcome, selectedCommands, documentId, text);
-                if (
-                    origin === 'user' &&
-                    (outcome.kind === 'refused' ||
-                        outcome.kind === 'failed' ||
-                        outcome.kind === 'cancelled' ||
-                        outcome.kind === 'stale')
-                )
-                    showOutcomeNotice(outcome.kind, documentId);
+                showOutcomeNotice(origin, outcome, documentId);
                 return outcome;
             } catch {
-                if (origin === 'user') showOutcomeNotice('failed', documentId);
-                return { kind: 'failed' };
+                const outcome: TidyOutcome = { kind: 'failed' };
+                showOutcomeNotice(origin, outcome, documentId);
+                return outcome;
             } finally {
                 if (running.current === captured) running.current = null;
                 handle.release();

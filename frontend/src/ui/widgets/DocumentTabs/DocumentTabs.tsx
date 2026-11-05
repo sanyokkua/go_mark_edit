@@ -21,11 +21,7 @@ import { t } from '../../../i18n';
 import LiveRegion from '../../primitives/LiveRegion';
 import type { PopupAnchor } from '../../components/Popup';
 import TabBar, { type TabBarProps } from '../../components/TabBar';
-import TabContextMenu, {
-    type TabContextAction,
-    type TabContextAdapter,
-    type TabContextCloseOptions,
-} from '../TabContextMenu';
+import TabContextMenu, { type TabContextAction, type TabContextCloseOptions } from '../TabContextMenu';
 import { EDITOR_TABPANEL_ID, tabElementId } from '../editorTabPanel';
 import { TabRemediationContext } from '../tabRemediation';
 import { whenApplicationRegainsForegroundFocus } from '../foregroundFocus';
@@ -557,8 +553,6 @@ const DocumentTabs: React.FC<DocumentTabsProps> = ({
         };
     }, [activateDocument, activeDocumentId, actionProjection, handleTabAction, modalOpen, orderedDocuments]);
 
-    const contextAdapter: TabContextAdapter = adapter;
-
     return (
         <>
             <TabBar
@@ -614,7 +608,6 @@ const DocumentTabs: React.FC<DocumentTabsProps> = ({
             />
             {contextDocument !== undefined && contextIndex >= 0 ? (
                 <TabContextMenu
-                    adapter={contextAdapter}
                     anchor={contextAnchor ?? { point: { x: 0, y: 0 } }}
                     document={contextDocument}
                     index={contextIndex}

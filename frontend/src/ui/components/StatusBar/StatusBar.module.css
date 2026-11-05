@@ -43,6 +43,15 @@
     white-space: nowrap;
 }
 
+.dropped {
+    position: absolute;
+    inset-inline-start: 0;
+    inline-size: max-content;
+    visibility: hidden;
+    opacity: 0;
+    pointer-events: none;
+}
+
 .factButton {
     align-items: center;
     background: transparent;
@@ -91,20 +100,7 @@
     white-space: nowrap;
 }
 
-@media (max-width: 376px) {
-    .statusBar:has(> .responsiveItem[data-write-in-flight='true']) {
-        column-gap: var(--status-bar-item-gap);
-        padding-inline: var(--status-bar-item-gap);
-    }
-
-    /* Priorities 0 and 1 remain in the row; the full inventory stays available
-     in the Details Popup. The data-driven fallback mirrors the measured
-     minimum-window drop order used by the native shell. */
-    .responsiveItem[data-status-drop-priority='2'],
-    .responsiveItem[data-status-drop-priority='3'],
-    .responsiveItem[data-status-drop-priority='4'],
-    .responsiveItem[data-status-drop-priority='5'],
-    .responsiveItem[data-status-drop-priority='6'] {
-        display: none;
-    }
+.statusBar[data-status-compact] {
+    column-gap: var(--status-bar-item-gap);
+    padding-inline: var(--status-bar-item-gap);
 }

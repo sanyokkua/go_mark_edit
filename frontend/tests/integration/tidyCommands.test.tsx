@@ -615,9 +615,18 @@ it('reports a busy second run without a notice and releases the first slot on ca
     await waitFor(() => expect(screen.getByRole('status', { name: 'Tidy outcome' })).toHaveTextContent('busy'));
     expect(mockRunTidy).toHaveBeenCalledTimes(1);
     expect(noticeCodes()).toEqual([]);
-    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
-    await settle(pending, { kind: 'edits', edits: [{ from: 0, to: 1, text: 'X' }] });
+    let slotStateAtNotice: ReturnType<typeof slotSnapshot>['state'] | undefined;
+    const unsubscribe = store.subscribe(() => {
+        if (noticeCodes().includes('tidy-cancelled')) slotStateAtNotice ??= slotSnapshot().state;
+    });
+    try {
+        fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+        await settle(pending, { kind: 'edits', edits: [{ from: 0, to: 1, text: 'X' }] });
+    } finally {
+        unsubscribe();
+    }
     expect(runtimes.at(-1)!.content).toBe('line \n');
+    expect(slotStateAtNotice).toBe('running');
     expect(slotSnapshot()).toEqual({ state: 'idle' });
     expect(noticeCodes()).toContain('tidy-cancelled');
 });
