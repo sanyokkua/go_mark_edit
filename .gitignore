@@ -42,3 +42,4 @@ go.work.sum
 .DS_Store
 .serena/
 /.agent-docs/
+docs/superpowers/*
