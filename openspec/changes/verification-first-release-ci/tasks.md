@@ -14,4 +14,4 @@
 ## 3. Cross-platform evidence
 
 - [ ] 3.1 Add and document reproducible Ubuntu 24.04 verification with isolated state; run feasible Linux architectures including native clipboard E2E, record architecture and limitations, and exercise macOS locally.
-- [ ] 3.2 Document release prerequisites and limitations; run full verification, baseline comparison, strict OpenSpec validation, hosted nonpublishing dry run and independent review. Record unavailable Windows and hosted evidence without marking it passed.
+- [x] 3.2 Document release prerequisites and limitations; run full verification, baseline comparison, strict OpenSpec validation, hosted nonpublishing dry run and independent review. Record unavailable Windows and hosted evidence without marking it passed.
