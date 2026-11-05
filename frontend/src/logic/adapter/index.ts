@@ -103,7 +103,7 @@ import type {
     WriteResult,
 } from '../store/appModelTypes';
 import { store } from '../store';
-import { parseSaveWarning } from '../store/saveWarning';
+import { parseSaveWarning, parseSaveWarningReason } from '../store/saveWarning';
 import { dismissStuckCommand, notifyStuckCommand } from '../store/notificationsSlice';
 import { createCommandInvoker, getBootstrapStatus, type CommandBindOptions } from './command';
 import { EVENTS } from './events';
@@ -324,6 +324,7 @@ function normalizeWriteResult(result: apperr.WriteResult): WriteResult {
     return {
         status: result.status as WriteResult['status'],
         warning: parseSaveWarning(result.warning),
+        warningReason: parseSaveWarningReason(result.warningReason),
         data:
             result.data === undefined
                 ? undefined

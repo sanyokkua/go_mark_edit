@@ -506,12 +506,24 @@ const (
 	WriteWarningViewState   WriteWarning = "view-state"
 )
 
+// WriteWarningReason identifies the post-replacement check that failed. Unknown
+// errors leave the reason empty and retain the generic durability warning.
+type WriteWarningReason string
+
+const (
+	WriteWarningReasonMetadataStat    WriteWarningReason = "metadata-stat"
+	WriteWarningReasonReadback        WriteWarningReason = "readback"
+	WriteWarningReasonContentMismatch WriteWarningReason = "content-mismatch"
+	WriteWarningReasonDirectorySync   WriteWarningReason = "directory-sync"
+)
+
 // WriteResult distinguishes a committed disk replacement from a cancelled,
 // authorization, conflict, or classified refusal outcome.
 type WriteResult struct {
 	Failure
 	Status           WriteStatus            `json:"status"`
 	Warning          WriteWarning           `json:"warning,omitempty"`
+	WarningReason    WriteWarningReason     `json:"warningReason,omitempty"`
 	Data             *CommittedWriteOutcome `json:"data,omitempty"`
 	DecisionToken    string                 `json:"decisionToken,omitempty"`
 	ProposedEnding   string                 `json:"proposedEnding,omitempty"`

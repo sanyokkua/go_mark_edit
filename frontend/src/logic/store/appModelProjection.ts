@@ -1,7 +1,8 @@
 import type { AppModelAdapter } from '../adapter/appModelAdapter';
 import { isWireError, parseError } from '../utils/parseError';
 import { notifyError } from './notificationsSlice';
-import { parseSaveWarning, saveWarningNotification } from './saveWarning';
+import { reportAsyncError } from './asyncNotification';
+import { parseSaveWarning, parseSaveWarningReason, saveWarningNotification } from './saveWarning';
 
 import { applyStatePatch, hydrateProjection, resetProjection } from './appModelProjectionActions';
 import type { ActiveBuffer, AppStatePatch, PendingClose } from './appModelTypes';
@@ -59,10 +60,14 @@ async function initializeProjection(appModelAdapter: AppModelAdapter): Promise<A
                 return;
             }
             const warning = parseSaveWarning(error.details?.saveWarning);
-            if (warning === undefined) store.dispatch(notifyError(error));
+            if (warning === undefined) reportAsyncError(store.dispatch, error);
             else
                 store.dispatch(
-                    saveWarningNotification(warning, error.details?.dedupKey ?? error.details?.subject ?? warning),
+                    saveWarningNotification(
+                        warning,
+                        error.details?.dedupKey ?? error.details?.subject ?? warning,
+                        parseSaveWarningReason(error.details?.saveWarningReason),
+                    ),
                 );
         });
         attempt.disposeStatePatches = appModelAdapter.subscribeStatePatches((patch: AppStatePatch): void => {

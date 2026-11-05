@@ -30,6 +30,7 @@ Data integrity
 
 Visible failures
 
+- Conflict labels stay legible in tabs; save warnings replace the success toast and describe the failed verification step; classified background errors retain their safe explanation and available actions.
 - Warnings that accompany a committed save (recent-items or view-state not stored, durability not confirmed) are
   shown while the window remains open; they do not delay a successful Quit, and the application does not guarantee
   that a warning is acknowledged or visible before exit. An unencodable buffer is reported without a Retry that cannot

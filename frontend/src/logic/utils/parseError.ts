@@ -7,6 +7,12 @@ export interface WireError {
     message: string;
     details?: Record<string, string>;
     retryable: boolean;
+    /** Classified domain fields carried by asynchronous state:error events. */
+    category?: string;
+    safeSubject?: string;
+    remediations?: string[];
+    documentId?: string;
+    dedupKey?: string;
 }
 
 const fallbackTitle = 'Something went wrong';

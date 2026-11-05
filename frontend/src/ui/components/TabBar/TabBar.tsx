@@ -414,8 +414,9 @@ const TabBar: React.FC<TabBarProps> = ({
                                     {conflictLabel ? (
                                         <span
                                             aria-label={conflictLabel}
-                                            className={styles.modifiedDot}
+                                            className={styles.conflictMarker}
                                             data-conflict-blocked
+                                            title={conflictLabel}
                                         >
                                             {conflictLabel}
                                         </span>

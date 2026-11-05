@@ -137,3 +137,12 @@ SHALL preserve it.
 
 - **WHEN** the user chose Keep mine, the file then changes on disk again and the user saves
 - **THEN** the comparison appears for the new disk content and nothing is written
+
+### Requirement: Conflict tab remains legible
+
+WHEN a tab is blocked by an external change, its visible conflict label, filename and close control SHALL remain distinct and usable within the available tab width.
+
+#### Scenario: Inactive conflicted tab in a narrow window
+
+- **WHEN** an inactive file changes externally in a narrow window
+- **THEN** its conflict label does not overlap the filename or close control

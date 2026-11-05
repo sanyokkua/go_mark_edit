@@ -1544,6 +1544,7 @@ export namespace apperr {
 	    id?: string;
 	    status: string;
 	    warning?: string;
+	    warningReason?: string;
 	    data?: CommittedWriteOutcome;
 	    decisionToken?: string;
 	    proposedEnding?: string;
@@ -1564,6 +1565,7 @@ export namespace apperr {
 	        this.id = source["id"];
 	        this.status = source["status"];
 	        this.warning = source["warning"];
+	        this.warningReason = source["warningReason"];
 	        this.data = this.convertValues(source["data"], CommittedWriteOutcome);
 	        this.decisionToken = source["decisionToken"];
 	        this.proposedEnding = source["proposedEnding"];

@@ -644,8 +644,12 @@ does not repeat the write. `useDocumentWrites` repairs the Redux projection from
 snapshot; it does not reinstall editor content or advance activation generations. A committed `WriteResult`
 may include a typed `warning` value (`durability`, `recent-items` or `view-state`) alongside its classified
 error. When several accompanying operations fail, the selected warning follows that order of precedence;
-the error retains its existing identity and deduplication key. Ordinary saves present the warning while the window
-remains open. A committed-save warning does not delay a successful Quit: shutdown continues immediately after the save
+the error retains its existing identity and deduplication key. A durability warning may also carry a typed
+`warningReason` identifying metadata inspection, readback, content mismatch or directory sync; unknown reasons
+retain the generic warning. Explicit saves show the warning in place of the success toast. Autosave and close-plan
+warnings carry the same reason through the asynchronous event. Other classified asynchronous errors retain their
+safe explanation and executable actions; legacy errors use the generic notification. Ordinary saves present the
+warning while the window remains open. A committed-save warning does not delay a successful Quit: shutdown continues immediately after the save
 commits, without waiting for the warning to be acknowledged or displayed. The application does not guarantee warning
 visibility before process exit.
 

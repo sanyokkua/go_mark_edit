@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 
 	"github.com/sanyokkua/go_mark_edit/internal/apperr"
@@ -332,5 +333,52 @@ func testAtomicReplacePreCommitFailure(t *testing.T, failure atomicReplaceFailur
 	}
 	if !*removed {
 		t.Fatalf("temporary file %q was not cleaned up", temp.name)
+	}
+}
+
+func TestAtomicCommitWarningsIdentifyFailedCheck(t *testing.T) {
+	for _, reason := range []string{"metadata-stat", "readback", "content-mismatch", "directory-sync", "size-mismatch"} {
+		t.Run(reason, func(t *testing.T) {
+			target := filepath.Join(t.TempDir(), "saved.md")
+			if err := os.WriteFile(target, []byte("saved"), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			ops := defaultAtomicReplaceOps()
+			want := reason
+			switch reason {
+			case "metadata-stat":
+				ops.currentVersion = func(string) (DiskVersion, error) { return DiskVersion{}, errors.New("private metadata diagnostic") }
+			case "readback":
+				ops.currentVersion = func(path string) (DiskVersion, error) {
+					version, err := CurrentDiskVersion(path)
+					if removeErr := os.Remove(path); removeErr != nil {
+						t.Fatal(removeErr)
+					}
+					return version, err
+				}
+			case "content-mismatch":
+				if err := os.WriteFile(target, []byte("other"), 0o644); err != nil {
+					t.Fatal(err)
+				}
+			case "size-mismatch":
+				want = "content-mismatch"
+				if err := os.WriteFile(target, []byte("other length"), 0o644); err != nil {
+					t.Fatal(err)
+				}
+			case "directory-sync":
+				ops.syncDir = func(string) error { return errors.New("private directory diagnostic") }
+			}
+			result, err := verifyAtomicCommit(target, filepath.Dir(target), []byte("saved"), ops)
+			assertAtomicReplaceFailure(t, err, true, apperr.ClassifiedPersistenceWarning)
+			if !result.Committed {
+				t.Fatal("replacement was not retained as committed")
+			}
+			if got := err.(*AtomicReplaceError).Reason; string(got) != want {
+				t.Fatalf("warning reason = %v, want %s", got, want)
+			}
+			if strings.Contains(err.Error(), "private") {
+				t.Fatalf("unsafe message = %q", err.Error())
+			}
+		})
 	}
 }

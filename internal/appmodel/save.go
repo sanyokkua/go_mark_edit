@@ -516,6 +516,13 @@ func (service *AppModelService) committedWriteResult(ctx context.Context, outcom
 	}
 	if replaceErr != nil {
 		result.Warning = apperr.WriteWarningDurability
+		var atomicErr *file.AtomicReplaceError
+		if errors.As(replaceErr, &atomicErr) && atomicErr.Committed {
+			switch atomicErr.Reason {
+			case apperr.WriteWarningReasonMetadataStat, apperr.WriteWarningReasonReadback, apperr.WriteWarningReasonContentMismatch, apperr.WriteWarningReasonDirectorySync:
+				result.WarningReason = atomicErr.Reason
+			}
+		}
 		result.Error = bridge.ClassifiedWithID(apperr.ClassifiedPersistenceWarning, outcome.TargetPath, "The document was saved, but the save could not be confirmed on disk.", apperr.RemediationNone, outcome.DocumentID)
 	}
 	result.Failure = bridge.FailureFromClassified(result.Error)
@@ -622,6 +629,9 @@ func (service *AppModelService) emitCommittedSaveWarning(ctx context.Context, re
 	}
 	wire := apperr.ClassifiedToWire(result.Error)
 	wire.Details["saveWarning"] = string(result.Warning)
+	if result.WarningReason != "" {
+		wire.Details["saveWarningReason"] = string(result.WarningReason)
+	}
 	service.emitAsyncError(ctx, wire, "committed save warning could not be surfaced")
 }
 

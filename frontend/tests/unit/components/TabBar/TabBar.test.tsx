@@ -177,6 +177,38 @@ it('exposes the localized read-only status through a description reference for o
     expect(screen.getByText(readOnlyLabel)).toBeVisible();
 });
 
+it('preserves localized conflict text alongside modified and read-only document labels', () => {
+    const conflictLabel = 'Bloqueado por conflito externo';
+    const label = 'Project notes.md · planning';
+    const title = '/repo/planning/Project notes.md';
+    const callbacks = renderTabBar({
+        tabs: [
+            {
+                active: true,
+                conflictBlocked: true,
+                conflictLabel,
+                dirty: true,
+                id: 'notes',
+                label,
+                labelParts: { basename: 'Project notes.md', suffix: ' · planning' },
+                readOnly: true,
+                readOnlyLabel: 'Apenas para leitura',
+                title,
+            },
+        ],
+    });
+
+    const tab = screen.getByRole('tab', { name: `${label} · ${conflictLabel}` });
+    expect(within(tab).getByText(conflictLabel)).toBeVisible();
+    expect(within(tab).getByText(conflictLabel)).toHaveAttribute('title', conflictLabel);
+    expect(within(tab).getByText('Project notes.md')).toBeVisible();
+    expect(within(tab).getByText('· planning')).toBeVisible();
+    expect(within(tab).getByLabelText('Modified')).toBeVisible();
+    expect(tab).toHaveAccessibleDescription(`Apenas para leitura · ${title}`);
+    fireEvent.click(screen.getByRole('button', { name: `Close ${label}` }));
+    expect(callbacks.onClose).toHaveBeenCalledWith('notes');
+});
+
 function setHorizontalBounds(element: Element, left: number, right: number): void {
     Object.defineProperty(element, 'getBoundingClientRect', {
         configurable: true,

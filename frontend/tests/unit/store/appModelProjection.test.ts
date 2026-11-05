@@ -780,3 +780,28 @@ it('keeps unknown async save warning kinds as ordinary errors', async () => {
     });
     expect(store.getState().notifications.items).toEqual([expect.objectContaining({ code: 'io', severity: 'error' })]);
 });
+
+it.each([
+    ['metadata-stat', /metadata.*check/i],
+    ['readback', /read back.*check/i],
+    ['content-mismatch', /changed.*compare/i],
+    ['directory-sync', /folder.*power loss/i],
+    ['unknown', /durability could not be confirmed/i],
+] as const)('shows an actionable async committed warning for %s', async (reason, message) => {
+    const adapter = createAdapter(() => Promise.resolve(appState(3)));
+    await bootstrapAppModelProjection(adapter);
+    adapter.emitError({
+        code: 'io',
+        title: 'saved',
+        message: 'private filesystem diagnostic',
+        retryable: false,
+        details: { saveWarning: 'durability', saveWarningReason: reason },
+    });
+    expect(store.getState().notifications.items).toEqual([
+        expect.objectContaining({
+            code: 'save-warning-durability',
+            severity: 'warning',
+        }),
+    ]);
+    expect(store.getState().notifications.items[0]?.message).toMatch(message);
+});

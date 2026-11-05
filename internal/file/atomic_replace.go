@@ -44,6 +44,7 @@ const (
 // classified error to callers. Cause remains local for errors.Is/errors.As.
 type AtomicReplaceError struct {
 	Committed  bool
+	Reason     apperr.WriteWarningReason
 	phase      atomicReplacePhase
 	Classified *apperr.ClassifiedError
 	Cause      error
@@ -221,22 +222,32 @@ func atomicReplaceBaseline(request AtomicReplaceRequest, ops atomicReplaceOps) (
 func verifyAtomicCommit(target, directory string, data []byte, ops atomicReplaceOps) (AtomicReplaceResult, error) {
 	result := AtomicReplaceResult{Committed: true}
 	var err error
-	result.Version, err = CurrentDiskVersion(target)
+	result.Version, err = ops.currentVersion(target)
 	if err != nil {
-		return result, newAtomicReplaceError(target, true, atomicReplacePostCommit, apperr.ClassifiedPersistenceWarning, err)
+		return result, newAtomicCommitWarning(target, apperr.WriteWarningReasonMetadataStat, err)
 	}
 	committedHash, hashErr := rawFileHash(target, int64(len(data)))
 	writtenDigest := sha256.Sum256(data)
-	if hashErr != nil || committedHash != hex.EncodeToString(writtenDigest[:]) {
-		if hashErr == nil {
-			hashErr = errors.New("target changed after replacement")
+	if hashErr != nil {
+		reason := apperr.WriteWarningReasonReadback
+		if errors.Is(hashErr, errFingerprintChanged) {
+			reason = apperr.WriteWarningReasonContentMismatch
 		}
-		return result, newAtomicReplaceError(target, true, atomicReplacePostCommit, apperr.ClassifiedPersistenceWarning, hashErr)
+		return result, newAtomicCommitWarning(target, reason, hashErr)
+	}
+	if committedHash != hex.EncodeToString(writtenDigest[:]) {
+		return result, newAtomicCommitWarning(target, apperr.WriteWarningReasonContentMismatch, errors.New("target changed after replacement"))
 	}
 	if err := ops.syncDir(directory); err != nil {
-		return result, newAtomicReplaceError(target, true, atomicReplacePostCommit, apperr.ClassifiedPersistenceWarning, err)
+		return result, newAtomicCommitWarning(target, apperr.WriteWarningReasonDirectorySync, err)
 	}
 	return result, nil
+}
+
+func newAtomicCommitWarning(target string, reason apperr.WriteWarningReason, cause error) *AtomicReplaceError {
+	warning := newAtomicReplaceError(target, true, atomicReplacePostCommit, apperr.ClassifiedPersistenceWarning, cause)
+	warning.Reason = reason
+	return warning
 }
 
 // writeAtomicTemp handles short writes without allowing a stalled writer to loop forever.

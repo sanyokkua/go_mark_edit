@@ -102,6 +102,16 @@ the window remains open. The warning SHALL identify the highest-priority failure
 state. A committed-save warning SHALL NOT delay a successful Quit; the system does not guarantee that it is acknowledged
 or visible before exit. Unencodable text SHALL be reported without offering Retry.
 
+#### Scenario: Explicit save with an accompanying failure
+
+- **WHEN** Save or Save As commits with an accompanying failure
+- **THEN** one warning describes the failure and no separate success notification appears for that save
+
+#### Scenario: Post-replacement check fails
+
+- **WHEN** replacement commits but reading metadata, reading back the file, comparing its contents, or synchronizing its directory fails
+- **THEN** the warning identifies the failed check and offers an appropriate next step without exposing raw system errors
+
 #### Scenario: Recent Items cannot be stored
 
 - **WHEN** the user saves "notes.md" and the settings store refuses the Recent Items update

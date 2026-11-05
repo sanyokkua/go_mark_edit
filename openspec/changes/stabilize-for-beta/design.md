@@ -200,11 +200,11 @@ activation generation.
 - Close-plan execution and autosave consume committed write results without returning them to `finishWrite`. Emit
   their selected warnings through the existing `state:error` event with `details.saveWarning` carrying the typed value.
   The frontend validates that value and uses the same warning presentation as explicit saves while the window remains
-  open; other asynchronous errors retain their existing error presentation. Explicit saves do not emit a duplicate
+  open. Preserve classified asynchronous errors through the existing classified notification owner, including safe copy and actionable remediation, with legacy fallback. Explicit saves do not emit a duplicate
   event. A committed-save warning never vetoes a successful Quit: after the requested saves commit, Quit continues
   immediately, even when durability, Recent Items or view-state persistence failed. The application makes no guarantee
   that such a warning is acknowledged or becomes visible before process exit. An ordinary save while the window stays
-  open still presents its warning.
+  open still presents its warning. A warning replaces the ordinary success toast. Preserve a typed post-replacement failure reason for metadata, readback, mismatch or directory sync; localized copy explains the particular check and next step, with a generic fallback for unknown reasons.
 - Buffer sync: `appModelAdapter.ts:575` swallows `sendPendingBuffer` failures; a failed snapshot is already kept as
   pending (`:551-555`) and is sent with the next edit, flush or save. Add one adapter listener API,
   `subscribeBufferSyncErrors(listener)` next to `subscribeAsyncErrors` (`:905`), that reports the first failure and
@@ -448,3 +448,7 @@ its own.
 None. Decided during review: bundle identifier `io.github.sanyokkua.gomarkedit`; Save As stays available for
 write-protected files; Quit from the crash screen confirms before discarding unsaved changes; preview work is limited
 to §9.
+
+### Follow-up: conflict tab layout
+
+Give the visible conflict label its own bounded text layout, keeping the filename and close control distinct at narrow widths. Verify painted geometry in a real browser.

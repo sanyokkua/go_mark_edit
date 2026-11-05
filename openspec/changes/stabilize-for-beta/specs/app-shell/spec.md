@@ -147,3 +147,12 @@ logged and SHALL NOT prevent the window from closing. A failure to write a docum
 
 - **WHEN** the settings store cannot be written, the user resized the window and then quits with no modified documents
 - **THEN** the application quits and the failure is recorded in the log
+
+### Requirement: Classified background errors
+
+WHEN a background operation reports a classified error, the system SHALL show its safe explanation and subject and offer only applicable recovery actions. Unclassified errors SHALL retain a safe generic fallback.
+
+#### Scenario: Background file operation fails
+
+- **WHEN** a background file operation reports a classified failure with a safe explanation and an available recovery action
+- **THEN** the notification identifies the failure and subject and offers that action without exposing raw system errors or full paths

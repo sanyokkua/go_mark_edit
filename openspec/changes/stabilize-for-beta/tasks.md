@@ -335,3 +335,11 @@ Existing spec: appearance-themes "Auto mode follows the system". Owner: `fronten
 - [x] 17.1 Reconcile the current system appearance after subscribing in Auto mode so a change between the initial
       application and listener registration cannot leave the palette stale. Cover the missed-event interval and
       listener cleanup, and exercise appearance changes in the real-backend browser suite.
+
+## 18. Save and conflict feedback follow-up
+
+- [x] 18.1 Give the conflict tab label bounded text geometry; verify inactive and narrow tabs in the real browser.
+- [x] 18.2 Show one warning instead of a success toast for a committed explicit save with a warning; cover Save and Save As.
+- [x] 18.3 Preserve the post-replacement failure reason across explicit, autosave and close paths and show safe specific localized guidance; cover each failure and unknown fallback using the existing atomic replacement and save identity white-box tests.
+- [x] 18.4 Preserve classified asynchronous error explanations and applicable actions with a safe legacy fallback; cover delivery and deduplication.
+- [x] 18.5 Run six-stage verification, compare the baseline, validate OpenSpec and exercise the real application; review the changes and update public-surface documentation.

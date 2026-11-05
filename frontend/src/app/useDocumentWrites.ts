@@ -272,7 +272,8 @@ export function useDocumentWrites(session: DocumentSession, conflicts: ConflictC
                 });
             }
             if (result.warning !== undefined) {
-                dispatch(saveWarningNotification(result.warning, documentId));
+                dispatch(saveWarningNotification(result.warning, documentId, result.warningReason));
+                return result;
             }
             const writtenDocument = documentsById[documentId] ?? activeDocument;
             const safeName = safeFilename(writtenDocument, result.data.targetPath ?? filename);

@@ -168,8 +168,11 @@ export type WriteStatus = 'committed' | 'cancelled' | 'needs-normalization' | 'c
 
 export type CommittedWriteWarning = 'durability' | 'recent-items' | 'view-state';
 
+export type CommittedWriteWarningReason = 'metadata-stat' | 'readback' | 'content-mismatch' | 'directory-sync';
+
 export interface WriteResult {
     warning?: CommittedWriteWarning;
+    warningReason?: CommittedWriteWarningReason;
     status: WriteStatus;
     data?: CommittedWriteOutcome;
     decisionToken?: string;

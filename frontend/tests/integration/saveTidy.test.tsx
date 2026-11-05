@@ -898,7 +898,7 @@ it('reports a committed save warning without resuming a close that needs recover
     expect(tidy.run).toHaveBeenCalledTimes(1);
     const notifications = store.getState().notifications;
     expect(notifications.banners.map((notice) => notice.code)).toEqual(['recovery']);
-    expect(notifications.items.map((notice) => notice.code)).toEqual(['save-warning-durability', 'save-success']);
+    expect(notifications.items.map((notice) => notice.code)).toEqual(['save-warning-durability']);
 });
 
 it('skips Format with a read-only reason when saving a protected document as a copy', async () => {
@@ -939,7 +939,7 @@ it.each([
     ['durability', 'save-warning-durability'],
     ['recent-items', 'save-warning-recent-items'],
     ['view-state', 'save-warning-view-state'],
-] as const)('reports a committed %s warning while keeping save success', async (warning, code) => {
+] as const)('reports a committed %s warning without a success notice', async (warning, code) => {
     const tidy: TidyCommands = {
         run: jest.fn().mockResolvedValue({ kind: 'edits', edits: [] }),
         cancel: jest.fn(),
@@ -955,7 +955,31 @@ it.each([
     });
     const notices = store.getState().notifications.items;
     expect(notices.find((notice) => notice.code === code)).toMatchObject({ severity: 'warning' });
-    expect(notices.find((notice) => notice.code === 'save-success')).toBeDefined();
+    expect(notices.find((notice) => notice.code === 'save-success')).toBeUndefined();
+});
+
+it('shows the specific verification warning alone after Save As', async () => {
+    const tidy: TidyCommands = {
+        run: jest.fn().mockResolvedValue({ kind: 'edits', edits: [] }),
+        cancel: jest.fn(),
+        documentChanged: jest.fn(),
+    };
+    (appModelAdapter.flushActiveSession as jest.Mock).mockResolvedValue(undefined);
+    (appModelAdapter.getState as jest.Mock).mockResolvedValue(stableState());
+    (documentWriteAdapter.saveAs as jest.Mock).mockResolvedValue({
+        ...committed,
+        warning: 'durability',
+        warningReason: 'readback',
+    });
+    (appModelAdapter.reconcileCommittedWrite as jest.Mock).mockResolvedValue({ snapshot: stableState().snapshot });
+    const owner = setup(tidy);
+    await act(async () => {
+        await owner.result.current.onSaveAs();
+    });
+    const notices = store.getState().notifications.items;
+    expect(notices).toHaveLength(1);
+    expect(notices[0]).toMatchObject({ code: 'save-warning-durability', severity: 'warning' });
+    expect(notices[0].message).toContain('could not be read back');
 });
 
 it('aborts repeated saves on buffer sync failure without adding save error notices', async () => {
