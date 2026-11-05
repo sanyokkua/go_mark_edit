@@ -71,7 +71,7 @@ function viewportWidth(): number {
 }
 
 function rowSpacing(row: HTMLElement, compact: boolean): { inset: number; gap: number } {
-    const wasCompact = row.hasAttribute('data-status-compact');
+    const wasCompact = row.dataset.statusCompact !== undefined;
     row.toggleAttribute('data-status-compact', compact);
     const style = getComputedStyle(row);
     const pixels = (value: string): number => Number.parseFloat(value) || 0;
