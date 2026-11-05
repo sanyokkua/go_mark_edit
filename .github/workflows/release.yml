@@ -10,194 +10,284 @@ on:
                 description: 'Release version (X.Y.Z, X.Y.Z-alpha.N, or X.Y.Z-beta.N)'
                 required: true
                 type: string
-            full_verify:
-                description: 'Run the complete scripts/verify here instead of requiring a green push run'
-                required: false
-                default: false
-                type: boolean
 
 permissions:
-    contents: write
+    contents: read
     actions: read
 
 jobs:
-    release:
-        runs-on: macos-latest
-        timeout-minutes: 60
+    prepare:
+        runs-on: ubuntu-24.04
+        timeout-minutes: 15
+        outputs:
+            sha: ${{ steps.version.outputs.sha }}
+            version: ${{ steps.version.outputs.version }}
+            prerelease: ${{ steps.version.outputs.prerelease }}
+            mode: ${{ steps.gate.outputs.mode }}
         steps:
             - uses: actions/checkout@v7
               with:
                   fetch-depth: 0
-            - name: Check release version rules
-              run: |
-                  source scripts/lib/release_version.sh
-                  for version in 1.2.3 1.2.3-alpha.1 1.2.3-beta.2; do
-                    parse_release_version "$version"
-                  done
-                  for version in 1.2.3-alpha 1.2.3-alpha.0 1.2.3-alpha.01 1.2.3-rc.1 1.2.3-beta.1-extra; do
-                    if parse_release_version "$version"; then
-                      echo "unexpectedly accepted version: $version" >&2
-                      exit 1
-                    fi
-                  done
-            - name: Derive version
+            - name: Validate version and source revision
               id: version
+              shell: bash
               env:
                   REF_NAME: ${{ github.ref_name }}
                   INPUT_VERSION: ${{ inputs.version }}
               run: |
+                  set -euo pipefail
                   source scripts/lib/release_version.sh
-                  if [ "${GITHUB_EVENT_NAME}" = "workflow_dispatch" ]; then
-                    VERSION="$INPUT_VERSION"
+                  if [[ "$GITHUB_EVENT_NAME" == workflow_dispatch ]]; then
+                    version="$INPUT_VERSION"
+                    sha="$(git rev-parse HEAD^{commit})"
+                    [[ "$sha" == "$GITHUB_SHA" ]] || { echo 'checked-out branch differs from dispatched commit' >&2; exit 1; }
                   else
-                    VERSION="${REF_NAME#v}"
+                    [[ "$GITHUB_REF" == refs/tags/v* ]] || { echo 'release requires a version tag' >&2; exit 1; }
+                    version="${REF_NAME#v}"
+                    sha="$(git rev-parse "refs/tags/$REF_NAME^{commit}")"
+                    local_tag="$(git rev-parse "refs/tags/$REF_NAME")"
+                    remote_tag="$(git ls-remote origin "refs/tags/$REF_NAME" | cut -f1)"
+                    [[ -n "$remote_tag" && "$local_tag" == "$remote_tag" ]] || { echo 'tag moved or disappeared' >&2; exit 1; }
+                    [[ "$sha" == "$GITHUB_SHA" ]] || { echo 'tag commit differs from event commit' >&2; exit 1; }
+                    git merge-base --is-ancestor "$sha" origin/master || { echo 'tag commit is not on master' >&2; exit 1; }
                   fi
-                  parse_release_version "$VERSION"
+                  [[ "$sha" =~ ^[0-9a-f]{40}$ ]] || { echo 'invalid commit SHA' >&2; exit 1; }
+                  parse_release_version "$version"
+                  echo "sha=$sha" >> "$GITHUB_OUTPUT"
                   echo "version=$RELEASE_VERSION" >> "$GITHUB_OUTPUT"
                   echo "prerelease=$RELEASE_VERSION_PRERELEASE" >> "$GITHUB_OUTPUT"
-            - name: Ensure tag is on master
-              id: branch-guard
-              run: |
-                  if [ "${GITHUB_EVENT_NAME}" = "push" ] && ! git merge-base --is-ancestor "$GITHUB_SHA" origin/master; then
-                    echo "Tag ${GITHUB_REF_NAME} is not on master; no artifact or release will be produced."
-                    echo 'on_master=false' >> "$GITHUB_OUTPUT"
-                  else
-                    echo 'on_master=true' >> "$GITHUB_OUTPUT"
-                  fi
-            - name: Require a green push workflow run for this commit
+            - name: Find qualifying master verification
               id: gate
-              if: steps.branch-guard.outputs.on_master == 'true'
+              shell: bash
               env:
                   GH_TOKEN: ${{ github.token }}
-                  FULL_VERIFY: ${{ inputs.full_verify }}
+                  TARGET_SHA: ${{ steps.version.outputs.sha }}
               run: |
-                  if [ "$FULL_VERIFY" = 'true' ]; then
-                    echo 'full_verify requested; running the complete verification here.'
-                    echo 'full=true' >> "$GITHUB_OUTPUT"
-                    exit 0
+                  set -euo pipefail
+                  gh api "/repos/$GITHUB_REPOSITORY/actions/workflows/push.yml/runs?branch=master&event=push&head_sha=$TARGET_SHA&per_page=100" > "$RUNNER_TEMP/push-runs.json"
+                  node tools/verify/release-gate.mjs choose "$TARGET_SHA" "$GITHUB_REPOSITORY" < "$RUNNER_TEMP/push-runs.json" > "$RUNNER_TEMP/verification-decision.json"
+                  mode="$(jq -r .mode "$RUNNER_TEMP/verification-decision.json")"
+                  if [[ "$mode" == inspect ]]; then
+                    run_id="$(jq -r .id "$RUNNER_TEMP/verification-decision.json")"
+                    gh api "/repos/$GITHUB_REPOSITORY/actions/runs/$run_id" > "$RUNNER_TEMP/verification-run.json"
+                    node tools/verify/release-gate.mjs inspect "$TARGET_SHA" "$GITHUB_REPOSITORY" "$run_id" < "$RUNNER_TEMP/verification-run.json" > "$RUNNER_TEMP/verification-decision.json"
+                    mode="$(jq -r .mode "$RUNNER_TEMP/verification-decision.json")"
                   fi
-                  echo 'full=false' >> "$GITHUB_OUTPUT"
-                  conclusion=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow push.yml --commit "$GITHUB_SHA" \
-                    --status completed --json conclusion --jq '[.[] | select(.conclusion == "success")] | length')
-                  if [ "${conclusion:-0}" -lt 1 ]; then
-                    echo "No successful push workflow run exists for $GITHUB_SHA." >&2
-                    echo 'Wait for the push run on this commit to pass, or re-run with full_verify=true.' >&2
+                  case "$mode" in
+                    reuse)
+                      run_id="$(jq -r .id "$RUNNER_TEMP/verification-decision.json")"
+                      attempt="$(jq -r .attempt "$RUNNER_TEMP/verification-decision.json")"
+                      gh api "/repos/$GITHUB_REPOSITORY/actions/runs/$run_id/attempts/$attempt/jobs?per_page=100" > "$RUNNER_TEMP/verification-jobs.json"
+                      node tools/verify/release-gate.mjs required "$TARGET_SHA" < "$RUNNER_TEMP/verification-jobs.json" || { echo 'required verification job did not succeed' >&2; exit 1; }
+                      ;;
+                    fallback) echo "No completed qualifying master verification; running the shared checks for $TARGET_SHA." ;;
+                    *) echo "Latest qualifying verification failed or run inventory is incomplete for $TARGET_SHA." >&2; exit 1 ;;
+                  esac
+                  echo "mode=$mode" >> "$GITHUB_OUTPUT"
+    fallback:
+        needs: prepare
+        if: ${{ needs.prepare.outputs.mode == 'fallback' }}
+        uses: ./.github/workflows/verification.yml
+        with:
+            sha: ${{ needs.prepare.outputs.sha }}
+        permissions:
+            contents: read
+    authorize:
+        needs: [prepare, fallback]
+        if: ${{ always() && !cancelled() }}
+        runs-on: ubuntu-24.04
+        timeout-minutes: 5
+        outputs:
+            sha: ${{ needs.prepare.outputs.sha }}
+            version: ${{ needs.prepare.outputs.version }}
+            prerelease: ${{ needs.prepare.outputs.prerelease }}
+        steps:
+            - name: Authorize exact revision
+              env:
+                  PREPARE_RESULT: ${{ needs.prepare.result }}
+                  FALLBACK_RESULT: ${{ needs.fallback.result }}
+                  MODE: ${{ needs.prepare.outputs.mode }}
+              run: |
+                  if [[ "$PREPARE_RESULT" != success ]]; then
+                    echo 'release preparation failed' >&2
                     exit 1
                   fi
-                  echo "Found a successful push workflow run for $GITHUB_SHA."
+                  case "$MODE:$FALLBACK_RESULT" in
+                    reuse:skipped|fallback:success) ;;
+                    *) echo "verification did not authorize release: $MODE / $FALLBACK_RESULT" >&2; exit 1 ;;
+                  esac
+    build:
+        name: build (${{ matrix.target }})
+        needs: authorize
+        runs-on: ${{ matrix.os }}
+        timeout-minutes: 60
+        permissions:
+            contents: read
+        strategy:
+            fail-fast: false
+            matrix:
+                include:
+                    - { target: macos-arm64, os: macos-15, platform: darwin/arm64 }
+                    - { target: windows-amd64, os: windows-2025, platform: windows/amd64 }
+                    - { target: windows-arm64, os: windows-11-arm, platform: windows/arm64 }
+                    - { target: linux-amd64, os: ubuntu-24.04, platform: linux/amd64 }
+                    - { target: linux-arm64, os: ubuntu-24.04-arm, platform: linux/arm64 }
+        steps:
+            - uses: actions/checkout@v7
+              with:
+                  ref: ${{ needs.authorize.outputs.sha }}
             - uses: actions/setup-go@v7
-              if: steps.branch-guard.outputs.on_master == 'true'
               with:
                   go-version-file: go.mod
                   cache: true
             - uses: actions/setup-node@v7
-              if: steps.branch-guard.outputs.on_master == 'true'
               with:
                   node-version-file: .nvmrc
                   cache: npm
                   cache-dependency-path: frontend/package-lock.json
-            - name: Read tool versions
-              id: tools
-              if: steps.branch-guard.outputs.on_master == 'true'
+            - name: Install Linux build libraries
+              if: runner.os == 'Linux'
+              shell: bash
+              run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libgtk-3-dev libwebkit2gtk-4.1-dev
+            - name: Install release build dependencies
+              shell: bash
+              run: scripts/build setup --release
+            - name: Set numeric Windows resource version
+              if: runner.os == 'Windows'
+              shell: bash
+              env:
+                  RELEASE_VERSION: ${{ needs.authorize.outputs.version }}
               run: |
-                  source scripts/lib/common.sh
-                  wails=$(sed -nE 's/^[[:space:]]*github\.com\/wailsapp\/wails\/v2[[:space:]]+([^[:space:]]+).*/\1/p' go.mod | head -1)
-                  playwright=$(node -p "require('./frontend/package-lock.json').packages['node_modules/@playwright/test'].version")
-                  echo "go-tools=$wails-$GOLANGCI_LINT_VERSION-$SHFMT_VERSION" >> "$GITHUB_OUTPUT"
-                  echo "playwright=$playwright" >> "$GITHUB_OUTPUT"
-            - name: Cache Go tools
-              if: steps.branch-guard.outputs.on_master == 'true'
-              uses: actions/cache@v4
-              with:
-                  path: ~/go/bin
-                  key: go-tools-${{ runner.os }}-${{ steps.tools.outputs.go-tools }}
-            - name: Cache Playwright browsers
-              if: steps.branch-guard.outputs.on_master == 'true'
-              uses: actions/cache@v4
-              with:
-                  path: ~/Library/Caches/ms-playwright
-                  key: playwright-${{ runner.os }}-${{ steps.tools.outputs.playwright }}
-            - name: Cache ESLint results
-              if: steps.branch-guard.outputs.on_master == 'true' && steps.gate.outputs.full == 'true'
-              uses: actions/cache@v4
-              with:
-                  path: .local_tmp_files/cache/eslint
-                  key: eslint-${{ runner.os }}-${{ hashFiles('frontend/package-lock.json', 'frontend/eslint.config.js') }}-${{ github.sha }}
-                  restore-keys: |
-                      eslint-${{ runner.os }}-${{ hashFiles('frontend/package-lock.json', 'frontend/eslint.config.js') }}-
-            - name: Install dependencies
-              if: steps.branch-guard.outputs.on_master == 'true'
-              run: scripts/build setup --with-browser
-            - name: Full verify (requested)
-              if: steps.branch-guard.outputs.on_master == 'true' && steps.gate.outputs.full == 'true'
+                  node --input-type=commonjs <<'NODE'
+                  const fs = require('node:fs');
+                  const path = 'wails.json';
+                  const config = JSON.parse(fs.readFileSync(path, 'utf8'));
+                  config.info.productVersion = process.env.RELEASE_VERSION.split('-')[0];
+                  fs.writeFileSync(path, `${JSON.stringify(config, null, 4)}\n`);
+                  NODE
+            - name: Build executable
+              shell: bash
               env:
-                  E2E_NATIVE_CLIPBOARD: '1'
-                  RELEASE_VERSION: ${{ steps.version.outputs.version }}
-              run: scripts/verify --version "$RELEASE_VERSION"
-            - name: Build versioned release for subset
-              if: steps.branch-guard.outputs.on_master == 'true' && steps.gate.outputs.full != 'true'
+                  RELEASE_VERSION: ${{ needs.authorize.outputs.version }}
+                  RELEASE_PLATFORM: ${{ matrix.platform }}
+              run: scripts/build --release --platform "$RELEASE_PLATFORM" --version "$RELEASE_VERSION"
+            - name: Package release asset
+              id: package
+              shell: bash
               env:
-                  RELEASE_VERSION: ${{ steps.version.outputs.version }}
-              run: scripts/verify build --version "$RELEASE_VERSION"
-            - name: macOS E2E subset
-              if: steps.branch-guard.outputs.on_master == 'true' && steps.gate.outputs.full != 'true'
-              env:
-                  E2E_SUBSET: macos
-                  E2E_NATIVE_CLIPBOARD: '1'
-                  GOMARKEDIT_E2E_REUSE_DIST: '1'
-              run: scripts/verify e2e
-            - name: Stage timings
-              if: always() && steps.branch-guard.outputs.on_master == 'true'
-              run: node tools/verify/stage-timings.mjs >> "$GITHUB_STEP_SUMMARY"
-            - name: Smoke exact release app
-              if: steps.branch-guard.outputs.on_master == 'true'
-              env:
-                  RELEASE_VERSION: ${{ steps.version.outputs.version }}
+                  RELEASE_VERSION: ${{ needs.authorize.outputs.version }}
+                  RELEASE_TARGET: ${{ matrix.target }}
               run: |
-                  node tools/verify/release-smoke.mjs --check-startup-failure build/bin/GoMarkEdit.app --version "$RELEASE_VERSION"
-                  node tools/verify/release-smoke.mjs --bundle build/bin/GoMarkEdit.app --version "$RELEASE_VERSION" --receipt .local_tmp_files/release-smoke-receipt.json
-            - name: Package app
-              if: steps.branch-guard.outputs.on_master == 'true'
-              run: ditto -c -k --keepParent build/bin/GoMarkEdit.app "GoMarkEdit-${{ steps.version.outputs.version }}-macos-arm64.zip"
-            - name: Verify packaged app
-              if: steps.branch-guard.outputs.on_master == 'true'
-              env:
-                  RELEASE_VERSION: ${{ steps.version.outputs.version }}
-              run: node tools/verify/release-smoke.mjs --check-package "GoMarkEdit-$RELEASE_VERSION-macos-arm64.zip" --receipt .local_tmp_files/release-smoke-receipt.json
-            - name: Upload verification artifacts on failure
-              if: failure() && steps.branch-guard.outputs.on_master == 'true'
+                  set -euo pipefail
+                  asset="GoMarkEdit-$RELEASE_VERSION-$RELEASE_TARGET"
+                  case "$RUNNER_OS" in
+                    macOS)
+                      asset="$asset.zip"
+                      ditto -c -k --keepParent build/bin/GoMarkEdit.app "$asset"
+                      ;;
+                    Windows)
+                      asset="$asset.exe"
+                      cp build/bin/GoMarkEdit.exe "$asset"
+                      ;;
+                    Linux)
+                      cp "build/bin/GoMarkEdit-$RELEASE_TARGET" "$asset"
+                      chmod 755 "$asset"
+                      ;;
+                    *) echo "unsupported runner OS: $RUNNER_OS" >&2; exit 1 ;;
+                  esac
+                  echo "path=$asset" >> "$GITHUB_OUTPUT"
+            - name: Upload release asset
               uses: actions/upload-artifact@v7
               with:
-                  name: verification-runs-${{ github.run_id }}
-                  path: |
-                      .local_tmp_files/runs/**/summary.json
-                      .local_tmp_files/runs/**/lint.json
-                      .local_tmp_files/runs/**/format.json
-                      .local_tmp_files/runs/**/build.json
-                      .local_tmp_files/runs/**/unit.json
-                      .local_tmp_files/runs/**/integration.json
-                      .local_tmp_files/runs/**/e2e.json
-                      .local_tmp_files/runs/**/reports/**
-                      .local_tmp_files/runs/**/*.log
-                      .local_tmp_files/runs/**/*.stderr
-                      .local_tmp_files/runs/**/frontend-*.json
-                      .local_tmp_files/runs/**/frontend-e2e-results/**
-                      .local_tmp_files/release-smoke-*/process.log
-                  include-hidden-files: true
-                  if-no-files-found: ignore
-            - name: Create GitHub Release
-              if: steps.branch-guard.outputs.on_master == 'true' && github.event_name == 'push'
+                  name: release-asset-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.target }}
+                  path: ${{ steps.package.outputs.path }}
+                  if-no-files-found: error
+    collect:
+        needs: [authorize, build]
+        runs-on: ubuntu-24.04
+        timeout-minutes: 15
+        permissions:
+            contents: read
+        steps:
+            - uses: actions/checkout@v7
+              with:
+                  ref: ${{ needs.authorize.outputs.sha }}
+            - uses: actions/setup-node@v7
+              with:
+                  node-version-file: .nvmrc
+            - name: Download this attempt's release assets
+              uses: actions/download-artifact@v8
+              with:
+                  pattern: release-asset-${{ github.run_id }}-${{ github.run_attempt }}-*
+                  path: release-assets
+            - name: Require all five assets and write checksums
+              env:
+                  RELEASE_VERSION: ${{ needs.authorize.outputs.version }}
+              run: node tools/verify/release-assets.mjs release-assets "$RELEASE_VERSION"
+            - name: Upload manual dry-run package
+              if: github.event_name == 'workflow_dispatch'
+              uses: actions/upload-artifact@v7
+              with:
+                  name: GoMarkEdit-${{ needs.authorize.outputs.version }}-dry-run-${{ github.run_id }}-${{ github.run_attempt }}
+                  path: release-assets/
+                  if-no-files-found: error
+    publish:
+        if: github.event_name == 'push'
+        needs: [authorize, collect]
+        runs-on: ubuntu-24.04
+        timeout-minutes: 15
+        permissions:
+            contents: write
+        steps:
+            - uses: actions/checkout@v7
+              with:
+                  ref: ${{ needs.authorize.outputs.sha }}
+                  fetch-depth: 0
+            - name: Download this attempt's release assets
+              uses: actions/download-artifact@v8
+              with:
+                  pattern: release-asset-${{ github.run_id }}-${{ github.run_attempt }}-*
+                  path: release-assets
+            - uses: actions/setup-node@v7
+              with:
+                  node-version-file: .nvmrc
+            - name: Recheck the complete asset inventory
+              env:
+                  RELEASE_VERSION: ${{ needs.authorize.outputs.version }}
+              run: node tools/verify/release-assets.mjs release-assets "$RELEASE_VERSION"
+            - name: Publish one complete release
+              shell: bash
               env:
                   GH_TOKEN: ${{ github.token }}
+                  RELEASE_SHA: ${{ needs.authorize.outputs.sha }}
+                  RELEASE_VERSION: ${{ needs.authorize.outputs.version }}
+                  RELEASE_PRERELEASE: ${{ needs.authorize.outputs.prerelease }}
+                  RELEASE_TAG: ${{ github.ref_name }}
               run: |
-                  gh_args=("$GITHUB_REF_NAME" "GoMarkEdit-${{ steps.version.outputs.version }}-macos-arm64.zip" --title "GoMarkEdit ${{ steps.version.outputs.version }}" --notes-from-tag)
-                  if [ "${{ steps.version.outputs.prerelease }}" = 'true' ]; then
-                    gh_args+=(--prerelease)
+                  set -euo pipefail
+                  check_remote_tag() {
+                    local current
+                    current="$(git ls-remote origin "refs/tags/$RELEASE_TAG^{}" | cut -f1)"
+                    if [[ -z "$current" ]]; then
+                      current="$(git ls-remote origin "refs/tags/$RELEASE_TAG" | cut -f1)"
+                    fi
+                    [[ "$current" == "$RELEASE_SHA" ]] || { echo 'release tag moved or disappeared' >&2; exit 1; }
+                  }
+                  check_remote_tag
+                  if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+                    echo "release already exists: $RELEASE_TAG" >&2
+                    exit 1
                   fi
-                  gh release create "${gh_args[@]}"
-            - name: Upload dry-run artifact
-              if: steps.branch-guard.outputs.on_master == 'true' && github.event_name == 'workflow_dispatch'
-              uses: actions/upload-artifact@v7
-              with:
-                  name: GoMarkEdit-${{ steps.version.outputs.version }}-macos-arm64
-                  path: GoMarkEdit-${{ steps.version.outputs.version }}-macos-arm64.zip
+                  args=("$RELEASE_TAG" --verify-tag --draft --title "GoMarkEdit $RELEASE_VERSION" --notes-from-tag)
+                  if [[ "$RELEASE_PRERELEASE" == true ]]; then args+=(--prerelease); fi
+                  gh release create "${args[@]}"
+                  mapfile -d '' assets < <(find release-assets -type f -print0 | sort -z)
+                  [[ "${#assets[@]}" -eq 6 ]] || { echo 'release asset count changed after validation' >&2; exit 1; }
+                  gh release upload "$RELEASE_TAG" "${assets[@]}"
+                  expected_names=()
+                  for asset in "${assets[@]}"; do expected_names+=("${asset##*/}"); done
+                  expected_inventory="$(printf '%s\n' "${expected_names[@]}" | sort)"
+                  remote_inventory="$(gh release view "$RELEASE_TAG" --json assets --jq '.assets[].name' | sort)"
+                  [[ "$remote_inventory" == "$expected_inventory" ]] || { echo 'draft release asset inventory differs from the validated package' >&2; exit 1; }
+                  check_remote_tag
+                  gh release edit "$RELEASE_TAG" --draft=false

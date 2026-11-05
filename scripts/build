@@ -7,8 +7,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 usage() {
     cat <<'EOF'
-Usage: scripts/build [--version X.Y.Z[{-alpha.N|-beta.N}]]
-       scripts/build setup [--with-browser]
+Usage: scripts/build [--release] [--platform OS/ARCH] [--version X.Y.Z[{-alpha.N|-beta.N}]]
+       scripts/build setup [--release] [--with-browser]
        scripts/build dev
 EOF
 }
@@ -20,10 +20,12 @@ fi
 
 if [[ "${1:-}" == "setup" ]]; then
     with_browser=false
+    release_setup=false
     shift
     while [[ $# -gt 0 ]]; do
         case "$1" in
             --with-browser) with_browser=true ;;
+            --release) release_setup=true ;;
             -h | --help)
                 usage
                 exit 0
@@ -39,8 +41,10 @@ if [[ "${1:-}" == "setup" ]]; then
     wails_version="$(sed -nE 's/^[[:space:]]*github\.com\/wailsapp\/wails\/v2[[:space:]]+([^[:space:]]+).*/\1/p' "$REPO_ROOT/go.mod" | head -1)"
     [[ -n "$wails_version" ]] || die 'could not read the Wails CLI version from go.mod'
     install_go_tool wails github.com/wailsapp/wails/v2 "$wails_version"
-    install_go_tool golangci-lint github.com/golangci/golangci-lint/v2 "$GOLANGCI_LINT_VERSION"
-    install_go_tool shfmt mvdan.cc/sh/v3 "$SHFMT_VERSION"
+    if [[ "$release_setup" == false ]]; then
+        install_go_tool golangci-lint github.com/golangci/golangci-lint/v2 "$GOLANGCI_LINT_VERSION"
+        install_go_tool shfmt mvdan.cc/sh/v3 "$SHFMT_VERSION"
+    fi
     npm --prefix "$REPO_ROOT/frontend" ci
     if [[ "$with_browser" == true ]]; then
         (cd "$REPO_ROOT/frontend" && npx --no-install playwright install chromium)
@@ -61,8 +65,19 @@ if [[ "${1:-}" == "dev" ]]; then
 fi
 
 version=''
+release=false
+platform=''
 while [[ $# -gt 0 ]]; do
     case "$1" in
+        --release)
+            release=true
+            shift
+            ;;
+        --platform)
+            [[ $# -ge 2 ]] || usage_error '--platform requires OS/architecture'
+            platform="$2"
+            shift 2
+            ;;
         --version)
             [[ $# -ge 2 ]] || usage_error '--version requires X.Y.Z, X.Y.Z-alpha.N, or X.Y.Z-beta.N'
             version="$2"
@@ -105,8 +120,10 @@ cleanup_build_state() {
     exit "$status"
 }
 trap cleanup_build_state EXIT
-git diff --binary HEAD >"$build_state_dir/before.diff"
-git status --porcelain -z >"$build_state_dir/before.status"
+if [[ "$release" == false ]]; then
+    git diff --binary HEAD >"$build_state_dir/before.diff"
+    git status --porcelain -z >"$build_state_dir/before.status"
+fi
 dist_placeholder="$REPO_ROOT/frontend/dist/.gitkeep"
 if [[ -f "$dist_placeholder" ]]; then
     cp "$dist_placeholder" "$build_state_dir/dist.gitkeep"
@@ -125,6 +142,9 @@ if [[ -d "$bindings_dir" ]]; then
 fi
 
 build_args=(-skipbindings -trimpath)
+if [[ -n "$platform" ]]; then
+    build_args+=(-platform "$platform")
+fi
 if [[ -n "$version" ]]; then
     build_args+=(-ldflags "-X github.com/sanyokkua/go_mark_edit/internal/bootstrap.version=$version")
 fi
@@ -133,7 +153,9 @@ if [[ "$(uname -s)" == 'Linux' ]]; then
 fi
 case "$(uname -s)" in
     MINGW* | MSYS* | CYGWIN*)
-        if command -v makensis >/dev/null 2>&1; then
+        if [[ "$release" == true ]]; then
+            build_args+=(-webview2 error)
+        elif command -v makensis >/dev/null 2>&1; then
             build_args+=(-nsis)
         else
             log 'makensis not found; skipping the Windows installer'
@@ -156,7 +178,7 @@ fi
 generated_binding_modes restore "$bindings_dir" "$binding_modes"
 binding_modes_pending=false
 
-if [[ "$(uname -s)" == 'Linux' ]]; then
+if [[ "$(uname -s)" == 'Linux' && "$release" == false ]]; then
     cp "$REPO_ROOT"/build/linux/* "$REPO_ROOT/build/appicon.png" "$REPO_ROOT/build/bin/"
     chmod 755 "$REPO_ROOT/build/bin/install.sh"
 fi
@@ -164,19 +186,22 @@ fi
 if [[ "$(uname -s)" == 'Darwin' && -n "$version" ]]; then
     bundle="$REPO_ROOT/build/bin/GoMarkEdit.app/Contents/Info.plist"
     [[ -f "$bundle" ]] || die "built bundle is missing: $bundle"
-    plutil -replace CFBundleShortVersionString -string "$version" "$bundle"
-    plutil -replace CFBundleVersion -string "$version" "$bundle"
+    bundle_version="${version%%-*}"
+    plutil -replace CFBundleShortVersionString -string "$bundle_version" "$bundle"
+    plutil -replace CFBundleVersion -string "$bundle_version" "$bundle"
 fi
 
-if [[ -x "$REPO_ROOT/tools/lint/bundle-scan.mjs" ]]; then
+if [[ "$release" == false && -x "$REPO_ROOT/tools/lint/bundle-scan.mjs" ]]; then
     node "$REPO_ROOT/tools/lint/bundle-scan.mjs" "$REPO_ROOT/frontend/dist"
 fi
 
-git diff --binary HEAD >"$build_state_dir/after.diff"
-git status --porcelain -z >"$build_state_dir/after.status"
-if ! cmp -s "$build_state_dir/before.diff" "$build_state_dir/after.diff" || ! cmp -s "$build_state_dir/before.status" "$build_state_dir/after.status"; then
-    printf 'error: build changed the working tree relative to its starting state:\n' >&2
-    git status --short >&2
-    exit 1
+if [[ "$release" == false ]]; then
+    git diff --binary HEAD >"$build_state_dir/after.diff"
+    git status --porcelain -z >"$build_state_dir/after.status"
+    if ! cmp -s "$build_state_dir/before.diff" "$build_state_dir/after.diff" || ! cmp -s "$build_state_dir/before.status" "$build_state_dir/after.status"; then
+        printf 'error: build changed the working tree relative to its starting state:\n' >&2
+        git status --short >&2
+        exit 1
+    fi
 fi
 log "build complete (version ${version:-dev})"

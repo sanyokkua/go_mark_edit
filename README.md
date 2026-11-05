@@ -43,10 +43,10 @@ branches are squash-merged. See "Git workflow" in `AGENTS.md`.
 
 ## Build and release
 
-CI tests Go packages on macOS and Windows and runs full verification on Linux. The current release
-workflow packages macOS arm64. Versioned builds accept `X.Y.Z`, `X.Y.Z-alpha.N`, and
-`X.Y.Z-beta.N`; alpha and beta tags create GitHub prereleases. Manual release dispatch builds an
-artifact without publishing a release. See [the project guide](docs/index.md#103-ci-and-release).
+PRs and master pushes run shared verification on Linux, macOS and Windows. Releases require verification
+of the exact commit and produce macOS ARM64, Windows AMD64/ARM64 and Linux AMD64/ARM64 assets.
+Stable tags publish ordinary releases; alpha and beta tags publish prereleases. Manual release dispatch
+creates dry-run artifacts only. See [the project guide](docs/index.md#103-ci-and-release).
 
 ## Contributing
 

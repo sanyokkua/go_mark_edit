@@ -477,24 +477,8 @@ dev and setup. Hooks and CI call the scripts directly. A developer may use the f
   dirty-tree evidence to the repository state being measured. The record is named after the checked-out branch (slashes become dashes), or after the short
   commit on a detached HEAD. Required reports that are missing or malformed are UNAVAILABLE or UNRELIABLE,
   never zero; warning counts do not fail a stage.
-- CI (`.github/workflows/`): `push.yml` runs the stages as parallel `ubuntu-24.04` jobs so the wall time
-  is that of the slowest one: `static` (Lint, Format, Build), `tests` (Unit, Integration) and `e2e`, a
-  matrix run under `xvfb-run`: the parallel `chromium` project in four shards (`E2E_SHARD=<n>/4`) and a
-  `serial` job for the timing-bound and clipboard projects. `E2E_PROJECTS` and `E2E_SHARD` are read by
-  `frontend/playwright.config.ts`, which keeps a project dependency only when both projects are selected,
-  because Playwright runs a selected project's dependencies in full on every shard. They
-  share the `.github/actions/setup` composite action (Linux Wails toolchain plus `lsof`, `xvfb` and `xclip`,
-  Go, Node, tool and browser caches, `scripts/build setup`). The stages are independent because the Wails
-  bindings and generated themes are tracked. `cross-platform-go` keeps the Windows and macOS Go tests. Caches: Go modules and build cache
-  (`setup-go`), the Go tool binaries in `~/go/bin` (keyed by the pinned Wails, golangci-lint and shfmt
-  versions; `scripts/build setup` skips `go install` when the installed module version already matches),
-  Playwright browsers (keyed by the Playwright version in `package-lock.json`) and the ESLint cache
-  `.local_tmp_files/cache/eslint` (`--cache-strategy content`, restored by prefix). Each job appends a stage
-  timing table from `tools/verify/stage-timings.mjs` to `$GITHUB_STEP_SUMMARY`.
-  `release.yml` does not repeat verification: it first requires a successful `push.yml` run for
-  `GITHUB_SHA` (queried with `gh run list`) and fails otherwise, including for a commit whose push run was
-  skipped by `paths-ignore`; a manual dispatch with `full_verify` runs the complete `scripts/verify` on
-  macOS instead. Otherwise it runs only the macOS E2E subset, then builds and packages the application.
+- CI (`.github/workflows/`): `push.yml` invokes the reusable `verification.yml` for pull requests, master pushes and manual dispatch. Linux retains static, unit, integration and four parallel E2E shards plus the serial clipboard shard; focused Go checks run on macOS and Windows and a macOS E2E subset runs separately. The required aggregate fails on any failed, cancelled or skipped dependency. Only obsolete PR runs are cancelled.
+  `release.yml` validates a strict version and exact commit, and requires trusted successful master verification of that commit and workflow revision or invokes the same verification as a fallback. Failed or cancelled latest evidence fails closed. Five native builds follow authorization; a collector validates this attempt's complete inventory and checksums before tag-only publication. Manual dispatch uploads dry-run assets. Release jobs do not execute tests or smoke the distributables; GitHub-hosted and native desktop evidence must be recorded separately.
 - CI failure uploads allowlist stage JSON records, logs, stderr captures, normalized and raw reports,
   Jest/Playwright/Go test reports and E2E failure screenshots, error contexts and traces from
   `.local_tmp_files/runs/`; compiler, linter, Jest,
@@ -526,7 +510,7 @@ and runs in parallel (CI: three workers; local: at most four and the available C
 a case that proves flaky under parallel load is moved there rather than loosened. The OS clipboard
 writer cases (`@native-clipboard`) run in `chromium-native`, serial and after `chromium-serial`, when `E2E_NATIVE_CLIPBOARD=1` is set or the macOS subset is selected. Each tagged test restores the original clipboard text after the test, including on failure; non-text clipboard formats are not preserved.
 Setting `E2E_SUBSET=macos` replaces these with a macOS subset (`pdf-export`, `launch-target` and `menus`
-files, then the clipboard cases), which the release workflow runs on macOS. Playwright retries are zero.
+files, then the clipboard cases), which the shared verification workflow runs on macOS. Playwright retries are zero.
 CI allows 15 seconds for UI assertions rather than the local five seconds. Product performance bounds and
 explicit assertion timeouts remain unchanged. Automatic failure screenshots, error contexts and app output are retained, while traces
 require explicit `--trace` to avoid recording overhead in timing-sensitive tests.
@@ -1089,7 +1073,7 @@ The owner decisions that shaped this refactor are recorded here so they are not 
   `Applications\<exe>` with `SupportedTypes`, and add "Open with GoMarkEdit" verbs on `Directory\shell` (`"%1"`) and
   `Directory\Background\shell` (`"%V"`), all under `SHCTX\Software\Classes`; the uninstaller deletes exactly those
   keys and values and both sections notify the shell with `SHChangeNotify`. Windows 11 shows the folder verbs under
-  "Show more options". `scripts/build` adds `-nsis` on Windows when `makensis` is on `PATH`. The packaging test scans
+  "Show more options". `scripts/build` adds `-nsis` on Windows when `makensis` is on `PATH`; release mode omits it and reports a missing WebView2 runtime without downloading it. The packaging test scans
   the NSI lines. Explorer behaviour is not verified at runtime.
   **Linux part:** `build/linux/` holds `gomarkedit.desktop` (`MimeType` text/markdown, text/x-markdown, text/plain,
   inode/directory; `Exec=… %f`), `gomarkedit-mime.xml` (Markdown globs) and the POSIX `install.sh [--uninstall]`, which
@@ -1157,6 +1141,8 @@ The owner decisions that shaped this refactor are recorded here so they are not 
   the dialog reads the store projection `ui.layout.showHiddenFolders`; the tree keeps reading the workspace snapshot,
   which the same patch updates. Rejected: moving the preference into `internal/settings` (two owners) and disabling the
   row while no folder is open.
+
+- **D24 — Verify before producing release assets:** the reusable verification workflow owns the required checks and the release gate accepts only exact-commit trusted evidence or runs that workflow again. Native build jobs produce executable-only assets, and a collector validates all five before publication. Windows release builds report missing WebView2 and require separate installation, preserving the offline network contract. Rejected: reusing an arbitrary earlier successful run, shipping installers, and testing the exact distributable after building it in CI. Hosted Windows and Linux native desktop behavior remains separately unverified until exercised.
 
 ## Planning decisions retained
 

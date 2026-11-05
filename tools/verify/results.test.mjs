@@ -1566,7 +1566,7 @@ void test('does not require a migration baseline and allowlists CI diagnostics',
     const archlintSource = readFileSync(join(repoRoot, 'tools/archlint/main.go'), 'utf8');
     assert.doesNotMatch(archlintSource, /checkMigrations|app_version_1_codebase/);
 
-    for (const workflowPath of ['.github/workflows/push.yml', '.github/workflows/release.yml']) {
+    for (const workflowPath of ['.github/workflows/verification.yml']) {
         const workflow = readFileSync(join(repoRoot, workflowPath), 'utf8');
         const artifactPath = workflow.match(
             /name: verification-runs-[\s\S]*?path:\s*\|([\s\S]*?)if-no-files-found:/,

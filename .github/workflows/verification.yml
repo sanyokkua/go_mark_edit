@@ -1,0 +1,251 @@
+name: verification
+
+on:
+    workflow_call:
+        inputs:
+            sha:
+                description: Exact revision to verify
+                required: true
+                type: string
+
+permissions:
+    contents: read
+
+jobs:
+    cross-platform-go:
+        strategy:
+            fail-fast: false
+            matrix:
+                os: [macos-15, windows-2025]
+        runs-on: ${{ matrix.os }}
+        timeout-minutes: 20
+        steps:
+            - uses: actions/checkout@v7
+              with:
+                  ref: ${{ inputs.sha }}
+            - uses: actions/setup-go@v7
+              with:
+                  go-version-file: go.mod
+                  cache: true
+            - name: Validate release version formats
+              shell: bash
+              run: |
+                  source scripts/lib/release_version.sh
+                  for version in 1.2.3; do
+                    parse_release_version "$version" || { echo "expected valid version: $version" >&2; exit 1; }
+                    if [[ "$RELEASE_VERSION_PRERELEASE" != false ]]; then
+                      echo "stable release was classified as a prerelease: $version" >&2
+                      exit 1
+                    fi
+                  done
+                  for version in 1.2.3-alpha.1 1.2.3-beta.12; do
+                    parse_release_version "$version" || { echo "expected valid version: $version" >&2; exit 1; }
+                    if [[ "$RELEASE_VERSION_PRERELEASE" != true ]]; then
+                      echo "expected prerelease classification: $version" >&2
+                      exit 1
+                    fi
+                  done
+                  for version in 1.2 1.2.3-rc.1 1.2.3-alpha 1.2.3-alpha.01 1.2.3-beta.0; do
+                    if parse_release_version "$version"; then
+                      echo "expected invalid version: $version" >&2
+                      exit 1
+                    fi
+                  done
+            - name: Test file save and workspace behavior
+              run: >-
+                  go test ./tests/go/unit/apperr ./tests/go/unit/file ./tests/go/unit/workspace
+                  ./tests/go/integration/appmodel ./tests/go/integration/application
+            - name: Build Go packages
+              run: go build ./...
+    # The stages are independent (generated bindings and themes are tracked), so each runs in its
+    # own job and the workflow takes as long as the slowest one.
+    static:
+        runs-on: ubuntu-24.04
+        timeout-minutes: 20
+        steps:
+            - uses: actions/checkout@v7
+              with:
+                  ref: ${{ inputs.sha }}
+            - uses: ./.github/actions/setup
+            - name: Cache ESLint results
+              uses: actions/cache@v4
+              with:
+                  path: .local_tmp_files/cache/eslint
+                  key: eslint-${{ runner.os }}-${{ hashFiles('frontend/package-lock.json', 'frontend/eslint.config.js') }}-${{ github.sha }}
+                  restore-keys: |
+                      eslint-${{ runner.os }}-${{ hashFiles('frontend/package-lock.json', 'frontend/eslint.config.js') }}-
+            - name: Lint, Format and Build
+              run: |
+                  scripts/verify lint
+                  scripts/verify format
+                  scripts/verify build
+            - name: Stage timings
+              if: always()
+              run: node tools/verify/stage-timings.mjs >> "$GITHUB_STEP_SUMMARY"
+            - name: Upload verification artifacts on failure
+              if: failure()
+              uses: actions/upload-artifact@v7
+              with:
+                  name: verification-runs-static-${{ github.run_id }}
+                  path: |
+                      .local_tmp_files/runs/**/summary.json
+                      .local_tmp_files/runs/**/lint.json
+                      .local_tmp_files/runs/**/format.json
+                      .local_tmp_files/runs/**/build.json
+                      .local_tmp_files/runs/**/unit.json
+                      .local_tmp_files/runs/**/integration.json
+                      .local_tmp_files/runs/**/e2e.json
+                      .local_tmp_files/runs/**/reports/**
+                      .local_tmp_files/runs/**/*.log
+                      .local_tmp_files/runs/**/*.stderr
+                      .local_tmp_files/runs/**/frontend-*.json
+                      .local_tmp_files/runs/**/frontend-e2e-results/**
+                  include-hidden-files: true
+                  if-no-files-found: ignore
+    tests:
+        runs-on: ubuntu-24.04
+        timeout-minutes: 20
+        steps:
+            - uses: actions/checkout@v7
+              with:
+                  ref: ${{ inputs.sha }}
+            - uses: ./.github/actions/setup
+            - name: Unit and Integration
+              run: |
+                  scripts/verify unit
+                  scripts/verify integration
+            - name: Stage timings
+              if: always()
+              run: node tools/verify/stage-timings.mjs >> "$GITHUB_STEP_SUMMARY"
+            - name: Upload verification artifacts on failure
+              if: failure()
+              uses: actions/upload-artifact@v7
+              with:
+                  name: verification-runs-tests-${{ github.run_id }}
+                  path: |
+                      .local_tmp_files/runs/**/summary.json
+                      .local_tmp_files/runs/**/lint.json
+                      .local_tmp_files/runs/**/format.json
+                      .local_tmp_files/runs/**/build.json
+                      .local_tmp_files/runs/**/unit.json
+                      .local_tmp_files/runs/**/integration.json
+                      .local_tmp_files/runs/**/e2e.json
+                      .local_tmp_files/runs/**/reports/**
+                      .local_tmp_files/runs/**/*.log
+                      .local_tmp_files/runs/**/*.stderr
+                      .local_tmp_files/runs/**/frontend-*.json
+                      .local_tmp_files/runs/**/frontend-e2e-results/**
+                  include-hidden-files: true
+                  if-no-files-found: ignore
+    # Playwright runs a project's dependencies in full on every shard, so the parallel group is
+    # sharded alone and the timing-bound and clipboard tests run serially in a job of their own.
+    e2e:
+        name: e2e (${{ matrix.name }})
+        runs-on: ubuntu-24.04
+        timeout-minutes: 30
+        strategy:
+            fail-fast: false
+            matrix:
+                include:
+                    - { name: parallel 1/4, projects: chromium, shard: 1/4 }
+                    - { name: parallel 2/4, projects: chromium, shard: 2/4 }
+                    - { name: parallel 3/4, projects: chromium, shard: 3/4 }
+                    - { name: parallel 4/4, projects: chromium, shard: 4/4 }
+                    - { name: serial, projects: 'chromium-serial,chromium-native', shard: '' }
+        env:
+            E2E_NATIVE_CLIPBOARD: ${{ matrix.name == 'serial' && '1' || '' }}
+            E2E_PROJECTS: ${{ matrix.projects }}
+            E2E_SHARD: ${{ matrix.shard }}
+        steps:
+            - uses: actions/checkout@v7
+              with:
+                  ref: ${{ inputs.sha }}
+            - uses: ./.github/actions/setup
+              with:
+                  browser: 'true'
+            - name: E2E (${{ matrix.name }})
+              run: xvfb-run --auto-servernum scripts/verify e2e
+            - name: Stage timings
+              if: always()
+              run: node tools/verify/stage-timings.mjs >> "$GITHUB_STEP_SUMMARY"
+            - name: Upload verification artifacts on failure
+              if: failure()
+              uses: actions/upload-artifact@v7
+              with:
+                  name: verification-runs-e2e-${{ strategy.job-index }}-${{ github.run_id }}
+                  path: |
+                      .local_tmp_files/runs/**/summary.json
+                      .local_tmp_files/runs/**/lint.json
+                      .local_tmp_files/runs/**/format.json
+                      .local_tmp_files/runs/**/build.json
+                      .local_tmp_files/runs/**/unit.json
+                      .local_tmp_files/runs/**/integration.json
+                      .local_tmp_files/runs/**/e2e.json
+                      .local_tmp_files/runs/**/reports/**
+                      .local_tmp_files/runs/**/*.log
+                      .local_tmp_files/runs/**/*.stderr
+                      .local_tmp_files/runs/**/frontend-*.json
+                      .local_tmp_files/runs/**/frontend-e2e-results/**
+                  include-hidden-files: true
+                  if-no-files-found: ignore
+    macos-e2e:
+        runs-on: macos-15
+        timeout-minutes: 40
+        env:
+            E2E_SUBSET: macos
+            E2E_NATIVE_CLIPBOARD: '1'
+        steps:
+            - uses: actions/checkout@v7
+              with:
+                  ref: ${{ inputs.sha }}
+            - uses: actions/setup-go@v7
+              with:
+                  go-version-file: go.mod
+                  cache: true
+            - uses: actions/setup-node@v7
+              with:
+                  node-version-file: .nvmrc
+                  cache: npm
+                  cache-dependency-path: frontend/package-lock.json
+            - name: Install verification dependencies
+              run: scripts/build setup --with-browser
+            - name: macOS E2E subset
+              run: scripts/verify e2e
+            - name: Stage timings
+              if: always()
+              run: node tools/verify/stage-timings.mjs >> "$GITHUB_STEP_SUMMARY"
+            - name: Upload verification artifacts on failure
+              if: failure()
+              uses: actions/upload-artifact@v7
+              with:
+                  name: verification-runs-macos-e2e-${{ github.run_id }}
+                  path: |
+                      .local_tmp_files/runs/**/summary.json
+                      .local_tmp_files/runs/**/e2e.json
+                      .local_tmp_files/runs/**/reports/**
+                      .local_tmp_files/runs/**/*.log
+                      .local_tmp_files/runs/**/*.stderr
+                      .local_tmp_files/runs/**/frontend-*.json
+                      .local_tmp_files/runs/**/frontend-e2e-results/**
+                  include-hidden-files: true
+                  if-no-files-found: ignore
+    required:
+        name: required
+        if: ${{ always() }}
+        needs: [cross-platform-go, static, tests, e2e, macos-e2e]
+        runs-on: ubuntu-24.04
+        steps:
+            - name: Reject incomplete verification
+              env:
+                  CROSS_PLATFORM: ${{ needs['cross-platform-go'].result }}
+                  STATIC: ${{ needs.static.result }}
+                  TESTS: ${{ needs.tests.result }}
+                  E2E: ${{ needs.e2e.result }}
+                  MACOS_E2E: ${{ needs.macos-e2e.result }}
+              run: |
+                  for result in "$CROSS_PLATFORM" "$STATIC" "$TESTS" "$E2E" "$MACOS_E2E"; do
+                    if [ "$result" != success ]; then
+                      echo "required verification result: $result" >&2
+                      exit 1
+                    fi
+                  done
