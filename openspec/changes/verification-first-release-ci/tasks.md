@@ -2,7 +2,7 @@
 
 ## 1. Build and verification
 
-- [ ] 1.1 Separate release production from verification in `scripts/build` and stage/setup owners; preserve local installers, generated drift and bundle checks. Exercise release mode with NSIS present and verify drift and bundle failures.
+- [x] 1.1 Separate release production from verification in `scripts/build` and stage/setup owners; preserve local installers, generated drift and bundle checks. Exercise release mode with NSIS present and verify drift and bundle failures.
 - [ ] 1.2 Extract shared Linux, macOS and Windows verification into a reusable workflow with an explicit aggregate, PR/master/manual triggers and PR-only cancellation. Preserve E2E shards, diagnostics and macOS subset; test failure and skip handling and document Windows GUI limits.
 
 ## 2. Release gate and assets

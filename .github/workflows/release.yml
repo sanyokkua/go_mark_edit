@@ -190,7 +190,7 @@ jobs:
                       cp build/bin/GoMarkEdit.exe "$asset"
                       ;;
                     Linux)
-                      cp "build/bin/GoMarkEdit-$RELEASE_TARGET" "$asset"
+                      cp build/bin/GoMarkEdit "$asset"
                       chmod 755 "$asset"
                       ;;
                     *) echo "unsupported runner OS: $RUNNER_OS" >&2; exit 1 ;;

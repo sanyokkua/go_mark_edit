@@ -137,7 +137,7 @@ docker run --rm --platform "linux/$arch" --shm-size=2g \
             failed=1
         fi
         uname -m
-        executable="build/bin/GoMarkEdit-linux-$RELEASE_ARCH"
+        executable=build/bin/GoMarkEdit
         if [[ -f "$executable" ]]; then
             file "$executable"
         else
