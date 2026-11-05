@@ -44,7 +44,7 @@ run_unit_stage() {
     run_reported_command 'Go backend unit tests' go-test "$RUN_DIR/reports/go-unit.jsonl" go test -race -json ./tests/go/unit/... || failed=1
     (cd "$REPO_ROOT/frontend" && run_command 'Jest frontend unit tests' "$REPO_ROOT/frontend/node_modules/.bin/jest" --ci --json --outputFile "$RUN_DIR/frontend-unit-jest.json" --cacheDirectory "$REPO_ROOT/.local_tmp_files/cache/jest-unit" --maxWorkers=50% --config jest.config.mjs --selectProjects unit) || failed=1
     run_command 'Node verification tool tests' node --test \
-        tools/verify/results.test.mjs tools/verify/release-build.test.mjs tools/verify/release-assets.test.mjs tools/verify/release-gate.test.mjs tools/verify/release-package.test.mjs tools/verify/release-publish.test.mjs tools/verify/verification-aggregate.test.mjs tools/lint/regex-regression.test.mjs || failed=1
+        tools/verify/results.test.mjs tools/verify/release-build.test.mjs tools/verify/release-assets.test.mjs tools/verify/release-gate.test.mjs tools/verify/release-package.test.mjs tools/verify/release-publish.test.mjs tools/verify/release-source.test.mjs tools/verify/verification-aggregate.test.mjs tools/lint/regex-regression.test.mjs || failed=1
     return "$failed"
 }
 
