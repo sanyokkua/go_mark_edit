@@ -182,6 +182,7 @@ outlined add control have intentional fills.
 
 Pane owns the header, identity, body and accessory slots. Its consumers are the editor pane and preview
 pane; a paused or failed preview banner arrives through the explicit accessory slot.
+The optional pane ID lets a resize separator identify the pane it controls.
 Pane paints each document surface once. Preview content and the generated Monaco editor, gutter and
 minimap backgrounds remain transparent. Material panes have small local elevation; Minimal panes stay
 flat. Monaco widget backgrounds retain their own surfaces and its focus color follows the theme accent.
@@ -195,6 +196,8 @@ notification text.
 
 Sidebar and the editor/preview SplitDivider share `useHorizontalResize` for pointer capture,
 tracking, release and cleanup; each consumer owns its units, limits and keyboard behavior.
+Sidebar links its separator to its pane with a stable ID. SplitDivider accepts a controlled-pane ID,
+which EditorStage supplies for the editor pane.
 EditorStage owns the split layout and its temporary drag projection. The divider appears only
 with both panes side by side, exposes a localized separator with a 20–80 percent editor share,
 and supports 2-percentage-point arrow steps plus Home/End. Cancellation restores the starting
