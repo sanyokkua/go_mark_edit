@@ -28,6 +28,20 @@ function normalize(text: string): string {
     return text.replace(/\r\n?/gu, '\n');
 }
 
+function isEligibleTidyTarget(
+    op: Parameters<TidyCommands['run']>[0],
+    options: NonNullable<Parameters<TidyCommands['run']>[1]>,
+    documentId: string,
+    state: { projectedDocumentId: string | null; capability: string | undefined },
+): boolean {
+    return (
+        (options.documentId === undefined || options.documentId === documentId) &&
+        state.projectedDocumentId === documentId &&
+        state.capability !== undefined &&
+        (op === 'lint' || state.capability === 'writable')
+    );
+}
+
 function tidyPreferences(settings: ReturnType<typeof useEditorSettings>['markdownSettings']): TidyPreferences | null {
     if (
         settings === undefined ||
@@ -194,10 +208,7 @@ export function useTidyCommands(): TidyCommands {
             const prefs = tidyPreferences(state.markdownSettings);
             if (
                 documentId === undefined ||
-                (options.documentId !== undefined && options.documentId !== documentId) ||
-                state.projectedDocumentId !== documentId ||
-                state.capability === undefined ||
-                (op !== 'lint' && state.capability !== 'writable') ||
+                !isEligibleTidyTarget(op, options, documentId, state) ||
                 selectedCommands === null ||
                 prefs === null
             )

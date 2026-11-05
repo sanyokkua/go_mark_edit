@@ -27,7 +27,13 @@ async function split(page: Page): Promise<void> {
         .getByRole('radiogroup', { name: 'View arrangement' })
         .getByRole('radio', { name: 'Split', exact: true })
         .click();
-    await expect(page.getByRole('separator', { name: 'Resize editor and preview panes' })).toBeVisible();
+    const divider = page.getByRole('separator', { name: 'Resize editor and preview panes' });
+    await expect(divider).toBeVisible();
+    const pane = page.getByRole('region', { name: 'Editor pane' });
+    await expect(pane).toHaveAttribute('id', /.+/u);
+    const paneId = await pane.getAttribute('id');
+    if (paneId === null) throw new Error('Editor pane has no identity');
+    await expect(divider).toHaveAttribute('aria-controls', paneId);
 }
 
 async function currentRatio(page: Page): Promise<number> {
@@ -71,6 +77,8 @@ test('dragging and keyboard resizing change real pane widths without losing edit
     await openFirst(page, 'resize.md');
     await split(page);
     const divider = page.getByRole('separator', { name: 'Resize editor and preview panes' });
+    const controlledPaneId = await divider.getAttribute('aria-controls');
+    if (controlledPaneId === null) throw new Error('Split divider has no controlled pane');
     const initial = await paneWidths(page);
     expect(Math.abs(initial.editor - initial.preview)).toBeLessThan(2);
 
@@ -112,6 +120,7 @@ test('dragging and keyboard resizing change real pane widths without losing edit
     await arrangements.getByRole('radio', { name: 'Editor', exact: true }).click();
     await expect(divider).toHaveCount(0);
     await split(page);
+    await expect(divider).toHaveAttribute('aria-controls', controlledPaneId);
     await expect(divider).toHaveAttribute('aria-valuenow', '80');
     for (const width of [375, 376, 377]) {
         await page.setViewportSize({ width, height: 600 });

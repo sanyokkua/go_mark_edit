@@ -28,6 +28,31 @@ afterEach((): void => {
     jest.useRealTimers();
 });
 
+it('throws a TypeError before invoking a binding when request IDs cannot be generated', () => {
+    const crypto = globalThis.crypto;
+    const original = Object.getOwnPropertyDescriptor(crypto, 'randomUUID');
+    Object.defineProperty(crypto, 'randomUUID', { configurable: true, value: undefined });
+    try {
+        const bound = jest.fn(async (): Promise<void> => undefined);
+        const noticeOwner = notices();
+        const invoker = createCommandInvoker({ isReady: () => true, noticeOwner });
+        const command = invoker.bind('GetState', bound, { expectedArity: 0 });
+        let failure: unknown;
+        try {
+            void command();
+        } catch (error) {
+            failure = error;
+        }
+        expect(failure).toBeInstanceOf(TypeError);
+        expect(failure).toHaveProperty('message', 'crypto.randomUUID() is unavailable.');
+        expect(bound).not.toHaveBeenCalled();
+        expect(noticeOwner.show).not.toHaveBeenCalled();
+    } finally {
+        if (original === undefined) Reflect.deleteProperty(crypto, 'randomUUID');
+        else Object.defineProperty(crypto, 'randomUUID', original);
+    }
+});
+
 it('rejects synchronous command throws and removes the pending command', async () => {
     jest.useFakeTimers();
     const noticeOwner = notices();

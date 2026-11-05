@@ -13,6 +13,7 @@ export interface PaneProps {
     body: ReactNode;
     header?: PaneHeaderSlots;
     hidden?: boolean;
+    id?: string;
     identity: string;
 }
 
@@ -22,6 +23,7 @@ const Pane: React.FC<PaneProps> = ({
     body,
     header,
     hidden = false,
+    id,
     identity,
 }: PaneProps): React.JSX.Element => (
     <section
@@ -29,6 +31,7 @@ const Pane: React.FC<PaneProps> = ({
         aria-label={ariaLabel ?? identity}
         className={`${styles.pane} ${hidden ? styles.paneHidden : ''}`}
         data-pane-identity={identity}
+        id={id}
     >
         {header === undefined ? null : (
             <header className={styles.paneHeader}>

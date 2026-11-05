@@ -260,6 +260,13 @@ const Controls = (): React.JSX.Element => {
             >
                 Format on save
             </button>
+            <button
+                onClick={(): void => {
+                    void tidy?.run('format', { documentId: 'other' }).then((value) => setOutcome(value.kind));
+                }}
+            >
+                Format other document
+            </button>
             <button onClick={(): void => tidy?.cancel()}>Cancel</button>
             <output aria-label="Tidy outcome">{outcome}</output>
         </>
@@ -851,6 +858,16 @@ it('reveals the latest progress after one second for a small document', async ()
 it('returns unavailable without a notice when no editor is attached', async () => {
     render(view(null));
     fireEvent.click(screen.getByRole('button', { name: 'Format' }));
+    await waitFor(() => expect(screen.getByRole('status', { name: 'Tidy outcome' })).toHaveTextContent('failed'));
+    expect(mockRunTidy).not.toHaveBeenCalled();
+    expect(noticeCodes()).toEqual([]);
+    expect(slotSnapshot()).toEqual({ state: 'idle' });
+});
+
+it('refuses a tidy request for a different document without starting work', async () => {
+    render(view({ documentId: 'first', content: 'line\n' }));
+    await screen.findByRole('textbox', { name: 'Markdown source' });
+    fireEvent.click(screen.getByRole('button', { name: 'Format other document' }));
     await waitFor(() => expect(screen.getByRole('status', { name: 'Tidy outcome' })).toHaveTextContent('failed'));
     expect(mockRunTidy).not.toHaveBeenCalled();
     expect(noticeCodes()).toEqual([]);

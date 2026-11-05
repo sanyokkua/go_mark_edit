@@ -3,6 +3,7 @@ import {
     useCallback,
     useContext,
     useEffect,
+    useId,
     useImperativeHandle,
     useLayoutEffect,
     useRef,
@@ -467,6 +468,7 @@ const EditorStage = forwardRef<EditorStageHandle, EditorStageProps>(function Edi
     }: EditorStageProps,
     ref,
 ): React.JSX.Element {
+    const editorPaneId = useId();
     const activeEditorRef = useRef<ActiveEditorHandle | null>(null);
     const stageRef = useRef<HTMLDivElement | null>(null);
     const minimumWindow = useMinimumWindow();
@@ -573,11 +575,13 @@ const EditorStage = forwardRef<EditorStageHandle, EditorStageProps>(function Edi
                     ),
                 }}
                 hidden={!editorVisible}
+                id={editorPaneId}
                 identity="editor"
             />
             {split ? (
                 <SplitDivider
                     ariaLabel={t('editor.resizeSplit')}
+                    controls={editorPaneId}
                     identity={activeBuffer.documentId}
                     value={splitRatio.ratio}
                     valueText={(ratio) => t('editor.splitPercentage', { percent: Math.round(ratio * 100) })}

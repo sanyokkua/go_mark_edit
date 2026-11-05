@@ -207,6 +207,14 @@ it('renders each arrangement', async () => {
     store.dispatch(resetProjection());
     renderEditorView('split');
     expect(screen.getByLabelText('Editor pane')).toBeInTheDocument();
+    const editorPane = screen.getByLabelText('Editor pane');
+    const splitDivider = screen.getByRole('separator', { name: 'Resize editor and preview panes' });
+    expect(editorPane.id).not.toBe('');
+    expect(splitDivider).toHaveAttribute('aria-controls', editorPane.id);
+    const paneId = editorPane.id;
+    fireEvent.keyDown(splitDivider, { key: 'ArrowRight' });
+    expect(editorPane).toHaveAttribute('id', paneId);
+    expect(splitDivider).toHaveAttribute('aria-controls', paneId);
     expect(screen.getByLabelText('Preview pane')).toBeInTheDocument();
     expect(screen.getByRole('radio', { name: 'Split' })).toBeChecked();
     expect(await screen.findByRole('heading', { name: 'Rendered Preview' })).toBeInTheDocument();

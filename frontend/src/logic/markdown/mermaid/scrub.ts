@@ -104,23 +104,29 @@ function safeCssValue(value: string): boolean {
     let index = 0;
     while (index < value.length) {
         const character = value[index];
-        if (character === '"' || character === "'") {
-            const end = quotedCssEnd(value, index);
-            if (end < 0) return false;
-            index = end + 1;
-            continue;
-        }
-        if (/[a-z_-]/i.test(character)) {
-            const scanned = scanCssFunction(value, index);
-            if (!scanned.safe) return false;
-            index = scanned.index + 1;
-            depth += scanned.depth;
-            continue;
-        }
-        if (character === '(') depth++;
-        if (character === ')') {
-            depth -= 1;
-            if (depth < 0) return false;
+        switch (character) {
+            case '"':
+            case "'": {
+                const end = quotedCssEnd(value, index);
+                if (end < 0) return false;
+                index = end + 1;
+                continue;
+            }
+            case '(':
+                depth++;
+                break;
+            case ')':
+                depth--;
+                if (depth < 0) return false;
+                break;
+            default: {
+                if (!/[a-z_-]/i.test(character)) break;
+                const scanned = scanCssFunction(value, index);
+                if (!scanned.safe) return false;
+                index = scanned.index + 1;
+                depth += scanned.depth;
+                continue;
+            }
         }
         index++;
     }
@@ -245,7 +251,6 @@ function sanitizeCss(css: string, stylesheet: boolean): string {
     const normalized = decodeCssEscapes(css);
     const output: string[] = [];
     const blocks: CssBlock[] = [];
-    let quote = '';
     let depth = 0;
     let start = 0;
     let index = 0;
@@ -253,13 +258,15 @@ function sanitizeCss(css: string, stylesheet: boolean): string {
         const character = normalized[index];
         if (character === '"' || character === "'") {
             const end = quotedCssEnd(normalized, index);
-            if (end === -2) return '';
-            if (end === -1) {
-                quote = character;
-                break;
+            switch (end) {
+                case -2:
+                    return '';
+                case -1:
+                    return output.join('');
+                default:
+                    index = end + 1;
+                    continue;
             }
-            index = end + 1;
-            continue;
         }
         depth = cssDepth(depth, character);
         if (depth !== 0) {
@@ -275,10 +282,7 @@ function sanitizeCss(css: string, stylesheet: boolean): string {
         }
         index++;
     }
-    if (!stylesheet && quote === '' && depth === 0) {
-        const safe = safeDeclaration(normalized.slice(start));
-        if (safe) output.push(safe);
-    }
+    if (!stylesheet && depth === 0) output.push(safeDeclaration(normalized.slice(start)));
     return output.join('');
 }
 

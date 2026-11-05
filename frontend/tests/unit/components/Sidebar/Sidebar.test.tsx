@@ -11,6 +11,35 @@ function pointerEvent(type: 'pointerdown' | 'pointermove' | 'pointerup', clientX
     return event;
 }
 
+it('connects each divider to its own pane and keeps that relationship through collapse and resize', () => {
+    const props = {
+        minWidth: 0,
+        onResize: jest.fn(),
+        onResizeEnd: jest.fn(),
+    };
+    const sidebars = (collapsed: boolean, width: number): React.JSX.Element => (
+        <>
+            <Sidebar {...props} ariaLabel="Workspace" collapsed={collapsed} side="left" width={width} />
+            <Sidebar {...props} ariaLabel="Secondary" collapsed={false} side="right" width={216} />
+        </>
+    );
+    const { rerender } = render(sidebars(false, 216));
+    const pane = screen.getByRole('complementary', { name: 'Workspace' });
+    const secondary = screen.getByRole('complementary', { name: 'Secondary' });
+    expect(pane.id).not.toBe('');
+    expect(secondary.id).not.toBe(pane.id);
+    expect(screen.getByRole('separator', { name: 'Resize Workspace' })).toHaveAttribute('aria-controls', pane.id);
+    expect(screen.getByRole('separator', { name: 'Resize Secondary' })).toHaveAttribute('aria-controls', secondary.id);
+    const id = pane.id;
+
+    rerender(sidebars(true, 264));
+    expect(screen.queryByRole('separator', { name: 'Resize Workspace' })).not.toBeInTheDocument();
+    expect(pane).toHaveAttribute('id', id);
+    rerender(sidebars(false, 264));
+    expect(screen.getByRole('separator', { name: 'Resize Workspace' })).toHaveAttribute('aria-controls', id);
+    expect(document.getElementById(id)).toBe(pane);
+});
+
 it('reports pointer resize updates and the final width through separate callbacks', () => {
     const onResize = jest.fn();
     const onResizeEnd = jest.fn();

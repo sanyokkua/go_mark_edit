@@ -44,6 +44,35 @@ function renderTabBar(overrides: Partial<React.ComponentProps<typeof TabBar>> = 
     return callbacks;
 }
 
+it('keeps New tab available without exposing an empty tablist as documents open and close', () => {
+    const props = {
+        ariaLabel: 'Document tabs',
+        onActivate: jest.fn(),
+        onClose: jest.fn(),
+        onAdd: jest.fn(),
+        onReorder: jest.fn(),
+        onContextMenu: jest.fn(),
+    };
+    const { rerender } = render(<TabBar {...props} tabs={[]} />);
+    const add = screen.getByRole('button', { name: 'New tab' });
+    expect(screen.queryByRole('tablist')).not.toBeInTheDocument();
+    expect(screen.getByRole('group', { name: 'Document tabs' })).toContainElement(add);
+    add.focus();
+
+    rerender(<TabBar {...props} tabs={tabs} />);
+    expect(screen.getByRole('tablist', { name: 'Document tabs' })).toContainElement(
+        screen.getByRole('tab', { name: 'One' }),
+    );
+    expect(add).toHaveFocus();
+
+    rerender(<TabBar {...props} tabs={[]} />);
+    expect(screen.queryByRole('tablist')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'New tab' })).toBe(add);
+    expect(add).toHaveFocus();
+    fireEvent.click(add);
+    expect(props.onAdd).toHaveBeenCalledTimes(1);
+});
+
 it('routes tab activation, close, add and context actions by tab id', () => {
     const callbacks = renderTabBar();
 

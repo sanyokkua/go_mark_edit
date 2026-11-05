@@ -341,10 +341,10 @@ const TabBar: React.FC<TabBarProps> = ({
             main={
                 <div
                     ref={stripRef}
-                    aria-label={ariaLabel}
+                    aria-label={tabs.length === 0 ? undefined : ariaLabel}
                     className={styles.tabStrip}
                     data-tabs-overflowing={tabsOverflowing ? 'true' : undefined}
-                    role="tablist"
+                    role={tabs.length === 0 ? undefined : 'tablist'}
                     onKeyDown={handleTabListKeyDown}
                 >
                     {tabs.flatMap((tab, index) => {

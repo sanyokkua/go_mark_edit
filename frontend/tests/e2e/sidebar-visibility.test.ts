@@ -58,6 +58,9 @@ test('opening a folder shows the tree, and Ctrl+Backslash with no folder explain
 
     await app.openWorkspace(root);
     await expectSidebar(page, true);
+    const sidebarId = await page.getByRole('complementary', { name: 'Sidebar' }).getAttribute('id');
+    if (sidebarId === null) throw new Error('Sidebar pane has no identity');
+    await expect(page.getByRole('separator', { name: 'Resize sidebar' })).toHaveAttribute('aria-controls', sidebarId);
     await expect(page.getByRole('treeitem', { name: 'shown-note.md', exact: true })).toBeVisible();
     for (const [width, workspaceWidth] of [
         [769, 260],
@@ -144,11 +147,16 @@ test('closing the last tab keeps the folder sidebar, and Close Folder hides it',
     const root = await folderWithNote(app, 'tabs');
     await app.launch();
     const { page } = app;
+    await expect(page.getByRole('tablist')).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'New File', exact: true })).toBeVisible();
     await app.openWorkspace(root);
     await page.getByRole('treeitem', { name: 'tabs-note.md', exact: true }).click();
     await expect(page.getByRole('tab', { name: 'tabs-note.md' })).toBeVisible();
+    await expect(page.getByRole('tablist')).toBeVisible();
     await page.getByRole('tab', { name: 'tabs-note.md' }).press('ControlOrMeta+W');
     await expect(page.getByRole('tab')).toHaveCount(0);
+    await expect(page.getByRole('tablist')).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'New File', exact: true })).toBeVisible();
     await expect(page.getByTestId('document-launcher')).toBeVisible();
     await expectSidebar(page, true);
 

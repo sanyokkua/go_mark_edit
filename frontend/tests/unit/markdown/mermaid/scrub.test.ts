@@ -49,6 +49,14 @@ it('preserves completed CSS while discarding an unterminated quoted declaration'
     expect(diagram.querySelector('rect')?.getAttribute('style')).toBe('fill:red;');
 });
 
+it.each(['', 'invalid', '--custom:red', 'color:unknown(1)'])(
+    'preserves completed inline declarations when the final segment %j adds no safe declaration',
+    (tail) => {
+        const source = `<svg xmlns="http://www.w3.org/2000/svg"><rect style="fill:red;${tail}"/></svg>`;
+        expect(svg(scrubMermaidSvg(source)).querySelector('rect')?.getAttribute('style')).toBe('fill:red;');
+    },
+);
+
 it('rewrites every local ID reference for each diagram instance', () => {
     const source = `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
       <style>#node { fill: url('#paint'); }</style>
@@ -210,6 +218,18 @@ it('keeps balanced safe CSS functions and rejects malformed or external function
     expect(svg(scrubMermaidSvg(source)).querySelector('rect')?.getAttribute('style')).toBe(
         'fill:rgb(1,calc(2 + 3),4);stroke:url(#paint);',
     );
+});
+
+it.each([
+    ['blur(1)', 'blur(1)'],
+    ["'(literal)'", "'(literal)'"],
+    [')blur(1)', null],
+    ['blur(1', null],
+    ['unknown(1)', null],
+    ["'open(", null],
+])('validates the presentation attribute value %s before preserving it', (value, expected) => {
+    const source = `<svg xmlns="http://www.w3.org/2000/svg"><rect filter="${value}"/></svg>`;
+    expect(svg(scrubMermaidSvg(source)).querySelector('rect')?.getAttribute('filter')).toBe(expected);
 });
 
 it('retains allowed nested stylesheet rules and discards disallowed at-rule contents', () => {

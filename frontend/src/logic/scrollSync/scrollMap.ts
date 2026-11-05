@@ -80,5 +80,5 @@ export function mapScrollTop(map: ScrollMap, from: ScrollSyncPane, scrollTop: nu
     const end = anchors[low + 1];
     const ratio = (scrollTop - start[from]) / (end[from] - start[from]);
     const mapped = start[to] + ratio * (end[to] - start[to]);
-    return Math.min(Math.max(mapped, 0), anchors[anchors.length - 1][to]);
+    return Math.min(Math.max(mapped, 0), anchors.at(-1)![to]);
 }

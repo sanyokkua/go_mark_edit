@@ -3,6 +3,7 @@ import styles from './SplitDivider.module.css';
 
 export interface SplitDividerProps {
     ariaLabel: string;
+    controls?: string;
     identity: string;
     value: number;
     getWidth: () => number;
@@ -17,6 +18,7 @@ function constrain(value: number): number {
 
 export default function SplitDivider({
     ariaLabel,
+    controls,
     identity,
     value,
     getWidth,
@@ -42,6 +44,7 @@ export default function SplitDivider({
             className={styles.divider}
             role="separator"
             tabIndex={0}
+            aria-controls={controls}
             aria-label={ariaLabel}
             aria-orientation="vertical"
             aria-valuemin={20}
