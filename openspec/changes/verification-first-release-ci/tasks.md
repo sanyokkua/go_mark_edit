@@ -3,13 +3,13 @@
 ## 1. Build and verification
 
 - [x] 1.1 Separate release production from verification in `scripts/build` and stage/setup owners; preserve local installers, generated drift and bundle checks. Exercise release mode with NSIS present and verify drift and bundle failures.
-- [ ] 1.2 Extract shared Linux, macOS and Windows verification into a reusable workflow with an explicit aggregate, PR/master/manual triggers and PR-only cancellation. Preserve E2E shards, diagnostics and macOS subset; test failure and skip handling and document Windows GUI limits.
+- [x] 1.2 Extract shared Linux, macOS and Windows verification into a reusable workflow with an explicit aggregate, PR/master/manual triggers and PR-only cancellation. Preserve E2E shards, diagnostics and macOS subset; test failure and skip handling and document Windows GUI limits.
 
 ## 2. Release gate and assets
 
 - [ ] 2.1 Gate exact-SHA release builds on the latest trusted master verification or shared fallback, validating versions, ancestry and workflow revision. Test wrong SHA, fork, failed rerun, missing and in-progress cases, and hosted workflow conditionals.
 - [x] 2.2 Build the five specified native assets on matching runners without installers or tests; validate version metadata and names with focused tests and hosted dry runs.
-- [ ] 2.3 Collect exactly five current-run assets and checksums before tag-only publication; fail safely on existing releases and verify missing, extra, failed and manual cases.
+- [x] 2.3 Collect exactly five current-run assets and checksums before tag-only publication; fail safely on existing releases and verify missing, extra, failed and manual cases.
 
 ## 3. Cross-platform evidence
 
