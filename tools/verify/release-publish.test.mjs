@@ -30,7 +30,7 @@ function bashCompatibility() {
     );
 }
 
-/** @param {'existing' | 'moved' | 'inventory-mismatch' | 'upload-fails' | 'success'} scenario */
+/** @param {'existing' | 'leftover-draft' | 'create-fails' | 'moved' | 'inventory-mismatch' | 'upload-fails' | 'success'} scenario */
 function runPublisher(scenario) {
     const root = mkdtempSync(join(tmpdir(), 'release-publish-'));
     const bin = join(root, 'bin');
@@ -54,32 +54,37 @@ function runPublisher(scenario) {
             `printf '%s\\t%s\\n' "$current" "$3"\n`,
         { mode: 0o755 },
     );
+    const releaseState = join(root, 'release-state');
+    writeFileSync(
+        releaseState,
+        scenario === 'existing' ? 'published' : scenario === 'leftover-draft' ? 'draft' : 'none',
+    );
     writeFileSync(
         join(bin, 'gh'),
         `#!/usr/bin/env bash\nset -euo pipefail\n` +
             `[[ "$1" == release ]] || exit 97\n` +
+            `state="$(cat "$RELEASE_STATE")"\n` +
             `case "$2" in\n` +
             `  view)\n` +
-            `    [[ "${'${3:-}'}" == "$RELEASE_TAG" ]] || exit 98\n` +
-            `    if [[ "${'${4:-}'}" == --json && "${'${5:-}'}" == isDraft ]]; then\n` +
+            `    [[ "${'${3:-}'}" == "$RELEASE_TAG" && "${'${4:-}'}" == --json ]] || exit 98\n` +
+            `    [[ "$state" != none ]] || exit 1\n` +
+            `    if [[ "${'${5:-}'}" == isDraft ]]; then\n` +
             `      [[ $# -eq 7 && "$6" == --jq && "$7" == .isDraft ]] || exit 102\n` +
-            `      printf 'true\\n'\n` +
+            `      printf 'draft-check\\n' >> "$OP_LOG"\n` +
+            `      [[ "$state" == draft ]] && printf 'true\\n' || printf 'false\\n'\n` +
             `      exit 0\n` +
             `    fi\n` +
-            `    if [[ "${'${4:-}'}" == --json ]]; then\n` +
-            `      [[ $# -eq 7 && "$5" == assets && "$6" == --jq && "$7" == '.assets[].name' ]] || exit 99\n` +
-            `      printf '%s\\n' "$ASSET_INVENTORY"\n` +
-            `      printf 'inventory\\n' >> "$OP_LOG"\n` +
-            `      exit 0\n` +
-            `    fi\n` +
-            `    [[ $# -eq 3 ]] || exit 100\n` +
-            `    printf 'exists-check\\n' >> "$OP_LOG"\n` +
-            `    [[ "$SCENARIO" == existing ]] && exit 0 || exit 1\n` +
+            `    [[ $# -eq 7 && "$5" == assets && "$6" == --jq && "$7" == '.assets[].name' ]] || exit 99\n` +
+            `    printf '%s\\n' "$ASSET_INVENTORY"\n` +
+            `    printf 'inventory\\n' >> "$OP_LOG"\n` +
             `    ;;\n` +
             `  create)\n` +
             `    [[ "$3" == "$RELEASE_TAG" && "$4" == --verify-tag && "$5" == --draft && "$6" == --title && "$7" == "GoMarkEdit $RELEASE_VERSION" && "$8" == --notes-from-tag ]] || exit 91\n` +
             `    if [[ "$RELEASE_PRERELEASE" == true ]]; then [[ $# -eq 9 && "$9" == --prerelease ]] || exit 96; else [[ $# -eq 8 ]] || exit 96; fi\n` +
+            `    [[ "$state" == none ]] || exit 1\n` +
+            `    printf 'draft' > "$RELEASE_STATE"\n` +
             `    printf 'create\\n' >> "$OP_LOG"\n` +
+            `    [[ "$SCENARIO" != create-fails ]] || exit 1\n` +
             `    ;;\n` +
             `  upload)\n` +
             `    [[ "$3" == "$RELEASE_TAG" && $# -eq 9 ]] || exit 92\n` +
@@ -91,10 +96,12 @@ function runPublisher(scenario) {
             `    ;;\n` +
             `  edit)\n` +
             `    [[ "$3" == "$RELEASE_TAG" && $# -eq 4 && "$4" == --draft=false ]] || exit 93\n` +
+            `    printf 'published' > "$RELEASE_STATE"\n` +
             `    printf 'edit\\n' >> "$OP_LOG"\n` +
             `    ;;\n` +
             `  delete)\n` +
             `    [[ "$3" == "$RELEASE_TAG" && $# -eq 4 && "$4" == --yes ]] || exit 101\n` +
+            `    printf 'none' > "$RELEASE_STATE"\n` +
             `    printf 'delete\\n' >> "$OP_LOG"\n` +
             `    ;;\n` +
             `  *) exit 94 ;;\n` +
@@ -121,23 +128,37 @@ function runPublisher(scenario) {
             OP_LOG: operationLog,
             UPLOAD_LOG: uploadLog,
             ASSET_INVENTORY: outputInventory,
+            RELEASE_STATE: releaseState,
         },
     });
     return {
         root,
         result,
         operations: readFileSync(operationLog, 'utf8').trim().split('\n').filter(Boolean),
+        releaseState: readFileSync(releaseState, 'utf8'),
         gitCallCount: readFileSync(gitCalls, 'utf8').trim().split('\n').filter(Boolean).length,
         uploadedAssets: existsSync(uploadLog) ? readFileSync(uploadLog, 'utf8').trim().split('\n').filter(Boolean) : [],
     };
 }
 
-void test('an existing release prevents creation, upload, and publication', () => {
+void test('an existing published release prevents creation, upload, and publication', () => {
     const outcome = runPublisher('existing');
     try {
         assert.notEqual(outcome.result.status, 0);
-        assert.deepEqual(outcome.operations, ['exists-check']);
+        assert.deepEqual(outcome.operations, ['draft-check']);
+        assert.equal(outcome.releaseState, 'published');
         assert.equal(outcome.gitCallCount, 1);
+    } finally {
+        rmSync(outcome.root, { recursive: true, force: true });
+    }
+});
+
+void test('a creation that fails after leaving a draft removes that draft', () => {
+    const outcome = runPublisher('create-fails');
+    try {
+        assert.notEqual(outcome.result.status, 0);
+        assert.deepEqual(outcome.operations, ['create', 'draft-check', 'delete']);
+        assert.equal(outcome.releaseState, 'none');
     } finally {
         rmSync(outcome.root, { recursive: true, force: true });
     }
@@ -147,7 +168,8 @@ void test('a tag moved during upload removes the unpublished draft', () => {
     const outcome = runPublisher('moved');
     try {
         assert.notEqual(outcome.result.status, 0);
-        assert.deepEqual(outcome.operations, ['exists-check', 'create', 'upload', 'inventory', 'delete']);
+        assert.deepEqual(outcome.operations, ['create', 'upload', 'inventory', 'draft-check', 'delete']);
+        assert.equal(outcome.releaseState, 'none');
         assert.equal(outcome.gitCallCount, 2);
     } finally {
         rmSync(outcome.root, { recursive: true, force: true });
@@ -158,7 +180,8 @@ void test('a failed asset upload removes the draft so no partial release remains
     const outcome = runPublisher('upload-fails');
     try {
         assert.notEqual(outcome.result.status, 0);
-        assert.deepEqual(outcome.operations, ['exists-check', 'create', 'upload', 'delete']);
+        assert.deepEqual(outcome.operations, ['create', 'upload', 'draft-check', 'delete']);
+        assert.equal(outcome.releaseState, 'none');
     } finally {
         rmSync(outcome.root, { recursive: true, force: true });
     }
@@ -168,7 +191,8 @@ void test('a mismatched remote asset inventory removes the draft instead of publ
     const outcome = runPublisher('inventory-mismatch');
     try {
         assert.notEqual(outcome.result.status, 0);
-        assert.deepEqual(outcome.operations, ['exists-check', 'create', 'upload', 'inventory', 'delete']);
+        assert.deepEqual(outcome.operations, ['create', 'upload', 'inventory', 'draft-check', 'delete']);
+        assert.equal(outcome.releaseState, 'none');
         assert.equal(outcome.gitCallCount, 1);
         assert.deepEqual(outcome.uploadedAssets, [...assets].sort());
     } finally {
@@ -180,8 +204,21 @@ void test('a complete prerelease is uploaded as a draft before it is published',
     const outcome = runPublisher('success');
     try {
         assert.equal(outcome.result.status, 0, outcome.result.stderr);
-        assert.deepEqual(outcome.operations, ['exists-check', 'create', 'upload', 'inventory', 'edit']);
+        assert.deepEqual(outcome.operations, ['create', 'upload', 'inventory', 'edit']);
+        assert.equal(outcome.releaseState, 'published');
         assert.equal(outcome.gitCallCount, 2);
+        assert.deepEqual(outcome.uploadedAssets, [...assets].sort());
+    } finally {
+        rmSync(outcome.root, { recursive: true, force: true });
+    }
+});
+
+void test('a draft left by an interrupted attempt is replaced and the release is published', () => {
+    const outcome = runPublisher('leftover-draft');
+    try {
+        assert.equal(outcome.result.status, 0, outcome.result.stderr);
+        assert.deepEqual(outcome.operations, ['draft-check', 'delete', 'create', 'upload', 'inventory', 'edit']);
+        assert.equal(outcome.releaseState, 'published');
         assert.deepEqual(outcome.uploadedAssets, [...assets].sort());
     } finally {
         rmSync(outcome.root, { recursive: true, force: true });

@@ -1,6 +1,7 @@
 # release-verification Specification
 
 ## Purpose
+
 Defines the verification and publication guarantees for distributed GoMarkEdit builds.
 
 ## Requirements
@@ -59,6 +60,16 @@ A tag release SHALL publish only after all five assets from the current run have
 
 - **WHEN** an upload, inventory comparison or tag check fails after the release draft was created
 - **THEN** the draft is deleted, no release is visible, and a rerun is not blocked by a leftover draft
+
+#### Scenario: Rerun finds a leftover draft
+
+- **WHEN** a release run for v1.2.3 starts and an unpublished draft for v1.2.3 remains from an interrupted run
+- **THEN** the draft is deleted and the release is created, uploaded and published again
+
+#### Scenario: Release already published
+
+- **WHEN** a release run for v1.2.3 starts and v1.2.3 is already published
+- **THEN** the run fails without creating, changing or deleting any release
 
 #### Scenario: Concurrent release runs
 
