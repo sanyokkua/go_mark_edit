@@ -79,7 +79,8 @@ it('retains real queued editor text through crash cleanup', async () => {
     const model = createAppModelAdapter(
         {
             getState: async () => ({ data: state() }),
-            updateBuffer: async (_id: string, content: string) => {
+            updateBuffer: async (_id: string, content: string, baseRevision: number) => {
+                void baseRevision;
                 writes.push(content);
                 return {};
             },
@@ -266,7 +267,8 @@ it('keeps a newer queued edit behind an older in-flight delivery across a real c
     const model = createAppModelAdapter(
         {
             getState: async () => ({ data: state() }),
-            updateBuffer: async (_id: string, content: string) => {
+            updateBuffer: async (_id: string, content: string, baseRevision: number) => {
+                void baseRevision;
                 writes.push(content);
                 if (content === 'old')
                     await new Promise<void>((resolve) => {

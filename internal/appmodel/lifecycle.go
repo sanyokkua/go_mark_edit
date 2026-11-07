@@ -16,6 +16,7 @@ type DocumentRecord struct {
 	canonicalPath           string
 	bufferRevision          uint64
 	committedRevision       uint64
+	reloadedRevision        uint64 // content revision produced by the latest reload from disk
 	publicationCommitID     uint64
 	writeQueue              *DocumentWriteCoordinator
 	autosave                *autosaveTimerEntry
@@ -74,6 +75,7 @@ func (service *AppModelService) dispose(documentID string) {
 	document.canonicalPath = ""
 	document.bufferRevision = 0
 	document.committedRevision = 0
+	document.reloadedRevision = 0
 	document.publicationCommitID = 0
 	document.metadata = apperr.DocumentMetadata{}
 	document.content = ""

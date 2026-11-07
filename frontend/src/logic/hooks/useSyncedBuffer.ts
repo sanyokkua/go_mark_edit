@@ -14,7 +14,7 @@ export interface EditorSynchronizationAdapter {
     }) => () => void;
     flushBuffer: (documentId: string) => Promise<void>;
     flushDocView: (documentId: string) => Promise<void>;
-    updateBuffer: (documentId: string, content: string) => Promise<void>;
+    updateBuffer: (documentId: string, content: string, baseRevision: number) => Promise<void>;
     updateDocView: (documentId: string, view: DocViewInput) => Promise<void>;
     updateLocalDocView?: (documentId: string, view: DocViewInput) => Promise<void>;
     cancelPendingSession?: (documentId: string) => void;
@@ -87,6 +87,13 @@ export function useSyncedBuffer(
      * undo history and cursor position.
      */
     externalEpoch = 0,
+    /*
+     * The document revision this session's `initialContent` was installed at.
+     * Every buffer update carries it so the backend can refuse an edit typed
+     * against text that a reload has since replaced, even when that edit was
+     * already on its way when the reload landed.
+     */
+    baseRevision = 0,
 ): SyncedBufferCallbacks {
     const viewRef = useRef(view);
     const cursorRef = useRef(toEditorPosition(view.cursor.line, view.cursor.column));
@@ -151,10 +158,11 @@ export function useSyncedBuffer(
             createLifecycleBarrier<string, DocViewInput, symbol>({
                 flushBuffer: adapter.flushBuffer,
                 flushDocView: adapter.flushDocView,
-                queueBuffer: adapter.updateBuffer,
+                queueBuffer: (documentId: string, content: string): Promise<void> =>
+                    adapter.updateBuffer(documentId, content, baseRevision),
                 queueDocView: adapter.updateDocView,
             }),
-        [adapter],
+        [adapter, baseRevision],
     );
 
     const flushActiveSession = useCallback(
@@ -198,9 +206,9 @@ export function useSyncedBuffer(
             if (!sessionActiveRef.current) return;
             adoptDocument();
             contentRef.current = content;
-            void adapter.updateBuffer(documentId, content);
+            void adapter.updateBuffer(documentId, content, baseRevision);
         },
-        [adapter, adoptDocument, documentId],
+        [adapter, adoptDocument, baseRevision, documentId],
     );
 
     const onCursorPositionChange = useCallback(

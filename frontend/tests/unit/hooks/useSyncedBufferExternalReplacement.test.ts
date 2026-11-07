@@ -13,7 +13,7 @@ const view: DocumentView = {
     scroll: { editor: 0, preview: 0 },
 };
 
-function adapterRecordingBuffers(sent: string[]) {
+function adapterRecordingBuffers(sent: string[], bases: number[] = []) {
     return createAppModelAdapter(
         {
             getState: () =>
@@ -23,9 +23,10 @@ function adapterRecordingBuffers(sent: string[]) {
                         activeBuffer: { documentId: '', content: '' },
                     },
                 }),
-            updateBuffer: (documentId: string, content: string): Promise<object> => {
+            updateBuffer: (documentId: string, content: string, baseRevision: number): Promise<object> => {
                 void documentId;
                 sent.push(content);
+                bases.push(baseRevision);
                 return Promise.resolve({});
             },
             setDocView: (documentId: string, docView: unknown): Promise<object> => {
@@ -82,4 +83,30 @@ it('still sends edits made in the editor session that follows the reload', async
     });
 
     expect(sent).toEqual(['theirs, edited\n']);
+});
+
+it('sends each edit with the document revision its editor session was installed from', async () => {
+    jest.useFakeTimers();
+    const sent: string[] = [];
+    const bases: number[] = [];
+    const adapter = adapterRecordingBuffers(sent, bases);
+    const { rerender, result } = renderHook(
+        ({ content, epoch, base }: { content: string; epoch: number; base: number }) =>
+            useSyncedBuffer('document-1', view, adapter, content, epoch, base),
+        { initialProps: { content: 'mine\n', epoch: 0, base: 3 } },
+    );
+
+    act(() => result.current.onChange('mine, edited\n'));
+    await act(async (): Promise<void> => {
+        await jest.advanceTimersByTimeAsync(BUFFER_SYNC_MS * 2);
+    });
+    rerender({ content: 'theirs\n', epoch: 1, base: 7 });
+    act(() => result.current.onChange('theirs, edited\n'));
+    act(() => result.current.onBlur());
+    await act(async (): Promise<void> => {
+        await jest.advanceTimersByTimeAsync(BUFFER_SYNC_MS * 2);
+    });
+
+    expect(sent).toEqual(['mine, edited\n', 'theirs, edited\n']);
+    expect(bases).toEqual([3, 7]);
 });

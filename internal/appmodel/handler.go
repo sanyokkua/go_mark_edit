@@ -2,6 +2,7 @@ package appmodel
 
 import (
 	"context"
+	"errors"
 
 	"github.com/rs/zerolog"
 	"github.com/sanyokkua/go_mark_edit/internal/apperr"
@@ -29,7 +30,7 @@ type AppModelServiceAPI interface {
 	ReopenLastFile(ctx context.Context, expectedTabSetRevision uint64) apperr.OpenResult
 	RefreshRecentItems(ctx context.Context) apperr.RecentItemsResult
 	ClearRecentItems(ctx context.Context) apperr.VoidResult
-	UpdateBuffer(ctx context.Context, documentID, content string) error
+	UpdateBufferFrom(ctx context.Context, documentID, content string, baseRevision uint64) error
 	SetDocView(ctx context.Context, documentID string, view apperr.DocViewInput) error
 	SetUILayout(ctx context.Context, layout apperr.UILayout) error
 	Save(ctx context.Context, documentID string, contentRevision uint64, decisionToken string) apperr.WriteResult
@@ -398,14 +399,21 @@ func (handler *AppModelHandler) GetState(request bridge.Request) (res apperr.Sta
 }
 
 // UpdateBuffer accepts a complete canonical-buffer snapshot through the F3 seam.
-func (handler *AppModelHandler) UpdateBuffer(request bridge.Request, documentID, content string) (res apperr.VoidResult) {
+// baseRevision is the content revision the editor session was installed from;
+// an update based before the latest reload is reported as superseded, not as
+// an error.
+func (handler *AppModelHandler) UpdateBuffer(request bridge.Request, documentID, content string, baseRevision uint64) (res apperr.BufferUpdateResult) {
 	defer bridge.Guard(&res)
-	return bridge.Once(handler.outcomes, request, func() apperr.VoidResult {
-		if err := handler.service.UpdateBuffer(handler.context(), documentID, content); err != nil {
-			wire := apperr.ToWire(handler.zlog(), err)
-			return apperr.VoidResult{Error: &wire}
+	return bridge.Once(handler.outcomes, request, func() apperr.BufferUpdateResult {
+		err := handler.service.UpdateBufferFrom(handler.context(), documentID, content, baseRevision)
+		if errors.Is(err, ErrBufferSuperseded) {
+			return apperr.BufferUpdateResult{Status: apperr.BufferUpdateSuperseded}
 		}
-		return apperr.VoidResult{}
+		if err != nil {
+			wire := apperr.ToWire(handler.zlog(), err)
+			return apperr.BufferUpdateResult{Error: &wire}
+		}
+		return apperr.BufferUpdateResult{Status: apperr.BufferUpdateAccepted}
 	})
 }
 

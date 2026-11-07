@@ -450,6 +450,11 @@ func (service *AppModelService) UpdateBuffer(ctx context.Context, documentID, co
 	return service.commands.UpdateBuffer(ctx, documentID, content)
 }
 
+// UpdateBufferFrom delegates an editor update, based on baseRevision, through the F3 command seam.
+func (service *AppModelService) UpdateBufferFrom(ctx context.Context, documentID, content string, baseRevision uint64) error {
+	return service.commands.UpdateBufferFrom(ctx, documentID, content, baseRevision)
+}
+
 // SetDocView stores a document's restorable pane and cursor metadata.
 func (service *AppModelService) SetDocView(ctx context.Context, documentID string, input apperr.DocViewInput) error {
 	if err := validateDocView(input); err != nil {

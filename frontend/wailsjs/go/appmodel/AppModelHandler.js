@@ -146,6 +146,6 @@ export function SkipConflict(arg1, arg2, arg3, arg4) {
   return window['go']['appmodel']['AppModelHandler']['SkipConflict'](arg1, arg2, arg3, arg4);
 }
 
-export function UpdateBuffer(arg1, arg2, arg3) {
-  return window['go']['appmodel']['AppModelHandler']['UpdateBuffer'](arg1, arg2, arg3);
+export function UpdateBuffer(arg1, arg2, arg3, arg4) {
+  return window['go']['appmodel']['AppModelHandler']['UpdateBuffer'](arg1, arg2, arg3, arg4);
 }

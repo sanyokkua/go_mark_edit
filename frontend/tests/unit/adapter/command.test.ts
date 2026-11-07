@@ -100,22 +100,22 @@ it('attaches a fresh bridge request id to every command call', () => {
     });
     const updateBuffer = invoker.bind(
         'AppModelHandler.UpdateBuffer',
-        recorder.binding('AppModelHandler.UpdateBuffer', 2),
+        recorder.binding('AppModelHandler.UpdateBuffer', 3),
     );
 
-    void updateBuffer('document-1', 'first');
-    void updateBuffer('document-1', 'second');
+    void updateBuffer('document-1', 'first', 0);
+    void updateBuffer('document-1', 'second', 0);
 
     expect(recorder.calls).toEqual([
         {
             name: 'AppModelHandler.UpdateBuffer',
             requestId: 'request-1',
-            args: ['document-1', 'first'],
+            args: ['document-1', 'first', 0],
         },
         {
             name: 'AppModelHandler.UpdateBuffer',
             requestId: 'request-2',
-            args: ['document-1', 'second'],
+            args: ['document-1', 'second', 0],
         },
     ]);
 });

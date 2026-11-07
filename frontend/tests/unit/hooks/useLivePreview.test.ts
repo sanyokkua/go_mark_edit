@@ -35,7 +35,9 @@ const runtime: AppModelRuntime = {
     eventsOn: (): (() => void) => (): void => undefined,
 };
 
-function createBufferAdapter(updateBuffer: (documentId: string, content: string) => Promise<VoidResult>) {
+function createBufferAdapter(
+    updateBuffer: (documentId: string, content: string, baseRevision: number) => Promise<VoidResult>,
+) {
     return createAppModelAdapter(
         {
             getState: async (): Promise<{ data: AppModelState }> => ({ data: state }),
@@ -168,12 +170,15 @@ it('keeps the last accepted preview on sync failure', async () => {
         retryable: true,
     } satisfies WireError;
     let attempt = 0;
-    const adapter = createBufferAdapter(async (documentId: string, content: string): Promise<VoidResult> => {
-        void documentId;
-        void content;
-        attempt += 1;
-        return attempt === 1 ? {} : { error: wireError };
-    });
+    const adapter = createBufferAdapter(
+        async (documentId: string, content: string, baseRevision: number): Promise<VoidResult> => {
+            void baseRevision;
+            void documentId;
+            void content;
+            attempt += 1;
+            return attempt === 1 ? {} : { error: wireError };
+        },
+    );
     const { result } = renderHook(() => {
         useEffect(
             () =>
@@ -186,13 +191,13 @@ it('keeps the last accepted preview on sync failure', async () => {
     });
 
     await act(async (): Promise<void> => {
-        await adapter.updateBuffer('document-1', '# Last accepted preview');
+        await adapter.updateBuffer('document-1', '# Last accepted preview', 0);
         await jest.advanceTimersByTimeAsync(BUFFER_SYNC_MS);
     });
     expect(result.current).toBe('# Last accepted preview');
 
     await act(async (): Promise<void> => {
-        await adapter.updateBuffer('document-1', '# Rejected preview');
+        await adapter.updateBuffer('document-1', '# Rejected preview', 0);
         await jest.advanceTimersByTimeAsync(BUFFER_SYNC_MS);
     });
 
@@ -204,8 +209,9 @@ it('keeps the last accepted preview on sync failure', async () => {
 
 it('(EC-RENDER-4) bounds large-document preview work', async () => {
     jest.useFakeTimers();
-    const updateBuffer = jest.fn<Promise<VoidResult>, [string, string]>(
-        async (documentId: string, content: string): Promise<VoidResult> => {
+    const updateBuffer = jest.fn<Promise<VoidResult>, [string, string, number]>(
+        async (documentId: string, content: string, baseRevision: number): Promise<VoidResult> => {
+            void baseRevision;
             void documentId;
             void content;
             return {};
@@ -225,9 +231,9 @@ it('(EC-RENDER-4) bounds large-document preview work', async () => {
     previewPublications.mockClear();
 
     await act(async (): Promise<void> => {
-        await adapter.updateBuffer('document-1', largeDocument);
-        await adapter.updateBuffer('document-1', `${largeDocument}second edit`);
-        await adapter.updateBuffer('document-1', settledDocument);
+        await adapter.updateBuffer('document-1', largeDocument, 0);
+        await adapter.updateBuffer('document-1', `${largeDocument}second edit`, 0);
+        await adapter.updateBuffer('document-1', settledDocument, 0);
     });
 
     expect(result.current).toBe('# Bootstrap preview');
@@ -239,7 +245,7 @@ it('(EC-RENDER-4) bounds large-document preview work', async () => {
     });
 
     expect(updateBuffer).toHaveBeenCalledTimes(1);
-    expect(updateBuffer).toHaveBeenCalledWith('document-1', settledDocument);
+    expect(updateBuffer).toHaveBeenCalledWith('document-1', settledDocument, 0);
     expect(result.current).toBe(settledDocument);
     expect(previewPublications).toHaveBeenCalledTimes(1);
     expect(previewPublications).toHaveBeenCalledWith(settledDocument);

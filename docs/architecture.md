@@ -608,6 +608,12 @@ activation or reload command. The guard waits for the matching document and proj
 rejects superseded acknowledgements and installs each accepted generation once. Only an accepted
 reload advances the editor epoch, and the editor session it ends drops its unsent buffer update; an
 ordinary Save retains the Monaco model, undo history, selection and focus. No separate reload context is needed.
+An update already sent when the reload lands is refused by the backend instead: `UpdateBuffer(documentId,
+content, baseRevision)` carries the installed `ActiveBuffer.documentRevision` of its editor session, the document
+record keeps the content revision its latest reload produced, and an update based on an earlier revision is
+answered with `BufferUpdateResult{status: "superseded"}`. It changes neither buffer nor revision, schedules no
+autosave and is not an error, so the adapter settles that generation silently: no accepted-buffer or sync-error
+listener runs. Backend callers that already hold the current buffer use the unguarded service `UpdateBuffer`.
 
 ### Editing, saves and conflicts
 

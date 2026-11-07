@@ -753,7 +753,7 @@ it('keeps an unsaved source edit and shows a linked target in both editor and pr
     const sourceEditor = await screen.findByRole('textbox', { name: 'Markdown source' });
     expect(await screen.findByRole('link', { name: 'Go' })).toBeVisible();
     fireEvent.change(sourceEditor, { target: { value: '# Edited source\n\n[Go](./target.md)' } });
-    expect(appModelAdapter.updateBuffer).toHaveBeenCalledWith('source', '# Edited source\n\n[Go](./target.md)');
+    expect(appModelAdapter.updateBuffer).toHaveBeenCalledWith('source', '# Edited source\n\n[Go](./target.md)', 0);
     fireEvent.click(screen.getByRole('link', { name: 'Go' }));
 
     await waitFor(() =>

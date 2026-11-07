@@ -152,7 +152,7 @@ const commandArities: Readonly<Record<string, number>> = {
     'AppModelHandler.CloseDocument': 2,
     'AppModelHandler.CopyPath': 1,
     'AppModelHandler.RevealInFileManager': 1,
-    'AppModelHandler.UpdateBuffer': 2,
+    'AppModelHandler.UpdateBuffer': 3,
     'AppModelHandler.SetDocView': 2,
     'AppModelHandler.SetUILayout': 1,
     'AppModelHandler.PrepareClose': 3,

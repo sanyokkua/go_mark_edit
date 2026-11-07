@@ -30,7 +30,7 @@ func TestHandlerReturnsTypedResultsAndRecoversPanics(t *testing.T) {
 		{"RevealInFileManager", 3, reflect.TypeFor[apperr.RevealResult]()},
 		{"OpenDocument", 3, reflect.TypeFor[apperr.OpenResult]()},
 		{"OpenPreviewLink", 4, reflect.TypeFor[apperr.OpenResult]()},
-		{"UpdateBuffer", 4, reflect.TypeFor[apperr.VoidResult]()},
+		{"UpdateBuffer", 5, reflect.TypeFor[apperr.BufferUpdateResult]()},
 		{"SetDocView", 4, reflect.TypeFor[apperr.VoidResult]()},
 		{"SetUILayout", 3, reflect.TypeFor[apperr.VoidResult]()},
 		{"Save", 5, reflect.TypeFor[apperr.WriteResult]()},
@@ -150,7 +150,8 @@ func assertHandlerPathAndOpenPanics(t *testing.T, panickingHandler *AppModelHand
 			t.Fatalf("panic result = %+v, want a classified preview-link error", opened)
 		}
 	case "UpdateBuffer":
-		*result = panickingHandler.UpdateBuffer(boundRequest(method), "doc", "content")
+		updated := panickingHandler.UpdateBuffer(boundRequest(method), "doc", "content", 0)
+		*result = apperr.VoidResult{Failure: updated.Failure, Error: updated.Error}
 	}
 }
 
@@ -391,7 +392,7 @@ func (service *fakeAppModelService) RevealInFileManager(_ context.Context, _ str
 	return apperr.RevealResult{}
 }
 
-func (service *fakeAppModelService) UpdateBuffer(_ context.Context, _, _ string) error {
+func (service *fakeAppModelService) UpdateBufferFrom(_ context.Context, _, _ string, _ uint64) error {
 	if service.panicOn == "UpdateBuffer" {
 		panic("service panic")
 	}

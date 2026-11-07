@@ -75,4 +75,4 @@ export function SetWorkspaceHiddenFolders(arg1:bridge.Request,arg2:boolean):Prom
 
 export function SkipConflict(arg1:bridge.Request,arg2:string,arg3:number,arg4:apperr.DiskVersion):Promise<apperr.ConflictResult>;
 
-export function UpdateBuffer(arg1:bridge.Request,arg2:string,arg3:string):Promise<apperr.VoidResult>;
+export function UpdateBuffer(arg1:bridge.Request,arg2:string,arg3:string,arg4:number):Promise<apperr.BufferUpdateResult>;

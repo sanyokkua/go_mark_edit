@@ -38,6 +38,11 @@ interface VoidResult {
     error?: import('../utils/parseError').WireError;
 }
 
+/** `superseded`: the update was based on text a reload from disk replaced; it is dropped without an error. */
+interface BufferUpdateResult extends VoidResult {
+    status?: 'accepted' | 'superseded' | string;
+}
+
 interface StateResult {
     data?: AppModelState;
     error?: import('../utils/parseError').WireError;
@@ -72,7 +77,7 @@ export interface AppModelBindings {
     closeDocument?: (documentId: string, expectedTabSetRevision: number) => Promise<TabTransitionResult>;
     copyPath?: (documentId: string) => Promise<PathCommandResult>;
     revealInFileManager?: (documentId: string) => Promise<PathCommandResult>;
-    updateBuffer: (documentId: string, content: string) => Promise<VoidResult>;
+    updateBuffer: (documentId: string, content: string, baseRevision: number) => Promise<BufferUpdateResult>;
     setDocView: (documentId: string, view: DocViewInput) => Promise<VoidResult>;
     setUILayout: (layout: UILayout) => Promise<VoidResult>;
 }
@@ -117,7 +122,12 @@ export interface AppModelAdapter {
     closeDocument?: (documentId: string, expectedTabSetRevision: number) => Promise<TabTransitionResult>;
     copyPath?: (documentId: string) => Promise<PathCommandResult>;
     revealInFileManager?: (documentId: string) => Promise<PathCommandResult>;
-    updateBuffer: (documentId: string, content: string) => Promise<void>;
+    /**
+     * Queue the editor's whole text. `baseRevision` is the document revision the
+     * editor session was installed from; the backend drops an update whose base
+     * predates the latest reload from disk.
+     */
+    updateBuffer: (documentId: string, content: string, baseRevision: number) => Promise<void>;
     flushActiveSession?: (documentId: string, expectedActivationToken?: symbol) => Promise<void>;
     registerActiveSession?: (session: RegisteredLifecycleSession<symbol>) => () => void;
     flushBuffer: (documentId: string) => Promise<void>;
@@ -141,6 +151,7 @@ export interface AppModelAdapter {
 interface BufferSnapshot {
     generation: number;
     content: string;
+    baseRevision: number;
 }
 
 interface BufferRecord {
@@ -714,7 +725,7 @@ export function createAppModelAdapter(bindings: AppModelBindings, runtime: AppMo
         record.pending = undefined;
 
         const inFlight = Promise.resolve()
-            .then(() => updateBuffer(documentId, snapshot.content))
+            .then(() => updateBuffer(documentId, snapshot.content, snapshot.baseRevision))
             .then((result): void => {
                 if (result.error !== undefined) throw new BufferSyncError(result.error);
                 bufferSyncFailed = false;
@@ -722,6 +733,9 @@ export function createAppModelAdapter(bindings: AppModelBindings, runtime: AppMo
                     return;
                 }
                 record.acceptedGeneration = snapshot.generation;
+                // A superseded update is settled, not accepted: its editor
+                // session ended with the reload, so nothing is reported.
+                if (result.status === 'superseded') return;
                 for (const listener of acceptedBufferListeners) {
                     listener({
                         documentId,
@@ -849,11 +863,11 @@ export function createAppModelAdapter(bindings: AppModelBindings, runtime: AppMo
         openExternalLink: bindings.openExternalLink,
         resolvePreviewImage: (documentId: string, source: string): string =>
             `/preview-image?doc=${encodeURIComponent(documentId)}&src=${encodeURIComponent(source)}`,
-        async updateBuffer(documentId: string, content: string): Promise<void> {
+        async updateBuffer(documentId: string, content: string, baseRevision: number): Promise<void> {
             assertCommandsAvailable();
             const record = bufferRecord(documentId);
             record.nextGeneration += 1;
-            record.pending = { generation: record.nextGeneration, content };
+            record.pending = { generation: record.nextGeneration, content, baseRevision };
             scheduleBuffer(documentId);
         },
         async flushActiveSession(documentId: string, expectedActivationToken?: symbol): Promise<void> {

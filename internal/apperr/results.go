@@ -58,6 +58,25 @@ type VoidResult struct {
 	Error *WireError `json:"error,omitempty"`
 }
 
+// BufferUpdateStatus says whether the backend adopted an editor buffer update.
+type BufferUpdateStatus string
+
+const (
+	// BufferUpdateAccepted means the update is now the canonical buffer.
+	BufferUpdateAccepted BufferUpdateStatus = "accepted"
+	// BufferUpdateSuperseded means the update was based on text that a reload
+	// from disk has since replaced. It is dropped, and it is not an error: the
+	// editor session that produced it has already ended.
+	BufferUpdateSuperseded BufferUpdateStatus = "superseded"
+)
+
+// BufferUpdateResult is the envelope for an editor buffer update.
+type BufferUpdateResult struct {
+	Failure
+	Status BufferUpdateStatus `json:"status,omitempty"`
+	Error  *WireError         `json:"error,omitempty"`
+}
+
 // LaunchTargetResult is the path a starting window accepted from its command
 // line or the operating system. Kind is "file" or "folder"; a result without a
 // Path means the window accepted nothing.

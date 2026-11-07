@@ -546,7 +546,7 @@ it('marks the real editor stage findings stale on typing while retaining underli
     fireEvent.change(screen.getByRole('textbox', { name: 'Markdown source' }), { target: { value: 'line changed\n' } });
     expect(problemsSnapshot()?.stale).toBe(true);
     expect(runtime.markers).toHaveLength(1);
-    expect(stageUpdateBuffer).toHaveBeenCalledWith('first', 'line changed\n');
+    expect(stageUpdateBuffer).toHaveBeenCalledWith('first', 'line changed\n', 0);
 });
 
 it('caps localized editor markers at one thousand while preserving the exact summary total', async () => {

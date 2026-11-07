@@ -732,7 +732,7 @@ it('preserves replacement undo and UpdateBuffer routing', async () => {
             scroll: { editor: 0, preview: 0 },
         },
     });
-    const updateBuffer = jest.fn<Promise<void>, [string, string]>(async (): Promise<void> => undefined);
+    const updateBuffer = jest.fn<Promise<void>, [string, string, number]>(async (): Promise<void> => undefined);
     const adapter: EditorViewAdapter = {
         flushBuffer: async (): Promise<void> => undefined,
         flushDocView: async (): Promise<void> => undefined,
@@ -802,8 +802,8 @@ it('preserves replacement undo and UpdateBuffer routing', async () => {
         expect.objectContaining({ text: 'whole\nreplacement' }),
     ]);
     expect(mockRuntime.editor.pushUndoStop).toHaveBeenCalledTimes(4);
-    expect(updateBuffer).toHaveBeenNthCalledWith(1, 'document-1', 'alpha delta\ngamma');
-    expect(updateBuffer).toHaveBeenNthCalledWith(2, 'document-1', 'whole\nreplacement');
+    expect(updateBuffer).toHaveBeenNthCalledWith(1, 'document-1', 'alpha delta\ngamma', 0);
+    expect(updateBuffer).toHaveBeenNthCalledWith(2, 'document-1', 'whole\nreplacement', 0);
 });
 
 it('displays live one-based cursor position without Redux truth', async () => {
@@ -995,8 +995,9 @@ it('keeps the editor region in binding content order without an extra wrapper', 
 
 it('renders accepted GFM within the debounce target', async () => {
     const acknowledgement = deferred<VoidResult>();
-    const updateBuffer = jest.fn<Promise<VoidResult>, [string, string]>(
-        (documentId: string, content: string): Promise<VoidResult> => {
+    const updateBuffer = jest.fn<Promise<VoidResult>, [string, string, number]>(
+        (documentId: string, content: string, baseRevision: number): Promise<VoidResult> => {
+            void baseRevision;
             void documentId;
             void content;
             return acknowledgement.promise;
@@ -1041,7 +1042,7 @@ it('renders accepted GFM within the debounce target', async () => {
     await act(async (): Promise<void> => {
         await jest.advanceTimersByTimeAsync(1);
     });
-    expect(updateBuffer).toHaveBeenCalledWith('document-1', gfmTable);
+    expect(updateBuffer).toHaveBeenCalledWith('document-1', gfmTable, 0);
     expect(screen.queryByRole('table')).not.toBeInTheDocument();
     expect(Date.now() - typingStoppedAt).toBe(BUFFER_SYNC_MS);
 
