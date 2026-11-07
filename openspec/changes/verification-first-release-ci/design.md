@@ -17,6 +17,7 @@ The current push workflow runs Linux stages and focused cross-platform Go checks
 - The build interface separates production from verification and explicitly disables NSIS for releases. Generated-file drift and bundle scanning remain in the verification build stage. This preserves the existing local installer interface and avoids post-build release tests.
 - Platform bundle and resource versions use the numeric base version; the Go application and asset names retain the complete prerelease version. Windows releases use Wails' error strategy for a missing WebView2 runtime, which the user installs separately.
 - Native runners build each target and upload distinct run-scoped artifacts. A dependent collector validates the exact inventory and generates checksums before a tag-only publisher creates a release. Existing releases fail closed rather than mixing assets across runs.
+- Release runs are serialized per ref without cancelling a publish. The publisher stages a draft and deletes its own draft on any failure before it becomes public, so a failed run leaves no release that blocks a retry. Artifacts are unsigned and un-notarized; the macOS bundle is re-sealed ad hoc after its version edit.
 - Manual dispatch uses validated input as data and cannot publish. Versions retain stable/alpha/beta classification and tag notes. Only the publisher has contents write permission.
 
 ## Risks / Trade-offs

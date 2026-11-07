@@ -48,6 +48,17 @@ of the exact commit and produce macOS ARM64, Windows AMD64/ARM64 and Linux AMD64
 Stable tags publish ordinary releases; alpha and beta tags publish prereleases. Manual release dispatch
 creates dry-run artifacts only. See [the project guide](docs/index.md#103-ci-and-release).
 
+Release files are unsigned and not notarized, so the operating system warns on first run:
+
+- macOS: unzip, then Control-click `GoMarkEdit.app` and choose Open, or run
+  `xattr -dr com.apple.quarantine GoMarkEdit.app`.
+- Windows: SmartScreen shows "Windows protected your PC"; choose More info, then Run anyway. The WebView2
+  runtime must already be installed.
+- Linux: `chmod +x` the file; GTK 3 and WebKitGTK 4.1 are required.
+
+Compare the file with `SHA256SUMS.txt` before running it; a matching hash detects corruption, not a
+malicious publisher.
+
 ## Contributing
 
 `AGENTS.md` is the single source of truth for development workflow and repository boundaries.
