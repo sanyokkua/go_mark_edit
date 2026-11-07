@@ -35,16 +35,19 @@ type normalizationAuthorization struct {
 }
 
 type writeSnapshot struct {
-	closePlanID       string
-	documentID        string
-	contentRevision   uint64
-	content           string
-	path              string
-	identity          file.Identity
-	metadata          apperr.DocumentMetadata
-	expectedVersion   file.DiskVersion
-	expectedRawHash   string
-	targetPathAdopted bool
+	closePlanID     string
+	documentID      string
+	contentRevision uint64
+	content         string
+	path            string
+	identity        file.Identity
+	metadata        apperr.DocumentMetadata
+	expectedVersion file.DiskVersion
+	expectedRawHash string
+	// expectedCharacteristics describe the bytes the write expects to replace:
+	// the loaded baseline's or a Keep mine authorization's.
+	expectedCharacteristics file.FileCharacteristics
+	targetPathAdopted       bool
 	// documentFile marks a write to the file the document was loaded from,
 	// whose disk changes are compared with the loaded document.
 	documentFile bool
@@ -442,14 +445,14 @@ func (service *AppModelService) snapshotForWrite(documentID string, expectedCont
 		}
 		document.normalization = nil
 	}
-	expectedVersion, expectedRawHash := document.baselineVersion, document.baselineRawHash
+	expectedVersion, expectedRawHash, expectedCharacteristics := document.baselineVersion, document.baselineRawHash, document.baselineCharacteristics
 	if authorization := keepMineAuthorizationForLocked(document, documentID, decisionToken, expectedContentRevision, document.metadata.Path); authorization != nil {
-		expectedVersion, expectedRawHash = authorization.version, authorization.rawHash
+		expectedVersion, expectedRawHash, expectedCharacteristics = authorization.version, authorization.rawHash, authorization.characteristics
 	}
 	return writeSnapshot{
 		documentID: documentID, contentRevision: expectedContentRevision, content: document.content,
 		path: targetPath, identity: document.identity, metadata: document.metadata,
-		expectedVersion: expectedVersion, expectedRawHash: expectedRawHash, targetPathAdopted: targetPathAdopted,
+		expectedVersion: expectedVersion, expectedRawHash: expectedRawHash, expectedCharacteristics: expectedCharacteristics, targetPathAdopted: targetPathAdopted,
 		documentFile: !targetPathAdopted,
 	}, apperr.WriteResult{}
 }
@@ -466,13 +469,15 @@ func (service *AppModelService) requestNormalizationLocked(documentID string, ex
 }
 
 // retryAfterPreCommitConflict handles a file that changed between the save's
-// disk check and the replacement. Bytes identical to the ones the write expected
-// to replace (a timestamp-only touch) are written once more against the
-// refreshed disk version. The expected bytes are the loaded baseline or, for a
-// Keep mine write, the authorized external version. Any other bytes get the
-// ordinary inspection, which returns the comparison as a result.
+// disk check and the replacement. A writable file whose bytes and
+// characteristics, permissions included, match the ones the write expected to
+// replace (a timestamp-only touch) is written once more against the refreshed
+// disk version. The expected bytes are the loaded baseline or, for a Keep mine
+// write, the authorized external version. Any other file gets the ordinary
+// inspection, which returns the comparison as a result.
 func (service *AppModelService) retryAfterPreCommitConflict(ctx context.Context, coordinator *DocumentWriteCoordinator, snapshot writeSnapshot, encoded encodedWrite, replaceErr error) (CommittedWriteResult, *apperr.WriteResult, error) {
-	if stable, err := service.readStable(snapshot.path); err == nil && stable.Version.Exists && stable.RawHash == snapshot.expectedRawHash {
+	if stable, err := service.readStable(snapshot.path); err == nil && stable.Version.Exists && stable.Read.Error == nil && stable.Read.Capability == file.CapabilityWritable &&
+		stable.RawHash == snapshot.expectedRawHash && characteristicsEqual(stable.Read.Characteristics, snapshot.expectedCharacteristics) {
 		snapshot.expectedVersion = stable.Version
 		committed, err := coordinator.Commit(snapshot.request(encoded))
 		return committed, nil, err
