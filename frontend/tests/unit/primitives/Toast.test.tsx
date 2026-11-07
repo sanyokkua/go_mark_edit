@@ -187,6 +187,43 @@ it('offers only the localized remediation label and keeps toasts above dialogs',
     );
 });
 
+/*
+ * Jest maps CSS modules to a class-name proxy (`styles.toast` is "toast"), so the real stylesheet is parsed
+ * and its rules that match the element are applied in source order. jsdom's own computed style cannot be
+ * used: it does not resolve `var()` inside shorthands, so the compared colours are token references.
+ */
+function stripeColour(component: 'Banner' | 'Toast', severity: 'error' | 'success'): string {
+    const style = document.createElement('style');
+    style.textContent = readFileSync(resolve(process.cwd(), `src/ui/primitives/${component}.module.css`), 'utf8');
+    document.head.append(style);
+    const element = document.createElement('div');
+    element.className = component.toLowerCase();
+    element.dataset.severity = severity;
+    document.body.append(element);
+    const [shorthand, longhand] =
+        component === 'Toast' ? ['border-inline-start', 'border-inline-start-color'] : ['border', 'border-color'];
+    try {
+        let colour = '';
+        for (const rule of Array.from((style.sheet as CSSStyleSheet).cssRules) as CSSStyleRule[]) {
+            if (!element.matches(rule.selectorText.replace(/\s+/gu, ' '))) continue;
+            colour =
+                rule.style.getPropertyValue(longhand) ||
+                rule.style.getPropertyValue(shorthand).split(' ').at(-1) ||
+                colour;
+        }
+        return colour;
+    } finally {
+        element.remove();
+        style.remove();
+    }
+}
+
+it('gives the success toast the same stripe colour as the success banner', () => {
+    expect(stripeColour('Banner', 'success')).toBe('var(--accent)');
+    expect(stripeColour('Toast', 'success')).toBe(stripeColour('Banner', 'success'));
+    expect(stripeColour('Toast', 'error')).toBe('var(--err)');
+});
+
 it('renders one explicit save confirmation with its localized safe filename', () => {
     render(
         <ToastProvider>

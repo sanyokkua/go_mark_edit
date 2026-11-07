@@ -280,6 +280,37 @@ it.each([375, 376])('keeps both Split panes at %i px', (width) => {
     }
 });
 
+it('follows a real resize across the 376 and 377 px boundary without writing an arrangement', () => {
+    const divider = (): HTMLElement | null =>
+        screen.queryByRole('separator', { name: 'Resize editor and preview panes' });
+    const resizeTo = (width: number): void => {
+        setViewportWidth(width);
+        act((): void => {
+            window.dispatchEvent(new Event('resize'));
+        });
+    };
+    setViewportWidth(376);
+    try {
+        renderEditorView('split');
+        expect(divider()).not.toBeInTheDocument();
+
+        resizeTo(377);
+        expect(divider()).toBeInTheDocument();
+        expect(screen.getByLabelText('Editor pane')).not.toHaveClass('paneHidden');
+        expect(screen.getByLabelText('Preview pane')).toBeInTheDocument();
+
+        resizeTo(376);
+        expect(divider()).not.toBeInTheDocument();
+        expect(screen.getByLabelText('Editor pane')).not.toHaveClass('paneHidden');
+        expect(screen.getByLabelText('Preview pane')).toBeInTheDocument();
+
+        expect(screen.getByRole('radio', { name: 'Split' })).toBeChecked();
+        expect(mockSetDocView).not.toHaveBeenCalled();
+    } finally {
+        setViewportWidth(1024);
+    }
+});
+
 it('restores Split when the window widens again without writing an arrangement', () => {
     const minimumWindowQuery = installMinimumWindowQuery();
     try {

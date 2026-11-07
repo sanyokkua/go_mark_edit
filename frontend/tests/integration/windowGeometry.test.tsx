@@ -78,6 +78,19 @@ it('reports dimensions on every resize and maximized only when its value changes
     ]);
 });
 
+it('sends windowMaximized once across N resizes that leave the maximized state unchanged', async () => {
+    renderHook(() => useWindowGeometry('ready'));
+    for (let index = 0; index < 5; index++) {
+        resizeWith({ width: 800 + index, height: 600, maximized: true });
+        await waitFor(() => expect(appModelAdapter.setUILayout).toHaveBeenCalledTimes(index + 1));
+    }
+    const layouts = recordedLayouts();
+    expect(layouts.map((layout) => layout.windowWidth)).toEqual([800, 801, 802, 803, 804]);
+    expect(layouts.filter((layout) => 'windowMaximized' in layout)).toEqual([
+        expect.objectContaining({ windowMaximized: true }),
+    ]);
+});
+
 it('deduplicates identical in-flight maximized reports and retries after rejection', async () => {
     const first = deferred<void>();
     (appModelAdapter.setUILayout as jest.Mock).mockReturnValueOnce(first.promise);
