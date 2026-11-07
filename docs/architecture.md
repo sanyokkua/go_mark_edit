@@ -631,8 +631,11 @@ written.
 raw-byte fingerprint immediately before replacement, and refuses an expected existing version that comes
 without its fingerprint. A file that does not exist yet is created with a no-replace move (`renamex_np` with
 `RENAME_EXCL` on macOS, `renameat2` with `RENAME_NOREPLACE` on Linux, a move without `MOVEFILE_REPLACE_EXISTING` on
-Windows; `link(2)`, then an existence check plus rename, where the filesystem lacks exclusive rename), so a file that another
-program creates after the disk check is reported as a conflict and never replaced. The fingerprint check and rename are separate
+Windows; `link(2)` where the filesystem lacks exclusive rename, and an existence check plus rename only where it also
+lacks hard links), so a file that another program creates after the disk check is reported as a conflict and never
+replaced. `internal/file/atomic_replace_create.go` owns that sequence. A permission refusal of the exclusive move is
+reported, not retried; once `link(2)` succeeds the write counts as committed even if the temporary name cannot be
+removed. The fingerprint check and rename are separate
 operations: the host platform's atomic replace prevents readers from observing a partially written
 file, but portable Go APIs do not provide a compare-and-swap rename conditioned on the old bytes. An
 external writer can still race in the narrow check-to-rename interval, so this is a stale-write guard

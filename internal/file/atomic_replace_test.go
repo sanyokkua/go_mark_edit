@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"syscall"
 	"testing"
 
 	"github.com/sanyokkua/go_mark_edit/internal/apperr"
@@ -421,4 +422,179 @@ func mustRawFileHash(t *testing.T, path string) string {
 		t.Fatal(err)
 	}
 	return hash
+}
+
+// recordedCreateOps runs the no-replace creation against real files while
+// letting a test replace individual system calls and observe which ran.
+type recordedCreateOps struct {
+	calls []string
+	ops   atomicCreateOps
+}
+
+func newRecordedCreateOps() *recordedCreateOps {
+	recorded := &recordedCreateOps{}
+	real := defaultAtomicCreateOps()
+	recorded.ops = atomicCreateOps{
+		exclusive: func(from, to string) error {
+			recorded.calls = append(recorded.calls, "exclusive")
+			return real.exclusive(from, to)
+		},
+		link: func(from, to string) error {
+			recorded.calls = append(recorded.calls, "link")
+			return real.link(from, to)
+		},
+		remove: func(path string) error { recorded.calls = append(recorded.calls, "remove"); return real.remove(path) },
+		lstat: func(path string) (fs.FileInfo, error) {
+			recorded.calls = append(recorded.calls, "lstat")
+			return real.lstat(path)
+		},
+		rename: func(from, to string) error {
+			recorded.calls = append(recorded.calls, "rename")
+			return real.rename(from, to)
+		},
+	}
+	return recorded
+}
+
+func preparedCreate(t *testing.T) (string, string) {
+	t.Helper()
+	directory := t.TempDir()
+	temporary := filepath.Join(directory, ".gomarkedit-temporary")
+	if err := os.WriteFile(temporary, []byte("mine"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	return temporary, filepath.Join(directory, "new.md")
+}
+
+func assertCreated(t *testing.T, target string) {
+	t.Helper()
+	data, err := os.ReadFile(target)
+	if err != nil || string(data) != "mine" {
+		t.Fatalf("target = %q, %v; want the new content", data, err)
+	}
+}
+
+func unsupported(err syscall.Errno) func(string, string) error {
+	return func(from, to string) error { return &os.LinkError{Op: "rename", Old: from, New: to, Err: err} }
+}
+
+func TestAtomicCreateFallsBackToLinkWhenExclusiveRenameIsUnsupported(t *testing.T) {
+	for _, errno := range []syscall.Errno{syscall.ENOSYS, syscall.EINVAL, syscall.ENOTSUP} {
+		t.Run(errno.Error(), func(t *testing.T) {
+			temporary, target := preparedCreate(t)
+			recorded := newRecordedCreateOps()
+			recorded.ops.exclusive = unsupported(errno)
+
+			if err := createAtomicFileWithOps(temporary, target, recorded.ops); err != nil {
+				t.Fatalf("create: %v", err)
+			}
+			assertCreated(t, target)
+			if _, err := os.Lstat(temporary); !errors.Is(err, fs.ErrNotExist) {
+				t.Fatalf("temporary still present: %v", err)
+			}
+			if strings.Join(recorded.calls, ",") != "link,remove" {
+				t.Fatalf("calls = %v, want link then remove", recorded.calls)
+			}
+		})
+	}
+}
+
+func TestAtomicCreateReportsAPermissionRefusalWithoutAnotherAttempt(t *testing.T) {
+	temporary, target := preparedCreate(t)
+	recorded := newRecordedCreateOps()
+	recorded.ops.exclusive = unsupported(syscall.EPERM)
+
+	err := createAtomicFileWithOps(temporary, target, recorded.ops)
+
+	if !errors.Is(err, syscall.EPERM) {
+		t.Fatalf("create error = %v, want the permission refusal", err)
+	}
+	if len(recorded.calls) != 0 {
+		t.Fatalf("calls after the refusal = %v, want none", recorded.calls)
+	}
+	if _, statErr := os.Lstat(target); !errors.Is(statErr, fs.ErrNotExist) {
+		t.Fatalf("target exists after a refused create: %v", statErr)
+	}
+}
+
+func TestAtomicCreateCountsALinkedTargetAsCommittedWhenTheTemporaryCannotBeRemoved(t *testing.T) {
+	temporary, target := preparedCreate(t)
+	recorded := newRecordedCreateOps()
+	recorded.ops.exclusive = unsupported(syscall.ENOTSUP)
+	recorded.ops.remove = func(string) error { return syscall.EIO }
+
+	if err := createAtomicFileWithOps(temporary, target, recorded.ops); err != nil {
+		t.Fatalf("create error = %v, want success once the target is linked", err)
+	}
+	assertCreated(t, target)
+}
+
+func TestAtomicReplaceCommitsANewTargetWhoseLinkedTemporaryCannotBeRemoved(t *testing.T) {
+	target := filepath.Join(t.TempDir(), "new.md")
+	recorded := newRecordedCreateOps()
+	recorded.ops.exclusive = unsupported(syscall.ENOTSUP)
+	recorded.ops.remove = func(string) error { return syscall.EIO }
+	ops := defaultAtomicReplaceOps()
+	ops.create = func(from, to string) error { return createAtomicFileWithOps(from, to, recorded.ops) }
+
+	result, err := atomicReplaceWithOps(AtomicReplaceRequest{TargetPath: target, Data: []byte("mine")}, ops)
+
+	if err != nil || !result.Committed {
+		t.Fatalf("replacement = %+v, %v; want committed", result, err)
+	}
+	assertCreated(t, target)
+}
+
+func TestAtomicCreateUsesACheckedRenameOnlyWhenHardLinksAreUnsupported(t *testing.T) {
+	temporary, target := preparedCreate(t)
+	recorded := newRecordedCreateOps()
+	recorded.ops.exclusive = unsupported(syscall.EINVAL)
+	// link(2) reports EPERM when the filesystem cannot create hard links.
+	recorded.ops.link = func(from, to string) error {
+		recorded.calls = append(recorded.calls, "link")
+		return &os.LinkError{Op: "link", Old: from, New: to, Err: syscall.EPERM}
+	}
+
+	if err := createAtomicFileWithOps(temporary, target, recorded.ops); err != nil {
+		t.Fatalf("create: %v", err)
+	}
+	assertCreated(t, target)
+	if strings.Join(recorded.calls, ",") != "link,lstat,rename" {
+		t.Fatalf("calls = %v, want link, lstat, rename", recorded.calls)
+	}
+}
+
+func TestAtomicCreateCheckedRenameNeverReplacesAnExistingTarget(t *testing.T) {
+	temporary, target := preparedCreate(t)
+	if err := os.WriteFile(target, []byte("other program"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	recorded := newRecordedCreateOps()
+	recorded.ops.exclusive = unsupported(syscall.ENOSYS)
+	recorded.ops.link = unsupported(syscall.ENOTSUP)
+
+	err := createAtomicFileWithOps(temporary, target, recorded.ops)
+
+	if !errors.Is(err, fs.ErrExist) {
+		t.Fatalf("create error = %v, want fs.ErrExist", err)
+	}
+	if data, readErr := os.ReadFile(target); readErr != nil || string(data) != "other program" {
+		t.Fatalf("target = %q, %v; want the existing file kept", data, readErr)
+	}
+}
+
+func TestAtomicCreateReportsALinkFailureThatIsNotAMissingCapability(t *testing.T) {
+	temporary, target := preparedCreate(t)
+	recorded := newRecordedCreateOps()
+	recorded.ops.exclusive = unsupported(syscall.ENOTSUP)
+	recorded.ops.link = unsupported(syscall.EACCES)
+
+	err := createAtomicFileWithOps(temporary, target, recorded.ops)
+
+	if !errors.Is(err, syscall.EACCES) {
+		t.Fatalf("create error = %v, want the link failure", err)
+	}
+	if _, statErr := os.Lstat(target); !errors.Is(statErr, fs.ErrNotExist) {
+		t.Fatalf("target exists after a failed link: %v", statErr)
+	}
 }
