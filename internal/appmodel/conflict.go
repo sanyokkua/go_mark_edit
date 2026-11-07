@@ -269,6 +269,18 @@ func (service *AppModelService) CancelConflict(ctx context.Context, documentID s
 }
 
 func (service *AppModelService) inspectDocument(ctx context.Context, documentID string, expectedRevision uint64, decisionToken string) diskInspection {
+	coordinator := service.writeCoordinator(documentID)
+	if coordinator == nil {
+		return diskInspection{classified: bridge.ClassifiedWithID(apperr.ClassifiedNotFound, service.documentLabel(documentID), conflictDocumentClosedMessage, apperr.RemediationNone, documentID)}
+	}
+	release := coordinator.claimDisk()
+	defer release()
+	return service.inspectDocumentClaimed(ctx, documentID, expectedRevision, decisionToken)
+}
+
+// inspectDocumentClaimed compares the document's file with its loaded
+// baseline. The caller holds the document's disk claim.
+func (service *AppModelService) inspectDocumentClaimed(ctx context.Context, documentID string, expectedRevision uint64, decisionToken string) diskInspection {
 	service.mu.RLock()
 	document, ok := service.state.documents[documentID]
 	if !ok {

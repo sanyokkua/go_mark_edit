@@ -479,13 +479,15 @@ func (service *AppModelService) executeWrite(ctx context.Context, snapshot write
 	if coordinator == nil {
 		return bridge.Refused[apperr.WriteResult]("document", snapshot.documentID, apperr.ClassifiedNotFound, "The document was closed before the save started.", apperr.RemediationNone)
 	}
+	release := coordinator.claimDisk()
+	defer release()
 	committed, replaceErr := coordinator.Commit(snapshot.request(encoded))
 	if committed.Snapshot.DocumentID == "" && snapshot.documentFile && isPreCommitConflict(replaceErr) {
 		// The file changed between the save's disk check and the replacement.
 		// Inspect it again: different bytes become the ordinary comparison,
 		// while identical bytes (a timestamp-only touch) are written once more
 		// against the refreshed disk version.
-		inspection := service.inspectDocument(ctx, snapshot.documentID, snapshot.contentRevision, "")
+		inspection := service.inspectDocumentClaimed(ctx, snapshot.documentID, snapshot.contentRevision, "")
 		if inspection.classified != nil || inspection.kind != diskUnchanged {
 			if result := service.writeResultForInspection(snapshot.documentID, inspection); result.Status != "" {
 				return result

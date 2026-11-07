@@ -46,6 +46,10 @@ type WriteCommitObserver func(CommittedWriteResult, SaveOrigin)
 
 // DocumentWriteCoordinator serializes replacement attempts for one document.
 type DocumentWriteCoordinator struct {
+	// disk is held by a write from its replacement until the document has
+	// adopted the written baseline, and by every disk inspection, so an
+	// inspection never pairs the pre-write baseline with the written bytes.
+	disk          sync.Mutex
 	mu            sync.Mutex
 	executor      WriteExecutor
 	publisher     writePublisher
@@ -98,6 +102,13 @@ func (coordinator *DocumentWriteCoordinator) Commit(snapshot WriteSnapshot) (Com
 	}
 	coordinator.lastCommitted = committedWriteResultPointer(result)
 	return result, nil
+}
+
+// claimDisk excludes concurrent writes and disk inspections of this document
+// until the returned release is called.
+func (coordinator *DocumentWriteCoordinator) claimDisk() func() {
+	coordinator.disk.Lock()
+	return coordinator.disk.Unlock
 }
 
 // waitForIdle blocks until no replacement is in flight for this document.

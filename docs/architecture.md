@@ -643,7 +643,10 @@ visibility before process exit.
 `internal/file/document_reader.go` captures a SHA-256 `rawHash` of the physical bytes as part of a
 bounded stable read, with disk-version checks before and after reading. The hash is carried in the
 conflict's detected disk-version wire value and checked again when authorizing a decision. It detects
-different bytes even when size, modification time, permissions and file identity are preserved. A
+different bytes even when size, modification time, permissions and file identity are preserved. Each
+document's disk inspections are serialized with its writes, from replacement until the written baseline
+is adopted, so a check that races the application's own save never compares the new bytes with the old
+baseline. A
 timestamp-only touch with identical bytes is ignored; permission, encoding, BOM and line-ending changes
 remain part of the disk-version and file-characteristics comparison.
 
