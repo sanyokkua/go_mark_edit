@@ -327,7 +327,9 @@ it('keeps editor, tabs and menus usable after a preview drawing failure and reco
         const newWindow = jest.fn(() => Promise.resolve());
         render(
             <Provider store={store}>
-                <EditorSessionContext.Provider value={{ documentId: first.documentId, content: '# Before' }}>
+                <EditorSessionContext.Provider
+                    value={{ documentId: first.documentId, content: '# Before', documentRevision: 0 }}
+                >
                     <Menubar
                         modalOpen={false}
                         onAbout={jest.fn()}
@@ -411,7 +413,7 @@ it('focuses a newly created file when Monaco mounts after the focus request', as
     );
     render(
         <Provider store={store}>
-            <EditorSessionProvider activeBuffer={{ documentId: document.documentId, content: '' }}>
+            <EditorSessionProvider activeBuffer={{ documentId: document.documentId, content: '', documentRevision: 0 }}>
                 <EditorView editorFocusRequest={{ documentId: document.documentId, sequence: 1 }} />
             </EditorSessionProvider>
         </Provider>,
@@ -460,7 +462,7 @@ async function renderStatusEditor(document: DocumentMetadata, content: string): 
             activeDocumentId: document.documentId,
             ui: {},
         },
-        activeBuffer: { documentId: document.documentId, content },
+        activeBuffer: { documentId: document.documentId, content, documentRevision: 0 },
     };
     const mockedAdapter = appModelAdapter as jest.Mocked<typeof appModelAdapter>;
 
@@ -527,7 +529,7 @@ function renderLivePreviewEditor(
 
     return render(
         <Provider store={store}>
-            <EditorSessionContext.Provider value={{ documentId: document.documentId, content }}>
+            <EditorSessionContext.Provider value={{ documentId: document.documentId, content, documentRevision: 0 }}>
                 <EditorView adapter={adapter} />
             </EditorSessionContext.Provider>
         </Provider>,
@@ -594,7 +596,7 @@ const CommittedWriteHarness: React.FC<{
             <button type="button" onClick={(): void => setContent('# After the committed write')}>
                 Apply committed-write patch
             </button>
-            <EditorSessionProvider activeBuffer={{ documentId: 'document-1', content }}>
+            <EditorSessionProvider activeBuffer={{ documentId: 'document-1', content, documentRevision: 0 }}>
                 <EditorView adapter={adapter} />
             </EditorSessionProvider>
         </>
@@ -782,6 +784,7 @@ it('preserves replacement undo and UpdateBuffer routing', async () => {
                 activeBuffer={{
                     documentId: document.documentId,
                     content: mockRuntime.content,
+                    documentRevision: 0,
                 }}
             >
                 <SessionCommandControls />
@@ -1017,7 +1020,7 @@ it('renders accepted GFM within the debounce target', async () => {
                         activeDocumentId: '',
                         ui: {},
                     },
-                    activeBuffer: { documentId: '', content: '' },
+                    activeBuffer: { documentId: '', content: '', documentRevision: 0 },
                 },
             }),
             updateBuffer,
@@ -1088,7 +1091,9 @@ it('(EC-DOCS-12) keeps focused hidden-editor patches content-free', async () => 
 
     render(
         <Provider store={store}>
-            <EditorSessionContext.Provider value={{ documentId: 'document-1', content: '# Local working copy' }}>
+            <EditorSessionContext.Provider
+                value={{ documentId: 'document-1', content: '# Local working copy', documentRevision: 0 }}
+            >
                 <EditorView />
             </EditorSessionContext.Provider>
         </Provider>,
@@ -1151,6 +1156,7 @@ it('flushes session state before hiding the editor and does not hide after a flu
         activeBuffer: {
             documentId: initialDocument.documentId,
             content: '# Draft',
+            documentRevision: 0,
         },
     };
     const bufferFlush = deferred<void>();
@@ -1378,6 +1384,7 @@ it('isolates pending view intent across document switch', async () => {
                 value={{
                     documentId: first.documentId,
                     content: '# First working copy',
+                    documentRevision: 0,
                 }}
             >
                 <EditorView />
@@ -1403,6 +1410,7 @@ it('isolates pending view intent across document switch', async () => {
                 value={{
                     documentId: second.documentId,
                     content: '# Second working copy',
+                    documentRevision: 0,
                 }}
             >
                 <EditorView />
@@ -1637,6 +1645,7 @@ it('round trips view mode through the backend patch', async () => {
         activeBuffer: {
             documentId: initialDocument.documentId,
             content: '# Backend-owned preview',
+            documentRevision: 0,
         },
     };
     const mockedAdapter = appModelAdapter as jest.Mocked<typeof appModelAdapter>;
@@ -1734,6 +1743,7 @@ it('keeps keyboard selection and focus backend-controlled', async () => {
         activeBuffer: {
             documentId: initialDocument.documentId,
             content: '# Backend-owned preview',
+            documentRevision: 0,
         },
     };
     const mockedAdapter = appModelAdapter as jest.Mocked<typeof appModelAdapter>;
@@ -1888,7 +1898,9 @@ it('keeps each document its own dirty state and arrangement across a switch', as
     );
     const rendered = render(
         <Provider store={store}>
-            <EditorSessionContext.Provider value={{ documentId: first.documentId, content: '# First' }}>
+            <EditorSessionContext.Provider
+                value={{ documentId: first.documentId, content: '# First', documentRevision: 0 }}
+            >
                 <EditorView />
             </EditorSessionContext.Provider>
         </Provider>,
@@ -1921,7 +1933,9 @@ it('keeps each document its own dirty state and arrangement across a switch', as
         });
         rendered.rerender(
             <Provider store={store}>
-                <EditorSessionContext.Provider value={{ documentId: document.documentId, content }}>
+                <EditorSessionContext.Provider
+                    value={{ documentId: document.documentId, content, documentRevision: 0 }}
+                >
                     <EditorView />
                 </EditorSessionContext.Provider>
             </Provider>,
@@ -2093,7 +2107,9 @@ it('does not re-apply the saved preview scroll when the content changes', async 
     contentOf().scrollTop = 10;
     rerender(
         <Provider store={store}>
-            <EditorSessionContext.Provider value={{ documentId: 'document-1', content: '# body edited' }}>
+            <EditorSessionContext.Provider
+                value={{ documentId: 'document-1', content: '# body edited', documentRevision: 0 }}
+            >
                 <EditorView adapter={createRenderedEditorAdapter()} />
             </EditorSessionContext.Provider>
         </Provider>,
@@ -2141,7 +2157,9 @@ it('restores each of forty documents its own view across repeated switches', asy
     let revision = 1;
     const rendered = render(
         <Provider store={store}>
-            <EditorSessionContext.Provider value={{ documentId: ids[0] as string, content: '# 0' }}>
+            <EditorSessionContext.Provider
+                value={{ documentId: ids[0] as string, content: '# 0', documentRevision: 0 }}
+            >
                 <EditorView />
             </EditorSessionContext.Provider>
         </Provider>,
@@ -2160,7 +2178,7 @@ it('restores each of forty documents its own view across repeated switches', asy
         });
         rendered.rerender(
             <Provider store={store}>
-                <EditorSessionContext.Provider value={{ documentId, content: `# ${documentId}` }}>
+                <EditorSessionContext.Provider value={{ documentId, content: `# ${documentId}`, documentRevision: 0 }}>
                     <EditorView />
                 </EditorSessionContext.Provider>
             </Provider>,
@@ -2216,7 +2234,7 @@ it('releases the last cached model when the final tab closes', async () => {
     );
     const { rerender } = render(
         <Provider store={store}>
-            <EditorSessionProvider activeBuffer={{ documentId: document.documentId, content: '' }}>
+            <EditorSessionProvider activeBuffer={{ documentId: document.documentId, content: '', documentRevision: 0 }}>
                 <EditorView />
             </EditorSessionProvider>
         </Provider>,

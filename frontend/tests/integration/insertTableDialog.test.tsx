@@ -39,7 +39,7 @@ function Harness({ commands }: { commands: ReturnType<typeof editorCommands>['co
     return (
         <Provider store={store}>
             <ModalStateContext.Provider value={snapshot !== null}>
-                <EditorSessionContext.Provider value={{ documentId: 'shown-doc', content: '' }}>
+                <EditorSessionContext.Provider value={{ documentId: 'shown-doc', content: '', documentRevision: 0 }}>
                     <DocumentCommandContext.Provider value={commands}>
                         <InsertTableRequestContext.Provider value={setSnapshot}>
                             <FormattingToolbar arrangement="editor" onArrangementChange={jest.fn()} />
@@ -157,7 +157,7 @@ it('does not open for a read-only document', () => {
     );
     render(
         <Provider store={store}>
-            <EditorSessionContext.Provider value={{ documentId: 'shown-doc', content: '' }}>
+            <EditorSessionContext.Provider value={{ documentId: 'shown-doc', content: '', documentRevision: 0 }}>
                 <DocumentCommandContext.Provider value={commands}>
                     <InsertTableRequestContext.Provider value={requestTable}>
                         <FormattingToolbar arrangement="editor" onArrangementChange={jest.fn()} />

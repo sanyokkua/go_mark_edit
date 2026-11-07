@@ -250,7 +250,7 @@ function Harness({ content }: { content: string }): React.JSX.Element {
                 Open settings
             </button>
             <WorkspaceTreeTestProvider>
-                <EditorSessionProvider activeBuffer={{ documentId: 'doc-1', content }}>
+                <EditorSessionProvider activeBuffer={{ documentId: 'doc-1', content, documentRevision: 0 }}>
                     <AppFrame
                         printRequest={null}
                         banners={[]}

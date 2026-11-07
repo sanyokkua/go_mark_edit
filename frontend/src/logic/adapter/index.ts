@@ -679,6 +679,7 @@ export {
     type DocViewArrangementIntent,
     type DocViewIntent,
     type AppModelRuntime,
+    type SupersededBuffer,
 } from './appModelAdapter';
 export {
     createSettingsAdapter,

@@ -143,7 +143,7 @@ const ActiveEditor = forwardRef<ActiveEditorHandle, ActiveEditorProps>(function 
         adapter,
         activeBuffer.content,
         externalEpoch,
-        activeBuffer.documentRevision ?? 0,
+        activeBuffer.documentRevision,
     );
 
     useEffect((): void => {

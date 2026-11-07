@@ -34,7 +34,7 @@ it('waits for the projection before installing a reload and advances the epoch e
     act(() =>
         result.current.onBootstrapReady({
             status: 'ready',
-            activeBuffer: { documentId: 'one', content: 'original' },
+            activeBuffer: { documentId: 'one', content: 'original', documentRevision: 0 },
             applicationVersion: 'dev',
         }),
     );
@@ -84,7 +84,7 @@ it.each([null, ''])(
         act(() =>
             result.current.onBootstrapReady({
                 status: 'ready',
-                activeBuffer: { documentId: 'one', content: 'original' },
+                activeBuffer: { documentId: 'one', content: 'original', documentRevision: 0 },
                 applicationVersion: 'dev',
             }),
         );

@@ -37,6 +37,7 @@ jest.mock('../../src/app/useShutdown', () => ({
 jest.mock('../../src/logic/adapter', () => ({
     appModelAdapter: {
         subscribeBufferSyncErrors: jest.fn(() => jest.fn()),
+        subscribeSupersededBuffers: jest.fn(() => jest.fn()),
         newDocument: jest.fn(),
         chooseWorkspaceFolder: jest.fn(),
         openWorkspace: jest.fn(),
@@ -67,6 +68,7 @@ import { resetNotifications } from '../../src/logic/store/notificationsSlice';
 import { applyStatePatch, hydrateProjection } from '../../src/logic/store/appModelProjectionActions';
 import { createTidyWorker } from '../../src/logic/tidy/workerFactory';
 import { createCommandRecorder } from '../support/commandRecorder';
+import { t } from '../../src/i18n';
 
 const mockedUseBootstrap = useBootstrap as jest.MockedFunction<typeof useBootstrap>;
 
@@ -310,6 +312,35 @@ it('reports a buffer sync error once through application notifications and unsub
     expect(listener).toBeDefined();
     act(() => listener?.({ code: 'io', title: 'Buffer delivery', message: 'Could not sync', retryable: true }));
     expect(store.getState().notifications.items.filter((item) => item.code === 'io')).toHaveLength(1);
+    view.unmount();
+    expect(unsubscribe).toHaveBeenCalled();
+});
+
+it('warns once through application notifications when an editor update was based on replaced text', async () => {
+    mockedUseBootstrap.mockReturnValue(readyBootstrap());
+    hydrateEmptyProjection();
+    store.dispatch(resetNotifications());
+    const unsubscribe = jest.fn();
+    let listener: Parameters<typeof appModelAdapter.subscribeSupersededBuffers>[0] | undefined;
+    jest.mocked(appModelAdapter.subscribeSupersededBuffers).mockImplementation((onSuperseded) => {
+        listener = onSuperseded;
+        return unsubscribe;
+    });
+    const view = render(<App />);
+    await waitForAppearanceHydration();
+    const superseded = { documentId: 'document-1', content: 'kept', baseRevision: 4, currentRevision: 9 };
+    act(() => {
+        listener?.(superseded);
+        listener?.(superseded);
+    });
+    const warnings = store.getState().notifications.items.filter((item) => item.code === 'buffer-superseded');
+    expect(warnings).toEqual([
+        expect.objectContaining({
+            severity: 'warning',
+            title: t('editor.bufferSuperseded.title'),
+            message: t('editor.bufferSuperseded.message'),
+        }),
+    ]);
     view.unmount();
     expect(unsubscribe).toHaveBeenCalled();
 });

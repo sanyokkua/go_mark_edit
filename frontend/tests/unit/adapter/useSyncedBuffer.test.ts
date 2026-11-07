@@ -31,7 +31,7 @@ const state: AppModelState = {
         activeDocumentId: '',
         ui: {},
     },
-    activeBuffer: { documentId: '', content: '' },
+    activeBuffer: { documentId: '', content: '', documentRevision: 0 },
 };
 
 const runtime: AppModelRuntime = {

@@ -316,7 +316,7 @@ it('passes acknowledged marker preferences into toolbar formatting', async () =>
     );
     render(
         <Provider store={store}>
-            <EditorSessionContext.Provider value={{ documentId: 'doc-1', content: 'word' }}>
+            <EditorSessionContext.Provider value={{ documentId: 'doc-1', content: 'word', documentRevision: 0 }}>
                 <DocumentCommandContext.Provider value={commands}>
                     <FormattingToolbar arrangement="editor" onArrangementChange={jest.fn()} />
                 </DocumentCommandContext.Provider>
@@ -356,7 +356,7 @@ it('routes editor-scoped tidy shortcuts through the typed dispatcher', () => {
     };
 
     const { container } = render(
-        <EditorSessionContext.Provider value={{ documentId: 'doc-1', content: 'word' }}>
+        <EditorSessionContext.Provider value={{ documentId: 'doc-1', content: 'word', documentRevision: 0 }}>
             <DocumentCommandContext.Provider value={commands}>
                 <div data-editor-surface="true" tabIndex={0}>
                     <FormattingToolbar arrangement="editor" onArrangementChange={jest.fn()} />
@@ -401,7 +401,7 @@ it('suppresses editor shortcuts while the Shortcuts dialog modal state is active
 
     const { container } = render(
         <ModalStateProvider modalOpen>
-            <EditorSessionContext.Provider value={{ documentId: 'doc-1', content: 'word' }}>
+            <EditorSessionContext.Provider value={{ documentId: 'doc-1', content: 'word', documentRevision: 0 }}>
                 <DocumentCommandContext.Provider value={commands}>
                     <div data-editor-surface tabIndex={0}>
                         <FormattingToolbar arrangement="editor" onArrangementChange={jest.fn()} />
@@ -474,7 +474,7 @@ it('disables the formatting toolbar for a non-writable document', () => {
     );
 
     render(
-        <EditorSessionContext.Provider value={{ documentId: 'doc-1', content: 'word' }}>
+        <EditorSessionContext.Provider value={{ documentId: 'doc-1', content: 'word', documentRevision: 0 }}>
             <FormattingToolbar arrangement="editor" onArrangementChange={jest.fn()} />
         </EditorSessionContext.Provider>,
     );
@@ -541,7 +541,7 @@ it('leaves the formatting toolbar live for a writable document', () => {
     );
 
     render(
-        <EditorSessionContext.Provider value={{ documentId: 'doc-1', content: 'word' }}>
+        <EditorSessionContext.Provider value={{ documentId: 'doc-1', content: 'word', documentRevision: 0 }}>
             <FormattingToolbar arrangement="editor" onArrangementChange={jest.fn()} />
         </EditorSessionContext.Provider>,
     );
@@ -595,7 +595,7 @@ it('keeps the Image action unavailable for a writable document, ignoring a click
         setMarkers: jest.fn(() => available(undefined)),
     };
     render(
-        <EditorSessionContext.Provider value={{ documentId: 'doc-1', content: 'word' }}>
+        <EditorSessionContext.Provider value={{ documentId: 'doc-1', content: 'word', documentRevision: 0 }}>
             <DocumentCommandContext.Provider value={commands}>
                 <FormattingToolbar arrangement="editor" onArrangementChange={jest.fn()} />
             </DocumentCommandContext.Provider>

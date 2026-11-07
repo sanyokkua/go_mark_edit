@@ -98,7 +98,7 @@ it('retains real queued editor text through crash cleanup', async () => {
         scroll: { editor: 0, preview: 0 },
     };
     const Child = ({ crash }: { crash: boolean }): React.JSX.Element => {
-        const buffer = useSyncedBuffer('one', view, model);
+        const buffer = useSyncedBuffer('one', view, model, '', 0, 0);
         if (crash) throw new Error('crash');
         return <button onClick={() => buffer.onChange('unsent latest')}>edit</button>;
     };
@@ -290,7 +290,7 @@ it('keeps a newer queued edit behind an older in-flight delivery across a real c
         scroll: { editor: 0, preview: 0 },
     };
     const Child = ({ crash }: { crash: boolean }): React.JSX.Element => {
-        const buffer = useSyncedBuffer('one', view, model);
+        const buffer = useSyncedBuffer('one', view, model, '', 0, 0);
         if (crash) throw new Error('crash');
         return (
             <>
@@ -674,7 +674,7 @@ it('keeps the real shutdown listener alive after an editor subtree crashes', asy
         scroll: { editor: 0, preview: 0 },
     };
     const Child = ({ crash }: { crash: boolean }): React.JSX.Element => {
-        const buffer = useSyncedBuffer('one', view, model);
+        const buffer = useSyncedBuffer('one', view, model, '', 0, 0);
         if (crash) throw new Error('broken subtree');
         return <button onClick={() => buffer.onChange('unsent')}>edit</button>;
     };

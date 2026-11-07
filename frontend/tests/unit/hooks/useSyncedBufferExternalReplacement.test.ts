@@ -20,7 +20,7 @@ function adapterRecordingBuffers(sent: string[], bases: number[] = []) {
                 Promise.resolve({
                     data: {
                         snapshot: { revision: 1, documents: {}, activeDocumentId: '', ui: {} },
-                        activeBuffer: { documentId: '', content: '' },
+                        activeBuffer: { documentId: '', content: '', documentRevision: 0 },
                     },
                 }),
             updateBuffer: (documentId: string, content: string, baseRevision: number): Promise<object> => {
@@ -53,7 +53,7 @@ it('drops an unsent edit from the editor session that an external reload replace
     const adapter = adapterRecordingBuffers(sent);
     const { rerender, result } = renderHook(
         ({ content, epoch }: { content: string; epoch: number }) =>
-            useSyncedBuffer('document-1', view, adapter, content, epoch),
+            useSyncedBuffer('document-1', view, adapter, content, epoch, 0),
         { initialProps: { content: 'mine\n', epoch: 0 } },
     );
 
@@ -72,7 +72,7 @@ it('still sends edits made in the editor session that follows the reload', async
     const adapter = adapterRecordingBuffers(sent);
     const { rerender, result } = renderHook(
         ({ content, epoch }: { content: string; epoch: number }) =>
-            useSyncedBuffer('document-1', view, adapter, content, epoch),
+            useSyncedBuffer('document-1', view, adapter, content, epoch, 0),
         { initialProps: { content: 'mine\n', epoch: 0 } },
     );
 

@@ -100,6 +100,7 @@ function renderEditorView(arrangement: ViewArrangement): void {
                 value={{
                     documentId: document.documentId,
                     content: '# Rendered Preview',
+                    documentRevision: 0,
                 }}
             >
                 <EditorView />
@@ -112,7 +113,9 @@ function renderShellWithDocument(): void {
     const document = hydrateDocument('split');
     render(
         <Provider store={store}>
-            <EditorSessionContext.Provider value={{ documentId: document.documentId, content: '# Rendered Preview' }}>
+            <EditorSessionContext.Provider
+                value={{ documentId: document.documentId, content: '# Rendered Preview', documentRevision: 0 }}
+            >
                 <WorkspaceTreeTestProvider>
                     <AppShell />
                 </WorkspaceTreeTestProvider>
@@ -352,7 +355,9 @@ it('replaces the same-document editor model when a Reload acknowledgement change
     const rendered = render(
         <Provider store={store}>
             <EditorSessionEpochContext.Provider value={0}>
-                <EditorSessionContext.Provider value={{ documentId: document.documentId, content: '# mine\n' }}>
+                <EditorSessionContext.Provider
+                    value={{ documentId: document.documentId, content: '# mine\n', documentRevision: 0 }}
+                >
                     <EditorView />
                 </EditorSessionContext.Provider>
             </EditorSessionEpochContext.Provider>
@@ -368,7 +373,9 @@ it('replaces the same-document editor model when a Reload acknowledgement change
     rendered.rerender(
         <Provider store={store}>
             <EditorSessionEpochContext.Provider value={1}>
-                <EditorSessionContext.Provider value={{ documentId: document.documentId, content: '# disk\n' }}>
+                <EditorSessionContext.Provider
+                    value={{ documentId: document.documentId, content: '# disk\n', documentRevision: 0 }}
+                >
                     <EditorView />
                 </EditorSessionContext.Provider>
             </EditorSessionEpochContext.Provider>
@@ -474,7 +481,9 @@ function renderStandardJourney(bindings: SettingsBindings): void {
     const document = hydrateDocument('split');
     render(
         <Provider store={store}>
-            <EditorSessionContext.Provider value={{ documentId: document.documentId, content: standardSource }}>
+            <EditorSessionContext.Provider
+                value={{ documentId: document.documentId, content: standardSource, documentRevision: 0 }}
+            >
                 <WorkspaceTreeTestProvider>
                     <StandardMenu bindings={bindings} />
                     <AppShell />

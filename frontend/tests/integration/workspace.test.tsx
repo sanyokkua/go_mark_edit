@@ -140,7 +140,7 @@ it('opens the editor and moves the caret and focus when a problem is activated f
     };
     const commands = createDocumentCommands('created', token, () => ({ documentId: 'created', token, handle }));
     render(
-        <EditorSessionContext.Provider value={{ documentId: 'created', content: '' }}>
+        <EditorSessionContext.Provider value={{ documentId: 'created', content: '', documentRevision: 0 }}>
             <DocumentCommandContext.Provider value={commands}>
                 <EditorView
                     problemsOpen
@@ -307,7 +307,7 @@ it('moves keyboard focus into the created file editor after the modal closes', a
     const commands = createDocumentCommands('created', token, () => ({ documentId: 'created', token, handle }));
     const renderEditor = (modalOpen: boolean) => (
         <ModalStateContext.Provider value={modalOpen}>
-            <EditorSessionContext.Provider value={{ documentId: 'created', content: '' }}>
+            <EditorSessionContext.Provider value={{ documentId: 'created', content: '', documentRevision: 0 }}>
                 <DocumentCommandContext.Provider value={commands}>
                     <EditorView editorFocusRequest={{ documentId: 'created', sequence: 1 }} />
                 </DocumentCommandContext.Provider>
@@ -343,7 +343,7 @@ it('leaves editor input focused after creating a file from the real tree prompt'
     const Harness = (): React.JSX.Element => {
         const commands = useCommands(session, jest.fn());
         return (
-            <EditorSessionContext.Provider value={{ documentId: 'created', content: '' }}>
+            <EditorSessionContext.Provider value={{ documentId: 'created', content: '', documentRevision: 0 }}>
                 <DocumentCommandContext.Provider value={documentCommands}>
                     <WorkspaceTreeCommandsContext.Provider value={commands}>
                         <WorkspaceTree />

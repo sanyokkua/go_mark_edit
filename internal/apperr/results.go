@@ -65,16 +65,19 @@ const (
 	// BufferUpdateAccepted means the update is now the canonical buffer.
 	BufferUpdateAccepted BufferUpdateStatus = "accepted"
 	// BufferUpdateSuperseded means the update was based on text that a reload
-	// from disk has since replaced. It is dropped, and it is not an error: the
-	// editor session that produced it has already ended.
+	// from disk has since replaced. The backend did not adopt it and it is not
+	// an error; the result names the revision the editor can resend it on.
 	BufferUpdateSuperseded BufferUpdateStatus = "superseded"
 )
 
-// BufferUpdateResult is the envelope for an editor buffer update.
+// BufferUpdateResult is the envelope for an editor buffer update. A superseded
+// result carries DocumentRevision, the document's current content revision, so
+// the editor session can resend its text on that base.
 type BufferUpdateResult struct {
 	Failure
-	Status BufferUpdateStatus `json:"status,omitempty"`
-	Error  *WireError         `json:"error,omitempty"`
+	Status           BufferUpdateStatus `json:"status,omitempty"`
+	DocumentRevision uint64             `json:"documentRevision,omitempty"`
+	Error            *WireError         `json:"error,omitempty"`
 }
 
 // LaunchTargetResult is the path a starting window accepted from its command

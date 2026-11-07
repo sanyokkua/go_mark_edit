@@ -27,7 +27,7 @@ it('ignores a missing editor selection and preserves the last selection for sync
             updates.push(nextView);
         },
     };
-    const { result } = renderHook(() => useSyncedBuffer('document-1', view, adapter));
+    const { result } = renderHook(() => useSyncedBuffer('document-1', view, adapter, '', 0, 0));
 
     act(() => {
         result.current.onSelectionChange({
@@ -65,7 +65,7 @@ it('ignores editor events retained after the session unmounts', async () => {
             writes.push('view');
         },
     };
-    const { result, unmount } = renderHook(() => useSyncedBuffer('document-1', view, adapter));
+    const { result, unmount } = renderHook(() => useSyncedBuffer('document-1', view, adapter, '', 0, 0));
     const callbacks = result.current;
     unmount();
 
@@ -96,7 +96,7 @@ it('separates live cursor display from restorable view synchronization', async (
                         activeDocumentId: '',
                         ui: {},
                     },
-                    activeBuffer: { documentId: '', content: '' },
+                    activeBuffer: { documentId: '', content: '', documentRevision: 0 },
                 },
             }),
             updateBuffer: (documentId: string, content: string): Promise<object> => {
@@ -112,7 +112,7 @@ it('separates live cursor display from restorable view synchronization', async (
         },
         { eventsOn: (): (() => void) => (): void => undefined },
     );
-    const { result } = renderHook(() => useSyncedBuffer('document-1', view, adapter));
+    const { result } = renderHook(() => useSyncedBuffer('document-1', view, adapter, '', 0, 0));
 
     act(() => {
         result.current.onCursorPositionChange({ lineNumber: 4, column: 2 });
@@ -154,7 +154,7 @@ it('omits the split ratio from editor cursor synchronization after reading the c
             getState: async () => ({
                 data: {
                     snapshot: { revision: 1, documents: {}, activeDocumentId: '', ui: {} },
-                    activeBuffer: { documentId: '', content: '' },
+                    activeBuffer: { documentId: '', content: '', documentRevision: 0 },
                 },
             }),
             updateBuffer: async (documentId: string, content: string): Promise<object> => {
@@ -170,7 +170,9 @@ it('omits the split ratio from editor cursor synchronization after reading the c
         },
         { eventsOn: (): (() => void) => (): void => undefined },
     );
-    const { result } = renderHook(() => useSyncedBuffer('document-1', { ...view, splitRatio: 0.72 }, adapter));
+    const { result } = renderHook(() =>
+        useSyncedBuffer('document-1', { ...view, splitRatio: 0.72 }, adapter, '', 0, 0),
+    );
 
     act(() => result.current.onCursorPositionChange({ lineNumber: 4, column: 2 }));
     await act(async () => jest.advanceTimersByTimeAsync(VIEW_SYNC_MS));
@@ -196,7 +198,7 @@ it('does not publish a queued view update after the editor session unmounts', as
                         activeDocumentId: '',
                         ui: {},
                     },
-                    activeBuffer: { documentId: '', content: '' },
+                    activeBuffer: { documentId: '', content: '', documentRevision: 0 },
                 },
             }),
             updateBuffer: async (): Promise<object> => ({}),
@@ -205,7 +207,7 @@ it('does not publish a queued view update after the editor session unmounts', as
         },
         { eventsOn: (): (() => void) => (): void => undefined },
     );
-    const { result, unmount } = renderHook(() => useSyncedBuffer('document-1', view, adapter));
+    const { result, unmount } = renderHook(() => useSyncedBuffer('document-1', view, adapter, '', 0, 0));
 
     act(() => {
         result.current.onCursorPositionChange({ lineNumber: 4, column: 2 });
@@ -251,7 +253,7 @@ it('starts a new editor session for an external replacement only', () => {
                         activeDocumentId: '',
                         ui: {},
                     },
-                    activeBuffer: { documentId: '', content: '' },
+                    activeBuffer: { documentId: '', content: '', documentRevision: 0 },
                 },
             }),
             updateBuffer: async (documentId: string, content: string) => {
@@ -285,7 +287,7 @@ it('starts a new editor session for an external replacement only', () => {
 
     const { rerender, result } = renderHook(
         ({ content, epoch }: { content: string; epoch: number }) =>
-            useSyncedBuffer('document-1', view, adapter, content, epoch),
+            useSyncedBuffer('document-1', view, adapter, content, epoch, 0),
         { initialProps: { content: 'mine\n', epoch: 0 } },
     );
     const first = result.current.activationId;
@@ -325,7 +327,7 @@ it('never flushes the outgoing document text or caret into the incoming document
     };
     const { rerender, result } = renderHook(
         ({ documentId, content }: { documentId: string; content: string }) => {
-            const session = useSyncedBuffer(documentId, view, adapter, content);
+            const session = useSyncedBuffer(documentId, view, adapter, content, 0, 0);
             const { onBlur } = session;
             useLayoutEffect((): void => {
                 if (documentId === 'b') onBlur();
@@ -367,7 +369,7 @@ it('captures replacement content and view when the same document starts a new se
         scroll: { editor: 40, preview: 80 },
     };
     const { result, rerender } = renderHook(
-        ({ content, currentView, epoch }) => useSyncedBuffer('document-1', currentView, adapter, content, epoch),
+        ({ content, currentView, epoch }) => useSyncedBuffer('document-1', currentView, adapter, content, epoch, 0),
         { initialProps: { content: 'original', currentView: view, epoch: 0 } },
     );
     act(() => {
@@ -392,4 +394,47 @@ it('captures replacement content and view when the same document starts a new se
         },
     });
     expect(result.current.liveCursor).toEqual({ lineNumber: 3, column: 2 });
+});
+
+it('resends the editor text on the current revision after the backend reports its base superseded', async () => {
+    const reloadedRevision = 9;
+    const updateBuffer = jest.fn(async (documentId: string, content: string, baseRevision: number): Promise<object> => {
+        void documentId;
+        void content;
+        return baseRevision < reloadedRevision
+            ? { status: 'superseded', documentRevision: reloadedRevision }
+            : { status: 'accepted' };
+    });
+    const adapter = createAppModelAdapter(
+        {
+            getState: async () => ({
+                data: {
+                    snapshot: { revision: 1, documents: {}, activeDocumentId: '', ui: {} },
+                    activeBuffer: { documentId: '', content: '', documentRevision: 0 },
+                },
+            }),
+            updateBuffer,
+            setDocView: async (): Promise<object> => ({}),
+            setUILayout: async (): Promise<object> => ({}),
+        },
+        { eventsOn: (): (() => void) => (): void => undefined },
+    );
+    const { result } = renderHook(() => useSyncedBuffer('document-1', view, adapter, 'base', 0, 4));
+
+    act((): void => result.current.onChange('unsent text'));
+    await act(async (): Promise<void> => {
+        await adapter.flushBuffer('document-1');
+    });
+
+    expect(updateBuffer.mock.calls).toEqual([
+        ['document-1', 'unsent text', 4],
+        ['document-1', 'unsent text', reloadedRevision],
+    ]);
+    expect(adapter.getPendingBufferDocumentIds()).toEqual([]);
+
+    act((): void => result.current.onChange('later edit'));
+    await act(async (): Promise<void> => {
+        await adapter.flushBuffer('document-1');
+    });
+    expect(updateBuffer).toHaveBeenLastCalledWith('document-1', 'later edit', reloadedRevision);
 });

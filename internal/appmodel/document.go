@@ -27,14 +27,26 @@ type DocumentContentAccessor interface {
 // replaced, so adopting it would silently undo the reload.
 var ErrBufferSuperseded = errors.New("buffer update predates the latest reload")
 
+// BufferSupersededError is the ErrBufferSuperseded refusal together with the
+// document's current content revision, the base an editor resends its text on.
+type BufferSupersededError struct {
+	CurrentRevision uint64
+}
+
+func (BufferSupersededError) Error() string { return ErrBufferSuperseded.Error() }
+
+// Is reports the refusal as ErrBufferSuperseded.
+func (BufferSupersededError) Is(target error) bool { return target == ErrBufferSuperseded }
+
 // DocumentCommandAPI is the stable F3 command seam for document mutations.
 type DocumentCommandAPI interface {
 	// UpdateBuffer adopts content from a backend-side caller that already
 	// holds the current buffer, so it carries no base revision.
 	UpdateBuffer(ctx context.Context, documentID, content string) error
 	// UpdateBufferFrom adopts an editor update based on baseRevision, the
-	// content revision the editor session was installed from. It returns
-	// ErrBufferSuperseded when a reload has replaced that base.
+	// content revision the editor session was installed from. It returns a
+	// BufferSupersededError, which is ErrBufferSuperseded, when a reload has
+	// replaced that base.
 	UpdateBufferFrom(ctx context.Context, documentID, content string, baseRevision uint64) error
 }
 
@@ -85,8 +97,9 @@ func (commands documentCommands) updateBuffer(ctx context.Context, documentID, c
 		return apperr.Busy()
 	}
 	if baseRevision != nil && *baseRevision < document.reloadedRevision {
+		current := document.metadata.ContentRevision
 		commands.service.mu.Unlock()
-		return ErrBufferSuperseded
+		return BufferSupersededError{CurrentRevision: current}
 	}
 	acceptedRevision := uint64(0)
 	if document.content != content {

@@ -1117,7 +1117,7 @@ it('refuses repeated closes on buffer sync failure without duplicate operation e
         owner.result.current.session.onBootstrapReady({
             status: 'ready',
             applicationVersion: 'test',
-            activeBuffer: { documentId: 'one', content: 'draft' },
+            activeBuffer: { documentId: 'one', content: 'draft', documentRevision: 0 },
         }),
     );
     await act(async () => {

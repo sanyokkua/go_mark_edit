@@ -28,7 +28,7 @@ const state: AppModelState = {
         activeDocumentId: '',
         ui: {},
     },
-    activeBuffer: { documentId: '', content: '' },
+    activeBuffer: { documentId: '', content: '', documentRevision: 0 },
 };
 
 const runtime: AppModelRuntime = {
@@ -104,7 +104,7 @@ it('pauses a hidden oversized edit on first reveal and retains a manual refresh 
         },
     };
     const content = 'é'.repeat(PREVIEW_BYTE_LIMIT / 2 + 1);
-    const buffer = { documentId: 'one', content: 'small' };
+    const buffer = { documentId: 'one', content: 'small', documentRevision: 0 };
     const refresh = jest.fn(async () => ({
         documentId: 'one',
         content,
@@ -141,7 +141,7 @@ it('reuses the last measurement across rerenders and visibility changes', () => 
         },
     };
     const measure = jest.spyOn(utf8, 'utf8ByteLength');
-    const buffer = { documentId: 'one', content: 'same' };
+    const buffer = { documentId: 'one', content: 'same', documentRevision: 0 };
     const { result, rerender } = renderHook(({ visible }) => useLivePreviewSnapshot(buffer, visible, adapter), {
         initialProps: { visible: true },
     });
@@ -187,7 +187,11 @@ it('keeps the last accepted preview on sync failure', async () => {
                 }),
             [adapter],
         );
-        return useLivePreview({ documentId: 'document-1', content: '# Bootstrap preview' }, true, adapter);
+        return useLivePreview(
+            { documentId: 'document-1', content: '# Bootstrap preview', documentRevision: 0 },
+            true,
+            adapter,
+        );
     });
 
     await act(async (): Promise<void> => {
@@ -222,7 +226,11 @@ it('(EC-RENDER-4) bounds large-document preview work', async () => {
     const largeDocument = `# Large document\n${'content '.repeat(200_000)}`;
     const settledDocument = `${largeDocument}final edit`;
     const { result } = renderHook(() => {
-        const preview = useLivePreview({ documentId: 'document-1', content: '# Bootstrap preview' }, true, adapter);
+        const preview = useLivePreview(
+            { documentId: 'document-1', content: '# Bootstrap preview', documentRevision: 0 },
+            true,
+            adapter,
+        );
         useEffect((): void => {
             previewPublications(preview);
         }, [preview]);
@@ -261,7 +269,11 @@ it('ignores stale accepted generations', () => {
         },
     };
     const { result } = renderHook(() =>
-        useLivePreview({ documentId: 'document-1', content: '# Bootstrap preview' }, true, adapter),
+        useLivePreview(
+            { documentId: 'document-1', content: '# Bootstrap preview', documentRevision: 0 },
+            true,
+            adapter,
+        ),
     );
 
     act((): void => {
@@ -316,7 +328,8 @@ it('does not revive an accepted edit when authoritative source returns to earlie
         },
     };
     const { result, rerender } = renderHook(
-        ({ content }) => useLivePreviewSnapshot({ documentId: 'document-1', content }, true, adapter),
+        ({ content }) =>
+            useLivePreviewSnapshot({ documentId: 'document-1', content, documentRevision: 0 }, true, adapter),
         { initialProps: { content: '# Original' } },
     );
     act((): void => {

@@ -481,6 +481,7 @@ export namespace apperr {
 	    remediation?: string;
 	    id?: string;
 	    status?: string;
+	    documentRevision?: number;
 	    error?: WireError;
 	
 	    static createFrom(source: any = {}) {
@@ -495,6 +496,7 @@ export namespace apperr {
 	        this.remediation = source["remediation"];
 	        this.id = source["id"];
 	        this.status = source["status"];
+	        this.documentRevision = source["documentRevision"];
 	        this.error = this.convertValues(source["error"], WireError);
 	    }
 	

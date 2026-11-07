@@ -61,6 +61,7 @@ function appState(revision: number): AppModelState {
         activeBuffer: {
             documentId: documentMetadata.documentId,
             content: '# Canonical content stays outside Redux',
+            documentRevision: 0,
         },
     };
 }
@@ -83,6 +84,7 @@ function createAdapter(getState: () => Promise<AppModelState>): AppModelAdapter 
             () => void,
             [(buffer: import('../../../src/logic/adapter/appModelAdapter').AcceptedBuffer) => void]
         >(),
+        subscribeSupersededBuffers: jest.fn(),
         setDocView: jest.fn(),
         updateDocView: jest.fn(),
         updateLocalDocView: jest.fn(),

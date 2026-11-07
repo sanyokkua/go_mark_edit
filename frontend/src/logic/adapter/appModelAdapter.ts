@@ -38,9 +38,13 @@ interface VoidResult {
     error?: import('../utils/parseError').WireError;
 }
 
-/** `status` is `accepted` or `superseded`; superseded means the update was based on text a reload from disk replaced; it is dropped without an error. */
+/**
+ * `status` is `accepted` or `superseded`. Superseded means the update was based on text a reload from
+ * disk replaced: the backend did not adopt it and names its current `documentRevision` to resend on.
+ */
 interface BufferUpdateResult extends VoidResult {
     status?: string;
+    documentRevision?: number;
 }
 
 interface StateResult {
@@ -92,6 +96,15 @@ export interface AcceptedBuffer {
     generation: number;
 }
 
+/** An editor update the backend refused because its base revision predates the latest reload. */
+export interface SupersededBuffer {
+    documentId: string;
+    content: string;
+    baseRevision: number;
+    /** The document's current content revision, the base the text can be resent on. */
+    currentRevision: number;
+}
+
 export interface AppModelAdapter {
     getState: () => Promise<AppModelState>;
     newDocument?: (expectedTabSetRevision: number) => Promise<DocumentTransitionResult>;
@@ -136,6 +149,11 @@ export interface AppModelAdapter {
     /** Identify documents with content not yet acknowledged by the backend. */
     getPendingBufferDocumentIds: () => readonly string[];
     subscribeAcceptedBuffers: (listener: (buffer: AcceptedBuffer) => void) => () => void;
+    /**
+     * Report each superseded update. Its text stays unacknowledged, and a flush of its document is
+     * refused, until newer text is accepted or its editor session ends.
+     */
+    subscribeSupersededBuffers: (listener: (buffer: SupersededBuffer) => void) => () => void;
     setDocView: (documentId: string, view: DocViewIntent, fallbackView?: DocViewInput) => Promise<void>;
     updateDocView: (documentId: string, view: DocViewInput) => Promise<void>;
     updateLocalDocView: (documentId: string, view: DocViewInput) => Promise<void>;
@@ -160,6 +178,8 @@ interface BufferRecord {
     inFlightGeneration?: number;
     nextGeneration: number;
     pending?: BufferSnapshot;
+    /** The newest update the backend refused as superseded and no newer accepted update replaced. */
+    superseded?: BufferSnapshot;
     timer?: ReturnType<typeof setTimeout>;
 }
 
@@ -301,6 +321,16 @@ function normalizeStatePatch(patch: AppStatePatch): AppStatePatch {
         }
     }
     return normalized;
+}
+
+/** The refusal a flush reports while its document still holds superseded editor text. */
+function supersededBufferError(): WireError {
+    return {
+        code: 'busy',
+        title: t('editor.bufferSuperseded.title'),
+        message: t('editor.bufferSuperseded.message'),
+        retryable: true,
+    };
 }
 
 function snapshotDocView(view: DocViewInput): DocViewInput {
@@ -633,6 +663,7 @@ export function createAppModelAdapter(bindings: AppModelBindings, runtime: AppMo
     let disposeStatePatches: (() => void) | undefined;
     const statePatchListeners = new Set<(patch: AppStatePatch) => void>();
     const acceptedBufferListeners = new Set<(buffer: AcceptedBuffer) => void>();
+    const supersededBufferListeners = new Set<(buffer: SupersededBuffer) => void>();
     const bufferSyncErrorListeners = new Set<(error: WireError) => void>();
     let bufferSyncFailed = false;
     const bufferRecords = new Map<string, BufferRecord>();
@@ -729,13 +760,17 @@ export function createAppModelAdapter(bindings: AppModelBindings, runtime: AppMo
             .then((result): void => {
                 if (result.error !== undefined) throw new BufferSyncError(result.error);
                 bufferSyncFailed = false;
+                if (result.status === 'superseded') {
+                    reportSuperseded(documentId, record, snapshot, result.documentRevision);
+                    return;
+                }
                 if (snapshot.generation <= record.acceptedGeneration) {
                     return;
                 }
                 record.acceptedGeneration = snapshot.generation;
-                // A superseded update is settled, not accepted: its editor
-                // session ended with the reload, so nothing is reported.
-                if (result.status === 'superseded') return;
+                if (record.superseded !== undefined && record.superseded.generation < snapshot.generation) {
+                    record.superseded = undefined;
+                }
                 for (const listener of acceptedBufferListeners) {
                     listener({
                         documentId,
@@ -771,6 +806,31 @@ export function createAppModelAdapter(bindings: AppModelBindings, runtime: AppMo
         record.inFlight = completed;
         record.inFlightGeneration = snapshot.generation;
         return completed;
+    }
+
+    /*
+     * A superseded update is not adopted, so it is not reported as accepted. Its text stays
+     * unacknowledged until its editor session resends newer text on the current revision or ends.
+     */
+    function reportSuperseded(
+        documentId: string,
+        record: BufferRecord,
+        snapshot: BufferSnapshot,
+        currentRevision: number | undefined,
+    ): void {
+        if (currentRevision === undefined) {
+            throw new BufferSyncError(supersededBufferError());
+        }
+        if (record.superseded === undefined || record.superseded.generation < snapshot.generation) {
+            record.superseded = snapshot;
+        }
+        const superseded: SupersededBuffer = {
+            documentId,
+            content: snapshot.content,
+            baseRevision: snapshot.baseRevision,
+            currentRevision,
+        };
+        for (const listener of supersededBufferListeners) listener(superseded);
     }
 
     function scheduleBuffer(documentId: string): void {
@@ -917,6 +977,9 @@ export function createAppModelAdapter(bindings: AppModelBindings, runtime: AppMo
             if (record.acceptedGeneration < targetGeneration) {
                 await sendPendingBuffer(documentId);
             }
+            if (record.superseded !== undefined) {
+                throw new BufferSyncError(supersededBufferError());
+            }
         },
         retainPendingBuffers(): void {
             retainRecoveryBuffers = true;
@@ -931,8 +994,9 @@ export function createAppModelAdapter(bindings: AppModelBindings, runtime: AppMo
             return [...bufferRecords.entries()]
                 .filter(
                     ([, record]) =>
+                        record.superseded !== undefined ||
                         Math.max(record.pending?.generation ?? 0, record.inFlightGeneration ?? 0) >
-                        record.acceptedGeneration,
+                            record.acceptedGeneration,
                 )
                 .map(([documentId]) => documentId);
         },
@@ -940,6 +1004,12 @@ export function createAppModelAdapter(bindings: AppModelBindings, runtime: AppMo
             acceptedBufferListeners.add(listener);
             return (): void => {
                 acceptedBufferListeners.delete(listener);
+            };
+        },
+        subscribeSupersededBuffers(listener: (buffer: SupersededBuffer) => void): () => void {
+            supersededBufferListeners.add(listener);
+            return (): void => {
+                supersededBufferListeners.delete(listener);
             };
         },
         async setDocView(documentId: string, view: DocViewIntent, fallbackView?: DocViewInput): Promise<void> {
@@ -972,6 +1042,7 @@ export function createAppModelAdapter(bindings: AppModelBindings, runtime: AppMo
             }
             if (buffer !== undefined && !retainRecoveryBuffers) {
                 buffer.pending = undefined;
+                buffer.superseded = undefined;
             }
 
             const view = viewRecords.get(documentId);

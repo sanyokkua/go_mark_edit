@@ -34,7 +34,7 @@ it('preserves classified New/Open outcomes through guarded lifecycle bindings', 
     const bindings: DocumentLifecycleBindings = {
         newDocument: jest.fn(async (expectedTabSetRevision: number) => {
             void expectedTabSetRevision;
-            return { data: { documentId: 'new-doc', content: '' } };
+            return { data: { documentId: 'new-doc', content: '', documentRevision: 0 } };
         }),
         openDocument: jest.fn(async (expectedTabSetRevision: number) => {
             void expectedTabSetRevision;
@@ -44,7 +44,7 @@ it('preserves classified New/Open outcomes through guarded lifecycle bindings', 
     const adapter = createDocumentLifecycleAdapter(bindings);
 
     await expect(adapter.newDocument(7)).resolves.toEqual({
-        data: { documentId: 'new-doc', content: '' },
+        data: { documentId: 'new-doc', content: '', documentRevision: 0 },
     });
     await expect(adapter.openDocument(7)).resolves.toEqual({
         status: 'cancelled',

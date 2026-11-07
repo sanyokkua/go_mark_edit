@@ -35,7 +35,7 @@ export function useLivePreviewSnapshot(
     visible: boolean,
     adapter: LivePreviewAdapter = appModelAdapter,
 ): LivePreviewSnapshot {
-    const sourceRevision = activeBuffer.documentRevision ?? 0;
+    const sourceRevision = activeBuffer.documentRevision;
     const acceptedGenerationRef = useRef(0);
     const [measurement, setMeasurement] = useState<{ content: string; byteLength: number } | null>(null);
     const [previewState, setPreviewState] = useState<PreviewState>(() => {

@@ -29,7 +29,7 @@ const state: AppModelState = {
         activeDocumentId: '',
         ui: {},
     },
-    activeBuffer: { documentId: '', content: '' },
+    activeBuffer: { documentId: '', content: '', documentRevision: 0 },
 };
 
 function viewAt(line: number, previewVisible = false): DocViewInput {
@@ -183,7 +183,7 @@ it('preserves optional tab and path command forwarding, arity, and order', async
 it('exposes guarded New/Open commands without converting classified outcomes', async () => {
     const newDocument = jest.fn(async (expectedTabSetRevision: number) => {
         void expectedTabSetRevision;
-        return { data: { documentId: 'new-doc', content: '' } };
+        return { data: { documentId: 'new-doc', content: '', documentRevision: 0 } };
     });
     const openDocument = jest.fn(async (expectedTabSetRevision: number) => {
         void expectedTabSetRevision;
@@ -214,7 +214,7 @@ it('exposes guarded New/Open commands without converting classified outcomes', a
     );
 
     await expect(adapter.newDocument?.(4)).resolves.toEqual({
-        data: { documentId: 'new-doc', content: '' },
+        data: { documentId: 'new-doc', content: '', documentRevision: 0 },
     });
     await expect(adapter.openDocument?.(4)).resolves.toEqual({
         status: 'cancelled',
@@ -258,18 +258,23 @@ it('flushes the latest buffer and view queues as one ordered lifecycle drain', a
     expect(setDocView).toHaveBeenCalledWith('document-1', viewAt(8));
 });
 
-it('sends the base revision and silently drops an update the backend reports as superseded', async () => {
-    const updateBuffer = jest.fn(
+function supersedingBindings(supersededContent: string, currentRevision: number) {
+    return jest.fn(
         async (
             documentId: string,
             content: string,
             baseRevision: number,
-        ): Promise<VoidResult & { status?: string }> => {
+        ): Promise<VoidResult & { status?: string; documentRevision?: number }> => {
             void documentId;
-            void baseRevision;
-            return { status: content === 'typed before reload' ? 'superseded' : 'accepted' };
+            return content === supersededContent && baseRevision < currentRevision
+                ? { status: 'superseded', documentRevision: currentRevision }
+                : { status: 'accepted' };
         },
     );
+}
+
+it('keeps a superseded update unacknowledged, reports it with the current revision and refuses the flush', async () => {
+    const updateBuffer = supersedingBindings('typed before reload', 9);
     const adapter = createAppModelAdapter(
         {
             getState: async (): Promise<{ data: AppModelState }> => ({ data: state }),
@@ -280,24 +285,67 @@ it('sends the base revision and silently drops an update the backend reports as 
         { eventsOn: (): (() => void) => (): void => undefined },
     );
     const accepted = jest.fn();
-    const syncErrors = jest.fn();
+    const superseded = jest.fn();
     adapter.subscribeAcceptedBuffers(accepted);
-    adapter.subscribeBufferSyncErrors(syncErrors);
-    const notificationsBefore = store.getState().notifications.items.length;
+    adapter.subscribeSupersededBuffers(superseded);
 
     await adapter.updateBuffer('document-1', 'typed before reload', 4);
-    await expect(adapter.flushBuffer('document-1')).resolves.toBeUndefined();
+    const failure: unknown = await adapter.flushBuffer('document-1').catch((error: unknown) => error);
 
+    expect(isBufferSyncError(failure)).toBe(true);
     expect(updateBuffer).toHaveBeenCalledWith('document-1', 'typed before reload', 4);
     expect(accepted).not.toHaveBeenCalled();
-    expect(syncErrors).not.toHaveBeenCalled();
-    expect(store.getState().notifications.items).toHaveLength(notificationsBefore);
-    expect(adapter.getPendingBufferDocumentIds()).toEqual([]);
+    expect(superseded).toHaveBeenCalledWith({
+        documentId: 'document-1',
+        content: 'typed before reload',
+        baseRevision: 4,
+        currentRevision: 9,
+    });
+    expect(adapter.getPendingBufferDocumentIds()).toEqual(['document-1']);
+});
 
-    await adapter.updateBuffer('document-1', 'typed after reload', 9);
-    await adapter.flushBuffer('document-1');
-    expect(updateBuffer).toHaveBeenLastCalledWith('document-1', 'typed after reload', 9);
-    expect(accepted).toHaveBeenCalledWith({ documentId: 'document-1', content: 'typed after reload', generation: 2 });
+it('acknowledges the superseded text once it is resent on the current revision', async () => {
+    const updateBuffer = supersedingBindings('kept text', 9);
+    const adapter = createAppModelAdapter(
+        {
+            getState: async (): Promise<{ data: AppModelState }> => ({ data: state }),
+            updateBuffer,
+            setDocView: async (): Promise<VoidResult> => ({}),
+            setUILayout: async (): Promise<VoidResult> => ({}),
+        },
+        { eventsOn: (): (() => void) => (): void => undefined },
+    );
+    const accepted = jest.fn();
+    adapter.subscribeAcceptedBuffers(accepted);
+    adapter.subscribeSupersededBuffers((buffer): void => {
+        void adapter.updateBuffer(buffer.documentId, buffer.content, buffer.currentRevision);
+    });
+
+    await adapter.updateBuffer('document-1', 'kept text', 4);
+    await expect(adapter.flushBuffer('document-1')).resolves.toBeUndefined();
+
+    expect(updateBuffer).toHaveBeenLastCalledWith('document-1', 'kept text', 9);
+    expect(accepted).toHaveBeenCalledWith({ documentId: 'document-1', content: 'kept text', generation: 2 });
+    expect(adapter.getPendingBufferDocumentIds()).toEqual([]);
+});
+
+it('forgets a superseded update when its editor session ends', async () => {
+    const adapter = createAppModelAdapter(
+        {
+            getState: async (): Promise<{ data: AppModelState }> => ({ data: state }),
+            updateBuffer: supersedingBindings('typed before reload', 9),
+            setDocView: async (): Promise<VoidResult> => ({}),
+            setUILayout: async (): Promise<VoidResult> => ({}),
+        },
+        { eventsOn: (): (() => void) => (): void => undefined },
+    );
+
+    await adapter.updateBuffer('document-1', 'typed before reload', 4);
+    await adapter.flushBuffer('document-1').catch((): void => undefined);
+    adapter.cancelPendingSession?.('document-1');
+
+    expect(adapter.getPendingBufferDocumentIds()).toEqual([]);
+    await expect(adapter.flushBuffer('document-1')).resolves.toBeUndefined();
 });
 
 it('routes imperative flush through the registered activation session', async () => {
@@ -469,7 +517,7 @@ it('blocks later lifecycle work through bounded recovery and exposes saved-on-di
     });
     const newDocument = jest.fn((revision: number) => {
         void revision;
-        return Promise.resolve({ data: { documentId: 'new-doc', content: '' } });
+        return Promise.resolve({ data: { documentId: 'new-doc', content: '', documentRevision: 0 } });
     });
     const openDocument = jest.fn((revision: number) => {
         void revision;

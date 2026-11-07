@@ -232,7 +232,7 @@ function createAdapter(): EditorStageAdapter {
 
 async function renderStage(view: StageView, previewScrollTop = 0): Promise<{ show: (next: StageView) => void }> {
     const metadata = documentMetadata(previewScrollTop);
-    const activeBuffer = { documentId: metadata.documentId, content: DOCUMENT_CONTENT };
+    const activeBuffer = { documentId: metadata.documentId, content: DOCUMENT_CONTENT, documentRevision: 0 };
     const adapter = createAdapter();
     store.dispatch(
         hydrateProjection({
@@ -396,7 +396,7 @@ it('restores the saved editor scroll when returning to a retained document', asy
     const b = { ...documentMetadata(0), documentId: 'document-2' };
     const adapter = createAdapter();
     const stage = (document: DocumentMetadata): React.JSX.Element => {
-        const buffer = { documentId: document.documentId, content: DOCUMENT_CONTENT };
+        const buffer = { documentId: document.documentId, content: DOCUMENT_CONTENT, documentRevision: 0 };
         return (
             <Provider store={store}>
                 <EditorSessionProvider activeBuffer={buffer}>

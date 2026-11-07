@@ -129,7 +129,7 @@ export function acceptsActivationAcknowledgement(
         projection.revision >= (acknowledgement.projectionRevision ?? 0) &&
         projection.activeDocumentId === acknowledgement.documentId &&
         projectedDocument !== undefined &&
-        (projectedDocument.contentRevision ?? 0) === (acknowledgement.documentRevision ?? 0)
+        (projectedDocument.contentRevision ?? 0) === acknowledgement.documentRevision
     );
 }
 

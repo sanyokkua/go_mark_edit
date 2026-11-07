@@ -3,7 +3,8 @@ import { Provider } from 'react-redux';
 
 import { store, useAppDispatch } from '../logic/store';
 import { appModelAdapter } from '../logic/adapter';
-import { notifyError } from '../logic/store/notificationsSlice';
+import { notifyError, notifyToast } from '../logic/store/notificationsSlice';
+import { t } from '../i18n';
 import type { ConflictPreview } from '../logic/store/appModelTypes';
 import { ApplicationMenuRequestContext } from '../ui/widgets/applicationMenuRequest';
 import { InsertTableRequestContext } from '../ui/widgets/insertTableRequest';
@@ -47,6 +48,21 @@ const AppWorkflows = ({
         () =>
             appModelAdapter.subscribeBufferSyncErrors((error) => {
                 dispatch(notifyError(error));
+            }),
+        [dispatch],
+    );
+    useEffect(
+        () =>
+            appModelAdapter.subscribeSupersededBuffers((buffer) => {
+                dispatch(
+                    notifyToast({
+                        code: 'buffer-superseded',
+                        severity: 'warning',
+                        subject: buffer.documentId,
+                        title: t('editor.bufferSuperseded.title'),
+                        message: t('editor.bufferSuperseded.message'),
+                    }),
+                );
             }),
         [dispatch],
     );

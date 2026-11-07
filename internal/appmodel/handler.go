@@ -401,13 +401,14 @@ func (handler *AppModelHandler) GetState(request bridge.Request) (res apperr.Sta
 // UpdateBuffer accepts a complete canonical-buffer snapshot through the F3 seam.
 // baseRevision is the content revision the editor session was installed from;
 // an update based before the latest reload is reported as superseded, not as
-// an error.
+// an error, together with the current content revision to rebase onto.
 func (handler *AppModelHandler) UpdateBuffer(request bridge.Request, documentID, content string, baseRevision uint64) (res apperr.BufferUpdateResult) {
 	defer bridge.Guard(&res)
 	return bridge.Once(handler.outcomes, request, func() apperr.BufferUpdateResult {
 		err := handler.service.UpdateBufferFrom(handler.context(), documentID, content, baseRevision)
-		if errors.Is(err, ErrBufferSuperseded) {
-			return apperr.BufferUpdateResult{Status: apperr.BufferUpdateSuperseded}
+		var superseded BufferSupersededError
+		if errors.As(err, &superseded) {
+			return apperr.BufferUpdateResult{Status: apperr.BufferUpdateSuperseded, DocumentRevision: superseded.CurrentRevision}
 		}
 		if err != nil {
 			wire := apperr.ToWire(handler.zlog(), err)

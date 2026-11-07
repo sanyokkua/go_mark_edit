@@ -100,7 +100,7 @@ func TestBufferUpdateBasedOnAnEarlierEditOfTheSameSessionIsAccepted(t *testing.T
 	}
 }
 
-func TestBoundUpdateBufferReportsASupersededBaseWithoutAnError(t *testing.T) {
+func TestBoundUpdateBufferReportsASupersededBaseWithTheRevisionToRebaseOnto(t *testing.T) {
 	service := NewAppModelServiceForHost(WithEmitter(&recordingEmitter{}), AppModelOption{AutosaveTimer: &fakeAutosaveClock{}})
 	path, documentID := openAutosaveDocument(t, service, "base\n")
 	state, err := service.GetState(context.Background())
@@ -114,6 +114,9 @@ func TestBoundUpdateBufferReportsASupersededBaseWithoutAnError(t *testing.T) {
 	stale := handler.UpdateBuffer(bridge.Request{ID: "stale-update"}, documentID, "stale edit\n", openedRevision)
 	if stale.Status != apperr.BufferUpdateSuperseded || stale.Error != nil || stale.Category != "" {
 		t.Fatalf("stale UpdateBuffer = %+v, want a superseded status without an error", stale)
+	}
+	if stale.DocumentRevision != reloadedRevision {
+		t.Fatalf("stale UpdateBuffer revision = %d, want the current revision %d", stale.DocumentRevision, reloadedRevision)
 	}
 	accepted := handler.UpdateBuffer(bridge.Request{ID: "fresh-update"}, documentID, "fresh edit\n", reloadedRevision)
 	if accepted.Status != apperr.BufferUpdateAccepted || accepted.Error != nil {

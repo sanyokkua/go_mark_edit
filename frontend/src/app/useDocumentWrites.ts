@@ -75,7 +75,7 @@ function writeTargetAccess(
 
 function activeWriteRevision(documentId: string, document: DocumentMetadata, buffer: ActiveBuffer | null) {
     const stillActive = buffer?.documentId === documentId;
-    const revision = (stillActive ? buffer?.documentRevision : undefined) ?? document.contentRevision ?? 0;
+    const revision = (stillActive ? buffer.documentRevision : undefined) ?? document.contentRevision ?? 0;
     return { revision, stillActive };
 }
 

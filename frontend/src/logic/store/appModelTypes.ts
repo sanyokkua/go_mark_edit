@@ -1,7 +1,8 @@
 export interface ActiveBuffer {
     documentId: string;
     content: string;
-    documentRevision?: number;
+    /** The content revision this text was installed at; every editor update carries it as its base. */
+    documentRevision: number;
     projectionRevision?: number;
 }
 

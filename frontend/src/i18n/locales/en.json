@@ -459,6 +459,8 @@
     "action.scope.application": "Application",
     "notification.count": " ×{count}",
     "notification.dismiss": "Dismiss",
+    "editor.bufferSuperseded.title": "Edit not applied",
+    "editor.bufferSuperseded.message": "An edit was based on text that a reload from disk replaced, so it was not applied as sent. Check the editor text before saving.",
     "notification.error.validation.title": "Invalid input",
     "notification.error.validation.message": "A value needs to be corrected.",
     "notification.error.not_found.title": "Not found",

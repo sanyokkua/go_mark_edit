@@ -218,7 +218,9 @@ function Harness(): React.JSX.Element {
         <Provider store={store}>
             <EditorClipboardPortContext.Provider value={clipboard}>
                 <WorkspaceTreeCommandsContext.Provider value={commands}>
-                    <EditorSessionProvider activeBuffer={{ documentId: 'doc-1', content: DOCUMENT_CONTENT }}>
+                    <EditorSessionProvider
+                        activeBuffer={{ documentId: 'doc-1', content: DOCUMENT_CONTENT, documentRevision: 0 }}
+                    >
                         <AppFrame
                             printRequest={null}
                             banners={[]}

@@ -137,7 +137,7 @@ it('clamps context-menu placement and uses the selection captured at opening', a
         setMarkers: jest.fn(() => ({ status: 'available' as const, value: undefined })),
     };
     render(
-        <EditorSessionContext.Provider value={{ documentId: 'doc-1', content: 'word' }}>
+        <EditorSessionContext.Provider value={{ documentId: 'doc-1', content: 'word', documentRevision: 0 }}>
             <DocumentCommandContext.Provider value={commands}>
                 <EditorContextMenu>
                     <textarea aria-label="Markdown source" />
@@ -308,7 +308,7 @@ it('passes acknowledged marker preferences into context formatting', () => {
     );
     render(
         <Provider store={store}>
-            <EditorSessionContext.Provider value={{ documentId: 'doc-1', content: 'word' }}>
+            <EditorSessionContext.Provider value={{ documentId: 'doc-1', content: 'word', documentRevision: 0 }}>
                 <DocumentCommandContext.Provider value={commands}>
                     <EditorContextMenu>
                         <textarea aria-label="Markdown source" />
@@ -370,7 +370,7 @@ it('reports a rejected native clipboard command as unavailable', async () => {
                 async () => false,
             )}
         >
-            <EditorSessionContext.Provider value={{ documentId: 'doc-1', content: 'word' }}>
+            <EditorSessionContext.Provider value={{ documentId: 'doc-1', content: 'word', documentRevision: 0 }}>
                 <DocumentCommandContext.Provider value={commands}>
                     <EditorContextMenu onActionResult={onActionResult}>
                         <textarea aria-label="Markdown source" />
@@ -407,7 +407,7 @@ it('copies the captured editor selection through the injected native clipboard p
                 },
             )}
         >
-            <EditorSessionContext.Provider value={{ documentId: 'doc-1', content: 'word' }}>
+            <EditorSessionContext.Provider value={{ documentId: 'doc-1', content: 'word', documentRevision: 0 }}>
                 <DocumentCommandContext.Provider value={commands}>
                     <EditorContextMenu onActionResult={onActionResult}>
                         <textarea aria-label="Markdown source" />
@@ -434,7 +434,7 @@ it('uses native clipboard text for genuine paste-as-plain-text', async () => {
 
     render(
         <EditorClipboardPortContext.Provider value={nativeClipboard(async () => 'plain text')}>
-            <EditorSessionContext.Provider value={{ documentId: 'doc-1', content: 'word' }}>
+            <EditorSessionContext.Provider value={{ documentId: 'doc-1', content: 'word', documentRevision: 0 }}>
                 <DocumentCommandContext.Provider value={commands}>
                     <EditorContextMenu onActionResult={onActionResult}>
                         <textarea aria-label="Markdown source" />
@@ -472,7 +472,7 @@ it('keeps failed plain-text reads from mutating the document', async () => {
 
     render(
         <EditorClipboardPortContext.Provider value={nativeClipboard(async () => Promise.reject(new Error('denied')))}>
-            <EditorSessionContext.Provider value={{ documentId: 'doc-1', content: 'word' }}>
+            <EditorSessionContext.Provider value={{ documentId: 'doc-1', content: 'word', documentRevision: 0 }}>
                 <DocumentCommandContext.Provider value={commands}>
                     <EditorContextMenu onActionResult={onActionResult}>
                         <textarea aria-label="Markdown source" />
@@ -540,7 +540,7 @@ it('disables context-menu editing commands for a non-writable document', () => {
     );
 
     render(
-        <EditorSessionContext.Provider value={{ documentId: 'doc-1', content: 'word' }}>
+        <EditorSessionContext.Provider value={{ documentId: 'doc-1', content: 'word', documentRevision: 0 }}>
             <EditorContextMenu>
                 <textarea aria-label="Markdown source" />
             </EditorContextMenu>

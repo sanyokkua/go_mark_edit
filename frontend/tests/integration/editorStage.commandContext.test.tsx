@@ -143,7 +143,9 @@ function renderEditorSession(document: DocumentMetadata): void {
     });
     render(
         <Provider store={store}>
-            <EditorSessionProvider activeBuffer={{ documentId: document.documentId, content: '# Buffer' }}>
+            <EditorSessionProvider
+                activeBuffer={{ documentId: document.documentId, content: '# Buffer', documentRevision: 0 }}
+            >
                 <NonEditorSibling />
                 <EditorView adapter={adapter} />
             </EditorSessionProvider>
@@ -230,7 +232,9 @@ it('reads working content and selection in every arrangement', async () => {
     let capturedCommands: DocumentCommandAPI | null = null;
     render(
         <Provider store={store}>
-            <EditorSessionProvider activeBuffer={{ documentId: document.documentId, content: '# Buffer' }}>
+            <EditorSessionProvider
+                activeBuffer={{ documentId: document.documentId, content: '# Buffer', documentRevision: 0 }}
+            >
                 <DocumentCommandCapture
                     onCommands={(commands): void => {
                         capturedCommands = commands;
@@ -302,7 +306,7 @@ it('rejects active-tab and stale-identity mismatch', async () => {
     );
     const rendered = render(
         <Provider store={store}>
-            <EditorSessionProvider activeBuffer={{ documentId: 'document-1', content: '# A' }}>
+            <EditorSessionProvider activeBuffer={{ documentId: 'document-1', content: '# A', documentRevision: 0 }}>
                 <DocumentCommandCapture
                     onCommands={(commands): void => {
                         capturedCommands = commands;
@@ -332,7 +336,7 @@ it('rejects active-tab and stale-identity mismatch', async () => {
     });
     rendered.rerender(
         <Provider store={store}>
-            <EditorSessionProvider activeBuffer={{ documentId: 'document-2', content: '# B' }}>
+            <EditorSessionProvider activeBuffer={{ documentId: 'document-2', content: '# B', documentRevision: 0 }}>
                 <DocumentCommandCapture
                     onCommands={(commands): void => {
                         capturedCommands = commands;
@@ -382,7 +386,7 @@ it('rejects active-tab and stale-identity mismatch', async () => {
     });
     rendered.rerender(
         <Provider store={store}>
-            <EditorSessionProvider activeBuffer={{ documentId: 'document-1', content: '# A' }}>
+            <EditorSessionProvider activeBuffer={{ documentId: 'document-1', content: '# A', documentRevision: 0 }}>
                 <DocumentCommandCapture
                     onCommands={(commands): void => {
                         capturedCommands = commands;

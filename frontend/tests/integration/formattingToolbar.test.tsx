@@ -194,7 +194,7 @@ it('routes a formatting activation through the editor command context', async ()
     };
 
     renderToolbar(
-        <EditorSessionContext.Provider value={{ documentId: 'doc-1', content: 'word' }}>
+        <EditorSessionContext.Provider value={{ documentId: 'doc-1', content: 'word', documentRevision: 0 }}>
             <DocumentCommandContext.Provider value={commands}>
                 <FormattingToolbar arrangement="editor" onArrangementChange={jest.fn()} />
             </DocumentCommandContext.Provider>
@@ -228,7 +228,7 @@ it('uses one focused editor-action path for toolbar, popup, and shortcut formatt
     };
 
     renderToolbar(
-        <EditorSessionContext.Provider value={{ documentId: 'doc-1', content: 'word' }}>
+        <EditorSessionContext.Provider value={{ documentId: 'doc-1', content: 'word', documentRevision: 0 }}>
             <DocumentCommandContext.Provider value={commands}>
                 <FormattingToolbar arrangement="editor" onArrangementChange={jest.fn()} />
                 <EditorContextMenu>
@@ -288,7 +288,7 @@ it('routes Find and Replace shortcuts from the editor and Find widget while keep
     };
     const ui = (modalOpen: boolean): React.ReactNode => (
         <ModalStateContext.Provider value={modalOpen}>
-            <EditorSessionContext.Provider value={{ documentId: 'doc-1', content: 'one one' }}>
+            <EditorSessionContext.Provider value={{ documentId: 'doc-1', content: 'one one', documentRevision: 0 }}>
                 <DocumentCommandContext.Provider value={commands}>
                     <FormattingToolbar arrangement="editor" onArrangementChange={jest.fn()} />
                     <div data-editor-surface>
@@ -377,7 +377,7 @@ it('disables the formatting buttons with the reason when the editor is not shown
         }),
     );
     renderToolbar(
-        <EditorSessionContext.Provider value={{ documentId: 'preview-doc', content: 'word' }}>
+        <EditorSessionContext.Provider value={{ documentId: 'preview-doc', content: 'word', documentRevision: 0 }}>
             <FormattingToolbar arrangement="preview" onArrangementChange={jest.fn()} />
         </EditorSessionContext.Provider>,
     );

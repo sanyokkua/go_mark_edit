@@ -359,14 +359,21 @@ movement and selection keys SHALL work.
 
 ### Requirement: Edits typed before a reload are discarded
 
-WHEN the user reloads a document from disk, text typed in the editor before the reload SHALL NOT be applied afterwards, even if it was still being handed to the application when the reload completed. The discard SHALL NOT show an error. Text typed after the reload SHALL be kept and saved normally.
+WHEN the user reloads a document from disk, text typed in the editor before the reload SHALL NOT be applied afterwards, even if it was still being handed to the application when the reload completed. The refusal SHALL show the warning "Edit not applied", not an error. Text typed after the reload SHALL be kept and saved normally. An editor still showing its own text when such a refusal arrives SHALL keep that text and send it again on the reloaded revision.
 
 #### Scenario: Typing in flight during a reload
 
 - **WHEN** Autosave is on, the user types "mine" in "notes.md", another program writes "theirs" to the file, the user
   chooses Reload from disk before the typed text reaches the application, and two seconds pass
-- **THEN** the editor shows "theirs", the file on disk contains "theirs", the tab is not marked modified and no
-  error is shown
+- **THEN** the editor shows "theirs", the file on disk contains "theirs", the tab is not marked modified, no
+  error is shown and the warning "Edit not applied" appears once
+
+#### Scenario: Refused edit of an editor that still shows its text
+
+- **WHEN** the editor of "notes.md" still shows "mine" and the application refuses that text because a reload
+  replaced the text it was based on
+- **THEN** the warning "Edit not applied" appears, the editor keeps "mine", the text is sent again on the reloaded
+  revision and the tab is marked modified; a Save or close that cannot deliver it first is refused
 
 #### Scenario: Typing after the reload
 
