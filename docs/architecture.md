@@ -617,7 +617,8 @@ autosave path. Autosave is allowed only for an existing saved file; a never-save
 written.
 
 `internal/file/atomic_replace.go` owns atomic replacement. It checks the expected disk metadata and
-raw-byte fingerprint immediately before replacement. The fingerprint check and rename are separate
+raw-byte fingerprint immediately before replacement, and refuses an expected existing version that comes
+without its fingerprint. The fingerprint check and rename are separate
 operations: the host platform's atomic replace prevents readers from observing a partially written
 file, but portable Go APIs do not provide a compare-and-swap rename conditioned on the old bytes. An
 external writer can still race in the narrow check-to-rename interval, so this is a stale-write guard

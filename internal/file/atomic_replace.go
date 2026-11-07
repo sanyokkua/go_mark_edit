@@ -216,6 +216,12 @@ func atomicReplaceBaseline(request AtomicReplaceRequest, ops atomicReplaceOps) (
 	}
 
 	expectedHash := request.ExpectedRawHash
+	if request.ExpectedVersion != nil && expected.Exists && expectedHash == "" {
+		// A caller's baseline for an existing file is its version and its bytes.
+		// Fingerprinting whatever is on disk now would accept bytes the caller
+		// never saw.
+		return DiskVersion{}, "", newAtomicReplaceError(target, false, atomicReplacePreCommit, apperr.ClassifiedIOFailure, errors.New("expected raw hash is required for an existing target"))
+	}
 	if expected.Exists && expectedHash == "" {
 		expectedHash, err = rawFileHash(target, expected.Size)
 		if err != nil {

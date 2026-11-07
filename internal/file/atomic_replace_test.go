@@ -164,7 +164,7 @@ func TestAtomicReplaceRejectsSameMetadataChangeDuringPreparation(t *testing.T) {
 		}
 		return os.Chtimes(target, info.ModTime(), info.ModTime())
 	}
-	result, err := atomicReplaceWithOps(AtomicReplaceRequest{TargetPath: target, Data: []byte("mine"), ExpectedVersion: &version}, ops)
+	result, err := atomicReplaceWithOps(AtomicReplaceRequest{TargetPath: target, Data: []byte("mine"), ExpectedVersion: &version, ExpectedRawHash: mustRawFileHash(t, target)}, ops)
 	if err == nil || result.Committed {
 		t.Fatalf("replacement = %+v, %v; want conflict", result, err)
 	}
@@ -191,7 +191,7 @@ func TestAtomicReplaceReportsInterveningChangeAfterRename(t *testing.T) {
 		}
 		return os.WriteFile(to, []byte("disk"), 0o644)
 	}
-	result, err := atomicReplaceWithOps(AtomicReplaceRequest{TargetPath: target, Data: []byte("mine"), ExpectedVersion: &version}, ops)
+	result, err := atomicReplaceWithOps(AtomicReplaceRequest{TargetPath: target, Data: []byte("mine"), ExpectedVersion: &version, ExpectedRawHash: mustRawFileHash(t, target)}, ops)
 	if err == nil || !result.Committed {
 		t.Fatalf("replacement = %+v, %v; want committed warning", result, err)
 	}
@@ -213,6 +213,7 @@ func testAtomicReplaceExistingTarget(t *testing.T) {
 		TargetPath:      target,
 		Data:            []byte("after\r\n"),
 		ExpectedVersion: &before,
+		ExpectedRawHash: mustRawFileHash(t, target),
 	})
 	if err != nil {
 		t.Fatalf("AtomicReplace: %v", err)
@@ -289,7 +290,7 @@ func testAtomicReplaceDirectorySyncFailure(t *testing.T) {
 	ops := defaultAtomicReplaceOps()
 	ops.syncDir = func(string) error { return errors.New("directory sync failed") }
 
-	result, err := atomicReplaceWithOps(AtomicReplaceRequest{TargetPath: target, Data: []byte("after"), ExpectedVersion: &before}, ops)
+	result, err := atomicReplaceWithOps(AtomicReplaceRequest{TargetPath: target, Data: []byte("after"), ExpectedVersion: &before, ExpectedRawHash: mustRawFileHash(t, target)}, ops)
 	assertAtomicReplaceFailure(t, err, true, apperr.ClassifiedPersistenceWarning)
 	if !result.Committed {
 		t.Fatalf("result = %+v, want committed result", result)
@@ -319,7 +320,7 @@ func testAtomicReplacePreCommitFailure(t *testing.T, failure atomicReplaceFailur
 	ops, removed := testAtomicReplaceOps(temp, before)
 	failure.configure(&ops, temp, before)
 
-	result, err := atomicReplaceWithOps(AtomicReplaceRequest{TargetPath: target, Data: []byte("after"), ExpectedVersion: &before}, ops)
+	result, err := atomicReplaceWithOps(AtomicReplaceRequest{TargetPath: target, Data: []byte("after"), ExpectedVersion: &before, ExpectedRawHash: mustRawFileHash(t, target)}, ops)
 	assertAtomicReplaceFailure(t, err, false, failure.category)
 	if result.Committed {
 		t.Fatalf("result = %+v, want pre-commit result", result)
@@ -407,4 +408,17 @@ func TestAtomicReplaceNewTargetNeverReplacesFileCreatedBeforeCommit(t *testing.T
 	if len(entries) != 1 {
 		t.Fatalf("leftover temporary files: %v", entries)
 	}
+}
+
+func mustRawFileHash(t *testing.T, path string) string {
+	t.Helper()
+	info, err := os.Stat(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	hash, err := rawFileHash(path, info.Size())
+	if err != nil {
+		t.Fatal(err)
+	}
+	return hash
 }

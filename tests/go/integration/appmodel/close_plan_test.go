@@ -275,7 +275,7 @@ func TestClosePlanSaveOrderAndFailure(t *testing.T) {
 		if snapshot.DocumentID == secondID {
 			return file.DiskVersion{}, errors.New("second write failed")
 		}
-		replaced, err := file.AtomicReplace(file.AtomicReplaceRequest{TargetPath: snapshot.TargetPath, Data: snapshot.EncodedData, ExpectedVersion: snapshot.ExpectedDiskVersion})
+		replaced, err := file.AtomicReplace(file.AtomicReplaceRequest{TargetPath: snapshot.TargetPath, Data: snapshot.EncodedData, ExpectedVersion: snapshot.ExpectedDiskVersion, ExpectedRawHash: snapshot.ExpectedRawHash})
 		return replaced.Version, err
 	}
 	state, _ := service.GetState(context.Background())
@@ -329,7 +329,7 @@ func TestClosePlanResolvesEveryExternalConflictBeforeAnySaveRuns(t *testing.T) {
 	var writes atomic.Int32
 	executor = func(snapshot WriteSnapshot) (file.DiskVersion, error) {
 		writes.Add(1)
-		replaced, err := file.AtomicReplace(file.AtomicReplaceRequest{TargetPath: snapshot.TargetPath, Data: snapshot.EncodedData, ExpectedVersion: snapshot.ExpectedDiskVersion})
+		replaced, err := file.AtomicReplace(file.AtomicReplaceRequest{TargetPath: snapshot.TargetPath, Data: snapshot.EncodedData, ExpectedVersion: snapshot.ExpectedDiskVersion, ExpectedRawHash: snapshot.ExpectedRawHash})
 		return replaced.Version, err
 	}
 
@@ -422,7 +422,7 @@ func TestClosePlanSaveAsResolvesBeforeBatchWrite(t *testing.T) {
 	var writes atomic.Int32
 	executor = func(snapshot WriteSnapshot) (file.DiskVersion, error) {
 		writes.Add(1)
-		replaced, err := file.AtomicReplace(file.AtomicReplaceRequest{TargetPath: snapshot.TargetPath, Data: snapshot.EncodedData, ExpectedVersion: snapshot.ExpectedDiskVersion})
+		replaced, err := file.AtomicReplace(file.AtomicReplaceRequest{TargetPath: snapshot.TargetPath, Data: snapshot.EncodedData, ExpectedVersion: snapshot.ExpectedDiskVersion, ExpectedRawHash: snapshot.ExpectedRawHash})
 		return replaced.Version, err
 	}
 	state, _ := service.GetState(context.Background())
@@ -799,7 +799,7 @@ func TestPrepareCloseRefusesWhileAnotherPlanIsSaving(t *testing.T) {
 	executor = func(snapshot WriteSnapshot) (file.DiskVersion, error) {
 		once.Do(func() { close(writing) })
 		<-release
-		replaced, err := file.AtomicReplace(file.AtomicReplaceRequest{TargetPath: snapshot.TargetPath, Data: snapshot.EncodedData, ExpectedVersion: snapshot.ExpectedDiskVersion})
+		replaced, err := file.AtomicReplace(file.AtomicReplaceRequest{TargetPath: snapshot.TargetPath, Data: snapshot.EncodedData, ExpectedVersion: snapshot.ExpectedDiskVersion, ExpectedRawHash: snapshot.ExpectedRawHash})
 		return replaced.Version, err
 	}
 

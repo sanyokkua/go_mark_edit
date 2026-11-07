@@ -60,7 +60,7 @@ func TestSaveRefreshesDocumentIdentityAfterAtomicReplace(t *testing.T) {
 }
 
 func durabilityFailureExecutor(snapshot WriteSnapshot) (file.DiskVersion, error) {
-	replaced, err := file.AtomicReplace(file.AtomicReplaceRequest{TargetPath: snapshot.TargetPath, Data: snapshot.EncodedData, ExpectedVersion: snapshot.ExpectedDiskVersion})
+	replaced, err := file.AtomicReplace(file.AtomicReplaceRequest{TargetPath: snapshot.TargetPath, Data: snapshot.EncodedData, ExpectedVersion: snapshot.ExpectedDiskVersion, ExpectedRawHash: snapshot.ExpectedRawHash})
 	if err != nil {
 		return replaced.Version, err
 	}
@@ -231,7 +231,7 @@ func TestCommittedSaveWarningReasonsSurviveEverySavePath(t *testing.T) {
 				ctx := context.Background()
 				recorder := &warningEventRecorder{}
 				executor := func(snapshot WriteSnapshot) (file.DiskVersion, error) {
-					replaced, err := file.AtomicReplace(file.AtomicReplaceRequest{TargetPath: snapshot.TargetPath, Data: snapshot.EncodedData, ExpectedVersion: snapshot.ExpectedDiskVersion})
+					replaced, err := file.AtomicReplace(file.AtomicReplaceRequest{TargetPath: snapshot.TargetPath, Data: snapshot.EncodedData, ExpectedVersion: snapshot.ExpectedDiskVersion, ExpectedRawHash: snapshot.ExpectedRawHash})
 					if err != nil {
 						return replaced.Version, err
 					}
