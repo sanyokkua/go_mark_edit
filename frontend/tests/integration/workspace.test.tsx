@@ -42,7 +42,7 @@ import { appModelAdapter, windowAdapter } from '../../src/logic/adapter';
 import { store } from '../../src/logic/store';
 import { applyStatePatch, hydrateProjection, resetProjection } from '../../src/logic/store/appModelProjectionActions';
 import { resetNotifications } from '../../src/logic/store/notificationsSlice';
-import type { WorkspaceSnapshot } from '../../src/logic/store/appModelTypes';
+import type { OpenResult, WorkspaceSnapshot } from '../../src/logic/store/appModelTypes';
 import { documentFixture } from '../support/appFixtures';
 import FolderDropPrompt from '../../src/ui/widgets/dialogs/FolderDropPrompt';
 import WorkspaceReplacePrompt from '../../src/ui/widgets/dialogs/WorkspaceReplacePrompt';
@@ -140,7 +140,7 @@ it('opens the editor and moves the caret and focus when a problem is activated f
     };
     const commands = createDocumentCommands('created', token, () => ({ documentId: 'created', token, handle }));
     render(
-        <EditorSessionContext.Provider value={{ documentId: 'created', content: '' }}>
+        <EditorSessionContext.Provider value={{ documentId: 'created', content: '', documentRevision: 0 }}>
             <DocumentCommandContext.Provider value={commands}>
                 <EditorView
                     problemsOpen
@@ -307,7 +307,7 @@ it('moves keyboard focus into the created file editor after the modal closes', a
     const commands = createDocumentCommands('created', token, () => ({ documentId: 'created', token, handle }));
     const renderEditor = (modalOpen: boolean) => (
         <ModalStateContext.Provider value={modalOpen}>
-            <EditorSessionContext.Provider value={{ documentId: 'created', content: '' }}>
+            <EditorSessionContext.Provider value={{ documentId: 'created', content: '', documentRevision: 0 }}>
                 <DocumentCommandContext.Provider value={commands}>
                     <EditorView editorFocusRequest={{ documentId: 'created', sequence: 1 }} />
                 </DocumentCommandContext.Provider>
@@ -343,7 +343,7 @@ it('leaves editor input focused after creating a file from the real tree prompt'
     const Harness = (): React.JSX.Element => {
         const commands = useCommands(session, jest.fn());
         return (
-            <EditorSessionContext.Provider value={{ documentId: 'created', content: '' }}>
+            <EditorSessionContext.Provider value={{ documentId: 'created', content: '', documentRevision: 0 }}>
                 <DocumentCommandContext.Provider value={documentCommands}>
                     <WorkspaceTreeCommandsContext.Provider value={commands}>
                         <WorkspaceTree />
@@ -378,10 +378,19 @@ it('opens a created file through the existing focused tab command and leaves a c
     hydrate('/notes');
     (appModelAdapter.createWorkspaceFile as jest.Mock).mockResolvedValue({ status: 'opened' });
     (appModelAdapter.createWorkspaceFolder as jest.Mock).mockResolvedValue({ status: 'opened' });
-    (appModelAdapter.openRecentFile as jest.Mock).mockResolvedValue({ status: 'focused', documentId: 'created' });
+    let finishOpen!: (result: OpenResult) => void;
+    const pendingOpen = new Promise<OpenResult>((resolve) => {
+        finishOpen = resolve;
+    });
+    jest.mocked(appModelAdapter.openRecentFile!).mockReturnValueOnce(pendingOpen);
     const owner = renderHook(() => useCommands(session, jest.fn()), { wrapper });
-    await act(async () => owner.result.current.onCreateWorkspaceEntry('file', '/notes', 'draft.md'));
-    expect(appModelAdapter.openRecentFile).toHaveBeenCalledWith('/notes/draft.md', 1);
+    act(() => {
+        void owner.result.current.onCreateWorkspaceEntry('file', '/notes', 'draft.md');
+    });
+    await waitFor(() => expect(appModelAdapter.openRecentFile).toHaveBeenCalledWith('/notes/draft.md', 1));
+    expect(store.getState().workspace.reading).toBe(true);
+    await act(async () => finishOpen({ status: 'focused', documentId: 'created' }));
+    expect(store.getState().workspace.reading).toBe(false);
     expect(owner.result.current.tabRevealRequest?.documentId).toBe('created');
     await act(async () => owner.result.current.onCreateWorkspaceEntry('folder', '/notes', 'drafts'));
     expect(appModelAdapter.openRecentFile).toHaveBeenCalledTimes(1);

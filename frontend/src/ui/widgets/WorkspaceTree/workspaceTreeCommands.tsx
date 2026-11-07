@@ -1,7 +1,6 @@
 import { createContext, useContext } from 'react';
 import type { EntryCommandOutcome, WorkspaceCreateOutcome } from '../../../app/useCommands';
-import type { WorkspaceNode } from '../../../logic/store/appModelTypes';
-import type { PathCommandResult } from '../../../logic/store/appModelTypes';
+import type { PathCommandResult, WorkspaceNode } from '../../../logic/store/appModelTypes';
 
 export interface WorkspaceTreeCommands {
     onOpenFolder: () => unknown;

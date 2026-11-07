@@ -1,6 +1,19 @@
 import type { Page } from '@playwright/test';
 
-import { expect } from './harness';
+import { expect, test as harnessTest } from './harness';
+
+export const test = harnessTest.extend<{ preserveNativeClipboard: () => Promise<void> }>({
+    preserveNativeClipboard: async ({ app }, use) => {
+        let original: string | undefined;
+        try {
+            await use(async () => {
+                if (original === undefined) original = await nativeClipboardText(app.page);
+            });
+        } finally {
+            if (original !== undefined) await setNativeClipboard(app.page, original);
+        }
+    },
+});
 
 export async function setNativeClipboard(page: Page, text: string): Promise<void> {
     await page.evaluate(async (value): Promise<void> => {

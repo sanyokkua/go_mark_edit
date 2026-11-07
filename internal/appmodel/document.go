@@ -2,6 +2,7 @@ package appmodel
 
 import (
 	"context"
+	"errors"
 	"strings"
 
 	"github.com/sanyokkua/go_mark_edit/internal/apperr"
@@ -21,9 +22,32 @@ type DocumentContentAccessor interface {
 	SnapshotActive(ctx context.Context) (DocumentSnapshot, error)
 }
 
+// ErrBufferSuperseded refuses an editor update whose base revision predates the
+// document's latest reload from disk. The update describes text the reload
+// replaced, so adopting it would silently undo the reload.
+var ErrBufferSuperseded = errors.New("buffer update predates the latest reload")
+
+// BufferSupersededError is the ErrBufferSuperseded refusal together with the
+// document's current content revision, the base an editor resends its text on.
+type BufferSupersededError struct {
+	CurrentRevision uint64
+}
+
+func (BufferSupersededError) Error() string { return ErrBufferSuperseded.Error() }
+
+// Is reports the refusal as ErrBufferSuperseded.
+func (BufferSupersededError) Is(target error) bool { return target == ErrBufferSuperseded }
+
 // DocumentCommandAPI is the stable F3 command seam for document mutations.
 type DocumentCommandAPI interface {
+	// UpdateBuffer adopts content from a backend-side caller that already
+	// holds the current buffer, so it carries no base revision.
 	UpdateBuffer(ctx context.Context, documentID, content string) error
+	// UpdateBufferFrom adopts an editor update based on baseRevision, the
+	// content revision the editor session was installed from. It returns a
+	// BufferSupersededError, which is ErrBufferSuperseded, when a reload has
+	// replaced that base.
+	UpdateBufferFrom(ctx context.Context, documentID, content string, baseRevision uint64) error
 }
 
 type documentContentAccessor struct {
@@ -53,6 +77,14 @@ type documentCommands struct {
 }
 
 func (commands documentCommands) UpdateBuffer(ctx context.Context, documentID, content string) error {
+	return commands.updateBuffer(ctx, documentID, content, nil)
+}
+
+func (commands documentCommands) UpdateBufferFrom(ctx context.Context, documentID, content string, baseRevision uint64) error {
+	return commands.updateBuffer(ctx, documentID, content, &baseRevision)
+}
+
+func (commands documentCommands) updateBuffer(ctx context.Context, documentID, content string, baseRevision *uint64) error {
 	commands.service.mu.Lock()
 	before := commands.service.snapshotLocked()
 	document, ok := commands.service.state.documents[documentID]
@@ -60,9 +92,14 @@ func (commands documentCommands) UpdateBuffer(ctx context.Context, documentID, c
 		commands.service.mu.Unlock()
 		return apperr.NotFound(documentID)
 	}
-	if document.closing {
+	if document.closing || commands.service.preparedQuitFenced {
 		commands.service.mu.Unlock()
 		return apperr.Busy()
+	}
+	if baseRevision != nil && *baseRevision < document.reloadedRevision {
+		current := document.metadata.ContentRevision
+		commands.service.mu.Unlock()
+		return BufferSupersededError{CurrentRevision: current}
 	}
 	acceptedRevision := uint64(0)
 	if document.content != content {
@@ -76,7 +113,7 @@ func (commands documentCommands) UpdateBuffer(ctx context.Context, documentID, c
 		commands.service.removeConflictLocked(documentID)
 	}
 	document.content = content
-	document.metadata.Dirty = document.content != document.baseline || document.detached || (document.metadata.Path == "" && document.content != "") || document.failedWrite || document.metadata.ContentRevision > document.committedRevision
+	document.metadata.Dirty = document.content != document.baseline || document.detached || (document.metadata.Path == "" && document.content != "") || document.metadata.ContentRevision > document.committedRevision
 	document.metadata.WordCount = len(strings.Fields(content))
 	patch := commands.service.documentPatchLocked(documentID)
 	if err := commands.service.publishLocked(ctx, before, patch); err != nil {

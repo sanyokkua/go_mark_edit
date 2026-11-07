@@ -1,7 +1,8 @@
 export interface ActiveBuffer {
     documentId: string;
     content: string;
-    documentRevision?: number;
+    /** The content revision this text was installed at; every editor update carries it as its base. */
+    documentRevision: number;
     projectionRevision?: number;
 }
 
@@ -166,7 +167,13 @@ export interface CommittedWriteOutcome {
 
 export type WriteStatus = 'committed' | 'cancelled' | 'needs-normalization' | 'conflict' | 'refused';
 
+export type CommittedWriteWarning = 'durability' | 'recent-items' | 'view-state';
+
+export type CommittedWriteWarningReason = 'metadata-stat' | 'readback' | 'content-mismatch' | 'directory-sync';
+
 export interface WriteResult {
+    warning?: CommittedWriteWarning;
+    warningReason?: CommittedWriteWarningReason;
     status: WriteStatus;
     data?: CommittedWriteOutcome;
     decisionToken?: string;
@@ -189,6 +196,7 @@ export interface DiskVersion {
     modifiedUnixNano: string;
     mode: number;
     fileIdentity?: string;
+    rawHash?: string;
 }
 
 export interface ConflictPreview {
@@ -245,6 +253,7 @@ export interface UILayout {
 
 export interface PendingClose {
     id: string;
+    owner: 'frontend' | 'native';
 }
 
 export interface AppStateSnapshot {

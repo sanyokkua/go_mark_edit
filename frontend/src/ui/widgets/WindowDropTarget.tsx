@@ -23,19 +23,19 @@ const WindowDropTarget: React.FC<WindowDropTargetProps> = ({ dropEpoch = 0 }) =>
             if (!event.relatedTarget) setHoverEpoch(null);
         };
         const clear = (): void => setHoverEpoch(null);
-        window.addEventListener('dragenter', enter);
-        window.addEventListener('dragover', over);
-        window.addEventListener('dragleave', leave);
-        window.addEventListener('drop', clear);
-        window.addEventListener('dragend', clear);
-        window.addEventListener('blur', clear);
+        globalThis.addEventListener('dragenter', enter);
+        globalThis.addEventListener('dragover', over);
+        globalThis.addEventListener('dragleave', leave);
+        globalThis.addEventListener('drop', clear);
+        globalThis.addEventListener('dragend', clear);
+        globalThis.addEventListener('blur', clear);
         return () => {
-            window.removeEventListener('dragenter', enter);
-            window.removeEventListener('dragover', over);
-            window.removeEventListener('dragleave', leave);
-            window.removeEventListener('drop', clear);
-            window.removeEventListener('dragend', clear);
-            window.removeEventListener('blur', clear);
+            globalThis.removeEventListener('dragenter', enter);
+            globalThis.removeEventListener('dragover', over);
+            globalThis.removeEventListener('dragleave', leave);
+            globalThis.removeEventListener('drop', clear);
+            globalThis.removeEventListener('dragend', clear);
+            globalThis.removeEventListener('blur', clear);
         };
     }, [dropEpoch]);
     return hoverEpoch === dropEpoch ? (

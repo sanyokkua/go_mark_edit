@@ -84,3 +84,27 @@ func TestClosingTheFinalCleanTabLeavesAnExplicitlyEmptyState(t *testing.T) {
 		t.Fatalf("final state = %+v, want no documents and no active buffer", state)
 	}
 }
+
+func TestClosingActiveTabChecksNewlySelectedFile(t *testing.T) {
+	service := NewAppModelServiceForHost(WithEmitter(&recordingEmitter{}), AppModelOption{AutosaveTimer: &fakeAutosaveClock{}})
+	path, first := openAutosaveDocument(t, service, "base\n")
+	_, second := openAutosaveDocument(t, service, "other\n")
+	info, err := os.Stat(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, []byte("disk\n"), info.Mode()); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chtimes(path, info.ModTime(), info.ModTime()); err != nil {
+		t.Fatal(err)
+	}
+	state, err := service.GetState(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	closed := service.CloseDocument(context.Background(), second, state.Snapshot.TabSetRevision)
+	if closed.Error != nil || closed.ActiveDocumentID != first || closed.Conflict == nil || closed.Conflict.OnDisk.Text != "disk\n" {
+		t.Fatalf("close = %+v, want newly active file conflict", closed)
+	}
+}

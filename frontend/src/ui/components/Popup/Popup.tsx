@@ -25,7 +25,7 @@ export type PopupAnchor =
     | { point: { x: number; y: number } }
     | { bounds: DOMRect };
 
-export type PopupInitialFocus = 'first' | 'last' | 'popup' | string | HTMLElement | (() => HTMLElement | null);
+export type PopupInitialFocus = string | HTMLElement | (() => HTMLElement | null);
 
 export interface PopupProps extends Omit<HTMLAttributes<HTMLDivElement>, 'role'> {
     readonly anchor: PopupAnchor;
@@ -64,10 +64,9 @@ function resolveTrigger(trigger: HTMLElement | null | RefObject<HTMLElement | nu
 }
 
 function viewportSize(): { width: number; height: number } {
-    return {
-        width: typeof window === 'undefined' ? 0 : window.innerWidth,
-        height: typeof window === 'undefined' ? 0 : window.innerHeight,
-    };
+    const browserWindow = globalThis.window;
+    if (browserWindow === undefined) return { width: 0, height: 0 };
+    return { width: browserWindow.innerWidth, height: browserWindow.innerHeight };
 }
 
 function frameMetrics(frame: HTMLElement | null): {
@@ -238,11 +237,11 @@ const Popup = ({
     useLayoutEffect((): (() => void) | undefined => {
         if (!open) return undefined;
         place();
-        window.addEventListener('resize', place);
-        window.addEventListener('scroll', place, true);
+        globalThis.addEventListener('resize', place);
+        globalThis.addEventListener('scroll', place, true);
         return (): void => {
-            window.removeEventListener('resize', place);
-            window.removeEventListener('scroll', place, true);
+            globalThis.removeEventListener('resize', place);
+            globalThis.removeEventListener('scroll', place, true);
         };
     }, [open, place]);
 

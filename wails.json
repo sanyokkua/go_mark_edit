@@ -9,5 +9,11 @@
     "author": {
         "name": "Oleksandr Kostenko",
         "email": "sanyokkua@gmail.com"
+    },
+    "info": {
+        "companyName": "Oleksandr Kostenko",
+        "productName": "GoMarkEdit",
+        "productVersion": "1.0.0",
+        "copyright": "Copyright (c) 2026 Oleksandr Kostenko"
     }
 }

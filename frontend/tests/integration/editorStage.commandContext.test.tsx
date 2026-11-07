@@ -41,7 +41,7 @@ jest.mock('../../src/ui/components/CodeEditor', () => {
         },
     );
 
-    return { __esModule: true, default: MockCodeEditor };
+    return { __esModule: true, default: MockCodeEditor, reconcileEditorModels: jest.fn() };
 });
 
 const adapter: EditorViewAdapter = {
@@ -143,7 +143,9 @@ function renderEditorSession(document: DocumentMetadata): void {
     });
     render(
         <Provider store={store}>
-            <EditorSessionProvider activeBuffer={{ documentId: document.documentId, content: '# Buffer' }}>
+            <EditorSessionProvider
+                activeBuffer={{ documentId: document.documentId, content: '# Buffer', documentRevision: 0 }}
+            >
                 <NonEditorSibling />
                 <EditorView adapter={adapter} />
             </EditorSessionProvider>
@@ -230,7 +232,9 @@ it('reads working content and selection in every arrangement', async () => {
     let capturedCommands: DocumentCommandAPI | null = null;
     render(
         <Provider store={store}>
-            <EditorSessionProvider activeBuffer={{ documentId: document.documentId, content: '# Buffer' }}>
+            <EditorSessionProvider
+                activeBuffer={{ documentId: document.documentId, content: '# Buffer', documentRevision: 0 }}
+            >
                 <DocumentCommandCapture
                     onCommands={(commands): void => {
                         capturedCommands = commands;
@@ -302,7 +306,7 @@ it('rejects active-tab and stale-identity mismatch', async () => {
     );
     const rendered = render(
         <Provider store={store}>
-            <EditorSessionProvider activeBuffer={{ documentId: 'document-1', content: '# A' }}>
+            <EditorSessionProvider activeBuffer={{ documentId: 'document-1', content: '# A', documentRevision: 0 }}>
                 <DocumentCommandCapture
                     onCommands={(commands): void => {
                         capturedCommands = commands;
@@ -332,7 +336,7 @@ it('rejects active-tab and stale-identity mismatch', async () => {
     });
     rendered.rerender(
         <Provider store={store}>
-            <EditorSessionProvider activeBuffer={{ documentId: 'document-2', content: '# B' }}>
+            <EditorSessionProvider activeBuffer={{ documentId: 'document-2', content: '# B', documentRevision: 0 }}>
                 <DocumentCommandCapture
                     onCommands={(commands): void => {
                         capturedCommands = commands;
@@ -368,6 +372,33 @@ it('rejects active-tab and stale-identity mismatch', async () => {
     expect(mockEditorHandle.getSelection).not.toHaveBeenCalled();
     expect(mockEditorHandle.replaceRange).not.toHaveBeenCalled();
     expect(mockEditorHandle.replaceAll).not.toHaveBeenCalled();
+
+    const commandsForB = requireDocumentCommands(capturedCommands);
+    act((): void => {
+        store.dispatch(
+            hydrateProjection({
+                revision: 3,
+                documents: { [documentA.documentId]: documentA },
+                activeDocumentId: documentA.documentId,
+                ui: {},
+            }),
+        );
+    });
+    rendered.rerender(
+        <Provider store={store}>
+            <EditorSessionProvider activeBuffer={{ documentId: 'document-1', content: '# A', documentRevision: 0 }}>
+                <DocumentCommandCapture
+                    onCommands={(commands): void => {
+                        capturedCommands = commands;
+                    }}
+                />
+                <EditorView adapter={adapter} />
+            </EditorSessionProvider>
+        </Provider>,
+    );
+    await waitFor(() => expect(capturedCommands?.getContent()).toEqual({ status: 'available', value: '# Buffer' }));
+    expect(commandsForB.replaceAll('stale')).toEqual({ status: 'document-mismatch' });
+    expect(commandsForA.replaceAll('stale')).toEqual({ status: 'document-mismatch' });
 });
 
 // alone, not the wiring that calls it. A green run here says nothing about

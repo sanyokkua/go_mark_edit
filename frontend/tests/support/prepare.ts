@@ -127,15 +127,43 @@ function newestModification(path: string): number {
  * than every input of `vite build`. Checked before the generators run, because they rewrite their
  * outputs with fresh timestamps.
  */
-function distIsCurrent(repository: string): boolean {
+export function distIsCurrent(repository: string): boolean {
     if (process.env[REUSE_DIST_ENV] !== '1') return false;
     const frontend = join(repository, 'frontend');
     const bundle = join(frontend, 'dist', 'index.html');
     if (!existsSync(bundle)) return false;
     const built = statSync(bundle).mtimeMs;
-    const inputs = ['src', 'public', 'wailsjs', 'index.html', 'vite.config.ts', 'tsconfig.json', 'package-lock.json'];
-    return inputs.every((input) => {
-        const path = join(frontend, input);
+    if (statSync(repository).mtimeMs > built || statSync(frontend).mtimeMs > built) return false;
+    const frontendInputs = [
+        'src',
+        'public',
+        'wailsjs',
+        'scripts',
+        'index.html',
+        'vite.config.ts',
+        'tsconfig.json',
+        'tsconfig.node.json',
+        'package.json',
+        'package-lock.json',
+        '.npmrc',
+    ];
+    const repositoryInputs = [
+        'wails.json',
+        'go.mod',
+        'go.sum',
+        '.prettierrc.json',
+        '.npmrc',
+        'internal',
+        'pkg',
+        ...readdirSync(repository, { withFileTypes: true })
+            .filter((entry) => entry.isFile() && entry.name.endsWith('.go'))
+            .map((entry) => entry.name),
+    ];
+    const inputs = [
+        ...frontendInputs.map((input) => join(frontend, input)),
+        ...repositoryInputs.map((input) => join(repository, input)),
+    ];
+    return inputs.every((path) => {
         return !existsSync(path) || newestModification(path) <= built;
     });
 }
@@ -211,15 +239,15 @@ export default async function prepare(): Promise<() => Promise<void>> {
             seedExecutable: join(runDirectory, 'e2e-seed'),
         };
         const reuseDist = distIsCurrent(repository);
-        await run(process.env.WAILS_BIN ?? 'wails', ['generate', 'module'], repository, interruption.signal);
-        await run(
-            process.execPath,
-            ['scripts/generate-editor-themes.mjs'],
-            join(repository, 'frontend'),
-            interruption.signal,
-        );
         if (reuseDist) console.log('[e2e] reusing the frontend bundle left by the Build stage');
         else {
+            await run(process.env.WAILS_BIN ?? 'wails', ['generate', 'module'], repository, interruption.signal);
+            await run(
+                process.execPath,
+                ['scripts/generate-editor-themes.mjs'],
+                join(repository, 'frontend'),
+                interruption.signal,
+            );
             await run(
                 process.env.NPM_BIN ?? 'npm',
                 ['run', 'build'],
@@ -240,7 +268,7 @@ export default async function prepare(): Promise<() => Promise<void>> {
         }
         await run(
             process.env.GO_BIN ?? 'go',
-            ['build', '-buildvcs=false', '-gcflags', 'all=-N -l', '-tags', tags.join(','), '-o', paths.executable, '.'],
+            ['build', '-buildvcs=false', '-tags', tags.join(','), '-o', paths.executable, '.'],
             repository,
             interruption.signal,
             goEnvironment,

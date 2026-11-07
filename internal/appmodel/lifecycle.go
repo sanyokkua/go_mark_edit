@@ -16,6 +16,7 @@ type DocumentRecord struct {
 	canonicalPath           string
 	bufferRevision          uint64
 	committedRevision       uint64
+	reloadedRevision        uint64 // content revision produced by the latest reload from disk
 	publicationCommitID     uint64
 	writeQueue              *DocumentWriteCoordinator
 	autosave                *autosaveTimerEntry
@@ -33,12 +34,12 @@ type DocumentRecord struct {
 	baselineVersion         file.DiskVersion
 	baselineCharacteristics file.FileCharacteristics
 	baselineOrigin          SaveOrigin
-	failedWrite             bool
 	detached                bool
 	normalizationEnding     string
 	baselineRawHash         string
 	conflictBlocked         bool
 	writeInFlight           bool
+	admittedWrites          uint64
 	closing                 bool
 	hasSavedView            bool
 }
@@ -74,6 +75,7 @@ func (service *AppModelService) dispose(documentID string) {
 	document.canonicalPath = ""
 	document.bufferRevision = 0
 	document.committedRevision = 0
+	document.reloadedRevision = 0
 	document.publicationCommitID = 0
 	document.metadata = apperr.DocumentMetadata{}
 	document.content = ""
@@ -81,12 +83,12 @@ func (service *AppModelService) dispose(documentID string) {
 	document.baselineVersion = file.DiskVersion{}
 	document.baselineCharacteristics = file.FileCharacteristics{}
 	document.baselineOrigin = ""
-	document.failedWrite = false
 	document.detached = false
 	document.normalizationEnding = ""
 	document.baselineRawHash = ""
 	document.conflictBlocked = false
 	document.writeInFlight = false
+	document.admittedWrites = 0
 	document.closing = false
 	document.hasSavedView = false
 	delete(service.state.documents, documentID)
@@ -116,10 +118,16 @@ func (document *DocumentRecord) effectiveMetadata() apperr.DocumentMetadata {
 }
 
 func normalizationAuthorizationForLocked(document *DocumentRecord, token string) (*normalizationAuthorization, bool) {
-	if document == nil || document.normalization == nil || document.normalization.token != token {
+	if document == nil {
 		return nil, false
 	}
-	return document.normalization, true
+	if document.normalization != nil && document.normalization.token == token {
+		return document.normalization, true
+	}
+	if authorization := document.keepMine[token]; authorization != nil && authorization.normalization != nil && authorization.normalization.accepted {
+		return authorization.normalization, true
+	}
+	return nil, false
 }
 
 // waitForIdle is intentionally kept next to the lifecycle disposal contract:

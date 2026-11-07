@@ -96,6 +96,9 @@ receive commands through props and contexts.
 | `frontend/src/ui/widgets/dialogs/`                   | Settings, About, Shortcuts, Insert table, close, conflict and normalization dialogs.                                                              |
 | `frontend/src/ui/widgets/StartupFailure/`            | Per-step startup failure, Retry and Quit.                                                                                                         |
 
+Workspace tree items expose their unreadable, open-in-tab and unsaved states as an accessible
+description in addition to the visible warning and unsaved markers.
+
 ## Shared UI owners and consumer inventory
 
 The following inventory is part of the ownership contract. A change to one shared component must be
@@ -179,6 +182,7 @@ outlined add control have intentional fills.
 
 Pane owns the header, identity, body and accessory slots. Its consumers are the editor pane and preview
 pane; a paused or failed preview banner arrives through the explicit accessory slot.
+The optional pane ID lets a resize separator identify the pane it controls.
 Pane paints each document surface once. Preview content and the generated Monaco editor, gutter and
 minimap backgrounds remain transparent. Material panes have small local elevation; Minimal panes stay
 flat. Monaco widget backgrounds retain their own surfaces and its focus color follows the theme accent.
@@ -192,6 +196,8 @@ notification text.
 
 Sidebar and the editor/preview SplitDivider share `useHorizontalResize` for pointer capture,
 tracking, release and cleanup; each consumer owns its units, limits and keyboard behavior.
+Sidebar links its separator to its pane with a stable ID. SplitDivider accepts a controlled-pane ID,
+which EditorStage supplies for the editor pane.
 EditorStage owns the split layout and its temporary drag projection. The divider appears only
 with both panes side by side, exposes a localized separator with a 20–80 percent editor share,
 and supports 2-percentage-point arrow steps plus Home/End. Cancellation restores the starting
@@ -346,7 +352,9 @@ lazy run cannot reload the active editor.
 `CodeEditor` owns the Enter keybinding, a per-editor Monaco action gated on a writable, collapsed caret with no suggest widget or snippet; it applies the edit from the `enterEdit` prop (fed by `logic/format/listContinuation.ts`) as one undo step, or inserts a plain line. IME composition is never dispatched to it.
 
 `frontend/src/ui/components/CodeEditor.tsx` owns the visible Monaco working copy and publishes its scroll
-port for synchronized scrolling. Its handle applies LF-indexed tidy edits as one undo group, retains the
+port for synchronized scrolling. It retains a model and undo history for each open writable document.
+On activation the backend buffer remains authoritative: a cached model with different text is discarded.
+Reload replaces the reloaded document’s model, and closing a tab disposes its model; read-only models are not cached. Its handle applies LF-indexed tidy edits as one undo group, retains the
 caret's logical line, navigates and focuses the editor, and maps component-owned lint markers to Monaco's
 `gme-lint` marker owner. `frontend/src/logic/hooks/useDocumentCommands.ts` guards these operations by
 document id and activation token; Monaco stays inside the editor component and its lazy setup, which loads
@@ -388,7 +396,7 @@ from the same highlight palette across all six theme and mode combinations, so b
 remain consistent with the shared syntax colors. `CodeEditor.tsx` applies the root palette after
 Monaco mounts and forces a view repaint after palette changes, so unfocused lines do not retain
 token color ids from the previous palette. This does not change editor content, selection or undo. The preview
-pipeline uses `frontend/src/logic/markdown/highlight.ts` for its explicit fenced-language registry and
+pipeline uses `frontend/src/logic/markdown/highlight.ts` with a lowlight instance containing only its explicit fenced-language registry and
 200,000-character guard; `MarkdownView.tsx` loads the generated unscoped highlight rules, which follow
 the active tokens without re-parsing the document.
 
@@ -464,27 +472,13 @@ dev and setup. Hooks and CI call the scripts directly. A developer may use the f
   appears. Verification run artifacts live under `.local_tmp_files/runs/`, of which only the 10 newest folders are kept
   (each new run prunes older ones, and stale `e2e-run-*` and `verification-test-*` folders over 24 hours old); the explicit baseline
   record lives under `.local_tmp_files/baseline/` and is created or compared only by
-  `scripts/baseline`. The record is named after the checked-out branch (slashes become dashes), or after the short
+  `scripts/baseline`. The record stores the starting commit, a hash of the binary diff, and untracked
+  paths; the raw diff and NUL-delimited status are retained with the run artifacts. This fixes the
+  dirty-tree evidence to the repository state being measured. The record is named after the checked-out branch (slashes become dashes), or after the short
   commit on a detached HEAD. Required reports that are missing or malformed are UNAVAILABLE or UNRELIABLE,
   never zero; warning counts do not fail a stage.
-- CI (`.github/workflows/`): `push.yml` runs the stages as parallel `ubuntu-24.04` jobs so the wall time
-  is that of the slowest one: `static` (Lint, Format, Build), `tests` (Unit, Integration) and `e2e`, a
-  matrix run under `xvfb-run`: the parallel `chromium` project in four shards (`E2E_SHARD=<n>/4`) and a
-  `serial` job for the timing-bound and clipboard projects. `E2E_PROJECTS` and `E2E_SHARD` are read by
-  `frontend/playwright.config.ts`, which keeps a project dependency only when both projects are selected,
-  because Playwright runs a selected project's dependencies in full on every shard. They
-  share the `.github/actions/setup` composite action (Linux Wails toolchain plus `lsof`, `xvfb` and `xclip`,
-  Go, Node, tool and browser caches, `scripts/build setup`). The stages are independent because the Wails
-  bindings and generated themes are tracked. `cross-platform-go` keeps the Windows and macOS Go tests. Caches: Go modules and build cache
-  (`setup-go`), the Go tool binaries in `~/go/bin` (keyed by the pinned Wails, golangci-lint and shfmt
-  versions; `scripts/build setup` skips `go install` when the installed module version already matches),
-  Playwright browsers (keyed by the Playwright version in `package-lock.json`) and the ESLint cache
-  `.local_tmp_files/cache/eslint` (`--cache-strategy content`, restored by prefix). Each job appends a stage
-  timing table from `tools/verify/stage-timings.mjs` to `$GITHUB_STEP_SUMMARY`.
-  `release.yml` does not repeat verification: it first requires a successful `push.yml` run for
-  `GITHUB_SHA` (queried with `gh run list`) and fails otherwise, including for a commit whose push run was
-  skipped by `paths-ignore`; a manual dispatch with `full_verify` runs the complete `scripts/verify` on
-  macOS instead. Otherwise it runs only the macOS E2E subset, then builds and packages the application.
+- CI (`.github/workflows/`): `push.yml` invokes the reusable `verification.yml` for pull requests, master pushes and manual dispatch. Linux retains static, unit, integration and four parallel E2E shards plus the serial clipboard shard; focused Go checks run on macOS and Windows and a macOS E2E subset runs separately. The required aggregate fails on any failed, cancelled or skipped dependency. Only obsolete PR runs are cancelled.
+  `release.yml` validates a strict version and exact commit, and requires trusted successful master verification of that commit and workflow revision or invokes the same verification as a fallback. Failed or cancelled latest evidence fails closed. Five native builds follow authorization; a collector validates this attempt's complete inventory and checksums before tag-only publication. Manual dispatch uploads dry-run assets. Release jobs do not execute tests or smoke the distributables; GitHub-hosted and native desktop evidence must be recorded separately.
 - CI failure uploads allowlist stage JSON records, logs, stderr captures, normalized and raw reports,
   Jest/Playwright/Go test reports and E2E failure screenshots, error contexts and traces from
   `.local_tmp_files/runs/`; compiler, linter, Jest,
@@ -514,9 +508,9 @@ and runs in parallel (CI: three workers; local: at most four and the available C
 `@perf` (latency bounds, deadline-based rendering, large-document and cancellation timing) run in
 `chromium-serial` with one worker, after `chromium`, so concurrent work never inflates a measurement;
 a case that proves flaky under parallel load is moved there rather than loosened. The OS clipboard
-writer cases (`@native-clipboard`) run in `chromium-native`, also serial and after `chromium-serial`.
+writer cases (`@native-clipboard`) run in `chromium-native`, serial and after `chromium-serial`, when `E2E_NATIVE_CLIPBOARD=1` is set or the macOS subset is selected. Each tagged test restores the original clipboard text after the test, including on failure; non-text clipboard formats are not preserved.
 Setting `E2E_SUBSET=macos` replaces these with a macOS subset (`pdf-export`, `launch-target` and `menus`
-files, then the clipboard cases), which the release workflow runs on macOS. Playwright retries are zero.
+files, then the clipboard cases), which the shared verification workflow runs on macOS. Playwright retries are zero.
 CI allows 15 seconds for UI assertions rather than the local five seconds. Product performance bounds and
 explicit assertion timeouts remain unchanged. Automatic failure screenshots, error contexts and app output are retained, while traces
 require explicit `--trace` to avoid recording overhead in timing-sensitive tests.
@@ -575,8 +569,11 @@ metadata and identity from the same handle, opened without content access and sh
 and delete access. It follows symlinks and normalizes relative and long drive/UNC paths before
 opening the handle. Identity acquisition failures remain errors; only a missing candidate may use
 a path identity. Disk versions serialize the same filesystem identity so a replacement with matching
-size, timestamp and permissions remains detectable. Invalid UTF-8 or NUL-bearing input becomes clearly read-only and is never converted.
-UTF-8 BOM, uniform LF/CRLF and the original bytes remain stable. Mixed endings are editable but require
+size, timestamp and permissions remains detectable. Invalid UTF-8, NUL-bearing input or a lone carriage
+return opens read-only, as does a file over the writable size limit. These classifications take precedence
+over permissions. Otherwise, a file without the owner-write bit opens with the `write-protected-read-only`
+capability. Reload reclassifies the current disk content and permissions. UTF-8 BOM, uniform LF/CRLF and
+the original bytes remain stable. Mixed endings are editable but require
 the one-time, revision-bound normalization authorization before any write.
 
 The file owner also decodes local Markdown link targets and exposes the same filesystem identity for
@@ -609,8 +606,19 @@ its results explicitly distinguish available, unavailable and document-mismatch 
 (including the empty-string wire representation). An activation generation is captured before each
 activation or reload command. The guard waits for the matching document and projection revision,
 rejects superseded acknowledgements and installs each accepted generation once. Only an accepted
-reload advances the editor epoch; an ordinary Save retains the Monaco model, undo history, selection
-and focus. No separate reload context is needed.
+reload advances the editor epoch, and the editor session it ends drops its unsent buffer update; an
+ordinary Save retains the Monaco model, undo history, selection and focus. No separate reload context is needed.
+An update already sent when the reload lands is refused by the backend instead: `UpdateBuffer(documentId,
+content, baseRevision)` carries the installed `ActiveBuffer.documentRevision` of its editor session, the document
+record keeps the content revision its latest reload produced, and an update based on an earlier revision is
+answered with `BufferUpdateResult{status: "superseded", documentRevision}`, naming the current content revision. It
+changes neither buffer nor revision, schedules no autosave and is not an error. The adapter does not report it as
+accepted: it keeps the snapshot unacknowledged (listed by `getPendingBufferDocumentIds`), refuses a `flushBuffer` of
+that document with a `BufferSyncError`, and tells `subscribeSupersededBuffers` listeners. `App` shows the warning
+"Edit not applied"; a still-live editor session (`useSyncedBuffer`) keeps its text, adopts the named revision as its
+base and resends that text, and the first accepted newer generation clears the snapshot. A session ended by the
+reload drops it through `cancelPendingSession`. `ActiveBuffer.documentRevision` is required, so every session has an
+explicit base. Backend callers that already hold the current buffer use the unguarded service `UpdateBuffer`.
 
 ### Editing, saves and conflicts
 
@@ -619,14 +627,68 @@ format or assistant proposal becomes one editor edit and then follows the ordina
 autosave path. Autosave is allowed only for an existing saved file; a never-saved buffer is not silently
 written.
 
-`internal/file/atomic_replace.go` owns atomic replacement. Before the replacement commits, failure
-leaves disk and the old baseline unchanged. After it commits, the model records the exact written
+`internal/file/atomic_replace.go` owns atomic replacement. It checks the expected disk metadata and
+raw-byte fingerprint immediately before replacement, and refuses an expected existing version that comes
+without its fingerprint. A file that does not exist yet is created with a no-replace move (`renamex_np` with
+`RENAME_EXCL` on macOS, `renameat2` with `RENAME_NOREPLACE` on Linux, a move without `MOVEFILE_REPLACE_EXISTING` on
+Windows; `link(2)` where the filesystem lacks exclusive rename, and an existence check plus rename only where it also
+lacks hard links), so a file that another program creates after the disk check is reported as a conflict and never
+replaced. `internal/file/atomic_replace_create.go` owns that sequence. A permission refusal of the exclusive move is
+reported, not retried; once `link(2)` succeeds the write counts as committed even if the temporary name cannot be
+removed. The fingerprint check and rename are separate
+operations: the host platform's atomic replace prevents readers from observing a partially written
+file, but portable Go APIs do not provide a compare-and-swap rename conditioned on the old bytes. An
+external writer can still race in the narrow check-to-rename interval, so this is a stale-write guard
+with a documented limitation, not an atomic compare-and-swap guarantee. Before replacement commits,
+failure leaves disk and the old baseline unchanged. When the replacement of the document's own file
+refuses because that file changed after the save's disk check, the save reads it again: bytes identical
+to the write's expected bytes (the baseline, or the authorized version of a Keep mine write) are a
+timestamp-only touch and are written once more against the refreshed disk version; any other bytes get
+the ordinary inspection, which returns the comparison and blocks the tab. After it commits, the model records the exact written
 baseline even if patch delivery fails; the adapter rehydrates before accepting further mutations and
 does not repeat the write. `useDocumentWrites` repairs the Redux projection from the recovered
-snapshot; it does not reinstall editor content or advance activation generations.
+snapshot; it does not reinstall editor content or advance activation generations. A committed `WriteResult`
+may include a typed `warning` value (`durability`, `recent-items` or `view-state`) alongside its classified
+error. When several accompanying operations fail, the selected warning follows that order of precedence;
+the error retains its existing identity and deduplication key. A durability warning may also carry a typed
+`warningReason` identifying metadata inspection, readback, content mismatch or directory sync; unknown reasons
+retain the generic warning. Explicit saves show the warning in place of the success toast. Autosave and close-plan
+warnings carry the same reason through the asynchronous event. Other classified asynchronous errors retain their
+safe explanation and executable actions; legacy errors use the generic notification. Ordinary saves present the
+warning while the window remains open. A committed-save warning does not delay a successful Quit: shutdown continues immediately after the save
+commits, without waiting for the warning to be acknowledged or displayed. The application does not guarantee warning
+visibility before process exit.
+
+`internal/file/document_reader.go` captures a SHA-256 `rawHash` of the physical bytes as part of a
+bounded stable read, with disk-version checks before and after reading. The hash is carried in the
+conflict's detected disk-version wire value and checked again when authorizing a decision. It detects
+different bytes even when size, modification time, permissions and file identity are preserved. Each
+document's disk inspections are serialized with its writes, from replacement until the written baseline
+is adopted, so a check that races the application's own save never compares the new bytes with the old
+baseline. A
+timestamp-only touch with identical bytes is ignored; permission, encoding, BOM and line-ending changes
+remain part of the disk-version and file-characteristics comparison.
 
 External changes are classified before saving. Editable conflicts offer Reload or one exact-version
-Keep mine authorization. Read-only conflicts offer Reload only. Close plans gather all required choices
+Keep mine authorization. That authorization is the write's expected disk state; the document adopts the
+external version as its baseline, and the authorization is spent, only when the write commits. A
+cancelled, refused or failed write leaves the conflict and the authorization in place, so autosave and
+saves without the token still stop at the comparison. Foreground conflicts retain document identity, are ordered by open tabs, and
+are presented after close-owned and write-owned conflicts. Deferred items are rechecked before display;
+closed documents are dropped. When closing the selected tab activates another tab and its activation
+check finds a conflict, that conflict is handed to the foreground conflict owner. Reloading a background
+document updates its backend content without installing that text into the active editor or invalidating
+an unrelated activation generation. A conflict is read-only if either the open document or the current disk version
+is read-only; it offers Reload and Cancel, and cannot authorize Keep mine. Save and autosave refuse a
+write-protected document, but Save As may copy it to a different file. Save As also permits unsaved edits
+to be copied when a writable document's source has become write-protected: it checks the current disk
+state even after Cancel dismisses the conflict. Source identity checks reject the source itself, including
+symlinks and hardlinks, and recheck the target after the native dialogs; a target that is the document's own
+file, under its path or a symlink or hardlink alias, is compared with the loaded document instead, so
+an external edit made while the dialogs were open yields the comparison; the atomic write rechecks its disk
+version and raw-byte fingerprint before replacement, subject to the check-to-rename limitation above.
+Mixed-ending normalization and BOM preservation still
+apply to the copy. Close plans gather all required choices
 and normalization authorizations before writing, save in authoritative tab order, stop at the first
 failure, and close tabs only after all requested saves succeed.
 
@@ -729,6 +791,13 @@ Workspace operations are additive only: New file, New folder, Reveal in file man
 The application does not rename, move, delete or reorder workspace files because it has no watcher or
 undo journal to reconcile those destructive changes safely.
 
+## Window startup
+
+`internal/application/native_window.go` restores the saved native geometry before showing the
+window. Frontend readiness normally triggers the one-shot show; if readiness never arrives, a
+12-second watchdog shows the restored window so the startup failure screen remains visible. The
+watchdog does not mark the frontend ready and never shows a headless E2E window.
+
 ## Shutdown
 
 `internal/application/shutdown.go` owns the native close and quit protocol; `frontend/src/app/useShutdown.ts`
@@ -744,14 +813,26 @@ The sequence is normative:
    all / Discard all / Cancel decision; Cancel is a clean no-op. Before readiness, clean state can exit
    immediately, while dirty or pending writes enter the confirmation path.
 2. In-flight runs are cancelled and the shared gate is released.
-3. Started writes, the editor buffer, autosave and debounced window geometry are flushed; no new write
-   starts during draining.
+3. Started writes, the editor buffer and autosave are flushed; no new write starts during draining.
+   Debounced window geometry is flushed when possible; a failure is logged and dropped without blocking close.
 4. The SQLite database is closed.
 5. The logger is flushed and closed, then the process exits.
 
 A timeout never authorizes data loss. A late or stale answer is rejected by close identity, and a
 second native request while one is pending re-emits the same request rather than creating a second
-veto state. There is no session restore.
+veto state. Pending close state carries frontend or native ownership. If a ready frontend does not
+acknowledge the close, native confirmation protects edits that may exist only in the frontend.
+
+A root rendering failure retains unacknowledged adapter buffers while the recovery screen is open.
+Reload waits up to one second per attempt for pending text to reach the backend and reloads only after
+acknowledgment; failure or timeout leaves the text available for retry. `AcknowledgeRecoveryClose`
+reserves the current frontend-owned decision. `DiscardAndAuthorizeQuit` fences new document writes,
+cancels scheduled autosaves and waits for writes already admitted before exit. Native ownership
+prevents stale frontend close plans from writing or removing tabs. A completed ordinary quit plan retains its tabs;
+authorization atomically verifies its request, tab set, content revisions and document save state while transferring ownership and
+installing the discard fence. The prepared-quit fence refuses subsequent buffer, reload and tab mutations until a
+failed drain releases it. This keeps the tabs available if native confirmation takes over and is cancelled.
+Cancel releases the fence and resumes retained autosave intent. There is no session restore.
 
 ## Persistence
 
@@ -860,32 +941,37 @@ These decisions are carried forward from the accepted decision records and are r
 architecture. The assistant records are intentionally listed separately because that capability is not
 part of the current product.
 
-| Record   | Current decision                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
-| -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| ADR-0001 | Use stable Wails v2 with a CGO-free Go backend and pure-Go SQLite. Native webviews and file association remain the platform boundary; D19 covers the macOS declarations.                                                                                                                                                                                                                                                                                                                                                                |
-| ADR-0002 | Use Monaco for v1 source editing; keep CodeMirror 6 as a future contained alternative. Bundle editor workers locally.                                                                                                                                                                                                                                                                                                                                                                                                                   |
-| ADR-0004 | Keep documents file-first and use a small SQLite KV store for settings, recents, layout and view state. Launch clean with no session restore or swap files.                                                                                                                                                                                                                                                                                                                                                                             |
-| ADR-0005 | Use one token-driven layout with three built-in themes and light/dark modes; keep editor and preview appearance unified and do not support user-authored themes.                                                                                                                                                                                                                                                                                                                                                                        |
-| ADR-0006 | Allow multiple independent instances; share the small settings database with WAL and busy timeout instead of a single-instance lock.                                                                                                                                                                                                                                                                                                                                                                                                    |
-| ADR-0011 | The application is offline-first with no background network. Only an explicitly user-invoked request to the configured future provider may use a network; telemetry, automatic updates and unsolicited content fetches remain forbidden.                                                                                                                                                                                                                                                                                                |
-| ADR-0013 | Persist application layout by write-through, with last-writer-wins change semantics and a debounced window-size write flushed on close.                                                                                                                                                                                                                                                                                                                                                                                                 |
-| ADR-0014 | The Go backend owns live state; Redux is a projection and Monaco is only the visible document's working copy.                                                                                                                                                                                                                                                                                                                                                                                                                           |
-| ADR-0015 | Derive releases from tags or an explicit version input, keep unversioned builds at `dev`, and derive platform icons from one source asset.                                                                                                                                                                                                                                                                                                                                                                                              |
-| ADR-0017 | Coordinate backend canonical snapshots with a document-identity-bound frontend command session; neither seam impersonates the other.                                                                                                                                                                                                                                                                                                                                                                                                    |
-| ADR-0021 | Active-buffer acknowledgements carry document identity and accepted revision; ordinary patches stay content-free, including the true zero-document state.                                                                                                                                                                                                                                                                                                                                                                               |
-| ADR-0022 | Commit successful writes and resynchronize a failed projection; never pretend an irreversible replacement failed or repeat it.                                                                                                                                                                                                                                                                                                                                                                                                          |
-| ADR-0024 | Apply one complete document lifecycle policy for open modes, suffixes, tolerant read-only input, line endings, normalization authorization, close plans and external conflicts.                                                                                                                                                                                                                                                                                                                                                         |
-| ADR-0028 | The earlier custom title-bar/native-menu decision is superseded. The current product keeps the native operating-system frame introduced by feature 001.                                                                                                                                                                                                                                                                                                                                                                                 |
-| ADR-0029 | Generate Monaco and highlight colours at build time from one pair of syntax-token families; runtime theme changes only swap generated names.                                                                                                                                                                                                                                                                                                                                                                                            |
-| ADR-0030 | Derive raw-HTML sanitization from the selected Markdown standard; keep the explicit bounded allowlist, strict Mermaid security and KaTeX trust disabled. Superseded by ADR-0036.                                                                                                                                                                                                                                                                                                                                                        |
-| ADR-0031 | Format and Compact use remark-stringify with the maximal parse plugin set; Prettier remains a repository development tool, not a runtime formatter. Superseded by ADR-0038; only the rule that Prettier is not a runtime formatter survives, and ADR-0038 restates it.                                                                                                                                                                                                                                                                  |
-| ADR-0032 | Use one cancellable run registry and one deterministic shutdown order; a run has one terminal outcome and background panics are contained and logged. Refined by ADR-0039 for Format, Compact and Lint: the frontend operation slot is used and the run registry described here is not built; the single terminal outcome per run and contained background panics still apply.                                                                                                                                                          |
-| ADR-0033 | Workspace file operations are additive only: create, reveal and copy path are allowed; rename, move, delete and tree reorder are refused.                                                                                                                                                                                                                                                                                                                                                                                               |
-| ADR-0035 | `internal/workspace/` builds a bounded tree while `internal/appmodel/` owns each window's workspace session. New windows are independent processes; an explicit startup folder argument opens a workspace without session restore (D18 refines this: the argument is a file or a folder, taken by the frontend after startup). Trees change on open, create or manual refresh, with no watcher. Workspace operations remain additive only as in ADR-0033. The hidden-folders setting is app-wide.                                       |
-| ADR-0036 | One raw-HTML policy applies at every Markdown standard: a bounded allowlist of raw HTML elements and Markdown-equivalent elements, removal together with their contents of executing, embedding, foreign-content and form elements, unwrapping of every other element, and no author-supplied style attribute, event handler, `javascript:` or `data:` address. Mermaid security stays strict and KaTeX trust stays off. Supersedes ADR-0030.                                                                                           |
-| ADR-0037 | Preview links open supported Markdown documents anywhere on the local disk through the one shared link handler and the normal open flow. Network and device paths are refused on every platform. An existing local file with an unsupported suffix is refused with an offer to reveal it in the file manager and is never launched. The backend resolver decides containment, symbolic links and folder-tree rows. Replaces the document-folder link limit of the earlier link rule; D11's single classifier and normal open flow stay. |
-| ADR-0038 | Format and Compact compute minimal source edits over the preview's parser with the Full syntax set, whatever standard is selected, apply them as one undo step and are refused when the result would render differently at the Full standard; Prettier stays a repository tool, not a runtime formatter. Lint shares the same parser and predicates. Supersedes ADR-0031.                                                                                                                                                               |
-| ADR-0039 | Format, Compact and Lint share one per-window frontend operation slot: a single run at a time with progress and Cancel for long runs, held from its start until exactly one terminal outcome. The backend run registry of ADR-0032 stays unbuilt. Refines ADR-0032.                                                                                                                                                                                                                                                                     |
+| Record   | Current decision                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| ADR-0001 | Use stable Wails v2 with a CGO-free Go backend and pure-Go SQLite. Native webviews and file association remain the platform boundary; D19 covers the macOS declarations.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| ADR-0002 | Use Monaco for v1 source editing; keep CodeMirror 6 as a future contained alternative. Bundle editor workers locally.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| ADR-0004 | Keep documents file-first and use a small SQLite KV store for settings, recents, layout and view state. Launch clean with no session restore or swap files.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| ADR-0005 | Use one token-driven layout with three built-in themes and light/dark modes; keep editor and preview appearance unified and do not support user-authored themes.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| ADR-0006 | Allow multiple independent instances; share the small settings database with WAL and busy timeout instead of a single-instance lock.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| ADR-0011 | The application is offline-first with no background network. Only an explicitly user-invoked request to the configured future provider may use a network; telemetry, automatic updates and unsolicited content fetches remain forbidden.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| ADR-0013 | Persist application layout by write-through, with last-writer-wins change semantics and a debounced window-size write flushed on close when possible.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| ADR-0014 | The Go backend owns live state; Redux is a projection and Monaco is the visible document's working copy. ADR-0040 refines the lifetime of hidden Monaco models.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| ADR-0015 | Derive releases from tags or an explicit version input, keep unversioned builds at `dev`, and derive platform icons from one source asset.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| ADR-0017 | Coordinate backend canonical snapshots with a document-identity-bound frontend command session; neither seam impersonates the other. ADR-0042 refines the editor update contract.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| ADR-0021 | Active-buffer acknowledgements carry document identity and accepted revision; ordinary patches stay content-free, including the true zero-document state.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| ADR-0022 | Commit successful writes and resynchronize a failed projection; never pretend an irreversible replacement failed or repeat it.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| ADR-0024 | Apply one complete document lifecycle policy for open modes, suffixes, tolerant read-only input, line endings, normalization authorization, close plans and external conflicts.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| ADR-0028 | The earlier custom title-bar/native-menu decision is superseded. The current product keeps the native operating-system frame introduced by feature 001.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| ADR-0029 | Generate Monaco and highlight colours at build time from one pair of syntax-token families; runtime theme changes only swap generated names.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| ADR-0030 | Derive raw-HTML sanitization from the selected Markdown standard; keep the explicit bounded allowlist, strict Mermaid security and KaTeX trust disabled. Superseded by ADR-0036.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| ADR-0031 | Format and Compact use remark-stringify with the maximal parse plugin set; Prettier remains a repository development tool, not a runtime formatter. Superseded by ADR-0038; only the rule that Prettier is not a runtime formatter survives, and ADR-0038 restates it.                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| ADR-0032 | Use one cancellable run registry and one deterministic shutdown order; a run has one terminal outcome and background panics are contained and logged. Refined by ADR-0039 for Format, Compact and Lint: the frontend operation slot is used and the run registry described here is not built; the single terminal outcome per run and contained background panics still apply. ADR-0043 refines the recovery and native-confirmation paths of the shutdown order.                                                                                                                                                                                                                                                                    |
+| ADR-0033 | Workspace file operations are additive only: create, reveal and copy path are allowed; rename, move, delete and tree reorder are refused.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| ADR-0035 | `internal/workspace/` builds a bounded tree while `internal/appmodel/` owns each window's workspace session. New windows are independent processes; an explicit startup folder argument opens a workspace without session restore (D18 refines this: the argument is a file or a folder, taken by the frontend after startup). Trees change on open, create or manual refresh, with no watcher. Workspace operations remain additive only as in ADR-0033. The hidden-folders setting is app-wide.                                                                                                                                                                                                                                    |
+| ADR-0036 | One raw-HTML policy applies at every Markdown standard: a bounded allowlist of raw HTML elements and Markdown-equivalent elements, removal together with their contents of executing, embedding, foreign-content and form elements, unwrapping of every other element, and no author-supplied style attribute, event handler, `javascript:` or `data:` address. Mermaid security stays strict and KaTeX trust stays off. Supersedes ADR-0030.                                                                                                                                                                                                                                                                                        |
+| ADR-0037 | Preview links open supported Markdown documents anywhere on the local disk through the one shared link handler and the normal open flow. Network and device paths are refused on every platform. An existing local file with an unsupported suffix is refused with an offer to reveal it in the file manager and is never launched. The backend resolver decides containment, symbolic links and folder-tree rows. Replaces the document-folder link limit of the earlier link rule; D11's single classifier and normal open flow stay.                                                                                                                                                                                              |
+| ADR-0038 | Format and Compact compute minimal source edits over the preview's parser with the Full syntax set, whatever standard is selected, apply them as one undo step and are refused when the result would render differently at the Full standard; Prettier stays a repository tool, not a runtime formatter. Lint shares the same parser and predicates. Supersedes ADR-0031.                                                                                                                                                                                                                                                                                                                                                            |
+| ADR-0039 | Format, Compact and Lint share one per-window frontend operation slot: a single run at a time with progress and Cancel for long runs, held from its start until exactly one terminal outcome. The backend run registry of ADR-0032 stays unbuilt. Refines ADR-0032.                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| ADR-0040 | Keep one Monaco model per open writable document so undo survives tab switches. A hidden model keeps its text and undo stack, but its text is never trusted: activation reuses it only while it equals the backend buffer and otherwise discards and recreates it, so only the undo history of an unchanged text survives. Dispose a model when its tab closes or a Reload advances the document's epoch. Read-only models are not cached. Refines ADR-0014.                                                                                                                                                                                                                                                                         |
+| ADR-0041 | Headless E2E runs keep the native window hidden and replace file-manager reveal and clipboard ports with test-only recorders. Each call appends a JSON string followed by a newline to `e2e-reveal.jsonl` or `e2e-clipboard.jsonl` in the isolated application profile; ordinary desktop runs use native ports.                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| ADR-0042 | Editor buffer updates carry the document revision their editor session was installed from. The backend records the revision each reload from disk produces and answers an update based on an earlier revision with a `superseded` `BufferUpdateResult` instead of adopting it, so an edit already in flight when a reload lands cannot undo the reload. A superseded update is not an error and the adapter settles it silently; backend callers that already hold the current buffer use the unguarded service method. Refines ADR-0017. Its silent settling is superseded by ADR-0044.                                                                                                                                             |
+| ADR-0043 | A rendering failure outside the preview shows a recoverable root error screen above the session, bootstrap and shutdown hooks, which stay mounted. Reload interface reloads only after the backend acknowledged every open and unacknowledged editor buffer within one 1,000 ms attempt and is retryable; Quit from that screen asks before discarding possibly undelivered text and, once confirmed, authorizes exit through a reversible write-admission fence that starts no document write. Pending-close ownership (frontend or native) is serialized in the model so a stale close plan cannot remove tabs, and a ready interface that misses the ten-second close deadline always gets native confirmation. Refines ADR-0032. |
+| ADR-0044 | A superseded editor update is not settled silently. Its result names the current content revision; the adapter keeps the update unacknowledged, refuses a flush of that document and reports it, the application shows the warning "Edit not applied", and a still-live editor session resends its text on the named revision. `ActiveBuffer.documentRevision` is required, so no session falls back to base 0. Supersedes the silent settling in ADR-0042.                                                                                                                                                                                                                                                                          |
 
 Feature 007 extends the document-view contract with a backend-owned per-document split ratio.
 It uses the existing canonical-path file metadata record for durable preferences and the native
@@ -1020,7 +1106,7 @@ The owner decisions that shaped this refactor are recorded here so they are not 
   `Applications\<exe>` with `SupportedTypes`, and add "Open with GoMarkEdit" verbs on `Directory\shell` (`"%1"`) and
   `Directory\Background\shell` (`"%V"`), all under `SHCTX\Software\Classes`; the uninstaller deletes exactly those
   keys and values and both sections notify the shell with `SHChangeNotify`. Windows 11 shows the folder verbs under
-  "Show more options". `scripts/build` adds `-nsis` on Windows when `makensis` is on `PATH`. The packaging test scans
+  "Show more options". `scripts/build` adds `-nsis` on Windows when `makensis` is on `PATH`; release mode omits it and reports a missing WebView2 runtime without downloading it. The packaging test scans
   the NSI lines. Explorer behaviour is not verified at runtime.
   **Linux part:** `build/linux/` holds `gomarkedit.desktop` (`MimeType` text/markdown, text/x-markdown, text/plain,
   inode/directory; `Exec=… %f`), `gomarkedit-mime.xml` (Markdown globs) and the POSIX `install.sh [--uninstall]`, which
@@ -1088,6 +1174,8 @@ The owner decisions that shaped this refactor are recorded here so they are not 
   the dialog reads the store projection `ui.layout.showHiddenFolders`; the tree keeps reading the workspace snapshot,
   which the same patch updates. Rejected: moving the preference into `internal/settings` (two owners) and disabling the
   row while no folder is open.
+
+- **D24 — Verify before producing release assets:** the reusable verification workflow owns the required checks and the release gate accepts only exact-commit trusted evidence or runs that workflow again. Native build jobs produce executable-only assets, and a collector validates all five before publication. Windows release builds report missing WebView2 and require separate installation, preserving the offline network contract. Rejected: reusing an arbitrary earlier successful run, shipping installers, and testing the exact distributable after building it in CI. Hosted Windows and Linux native desktop behavior remains separately unverified until exercised.
 
 ## Planning decisions retained
 

@@ -7,11 +7,99 @@ import tseslint from 'typescript-eslint';
 
 const sourceFiles = ['frontend/src/**/*.{ts,tsx}'];
 const allFiles = ['frontend/**/*.{js,mjs,cjs,ts,tsx}', 'tools/**/*.{js,mjs,cjs,ts,tsx}'];
-const colourLiteral =
-    /#[0-9a-fA-F]{3,8}\b|\b(?:rgba?|hsla?|hwb|lab|lch|oklab|oklch|color)\s*\(|\b(?:white|black|red|green|blue|yellow|orange|purple|pink|brown|gray|grey|silver|navy|teal|maroon|olive|lime|aqua|cyan|magenta|fuchsia|gold|beige|ivory|coral|salmon|khaki|indigo|violet|crimson|tomato|orchid|plum|tan|wheat)\b/i;
+const namedColours = `
+    white black red green blue yellow orange purple pink brown gray grey silver navy teal maroon olive lime
+    aqua cyan magenta fuchsia gold beige ivory coral salmon khaki indigo violet crimson tomato orchid plum tan wheat
+`
+    .trim()
+    .split(/\s+/);
+const colourLiteral = new RegExp(
+    String.raw`#[0-9a-f]{3,8}\b|\b(?:rgba?|hsla?|hwb|lab|lch|oklab|oklch|color)\s*\(|\b(?:${namedColours.join('|')})\b`,
+    'i',
+);
 
 const userVisibleAttributes =
     'JSXAttribute[name.name=/^(aria-label|aria-description|placeholder|title|alt|aria-valuetext)$/] > Literal[value=/[A-Za-z]{2}/]';
+
+const sourceSyntaxRestrictions = [
+    'error',
+    {
+        selector: "CallExpression[callee.name='createPortal']",
+        message: 'Only Popup may own a portal.',
+    },
+    {
+        selector:
+            "JSXOpeningElement:not([name.name='Popup']) > JSXAttribute[name.name='role'] > Literal[value=/^(menu|menuitem)$/]",
+        message: 'Only Popup may own menu roles.',
+    },
+    {
+        selector:
+            "CallExpression[callee.object.name='document'][callee.property.name='addEventListener'] Literal[value=/^(keydown|pointerdown|mousedown)$/]",
+        message: 'Only Popup may own global popup-dismiss listeners.',
+    },
+    {
+        selector:
+            "CallExpression[callee.object.object.name='globalThis'][callee.object.property.name='document'][callee.property.name='addEventListener'] Literal[value=/^(keydown|pointerdown|mousedown)$/]",
+        message: 'Only Popup may own global popup-dismiss listeners.',
+    },
+    {
+        selector: String.raw`CallExpression[callee.property.name='querySelector'] > Literal[value=/\.application-frame/]`,
+        message: 'Only Popup may resolve the application frame.',
+    },
+    {
+        selector: "JSXAttribute[name.name='role'] > Literal[value='dialog']",
+        message: 'Only ModalShell may own dialog roles.',
+    },
+    {
+        selector: "JSXAttribute[name.name='aria-modal']",
+        message: 'Only ModalShell may own modal semantics.',
+    },
+    {
+        selector: 'Literal[value=/focus-trap|focusTrap|focusableSelector|tabindex/i]',
+        message: 'Only ModalShell may own focus-trap selectors.',
+    },
+    {
+        selector: "JSXAttribute[name.name='role'] > Literal[value=/^(tab|tablist)$/]",
+        message: 'Only TabBar may own tab roles.',
+    },
+    {
+        selector: "JSXElement[openingElement.name.name='button']",
+        message: 'Use the shared Button, ToolButton or MenuItem primitive.',
+    },
+    {
+        selector: "JSXAttribute[name.name='role'] > Literal[value='radiogroup']",
+        message: 'Only Segmented may own the radiogroup role.',
+    },
+    {
+        selector: "JSXElement[openingElement.name.name='svg']",
+        message: 'Use the shared Icon primitive for inline SVG.',
+    },
+    {
+        selector: 'JSXText[value=/[A-Za-z]{2}/]',
+        message: 'User-visible text must come from t().',
+    },
+    {
+        selector: 'JSXElement > JSXExpressionContainer > Literal[value=/[A-Za-z]{2}/]',
+        message: 'User-visible text must come from t().',
+    },
+    {
+        selector: userVisibleAttributes,
+        message: 'User-visible attributes must come from t().',
+    },
+    {
+        selector:
+            'JSXAttribute[name.name=/^(aria-label|aria-description|placeholder|title|alt|aria-valuetext)$/] > JSXExpressionContainer > Literal[value=/[A-Za-z]{2}/]',
+        message: 'User-visible attributes must come from t().',
+    },
+    {
+        selector: 'JSXElement > JSXExpressionContainer > TemplateLiteral[quasis.0.value.raw=/[A-Za-z]{2}/]',
+        message: 'User-visible text must come from t().',
+    },
+    {
+        selector: `JSXAttribute[name.name='style'] Literal[value=${colourLiteral}]`,
+        message: 'Inline style colours must use a token class or CSS variable.',
+    },
+];
 
 export default tseslint.config(
     {
@@ -150,84 +238,33 @@ export default tseslint.config(
     {
         files: sourceFiles,
         rules: {
+            'no-restricted-syntax': sourceSyntaxRestrictions,
+        },
+    },
+    {
+        files: [
+            'frontend/src/ui/widgets/WorkspaceLayout.tsx',
+            'frontend/src/app/App.tsx',
+            'frontend/src/logic/actions/shellActions.ts',
+        ],
+        rules: {
             'no-restricted-syntax': [
-                'error',
+                ...sourceSyntaxRestrictions,
                 {
-                    selector: "CallExpression[callee.name='createPortal']",
-                    message: 'Only Popup may own a portal.',
+                    selector: 'Identifier[name=/^(fetch|XMLHttpRequest|WebSocket|EventSource|sendBeacon)$/]',
+                    message: 'Shell owners must not initiate network requests.',
                 },
                 {
-                    selector:
-                        "JSXOpeningElement:not([name.name='Popup']) > JSXAttribute[name.name='role'] > Literal[value=/^(menu|menuitem)$/]",
-                    message: 'Only Popup may own menu roles.',
+                    selector: 'Literal[value=/^(fetch|XMLHttpRequest|WebSocket|EventSource|sendBeacon)$/]',
+                    message: 'Shell owners must not initiate network requests.',
                 },
                 {
-                    selector:
-                        "CallExpression[callee.object.name='document'][callee.property.name='addEventListener'] Literal[value=/^(keydown|pointerdown|mousedown)$/]",
-                    message: 'Only Popup may own global popup-dismiss listeners.',
+                    selector: 'Literal[value=/https?:/]',
+                    message: 'Shell owners must not contain remote URLs.',
                 },
                 {
-                    selector:
-                        "CallExpression[callee.object.object.name='globalThis'][callee.object.property.name='document'][callee.property.name='addEventListener'] Literal[value=/^(keydown|pointerdown|mousedown)$/]",
-                    message: 'Only Popup may own global popup-dismiss listeners.',
-                },
-                {
-                    selector:
-                        "CallExpression[callee.property.name='querySelector'] > Literal[value=/\\.application-frame/]",
-                    message: 'Only Popup may resolve the application frame.',
-                },
-                {
-                    selector: "JSXAttribute[name.name='role'] > Literal[value='dialog']",
-                    message: 'Only ModalShell may own dialog roles.',
-                },
-                {
-                    selector: "JSXAttribute[name.name='aria-modal']",
-                    message: 'Only ModalShell may own modal semantics.',
-                },
-                {
-                    selector: 'Literal[value=/focus-trap|focusTrap|focusableSelector|tabindex/i]',
-                    message: 'Only ModalShell may own focus-trap selectors.',
-                },
-                {
-                    selector: "JSXAttribute[name.name='role'] > Literal[value=/^(tab|tablist)$/]",
-                    message: 'Only TabBar may own tab roles.',
-                },
-                {
-                    selector: "JSXElement[openingElement.name.name='button']",
-                    message: 'Use the shared Button, ToolButton or MenuItem primitive.',
-                },
-                {
-                    selector: "JSXAttribute[name.name='role'] > Literal[value='radiogroup']",
-                    message: 'Only Segmented may own the radiogroup role.',
-                },
-                {
-                    selector: "JSXElement[openingElement.name.name='svg']",
-                    message: 'Use the shared Icon primitive for inline SVG.',
-                },
-                {
-                    selector: 'JSXText[value=/[A-Za-z]{2}/]',
-                    message: 'User-visible text must come from t().',
-                },
-                {
-                    selector: 'JSXElement > JSXExpressionContainer > Literal[value=/[A-Za-z]{2}/]',
-                    message: 'User-visible text must come from t().',
-                },
-                {
-                    selector: userVisibleAttributes,
-                    message: 'User-visible attributes must come from t().',
-                },
-                {
-                    selector:
-                        'JSXAttribute[name.name=/^(aria-label|aria-description|placeholder|title|alt|aria-valuetext)$/] > JSXExpressionContainer > Literal[value=/[A-Za-z]{2}/]',
-                    message: 'User-visible attributes must come from t().',
-                },
-                {
-                    selector: 'JSXElement > JSXExpressionContainer > TemplateLiteral[quasis.0.value.raw=/[A-Za-z]{2}/]',
-                    message: 'User-visible text must come from t().',
-                },
-                {
-                    selector: `JSXAttribute[name.name='style'] Literal[value=${colourLiteral}]`,
-                    message: 'Inline style colours must use a token class or CSS variable.',
+                    selector: 'TemplateElement[value.raw=/https?:/]',
+                    message: 'Shell owners must not contain remote URLs.',
                 },
             ],
         },

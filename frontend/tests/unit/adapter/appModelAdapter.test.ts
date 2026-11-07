@@ -9,6 +9,7 @@ import type {
     WorkspaceResult,
 } from '../../../src/logic/store/appModelTypes';
 import type { WireError } from '../../../src/logic/utils/parseError';
+import { isBufferSyncError } from '../../../src/logic/utils/bufferSyncError';
 import {
     VIEW_SYNC_MS,
     createAppModelAdapter,
@@ -28,7 +29,7 @@ const state: AppModelState = {
         activeDocumentId: '',
         ui: {},
     },
-    activeBuffer: { documentId: '', content: '' },
+    activeBuffer: { documentId: '', content: '', documentRevision: 0 },
 };
 
 function viewAt(line: number, previewVisible = false): DocViewInput {
@@ -106,10 +107,83 @@ it('exposes guarded refresh and clear recent commands', async () => {
     expect(clearRecentItems).toHaveBeenCalledTimes(1);
 });
 
+it('preserves optional tab and path command forwarding, arity, and order', async () => {
+    const commands = {
+        revealWorkspacePath: jest.fn((_path: string) => {
+            void _path;
+            return Promise.resolve({});
+        }),
+        copyWorkspacePath: jest.fn((_path: string) => {
+            void _path;
+            return Promise.resolve({});
+        }),
+        openPreviewLink: jest.fn((_id: string, _href: string) => {
+            void _id;
+            void _href;
+            return Promise.resolve({});
+        }),
+        activateDocument: jest.fn((_id: string, _revision: number) => {
+            void _id;
+            void _revision;
+            return Promise.resolve({});
+        }),
+        reorderDocument: jest.fn((_id: string, _index: number, _revision: number) => {
+            void _id;
+            void _index;
+            void _revision;
+            return Promise.resolve({});
+        }),
+        closeDocument: jest.fn((_id: string, _revision: number) => {
+            void _id;
+            void _revision;
+            return Promise.resolve({});
+        }),
+        copyPath: jest.fn((_id: string) => {
+            void _id;
+            return Promise.resolve({});
+        }),
+        revealInFileManager: jest.fn((_id: string) => {
+            void _id;
+            return Promise.resolve({});
+        }),
+    };
+    const base = {
+        getState: async () => ({ data: state }),
+        updateBuffer: async () => ({}),
+        setDocView: async () => ({}),
+        setUILayout: async () => ({}),
+    };
+    const runtime = { eventsOn: (): (() => void) => (): void => undefined };
+    const empty = createAppModelAdapter(base, runtime);
+    const adapter = createAppModelAdapter({ ...base, ...commands } as unknown as AppModelBindings, runtime);
+    const cases: Array<[keyof typeof commands, unknown[]]> = [
+        ['revealWorkspacePath', ['/workspace/file']],
+        ['copyWorkspacePath', ['/workspace/file']],
+        ['openPreviewLink', ['doc', './file.md']],
+        ['activateDocument', ['doc', 2]],
+        ['reorderDocument', ['doc', 1, 2]],
+        ['closeDocument', ['doc', 2]],
+        ['copyPath', ['doc']],
+        ['revealInFileManager', ['doc']],
+    ];
+    expect(Object.keys(adapter).filter((key) => Object.hasOwn(commands, key))).toEqual(cases.map(([key]) => key));
+    for (const [key, args] of cases) {
+        expect(empty[key]).toBeUndefined();
+        const command = adapter[key];
+        expect(command).toBeDefined();
+        expect(command?.length).toBe(args.length);
+        await expect(Reflect.apply(command!, undefined, args)).resolves.toEqual({});
+        expect(commands[key]).toHaveBeenCalledWith(...args);
+        await expect(Reflect.apply(command!, undefined, [...args, 'extra'])).resolves.toEqual({});
+        expect(commands[key]).toHaveBeenCalledTimes(2);
+        expect(commands[key]).toHaveBeenLastCalledWith(...args);
+    }
+});
+
 it('exposes guarded New/Open commands without converting classified outcomes', async () => {
     const newDocument = jest.fn(async (expectedTabSetRevision: number) => {
         void expectedTabSetRevision;
-        return { data: { documentId: 'new-doc', content: '' } };
+        return { data: { documentId: 'new-doc', content: '', documentRevision: 0 } };
     });
     const openDocument = jest.fn(async (expectedTabSetRevision: number) => {
         void expectedTabSetRevision;
@@ -120,7 +194,8 @@ it('exposes guarded New/Open commands without converting classified outcomes', a
             getState: async (): Promise<{ data: AppModelState }> => ({ data: state }),
             newDocument,
             openDocument,
-            updateBuffer: async (_documentId: string, _content: string): Promise<VoidResult> => {
+            updateBuffer: async (_documentId: string, _content: string, baseRevision: number): Promise<VoidResult> => {
+                void baseRevision;
                 void _documentId;
                 void _content;
                 return {};
@@ -139,7 +214,7 @@ it('exposes guarded New/Open commands without converting classified outcomes', a
     );
 
     await expect(adapter.newDocument?.(4)).resolves.toEqual({
-        data: { documentId: 'new-doc', content: '' },
+        data: { documentId: 'new-doc', content: '', documentRevision: 0 },
     });
     await expect(adapter.openDocument?.(4)).resolves.toEqual({
         status: 'cancelled',
@@ -150,11 +225,14 @@ it('exposes guarded New/Open commands without converting classified outcomes', a
 
 it('flushes the latest buffer and view queues as one ordered lifecycle drain', async () => {
     const calls: string[] = [];
-    const updateBuffer = jest.fn(async (documentId: string, content: string): Promise<VoidResult> => {
-        void documentId;
-        calls.push(`buffer:${content}`);
-        return {};
-    });
+    const updateBuffer = jest.fn(
+        async (documentId: string, content: string, baseRevision: number): Promise<VoidResult> => {
+            void baseRevision;
+            void documentId;
+            calls.push(`buffer:${content}`);
+            return {};
+        },
+    );
     const setDocView = jest.fn(async (documentId: string, view: DocViewInput): Promise<VoidResult> => {
         void documentId;
         void view;
@@ -171,13 +249,130 @@ it('flushes the latest buffer and view queues as one ordered lifecycle drain', a
         { eventsOn: (): (() => void) => (): void => undefined },
     );
 
-    await adapter.updateBuffer('document-1', 'latest');
+    await adapter.updateBuffer('document-1', 'latest', 0);
     await adapter.updateDocView('document-1', viewAt(8));
     await adapter.flushActiveSession?.('document-1');
 
     expect(calls).toEqual(['buffer:latest', 'view']);
-    expect(updateBuffer).toHaveBeenCalledWith('document-1', 'latest');
+    expect(updateBuffer).toHaveBeenCalledWith('document-1', 'latest', 0);
     expect(setDocView).toHaveBeenCalledWith('document-1', viewAt(8));
+});
+
+function supersedingBindings(supersededContent: string, currentRevision: number) {
+    return jest.fn(
+        async (
+            documentId: string,
+            content: string,
+            baseRevision: number,
+        ): Promise<VoidResult & { status?: string; documentRevision?: number }> => {
+            void documentId;
+            return content === supersededContent && baseRevision < currentRevision
+                ? { status: 'superseded', documentRevision: currentRevision }
+                : { status: 'accepted' };
+        },
+    );
+}
+
+it('keeps a superseded update unacknowledged, reports it with the current revision and refuses the flush', async () => {
+    const updateBuffer = supersedingBindings('typed before reload', 9);
+    const adapter = createAppModelAdapter(
+        {
+            getState: async (): Promise<{ data: AppModelState }> => ({ data: state }),
+            updateBuffer,
+            setDocView: async (): Promise<VoidResult> => ({}),
+            setUILayout: async (): Promise<VoidResult> => ({}),
+        },
+        { eventsOn: (): (() => void) => (): void => undefined },
+    );
+    const accepted = jest.fn();
+    const superseded = jest.fn();
+    adapter.subscribeAcceptedBuffers(accepted);
+    adapter.subscribeSupersededBuffers(superseded);
+
+    await adapter.updateBuffer('document-1', 'typed before reload', 4);
+    const failure: unknown = await adapter.flushBuffer('document-1').catch((error: unknown) => error);
+
+    expect(isBufferSyncError(failure)).toBe(true);
+    expect(updateBuffer).toHaveBeenCalledWith('document-1', 'typed before reload', 4);
+    expect(accepted).not.toHaveBeenCalled();
+    expect(superseded).toHaveBeenCalledWith({
+        documentId: 'document-1',
+        content: 'typed before reload',
+        baseRevision: 4,
+        currentRevision: 9,
+    });
+    expect(adapter.getPendingBufferDocumentIds()).toEqual(['document-1']);
+});
+
+it('acknowledges the superseded text once it is resent on the current revision', async () => {
+    const updateBuffer = supersedingBindings('kept text', 9);
+    const adapter = createAppModelAdapter(
+        {
+            getState: async (): Promise<{ data: AppModelState }> => ({ data: state }),
+            updateBuffer,
+            setDocView: async (): Promise<VoidResult> => ({}),
+            setUILayout: async (): Promise<VoidResult> => ({}),
+        },
+        { eventsOn: (): (() => void) => (): void => undefined },
+    );
+    const accepted = jest.fn();
+    adapter.subscribeAcceptedBuffers(accepted);
+    adapter.subscribeSupersededBuffers((buffer): void => {
+        void adapter.updateBuffer(buffer.documentId, buffer.content, buffer.currentRevision);
+    });
+
+    await adapter.updateBuffer('document-1', 'kept text', 4);
+    await expect(adapter.flushBuffer('document-1')).resolves.toBeUndefined();
+
+    expect(updateBuffer).toHaveBeenLastCalledWith('document-1', 'kept text', 9);
+    expect(accepted).toHaveBeenCalledWith({ documentId: 'document-1', content: 'kept text', generation: 2 });
+    expect(adapter.getPendingBufferDocumentIds()).toEqual([]);
+});
+
+it('forgets a superseded update when its editor session ends', async () => {
+    const adapter = createAppModelAdapter(
+        {
+            getState: async (): Promise<{ data: AppModelState }> => ({ data: state }),
+            updateBuffer: supersedingBindings('typed before reload', 9),
+            setDocView: async (): Promise<VoidResult> => ({}),
+            setUILayout: async (): Promise<VoidResult> => ({}),
+        },
+        { eventsOn: (): (() => void) => (): void => undefined },
+    );
+
+    await adapter.updateBuffer('document-1', 'typed before reload', 4);
+    await adapter.flushBuffer('document-1').catch((): void => undefined);
+    adapter.cancelPendingSession?.('document-1');
+
+    expect(adapter.getPendingBufferDocumentIds()).toEqual([]);
+    await expect(adapter.flushBuffer('document-1')).resolves.toBeUndefined();
+});
+
+it('ignores a superseded response that arrives after its editor session ended', async () => {
+    let resolveUpdate: (result: VoidResult & { status?: string; documentRevision?: number }) => void = () => undefined;
+    const adapter = createAppModelAdapter(
+        {
+            getState: async (): Promise<{ data: AppModelState }> => ({ data: state }),
+            updateBuffer: (documentId: string, content: string, baseRevision: number) =>
+                new Promise((resolve): void => {
+                    void [documentId, content, baseRevision];
+                    resolveUpdate = resolve;
+                }),
+            setDocView: async (): Promise<VoidResult> => ({}),
+            setUILayout: async (): Promise<VoidResult> => ({}),
+        },
+        { eventsOn: (): (() => void) => (): void => undefined },
+    );
+
+    await adapter.updateBuffer('document-1', 'typed before reload', 4);
+    const firstFlush = adapter.flushBuffer('document-1').catch((): void => undefined);
+    await Promise.resolve();
+    adapter.cancelPendingSession?.('document-1');
+    resolveUpdate({ status: 'superseded', documentRevision: 9 });
+    await firstFlush;
+
+    await expect(adapter.flushBuffer('document-1')).resolves.toBeUndefined();
+    expect(adapter.getPendingBufferDocumentIds()).toEqual([]);
 });
 
 it('routes imperative flush through the registered activation session', async () => {
@@ -185,7 +380,8 @@ it('routes imperative flush through the registered activation session', async ()
     const adapter = createAppModelAdapter(
         {
             getState: async (): Promise<{ data: AppModelState }> => ({ data: state }),
-            updateBuffer: async (_documentId: string, _content: string): Promise<VoidResult> => {
+            updateBuffer: async (_documentId: string, _content: string, baseRevision: number): Promise<VoidResult> => {
+                void baseRevision;
                 void _documentId;
                 void _content;
                 return {};
@@ -216,7 +412,7 @@ it('routes imperative flush through the registered activation session', async ()
     );
 
     dispose?.();
-    await adapter.updateBuffer('document-1', 'fallback queue');
+    await adapter.updateBuffer('document-1', 'fallback queue', 0);
     await adapter.flushActiveSession?.('document-1');
 });
 
@@ -248,7 +444,7 @@ it('failed outgoing flush keeps the current session installed', async () => {
 });
 
 it('ignores a stale activation flush after a newer document owns the session', async () => {
-    const updateBuffer = jest.fn<Promise<VoidResult>, [string, string]>(async (): Promise<VoidResult> => ({}));
+    const updateBuffer = jest.fn<Promise<VoidResult>, [string, string, number]>(async (): Promise<VoidResult> => ({}));
     const adapter = createAppModelAdapter(
         {
             getState: async (): Promise<{ data: AppModelState }> => ({ data: state }),
@@ -264,7 +460,7 @@ it('ignores a stale activation flush after a newer document owns the session', a
         activationToken: oldActivation,
         flushActiveSession: async (): Promise<void> => undefined,
     });
-    await adapter.updateBuffer('document-1', 'stale content');
+    await adapter.updateBuffer('document-1', 'stale content', 0);
     adapter.registerActiveSession?.({
         documentId: 'document-2',
         activationToken: Symbol('new-activation'),
@@ -285,7 +481,8 @@ it('aborts the lifecycle drain before the view queue when content acceptance fai
     const adapter = createAppModelAdapter(
         {
             getState: async (): Promise<{ data: AppModelState }> => ({ data: state }),
-            updateBuffer: async (documentId: string, content: string): Promise<VoidResult> => {
+            updateBuffer: async (documentId: string, content: string, baseRevision: number): Promise<VoidResult> => {
+                void baseRevision;
                 void documentId;
                 void content;
                 return {
@@ -303,7 +500,7 @@ it('aborts the lifecycle drain before the view queue when content acceptance fai
         { eventsOn: (): (() => void) => (): void => undefined },
     );
 
-    await adapter.updateBuffer('document-1', 'latest');
+    await adapter.updateBuffer('document-1', 'latest', 0);
     await adapter.updateDocView('document-1', viewAt(9));
 
     await expect(adapter.flushActiveSession?.('document-1')).rejects.toMatchObject({
@@ -345,9 +542,29 @@ it('blocks later lifecycle work through bounded recovery and exposes saved-on-di
     const getState = jest.fn(async (): Promise<{ data: AppModelState }> => {
         throw new Error('projection unavailable');
     });
+    const newDocument = jest.fn((revision: number) => {
+        void revision;
+        return Promise.resolve({ data: { documentId: 'new-doc', content: '', documentRevision: 0 } });
+    });
+    const openDocument = jest.fn((revision: number) => {
+        void revision;
+        return Promise.resolve({ status: 'cancelled' as const });
+    });
+    const openWorkspace = jest.fn((path: string): Promise<WorkspaceResult> => {
+        void path;
+        return Promise.resolve({ status: 'unchanged' });
+    });
+    const copyPath = jest.fn((documentId: string) => {
+        void documentId;
+        return Promise.resolve({ status: 'copied' as const });
+    });
     const adapter = createAppModelAdapter(
         {
             getState,
+            newDocument,
+            openDocument,
+            openWorkspace,
+            copyPath,
             updateBuffer: async (): Promise<VoidResult> => ({}),
             setDocView: async (): Promise<VoidResult> => ({}),
             setUILayout: async (): Promise<VoidResult> => ({}),
@@ -365,6 +582,12 @@ it('blocks later lifecycle work through bounded recovery and exposes saved-on-di
         resyncRequired: true,
     });
     expect(getState).toHaveBeenCalledTimes(1);
+    await expect(adapter.newDocument!(1)).rejects.toThrow();
+    await expect(adapter.openWorkspace!('/tmp/project')).rejects.toThrow();
+    await expect(adapter.copyPath!('document-1')).rejects.toThrow();
+    expect(newDocument).not.toHaveBeenCalled();
+    expect(openWorkspace).not.toHaveBeenCalled();
+    expect(copyPath).not.toHaveBeenCalled();
     await jest.advanceTimersByTimeAsync(250);
     await jest.advanceTimersByTimeAsync(1000);
     await expect(recovery).resolves.toMatchObject({
@@ -373,7 +596,13 @@ it('blocks later lifecycle work through bounded recovery and exposes saved-on-di
         commandsBlocked: true,
     });
     expect(getState).toHaveBeenCalledTimes(3);
-    await expect(adapter.updateBuffer('document-1', 'blocked')).rejects.toThrow('editor-state recovery failed');
+    await expect(adapter.updateBuffer('document-1', 'blocked', 0)).rejects.toThrow('editor-state recovery failed');
+    await expect(adapter.newDocument!(1)).rejects.toThrow('editor-state recovery failed');
+    await expect(adapter.openWorkspace!('/tmp/project')).rejects.toThrow('editor-state recovery failed');
+    await expect(adapter.copyPath!('document-1')).rejects.toThrow('editor-state recovery failed');
+    expect(newDocument).not.toHaveBeenCalled();
+    expect(openWorkspace).not.toHaveBeenCalled();
+    expect(copyPath).not.toHaveBeenCalled();
 
     getState.mockResolvedValue({ data: state });
     await expect(
@@ -387,13 +616,14 @@ it('blocks later lifecycle work through bounded recovery and exposes saved-on-di
             resyncRequired: true,
         }),
     ).resolves.toMatchObject({ snapshot: { revision: 1 } });
-    await expect(adapter.updateBuffer('document-1', 'retry-unblocked')).resolves.toBeUndefined();
+    await expect(adapter.updateBuffer('document-1', 'retry-unblocked', 0)).resolves.toBeUndefined();
 });
 
 it('coalesces edits in the adapter-owned timer', async () => {
     jest.useFakeTimers();
-    const updateBuffer = jest.fn<Promise<VoidResult>, [string, string]>(
-        async (documentId: string, content: string): Promise<VoidResult> => {
+    const updateBuffer = jest.fn<Promise<VoidResult>, [string, string, number]>(
+        async (documentId: string, content: string, baseRevision: number): Promise<VoidResult> => {
+            void baseRevision;
             void documentId;
             void content;
             return {};
@@ -409,8 +639,8 @@ it('coalesces edits in the adapter-owned timer', async () => {
         { eventsOn: (): (() => void) => (): void => undefined },
     );
 
-    void adapter.updateBuffer('document-1', 'first');
-    void adapter.updateBuffer('document-1', 'latest');
+    void adapter.updateBuffer('document-1', 'first', 0);
+    void adapter.updateBuffer('document-1', 'latest', 0);
 
     expect(updateBuffer).not.toHaveBeenCalled();
 
@@ -419,7 +649,7 @@ it('coalesces edits in the adapter-owned timer', async () => {
     await jest.advanceTimersByTimeAsync(1);
 
     expect(updateBuffer).toHaveBeenCalledTimes(1);
-    expect(updateBuffer).toHaveBeenCalledWith('document-1', 'latest');
+    expect(updateBuffer).toHaveBeenCalledWith('document-1', 'latest', 0);
 });
 
 it('keeps a newer view command from being overwritten by stale cursor synchronization', async () => {
@@ -985,7 +1215,8 @@ it('wraps app-model commands without optimistic state', async () => {
             calls.push('get-state');
             return Promise.resolve({ data: state });
         },
-        updateBuffer(documentId, content) {
+        updateBuffer(documentId, content, baseRevision) {
+            void baseRevision;
             calls.push(`buffer:${documentId}:${content}`);
             return Promise.resolve({ error: undefined });
         },
@@ -1006,7 +1237,7 @@ it('wraps app-model commands without optimistic state', async () => {
     const beforeCommand = store.getState();
 
     await expect(adapter.getState()).resolves.toBe(state);
-    await expect(adapter.updateBuffer('document-1', 'draft')).resolves.toBeUndefined();
+    await expect(adapter.updateBuffer('document-1', 'draft', 0)).resolves.toBeUndefined();
     await expect(adapter.flushBuffer('document-1')).resolves.toBeUndefined();
     await expect(
         adapter.setDocView('document-1', {
@@ -1036,10 +1267,10 @@ it('wraps app-model commands without optimistic state', async () => {
         },
         runtime,
     );
-    await mismatchedAdapter.updateBuffer('document-1', 'draft');
+    await mismatchedAdapter.updateBuffer('document-1', 'draft', 0);
     await expect(mismatchedAdapter.flushBuffer('document-1')).rejects.toMatchObject({
         code: 'internal',
-        message: 'AppModelHandler.UpdateBuffer expects 1 argument(s), received 2.',
+        message: 'AppModelHandler.UpdateBuffer expects 1 argument(s), received 3.',
         retryable: true,
     });
 
@@ -1369,4 +1600,158 @@ it('When workspace refusals omit remediations, the adapter provides an empty lis
     await expect(adapter.closeWorkspace?.()).resolves.toMatchObject({
         error: { remediations: [] },
     });
+});
+
+it('reports the first buffer delivery failure until a successful delivery rearms reporting', async () => {
+    const failure: WireError = {
+        code: 'io',
+        title: 'Sync failed',
+        message: 'Could not sync',
+        retryable: true,
+        details: { subject: 'notes.md' },
+    };
+    const updateBuffer = jest
+        .fn((id: string, content: string, baseRevision: number): Promise<VoidResult> => {
+            void baseRevision;
+            void id;
+            void content;
+            return Promise.resolve({});
+        })
+        .mockResolvedValueOnce({ error: failure })
+        .mockRejectedValueOnce(new Error('offline'))
+        .mockResolvedValueOnce({})
+        .mockResolvedValueOnce({ error: failure });
+    const adapter = createAppModelAdapter(
+        {
+            getState: () => Promise.resolve({ data: state }),
+            updateBuffer,
+            setDocView: () => Promise.resolve({}),
+            setUILayout: () => Promise.resolve({}),
+        },
+        { eventsOn: () => () => undefined },
+    );
+    const errors = jest.fn();
+    const unsubscribe = adapter.subscribeBufferSyncErrors(errors);
+    await adapter.updateBuffer('one', 'first', 0);
+    const firstFailure = adapter.flushBuffer('one');
+    await expect(firstFailure).rejects.toBeInstanceOf(Error);
+    await expect(firstFailure).rejects.toMatchObject(failure);
+    expect(isBufferSyncError(await firstFailure.catch((error: unknown) => error))).toBe(true);
+    await adapter.updateBuffer('one', 'latest', 0);
+    await expect(adapter.flushBuffer('one')).rejects.toMatchObject({ code: 'internal', message: 'offline' });
+    expect(errors).toHaveBeenCalledTimes(1);
+    expect(errors).toHaveBeenCalledWith(failure);
+    expect(store.getState().notifications.items).toHaveLength(0);
+    await adapter.flushBuffer('one');
+    expect(updateBuffer).toHaveBeenLastCalledWith('one', 'latest', 0);
+    await adapter.updateBuffer('two', 'other', 0);
+    await expect(adapter.flushBuffer('two')).rejects.toMatchObject(failure);
+    expect(errors).toHaveBeenCalledTimes(2);
+    unsubscribe();
+});
+
+it('keeps newer buffer text when an older in-flight delivery fails', async () => {
+    const first = deferred<VoidResult>();
+    const failure: WireError = { code: 'io', title: 'Sync failed', message: 'Could not sync', retryable: true };
+    const updateBuffer = jest
+        .fn((id: string, content: string, baseRevision: number): Promise<VoidResult> => {
+            void baseRevision;
+            void id;
+            void content;
+            return Promise.resolve({});
+        })
+        .mockReturnValueOnce(first.promise);
+    const adapter = createAppModelAdapter(
+        {
+            getState: () => Promise.resolve({ data: state }),
+            updateBuffer,
+            setDocView: () => Promise.resolve({}),
+            setUILayout: () => Promise.resolve({}),
+        },
+        { eventsOn: () => () => undefined },
+    );
+    const errors = jest.fn();
+    adapter.subscribeBufferSyncErrors(errors);
+    await adapter.updateBuffer('one', 'older', 0);
+    const failedFlush = adapter.flushBuffer('one');
+    await Promise.resolve();
+    await adapter.updateBuffer('one', 'newer', 0);
+    first.resolve({ error: failure });
+    await expect(failedFlush).rejects.toMatchObject(failure);
+    await adapter.flushBuffer('one');
+    expect(updateBuffer.mock.calls.map(([, content]) => content)).toEqual(['older', 'newer']);
+    expect(errors).toHaveBeenCalledTimes(1);
+});
+
+it('retains queued content across session cleanup only in interface recovery', async () => {
+    jest.useFakeTimers();
+    const updateBuffer = jest.fn((id: string, content: string, baseRevision: number): Promise<VoidResult> => {
+        void baseRevision;
+        void id;
+        void content;
+        return Promise.resolve({});
+    });
+    const setDocView = jest.fn((id: string, view: DocViewInput): Promise<VoidResult> => {
+        void id;
+        void view;
+        return Promise.resolve({});
+    });
+    const adapter = createAppModelAdapter(
+        { getState: async () => ({ data: state }), updateBuffer, setDocView, setUILayout: async () => ({}) },
+        { eventsOn: () => () => undefined },
+    );
+
+    await adapter.updateBuffer('normal', 'discarded', 0);
+    adapter.cancelPendingSession?.('normal');
+    await adapter.flushBuffer('normal');
+    expect(updateBuffer).not.toHaveBeenCalled();
+
+    await adapter.updateBuffer('one', 'preserved', 0);
+    await adapter.updateDocView('one', viewAt(2));
+    adapter.retainPendingBuffers();
+    adapter.retainPendingBuffers();
+    adapter.cancelPendingSession?.('one');
+    await adapter.updateBuffer('two', 'late edit', 0);
+    jest.runAllTimers();
+    expect(updateBuffer).not.toHaveBeenCalled();
+    expect(setDocView).not.toHaveBeenCalled();
+    expect(adapter.getPendingBufferDocumentIds()).toEqual(['one', 'two']);
+    await adapter.flushBuffer('one');
+    expect(updateBuffer).toHaveBeenCalledWith('one', 'preserved', 0);
+    expect(adapter.getPendingBufferDocumentIds()).toEqual(['two']);
+    await adapter.flushBuffer('two');
+    expect(adapter.getPendingBufferDocumentIds()).toEqual([]);
+});
+
+it('retains newer pending content behind a failed in-flight delivery during recovery', async () => {
+    const first = deferred<VoidResult>();
+    const updateBuffer = jest.fn((id: string, content: string, baseRevision: number): Promise<VoidResult> => {
+        void baseRevision;
+        void id;
+        void content;
+        return Promise.resolve({});
+    });
+    updateBuffer.mockReturnValueOnce(first.promise);
+    const adapter = createAppModelAdapter(
+        {
+            getState: async () => ({ data: state }),
+            updateBuffer,
+            setDocView: async () => ({}),
+            setUILayout: async () => ({}),
+        },
+        { eventsOn: () => () => undefined },
+    );
+    await adapter.updateBuffer('one', 'older', 0);
+    const inFlight = adapter.flushBuffer('one');
+    await Promise.resolve();
+    await adapter.updateBuffer('one', 'newer', 0);
+    adapter.retainPendingBuffers();
+    adapter.cancelPendingSession?.('one');
+    expect(adapter.getPendingBufferDocumentIds()).toEqual(['one']);
+    first.resolve({ error: { code: 'io', title: 'Sync failed', message: 'offline', retryable: true } });
+    await expect(inFlight).rejects.toThrow();
+    expect(adapter.getPendingBufferDocumentIds()).toEqual(['one']);
+    await adapter.flushBuffer('one');
+    expect(updateBuffer.mock.calls.map(([, content]) => content)).toEqual(['older', 'newer']);
+    expect(adapter.getPendingBufferDocumentIds()).toEqual([]);
 });

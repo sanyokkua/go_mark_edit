@@ -60,27 +60,7 @@ func (repository *SqliteLayoutRepository) Write(ctx context.Context, field strin
 	for attempt := 0; attempt < 3; attempt++ {
 		result := LayoutWriteResult{}
 		err := repository.store.Tx(ctx, func(transaction *kv.Tx) error {
-			storedEntry, found, err := transaction.Get(ctx, layoutKey(field))
-			if err != nil {
-				return err
-			}
-			if repository.afterReadDecision != nil {
-				hook := repository.afterReadDecision
-				repository.afterReadDecision = nil
-				hook()
-			}
-			if found {
-				stored, valid, decodeErr := decodeLayoutValue(storedEntry.Value)
-				if decodeErr == nil && valid && !layoutValueIsNewer(candidate, stored) {
-					result.Value = stored
-					return nil
-				}
-			}
-			if err := transaction.Upsert(ctx, kv.KVEntry{Key: layoutKey(field), Value: encoded, Type: "layout.versioned"}); err != nil {
-				return err
-			}
-			result = LayoutWriteResult{Applied: true, Value: candidate}
-			return nil
+			return repository.writeTransaction(ctx, transaction, field, candidate, encoded, &result)
 		})
 		if err == nil {
 			return result, nil
@@ -90,6 +70,30 @@ func (repository *SqliteLayoutRepository) Write(ctx context.Context, field strin
 		}
 	}
 	return LayoutWriteResult{}, errors.New("layout transaction remained busy")
+}
+
+func (repository *SqliteLayoutRepository) writeTransaction(ctx context.Context, transaction *kv.Tx, field string, candidate VersionedLayoutValue, encoded string, result *LayoutWriteResult) error {
+	storedEntry, found, err := transaction.Get(ctx, layoutKey(field))
+	if err != nil {
+		return err
+	}
+	if repository.afterReadDecision != nil {
+		hook := repository.afterReadDecision
+		repository.afterReadDecision = nil
+		hook()
+	}
+	if found {
+		stored, valid, decodeErr := decodeLayoutValue(storedEntry.Value)
+		if decodeErr == nil && valid && !layoutValueIsNewer(candidate, stored) {
+			result.Value = stored
+			return nil
+		}
+	}
+	if err := transaction.Upsert(ctx, kv.KVEntry{Key: layoutKey(field), Value: encoded, Type: "layout.versioned"}); err != nil {
+		return err
+	}
+	*result = LayoutWriteResult{Applied: true, Value: candidate}
+	return nil
 }
 
 func layoutKey(field string) string { return layoutSettingPrefix + field }
@@ -124,33 +128,38 @@ func validateVersionedLayoutValue(field string, value VersionedLayoutValue) erro
 	if value.Version != 1 || value.WriterID == "" || value.Sequence == 0 {
 		return fmt.Errorf("invalid layout value identity")
 	}
-	integer, ok := value.Value.(int)
 	switch field {
 	case LayoutWindowWidth:
-		if !ok || integer < 375 {
-			return fmt.Errorf("invalid native window width")
-		}
+		return validateLayoutMinimum(value.Value, 375, "invalid native window width")
 	case LayoutWindowHeight:
-		if !ok || integer < 480 {
-			return fmt.Errorf("invalid native window height")
-		}
+		return validateLayoutMinimum(value.Value, 480, "invalid native window height")
 	case LayoutWindowMaximized, LayoutWorkspaceHiddenFolders:
 		if _, ok := value.Value.(bool); !ok {
 			return fmt.Errorf("invalid boolean layout value")
 		}
 	case LayoutWorkspaceWidth:
-		if !ok || integer < 0 {
-			return fmt.Errorf("invalid workspace width")
-		}
+		return validateLayoutMinimum(value.Value, 0, "invalid workspace width")
 	case LayoutArrangementBackup:
-		arrangement, ok := value.Value.(string)
-		if !ok || (arrangement != ArrangementEditor && arrangement != ArrangementSplit && arrangement != ArrangementPreview) {
+		if !validLayoutArrangement(value.Value) {
 			return fmt.Errorf("invalid arrangement fallback")
 		}
 	default:
 		return fmt.Errorf("unknown layout field")
 	}
 	return nil
+}
+
+func validateLayoutMinimum(value any, minimum int, message string) error {
+	integer, ok := value.(int)
+	if !ok || integer < minimum {
+		return errors.New(message)
+	}
+	return nil
+}
+
+func validLayoutArrangement(value any) bool {
+	arrangement, ok := value.(string)
+	return ok && validArrangement(arrangement)
 }
 
 func layoutValueIsNewer(candidate, stored VersionedLayoutValue) bool {

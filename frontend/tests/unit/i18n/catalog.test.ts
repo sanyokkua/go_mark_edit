@@ -63,3 +63,9 @@ it('EC-I18N-2 discovers a dropped-in locale resource without component changes',
     translator.setLocale('hr');
     expect(translator.t('status.words', { count: 7 })).toBe('7 rijeci');
 });
+
+it('orders available locales by UTF-16 code units', () => {
+    const translator = createTranslator({ a: {}, Z: {}, é: {}, '😀': {}, '\ue000': {} });
+
+    expect(translator.availableLocales).toEqual(['Z', 'a', 'é', '😀', '\ue000']);
+});

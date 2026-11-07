@@ -14,6 +14,8 @@ import (
 	"github.com/sanyokkua/go_mark_edit/internal/workspace"
 )
 
+const unavailableFolderPublishFailedMessage = "The unavailable folder state could not be published."
+
 const maxWorkspaceEntries = 20_000
 
 // CreateWorkspaceFile writes exactly the supplied name and republishes the tree.
@@ -177,7 +179,7 @@ func (service *AppModelService) SetWorkspaceHiddenFolders(ctx context.Context, s
 		classified := classifyWorkspacePathError(current.RootPath, err)
 		// The preference is stored even though the tree cannot be rebuilt.
 		if publishErr := service.markWorkspaceUnavailable(ctx, &showHiddenFolders); publishErr != nil {
-			return workspacePublicationRefusal("The unavailable folder state could not be published.")
+			return workspacePublicationRefusal(unavailableFolderPublishFailedMessage)
 		}
 		return workspaceRefused(classified)
 	}
@@ -313,7 +315,7 @@ func (service *AppModelService) RefreshWorkspace(ctx context.Context) apperr.Wor
 	if err != nil {
 		classified := workspacePersistenceError("The folder could not be refreshed because its visibility setting could not be read.")
 		if publishErr := service.markWorkspaceUnavailable(ctx, nil); publishErr != nil {
-			return workspacePublicationRefusal("The unavailable folder state could not be published.")
+			return workspacePublicationRefusal(unavailableFolderPublishFailedMessage)
 		}
 		return workspaceRefused(classified)
 	}
@@ -321,7 +323,7 @@ func (service *AppModelService) RefreshWorkspace(ctx context.Context) apperr.Wor
 	if err != nil {
 		classified := classifyWorkspacePathError(current.RootPath, err)
 		if publishErr := service.markWorkspaceUnavailable(ctx, nil); publishErr != nil {
-			return workspacePublicationRefusal("The unavailable folder state could not be published.")
+			return workspacePublicationRefusal(unavailableFolderPublishFailedMessage)
 		}
 		return workspaceRefused(classified)
 	}
@@ -461,21 +463,21 @@ func cloneWorkspaceSnapshot(snapshot *apperr.WorkspaceSnapshot) *apperr.Workspac
 	if snapshot == nil {
 		return nil
 	}
-	copy := *snapshot
-	copy.FilterSuffixes = append([]string(nil), snapshot.FilterSuffixes...)
-	copy.Root = cloneWorkspaceNode(snapshot.Root)
-	return &copy
+	cloned := *snapshot
+	cloned.FilterSuffixes = append([]string(nil), snapshot.FilterSuffixes...)
+	cloned.Root = cloneWorkspaceNode(snapshot.Root)
+	return &cloned
 }
 
 func cloneWorkspaceNode(node apperr.WorkspaceNode) apperr.WorkspaceNode {
-	copy := node
+	cloned := node
 	if node.Children != nil {
-		copy.Children = make([]apperr.WorkspaceNode, len(node.Children))
+		cloned.Children = make([]apperr.WorkspaceNode, len(node.Children))
 		for index, child := range node.Children {
-			copy.Children[index] = cloneWorkspaceNode(child)
+			cloned.Children[index] = cloneWorkspaceNode(child)
 		}
 	}
-	return copy
+	return cloned
 }
 
 // workspaceTreePath looks only in the published tree, so filtered or truncated
@@ -494,16 +496,7 @@ func (service *AppModelService) workspaceTreePath(target string) string {
 	root := snapshot.RootPath
 	// Rel is lexical on POSIX, even when the volume ignores case. Accept a
 	// case-only spelling of the root only after the filesystem proves identity.
-	if len(target) > len(root) && target[len(root)] == filepath.Separator &&
-		target[:len(root)] != root && strings.EqualFold(target[:len(root)], root) {
-		aliasRoot := target[:len(root)]
-		rootIdentity, rootErr := file.IdentityForExistingPath(root)
-		aliasIdentity, aliasErr := file.IdentityForExistingPath(aliasRoot)
-		if rootErr == nil && aliasErr == nil && rootIdentity.Path == "" && aliasIdentity.Path == "" &&
-			!rootIdentity.IsZero() && rootIdentity.Equal(aliasIdentity) {
-			target = filepath.Join(root, target[len(root)+1:])
-		}
-	}
+	target = canonicalWorkspaceRootSpelling(root, target)
 	relative, err := filepath.Rel(root, target)
 	if err != nil || relative == "." || relative == ".." || strings.HasPrefix(relative, ".."+string(filepath.Separator)) || filepath.IsAbs(relative) {
 		return ""
@@ -512,28 +505,7 @@ func (service *AppModelService) workspaceTreePath(target string) string {
 	targetPart := snapshot.RootPath
 	for _, segment := range strings.Split(relative, string(filepath.Separator)) {
 		targetPart = filepath.Join(targetPart, segment)
-		var next *apperr.WorkspaceNode
-		for index := range node.Children {
-			child := &node.Children[index]
-			if child.Name == segment {
-				next = child
-				break
-			}
-		}
-		if next == nil {
-			for index := range node.Children {
-				child := &node.Children[index]
-				if !strings.EqualFold(child.Name, segment) {
-					continue
-				}
-				rowIdentity, rowErr := file.IdentityForExistingPath(child.Path)
-				targetIdentity, targetErr := file.IdentityForExistingPath(targetPart)
-				if rowErr == nil && targetErr == nil && rowIdentity.Path == "" && targetIdentity.Path == "" && !rowIdentity.IsZero() && rowIdentity.Equal(targetIdentity) {
-					next = child
-					break
-				}
-			}
-		}
+		next := workspaceChild(node, segment, targetPart)
 		if next == nil {
 			return ""
 		}
@@ -543,6 +515,38 @@ func (service *AppModelService) workspaceTreePath(target string) string {
 		return ""
 	}
 	return node.Path
+}
+
+func canonicalWorkspaceRootSpelling(root, target string) string {
+	if len(target) <= len(root) || target[len(root)] != filepath.Separator || target[:len(root)] == root || !strings.EqualFold(target[:len(root)], root) {
+		return target
+	}
+	if sameWorkspaceIdentity(root, target[:len(root)]) {
+		return filepath.Join(root, target[len(root)+1:])
+	}
+	return target
+}
+
+func sameWorkspaceIdentity(left, right string) bool {
+	leftIdentity, leftErr := file.IdentityForExistingPath(left)
+	rightIdentity, rightErr := file.IdentityForExistingPath(right)
+	return leftErr == nil && rightErr == nil && leftIdentity.Path == "" && rightIdentity.Path == "" && !leftIdentity.IsZero() && leftIdentity.Equal(rightIdentity)
+}
+
+func workspaceChild(node *apperr.WorkspaceNode, segment, targetPart string) *apperr.WorkspaceNode {
+	for index := range node.Children {
+		child := &node.Children[index]
+		if child.Name == segment {
+			return child
+		}
+	}
+	for index := range node.Children {
+		child := &node.Children[index]
+		if strings.EqualFold(child.Name, segment) && sameWorkspaceIdentity(child.Path, targetPart) {
+			return child
+		}
+	}
+	return nil
 }
 
 func workspacePathRefusal(path string, err error) apperr.WorkspaceOutcome {

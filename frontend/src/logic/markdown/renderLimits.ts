@@ -50,6 +50,38 @@ function normalizeMathPre(tree: Root): void {
     }
 }
 
+function isMermaidCode(child: Element, parent: Parent): boolean {
+    return (
+        child.tagName === 'code' &&
+        parent.type === 'element' &&
+        parent.tagName === 'pre' &&
+        Array.isArray(child.properties.className) &&
+        child.properties.className.includes('language-mermaid')
+    );
+}
+
+function appendMathScope(
+    child: Element,
+    parent: Parent,
+    index: number,
+    parentOwner: { parent: Parent; index: number } | undefined,
+    seenScopes: WeakSet<Element>,
+    records: MathScope[],
+): void {
+    const display = parent.type === 'element' && parent.tagName === 'pre';
+    const scope = display ? parent : child;
+    if (!seenScopes.has(scope)) {
+        seenScopes.add(scope);
+        records.push({
+            code: child,
+            scope,
+            owner: display ? parentOwner!.parent : parent,
+            index: display ? parentOwner!.index : index,
+            display,
+        });
+    }
+}
+
 /** Match rehype-katex's immediate-pre scope and its preorder traversal. */
 export function collectMathScopes(tree: Root, numberMermaid = false): MathScope[] {
     const records: MathScope[] = [];
@@ -58,41 +90,20 @@ export function collectMathScopes(tree: Root, numberMermaid = false): MathScope[
     const pending: Array<{ parent: Parent; index: number; parentOwner?: { parent: Parent; index: number } }> = [];
     for (let index = tree.children.length - 1; index >= 0; index--) pending.push({ parent: tree, index });
 
-    let item = pending.pop();
-    while (item !== undefined) {
+    for (let item = pending.pop(); item !== undefined; item = pending.pop()) {
         const { parent, index, parentOwner } = item;
         const child = parent.children[index];
-        if (child.type === 'element') {
-            if (
-                numberMermaid &&
-                child.tagName === 'code' &&
-                parent.type === 'element' &&
-                parent.tagName === 'pre' &&
-                Array.isArray(child.properties.className) &&
-                child.properties.className.includes('language-mermaid')
-            ) {
-                child.properties.dataMermaidIndex = ++diagrams;
-            }
-            if (isMathCode(child)) {
-                const display = parent.type === 'element' && parent.tagName === 'pre';
-                const scope = display ? parent : child;
-                if (!seenScopes.has(scope)) {
-                    seenScopes.add(scope);
-                    records.push({
-                        code: child,
-                        scope,
-                        owner: display ? parentOwner!.parent : parent,
-                        index: display ? parentOwner!.index : index,
-                        display,
-                    });
-                }
-            } else {
-                for (let childIndex = child.children.length - 1; childIndex >= 0; childIndex--) {
-                    pending.push({ parent: child, index: childIndex, parentOwner: { parent, index } });
-                }
+        if (child.type !== 'element') continue;
+        if (numberMermaid && isMermaidCode(child, parent)) {
+            child.properties.dataMermaidIndex = ++diagrams;
+        }
+        if (isMathCode(child)) {
+            appendMathScope(child, parent, index, parentOwner, seenScopes, records);
+        } else {
+            for (let childIndex = child.children.length - 1; childIndex >= 0; childIndex--) {
+                pending.push({ parent: child, index: childIndex, parentOwner: { parent, index } });
             }
         }
-        item = pending.pop();
     }
     return records;
 }
@@ -124,12 +135,9 @@ export function rehypeRenderLimits(options: { math: boolean }): (tree: Root) => 
         for (const record of collectMathScopes(tree, true)) {
             if (!options.math) continue;
             formulas++;
-            const reason =
-                formulas > maxFormulas
-                    ? 'too-many'
-                    : mathSourceOf(record).length > maxFormulaCharacters
-                      ? 'too-large'
-                      : null;
+            let reason: 'too-many' | 'too-large' | null = null;
+            if (formulas > maxFormulas) reason = 'too-many';
+            else if (mathSourceOf(record).length > maxFormulaCharacters) reason = 'too-large';
             if (reason === null) continue;
             const sourceLine = record.scope.properties.dataSourceLine;
             record.owner.children[record.index] = {

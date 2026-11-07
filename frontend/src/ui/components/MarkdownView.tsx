@@ -34,7 +34,7 @@ interface PreviewImageProps {
     title?: string;
 }
 
-function PreviewImage({ alt, source, title }: PreviewImageProps): React.JSX.Element {
+function PreviewImage({ alt, source, title }: Readonly<PreviewImageProps>): React.JSX.Element {
     const [failedSource, setFailedSource] = useState<string>();
     if (source === undefined || failedSource === source) {
         return renderImageFallback(alt);
@@ -129,8 +129,7 @@ const components: Components = {
             </div>
         );
     },
-    img: function PreviewResolvedImage({ alt, node: _node, src, title }): React.JSX.Element {
-        void _node;
+    img: function PreviewResolvedImage({ alt, src, title }): React.JSX.Element {
         const { imageSourceResolver } = useContext(PreviewRuntimeContext);
         let source: string | undefined;
         if (src !== undefined) {
@@ -187,8 +186,56 @@ interface CommittedPreviewProps {
     onPreviewCommitted?: (preview: CommittedMarkdownPreview) => void;
 }
 
-class CommittedPreview extends Component<CommittedPreviewProps> {
+interface RetainedPreviewState {
+    content: ReactNode;
+    failed: boolean;
+}
+
+class RetainedPreview extends Component<{ content: ReactNode }, RetainedPreviewState> {
+    state: RetainedPreviewState = { content: this.props.content, failed: false };
+
+    static getDerivedStateFromProps(
+        props: { content: ReactNode },
+        state: RetainedPreviewState,
+    ): RetainedPreviewState | null {
+        return props.content === state.content ? null : { content: props.content, failed: false };
+    }
+
+    static getDerivedStateFromError(): Partial<RetainedPreviewState> {
+        return { failed: true };
+    }
+
+    render(): React.JSX.Element {
+        if (this.state.failed) return <p role="alert">{t('preview.renderError.empty')}</p>;
+        return (
+            <>
+                <p role="alert">{t('preview.renderError.message')}</p>
+                <article className={`${styles.preview} gme-preview`}>{this.props.content}</article>
+            </>
+        );
+    }
+}
+
+interface CommittedPreviewState {
+    candidate: RenderCandidate | null;
+    failed: boolean;
+}
+
+class CommittedPreview extends Component<CommittedPreviewProps, CommittedPreviewState> {
     private committed: CommittedMarkdownPreview | null = null;
+
+    state: CommittedPreviewState = { candidate: this.props.candidate, failed: false };
+
+    static getDerivedStateFromProps(
+        props: CommittedPreviewProps,
+        state: CommittedPreviewState,
+    ): CommittedPreviewState | null {
+        return props.candidate === state.candidate ? null : { candidate: props.candidate, failed: false };
+    }
+
+    static getDerivedStateFromError(): Partial<CommittedPreviewState> {
+        return { failed: true };
+    }
 
     componentDidMount(): void {
         this.commitSuccessfulRender();
@@ -200,7 +247,7 @@ class CommittedPreview extends Component<CommittedPreviewProps> {
 
     private commitSuccessfulRender(): void {
         const { candidate, documentId, onPreviewCommitted } = this.props;
-        if (candidate === null || candidate.failed) return;
+        if (candidate === null || candidate.failed || this.state.failed) return;
         if (
             this.committed !== null &&
             this.committed.documentId === documentId &&
@@ -214,23 +261,18 @@ class CommittedPreview extends Component<CommittedPreviewProps> {
     render(): React.JSX.Element | null {
         const { candidate, committedPreview, documentId } = this.props;
         if (candidate === null) return null;
-        const retained =
-            this.committed?.documentId === documentId
-                ? this.committed
-                : committedPreview?.documentId === documentId
-                  ? committedPreview
-                  : null;
-        const hasContent = !candidate.failed || retained !== null;
-        const content = candidate.failed ? retained?.content : candidate.content;
-
-        return (
-            <>
-                {candidate.failed ? (
-                    <p role="alert">{t(hasContent ? 'preview.renderError.message' : 'preview.renderError.empty')}</p>
-                ) : null}
-                {hasContent ? <article className={`${styles.preview} gme-preview`}>{content}</article> : null}
-            </>
-        );
+        let retained: CommittedMarkdownPreview | null | undefined = this.committed;
+        if (retained?.documentId !== documentId) {
+            retained = committedPreview?.documentId === documentId ? committedPreview : null;
+        }
+        if (candidate.failed || this.state.failed) {
+            return retained === null || retained === undefined ? (
+                <p role="alert">{t('preview.renderError.empty')}</p>
+            ) : (
+                <RetainedPreview content={retained.content} />
+            );
+        }
+        return <article className={`${styles.preview} gme-preview`}>{candidate.content}</article>;
     }
 }
 

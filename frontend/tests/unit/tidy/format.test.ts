@@ -1,4 +1,4 @@
-import { applyEdits } from '../../../src/logic/tidy/edits';
+import { applyEdits, formatEdits } from '../../../src/logic/tidy/edits';
 import { runOnText } from '../../../src/logic/tidy/engine';
 import { parseFull } from '../../../src/logic/tidy/parser';
 import type { TidyPreferences } from '../../../src/logic/tidy/prefs';
@@ -126,4 +126,20 @@ test('when protected constructs contain marker or whitespace syntax, Format leav
         '<!-- *keep*  -->',
     ].join('\n');
     expect(format(source)).toBe(source + '\n');
+});
+
+test('Format keeps non-ASCII whitespace while trimming the final tail', () => {
+    expect(format('x\u00a0 \t\n\n')).toBe('x\u00a0\n');
+    const source = 'x \n\n';
+    expect(applyEdits(source, formatEdits(source, parseFull(source), defaults, false))).toBe('x\n\n');
+});
+
+test('Format handles long interior whitespace without repeated suffix scans', () => {
+    const source = 'x' + ' '.repeat(40_000) + 'x\n';
+    const tree = parseFull(source);
+    const start = performance.now();
+    const edits = formatEdits(source, tree, defaults);
+    const elapsed = performance.now() - start;
+    expect(applyEdits(source, edits)).toBe(source);
+    expect(elapsed).toBeLessThan(1200);
 });

@@ -293,25 +293,21 @@ function lineBoundsAtOffset(source: string, offset: number): { end: number; star
     return { end: nextNewline === -1 ? source.length : nextNewline, start };
 }
 
-function baseTokenBounds(source: string, start: number, end: number): { end: number; start: number } | null {
-    const line = lineBoundsAtOffset(source, start);
-    let probe = -1;
-
+function inlineBaseProbe(source: string, start: number, end: number, line: { start: number; end: number }): number {
     if (start === end) {
-        if (start < line.end && isInlineBaseCharacter(source.charAt(start))) {
-            probe = start;
-        } else if (start > line.start && isInlineBaseCharacter(source.charAt(start - 1))) {
-            probe = start - 1;
-        }
+        if (start < line.end && isInlineBaseCharacter(source.charAt(start))) return start;
+        if (start > line.start && isInlineBaseCharacter(source.charAt(start - 1))) return start - 1;
     } else {
         for (let offset = start; offset < end; offset += 1) {
-            if (isInlineBaseCharacter(source.charAt(offset))) {
-                probe = offset;
-                break;
-            }
+            if (isInlineBaseCharacter(source.charAt(offset))) return offset;
         }
     }
+    return -1;
+}
 
+function baseTokenBounds(source: string, start: number, end: number): { end: number; start: number } | null {
+    const line = lineBoundsAtOffset(source, start);
+    const probe = inlineBaseProbe(source, start, end, line);
     if (probe === -1) return null;
 
     let tokenStart = probe;
@@ -374,13 +370,14 @@ function resolveInlineWrapperStack(source: string, start: number, end: number): 
     const collapsedOnBase = start === end && start >= base.start && start <= base.end;
     if (!collapsedOnBase && !wholeBase && !wholeStack) return null;
 
+    innerToOuter.reverse();
     return {
         baseEnd: base.end,
         baseStart: base.start,
         baseText: source.substring(base.start, base.end),
         end: stackEnd,
         start: stackStart,
-        wrappers: innerToOuter.reverse(),
+        wrappers: innerToOuter,
     };
 }
 
@@ -498,28 +495,21 @@ function pairEdit(request: FormatRequest, pair: InlinePair): FormatEdit {
     const { start, end } = selectedText(request);
     const style = inlineStyleFor(request.actionId);
     const stack = style === null ? null : resolveInlineWrapperStack(request.source, start, end);
+    if (stack === null || style === null) return fallbackPairEdit(request, pair);
     // For bold italic the inner marker is the emphasis marker, which is also the close pair's first character.
-    return stack === null || style === null
-        ? fallbackPairEdit(request, pair)
-        : inlineStackEdit(
-              request.source,
-              stack,
-              style,
-              style === 'bold-italic' ? pair.close.charAt(0) : pair.open,
-              start,
-              end,
-          );
+    const emphasisMarker = style === 'bold-italic' ? pair.close.charAt(0) : pair.open;
+    return inlineStackEdit(request.source, stack, style, emphasisMarker, start, end);
 }
 
 function inlinePrefix(line: string): string {
-    return line.match(/^(\s*(?:>\s*)?(?:(?:[-+*]|\d+[.)])\s+(?:\[[ xX]\]\s*)?)?)/)?.[1] ?? '';
+    return /^(\s*(?:>\s*)?(?:(?:[-+*]|\d+[.)])\s+(?:\[[ xX]\]\s*)?)?)/.exec(line)?.[1] ?? '';
 }
 
 function formatInlineLine(line: string, pair: InlinePair): string {
     const prefix = inlinePrefix(line);
     const remainder = line.slice(prefix.length);
-    const leading = remainder.match(/^\s*/)?.[0] ?? '';
-    const trailing = remainder.match(/\s*$/)?.[0] ?? '';
+    const leading = /^\s*/.exec(remainder)?.[0] ?? '';
+    const trailing = remainder.slice(remainder.trimEnd().length);
     const content = remainder.slice(leading.length, remainder.length - trailing.length);
     return content.length === 0 ? line : prefix + leading + pair.open + content + pair.close + trailing;
 }
@@ -533,8 +523,8 @@ function inlineContentBounds(
 } {
     const prefix = inlinePrefix(line);
     const remainder = line.slice(prefix.length);
-    const leading = remainder.match(/^\s*/)?.[0] ?? '';
-    const trailing = remainder.match(/\s*$/)?.[0] ?? '';
+    const leading = /^\s*/.exec(remainder)?.[0] ?? '';
+    const trailing = remainder.slice(remainder.trimEnd().length);
     return {
         start: prefix.length + leading.length + pair.open.length,
         end: line.length - trailing.length - pair.close.length,
@@ -572,7 +562,9 @@ interface QuotedLine {
 }
 
 export function parseQuoteLine(line: string): QuotedLine {
-    const match = line.match(/^(\s*)(>\s?)?(.*)$/);
+    // Capture whitespace in a lookahead so a later line terminator cannot make
+    // the engine retry the same prefix once for every whitespace character.
+    const match = /^(?=(\s*))\1(>\s?)?(.*)$/.exec(line);
     return {
         indent: match?.[1] ?? '',
         quote: match?.[2] ?? '',
@@ -581,24 +573,24 @@ export function parseQuoteLine(line: string): QuotedLine {
 }
 
 function removeHeading(line: string): string {
-    const match = line.match(/^(\s*)#{1,6}(?:\s+|$)(.*)$/);
-    return match === null ? line : (match[1] ?? '') + (match[2] ?? '');
+    const match = /^(?=(\s*))\1#{1,6}(?:(?=(\s+))\2|$)(.*)$/.exec(line);
+    return match === null ? line : (match[1] ?? '') + (match[3] ?? '');
 }
 
 export function parseListLine(line: string): ParsedLine {
-    const indent = line.match(/^\s*/)?.[0] ?? '';
+    const indent = /^\s*/.exec(line)?.[0] ?? '';
     const rest = line.slice(indent.length);
-    const task = rest.match(/^[-+*]\s+\[[ xX]\]\s*(.*)$/);
+    const task = /^[-+*]\s+\[[ xX]\](?=(\s*))\1(.*)$/.exec(rest);
     if (task !== null) {
-        return { indent, kind: 'task-list', content: task[1] ?? '' };
+        return { indent, kind: 'task-list', content: task[2] ?? '' };
     }
-    const numbered = rest.match(/^\d+[.)]\s+(.*)$/);
+    const numbered = /^\d+[.)](?=(\s+))\1(.*)$/.exec(rest);
     if (numbered !== null) {
-        return { indent, kind: 'numbered-list', content: numbered[1] ?? '' };
+        return { indent, kind: 'numbered-list', content: numbered[2] ?? '' };
     }
-    const bullet = rest.match(/^[-+*]\s*(.*)$/);
+    const bullet = /^[-+*](?=(\s*))\1(.*)$/.exec(rest);
     if (bullet !== null) {
-        return { indent, kind: 'bullet-list', content: bullet[1] ?? '' };
+        return { indent, kind: 'bullet-list', content: bullet[2] ?? '' };
     }
     return { indent, kind: null, content: rest };
 }
@@ -641,7 +633,7 @@ function numberedEdit(request: FormatRequest): FormatEdit {
         const quotedAbove = parseQuoteLine(above);
         const parsedAbove = parseListLine(quotedAbove.content);
         const continued =
-            parsedAbove.kind === 'numbered-list' ? quotedAbove.content.trimStart().match(NUMBERED_MARKER) : null;
+            parsedAbove.kind === 'numbered-list' ? NUMBERED_MARKER.exec(quotedAbove.content.trimStart()) : null;
         if (
             continued !== null &&
             quotedAbove.indent + quotedAbove.quote === first.prefix &&
@@ -660,7 +652,7 @@ function numberedEdit(request: FormatRequest): FormatEdit {
             if (isBlank && parsedLines.length > 1) return line;
             const levels = counters.get(quote) ?? new Map<number, NumberCounter>();
             counters.set(quote, levels);
-            for (const level of [...levels.keys()]) {
+            for (const level of levels.keys()) {
                 if (level > depth) levels.delete(level);
             }
             const counter = levels.get(depth) ?? { delimiter: '.', next: 1 };
@@ -702,15 +694,15 @@ function headingLine(line: string, level: number): string {
     const quoted = parseQuoteLine(line);
     const parsed = parseListLine(quoted.content);
     const candidate = parsed.kind === null ? quoted.content : parsed.indent + parsed.content;
-    const match = candidate.match(/^(\s*)(#{1,6})(?:\s+|$)(.*)$/);
+    const match = /^(?=(\s*))\1(#{1,6})(?:(?=(\s+))\3|$)(.*)$/.exec(candidate);
     if (match === null) {
-        const indent = candidate.match(/^\s*/)?.[0] ?? '';
+        const indent = /^\s*/.exec(candidate)?.[0] ?? '';
         return quoted.indent + quoted.quote + indent + '#'.repeat(level) + ' ' + candidate.slice(indent.length);
     }
     if (match[2]?.length === level) {
-        return quoted.indent + quoted.quote + (match[1] ?? '') + (match[3] ?? '');
+        return quoted.indent + quoted.quote + (match[1] ?? '') + (match[4] ?? '');
     }
-    return quoted.indent + quoted.quote + (match[1] ?? '') + '#'.repeat(level) + ' ' + (match[3] ?? '');
+    return quoted.indent + quoted.quote + (match[1] ?? '') + '#'.repeat(level) + ' ' + (match[4] ?? '');
 }
 
 function quoteEdit(request: FormatRequest): FormatEdit {
@@ -732,19 +724,32 @@ function linkEdit(request: FormatRequest): FormatEdit {
     const lineEnd = lineEndIndex === -1 ? source.length : lineEndIndex;
     const line = source.substring(lineStart, lineEnd);
     const caretInLine = start - lineStart;
-    const link = /\[([^\]]*)\]\(([^)]*)\)/g;
-    let match: RegExpExecArray | null;
-    while ((match = link.exec(line)) !== null) {
-        const matchStart = match.index;
-        const matchEnd = matchStart + match[0].length;
+    let searchFrom = 0;
+    while (searchFrom < line.length) {
+        const matchStart = line.indexOf('[', searchFrom);
+        if (matchStart === -1) break;
+        const labelEnd = line.indexOf(']', matchStart + 1);
+        if (labelEnd === -1) break;
+        searchFrom = labelEnd + 1;
+        if (line.charAt(searchFrom) !== '(') continue;
+        const urlEndInLine = line.indexOf(')', searchFrom + 1);
+        if (urlEndInLine === -1) break;
+        const matchEnd = urlEndInLine + 1;
         if (caretInLine >= matchStart && caretInLine <= matchEnd) {
-            const urlStart = lineStart + matchStart + (match[1] ?? '').length + 3;
-            const urlEnd = urlStart + (match[2] ?? '').length;
-            return editForOffsets(source, lineStart + matchStart, lineStart + matchEnd, match[0], {
-                start: positionAt(source, urlStart),
-                end: positionAt(source, urlEnd),
-            });
+            const urlStart = lineStart + labelEnd + 2;
+            const urlEnd = lineStart + urlEndInLine;
+            return editForOffsets(
+                source,
+                lineStart + matchStart,
+                lineStart + matchEnd,
+                line.slice(matchStart, matchEnd),
+                {
+                    start: positionAt(source, urlStart),
+                    end: positionAt(source, urlEnd),
+                },
+            );
         }
+        searchFrom = matchEnd;
     }
     if (start === end) {
         return editForOffsets(source, start, end, '[](url)', {
@@ -762,7 +767,7 @@ const defaultTableSize: TableSize = { columns: 3, rows: 3 };
 
 function buildTable({ columns, rows }: TableSize): string {
     const row = (cell: (column: number) => string): string =>
-        `|${Array.from({ length: columns }, (_, column) => ` ${cell(column)} |`).join('')}`;
+        '|' + Array.from({ length: columns }, (_, column) => ` ${cell(column)} |`).join('');
     const lines = [row((column) => `Header ${column + 1}`), row(() => '---')];
     for (let index = 0; index < rows; index += 1) lines.push(row(() => ''));
     return lines.join('\n');

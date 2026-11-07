@@ -22,10 +22,10 @@ export interface ModalShellProps {
     /** When set, the title row shows a Close icon button with this accessible name. */
     readonly closeLabel?: string;
     readonly dismiss: 'backdrop' | 'escape' | 'none';
-    readonly initialFocus?: ModalFocusTarget;
+    readonly initialFocus?: Exclude<ModalFocusTarget, undefined>;
     readonly onRequestClose: () => void;
     readonly open: boolean;
-    readonly returnFocusTo?: ModalFocusTarget;
+    readonly returnFocusTo?: Exclude<ModalFocusTarget, undefined>;
     readonly title: string;
     readonly width?: CSSProperties['width'];
 }

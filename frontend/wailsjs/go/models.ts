@@ -31,6 +31,7 @@ export namespace apperr {
 	}
 	export class PendingClose {
 	    id: string;
+	    owner: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new PendingClose(source);
@@ -39,6 +40,7 @@ export namespace apperr {
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
+	        this.owner = source["owner"];
 	    }
 	}
 	export class UILayout {
@@ -440,6 +442,82 @@ export namespace apperr {
 	        this.pdfAppearance = source["pdfAppearance"];
 	    }
 	}
+	export class WireError {
+	    code: ErrorCode;
+	    title: string;
+	    message: string;
+	    details?: Record<string, string>;
+	    retryable: boolean;
+	    category?: string;
+	    safeSubject?: string;
+	    remediation?: string;
+	    remediations?: string[];
+	    documentId?: string;
+	    dedupKey?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new WireError(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.code = source["code"];
+	        this.title = source["title"];
+	        this.message = source["message"];
+	        this.details = source["details"];
+	        this.retryable = source["retryable"];
+	        this.category = source["category"];
+	        this.safeSubject = source["safeSubject"];
+	        this.remediation = source["remediation"];
+	        this.remediations = source["remediations"];
+	        this.documentId = source["documentId"];
+	        this.dedupKey = source["dedupKey"];
+	    }
+	}
+	export class BufferUpdateResult {
+	    category?: string;
+	    subject?: string;
+	    message?: string;
+	    remediation?: string;
+	    id?: string;
+	    status?: string;
+	    documentRevision?: number;
+	    error?: WireError;
+	
+	    static createFrom(source: any = {}) {
+	        return new BufferUpdateResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.category = source["category"];
+	        this.subject = source["subject"];
+	        this.message = source["message"];
+	        this.remediation = source["remediation"];
+	        this.id = source["id"];
+	        this.status = source["status"];
+	        this.documentRevision = source["documentRevision"];
+	        this.error = this.convertValues(source["error"], WireError);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class ClassifiedError {
 	    category: string;
 	    safeSubject?: string;
@@ -542,6 +620,7 @@ export namespace apperr {
 	    modifiedUnixNano: number;
 	    mode: number;
 	    fileIdentity?: string;
+	    rawHash?: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new DiskVersion(source);
@@ -554,6 +633,7 @@ export namespace apperr {
 	        this.modifiedUnixNano = source["modifiedUnixNano"];
 	        this.mode = source["mode"];
 	        this.fileIdentity = source["fileIdentity"];
+	        this.rawHash = source["rawHash"];
 	    }
 	}
 	export class ConflictPreview {
@@ -1023,38 +1103,6 @@ export namespace apperr {
 		    }
 		    return a;
 		}
-	}
-	export class WireError {
-	    code: ErrorCode;
-	    title: string;
-	    message: string;
-	    details?: Record<string, string>;
-	    retryable: boolean;
-	    category?: string;
-	    safeSubject?: string;
-	    remediation?: string;
-	    remediations?: string[];
-	    documentId?: string;
-	    dedupKey?: string;
-	
-	    static createFrom(source: any = {}) {
-	        return new WireError(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.code = source["code"];
-	        this.title = source["title"];
-	        this.message = source["message"];
-	        this.details = source["details"];
-	        this.retryable = source["retryable"];
-	        this.category = source["category"];
-	        this.safeSubject = source["safeSubject"];
-	        this.remediation = source["remediation"];
-	        this.remediations = source["remediations"];
-	        this.documentId = source["documentId"];
-	        this.dedupKey = source["dedupKey"];
-	    }
 	}
 	export class LaunchTargetResult {
 	    category?: string;
@@ -1539,6 +1587,8 @@ export namespace apperr {
 	    remediation?: string;
 	    id?: string;
 	    status: string;
+	    warning?: string;
+	    warningReason?: string;
 	    data?: CommittedWriteOutcome;
 	    decisionToken?: string;
 	    proposedEnding?: string;
@@ -1558,6 +1608,8 @@ export namespace apperr {
 	        this.remediation = source["remediation"];
 	        this.id = source["id"];
 	        this.status = source["status"];
+	        this.warning = source["warning"];
+	        this.warningReason = source["warningReason"];
 	        this.data = this.convertValues(source["data"], CommittedWriteOutcome);
 	        this.decisionToken = source["decisionToken"];
 	        this.proposedEnding = source["proposedEnding"];

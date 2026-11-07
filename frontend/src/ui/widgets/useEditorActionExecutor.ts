@@ -6,8 +6,9 @@ import {
     type EditorActionExecutor,
     type EditorActionSnapshot,
 } from '../../logic/actions/editorActionExecutor';
-import { actionsForSurface, type ActionId } from '../../logic/actions/actionRegistry';
+import { actionsForSurface, getActionAvailability, type ActionId } from '../../logic/actions/actionRegistry';
 import { currentPlatform, shortcutForKeyEvent } from '../../logic/actions/shortcutRegistry';
+import { isEditorTextInput } from '../../logic/actions/editorTextInput';
 import { formatActionIds } from '../../logic/format/formatting';
 import { useEditingProjection } from '../../logic/hooks/useEditingProjection';
 import { useEditorShown } from '../../logic/hooks/useEditorShown';
@@ -97,7 +98,7 @@ export function useEditorActionExecutor(
         if (options.registerShortcuts !== true) return undefined;
 
         const onKeyDown = (event: KeyboardEvent): void => {
-            if (modalOpen || commands === null) return;
+            if (modalOpen || commands === null || activeBuffer === null) return;
             if (document.activeElement?.closest('[data-editor-surface]') === null) return;
             const binding = shortcutForKeyEvent(event, currentPlatform());
             if (binding === undefined) return;
@@ -105,13 +106,44 @@ export function useEditorActionExecutor(
                 (candidate) => candidate.shortcut === binding && isEditorFormattingShortcut(candidate.id),
             );
             if (action === undefined) return;
+            if (
+                isEditorTextInput(event.target) &&
+                getActionAvailability(action.id, {
+                    documentId: activeBuffer?.documentId,
+                    modalOpen,
+                    editorShown,
+                    markdownSettingsLoaded: markdownSettings !== undefined,
+                    projectedState,
+                    slotBusy: slot.state === 'running',
+                    writable: activeBuffer !== null,
+                }).kind !== 'available'
+            )
+                return;
             event.preventDefault();
+            if (isEditorTextInput(event.target)) event.stopPropagation();
             void executor.execute(action.id);
         };
 
-        window.addEventListener('keydown', onKeyDown);
-        return (): void => window.removeEventListener('keydown', onKeyDown);
-    }, [commands, executor, modalOpen, options.registerShortcuts]);
+        const captureEditor = (event: KeyboardEvent): void => {
+            if (isEditorTextInput(event.target)) onKeyDown(event);
+        };
+        globalThis.addEventListener('keydown', captureEditor, true);
+        globalThis.addEventListener('keydown', onKeyDown);
+        return (): void => {
+            globalThis.removeEventListener('keydown', captureEditor, true);
+            globalThis.removeEventListener('keydown', onKeyDown);
+        };
+    }, [
+        activeBuffer,
+        commands,
+        editorShown,
+        executor,
+        markdownSettings,
+        modalOpen,
+        options.registerShortcuts,
+        projectedState,
+        slot.state,
+    ]);
 
     return { capture: executor.capture, execute };
 }

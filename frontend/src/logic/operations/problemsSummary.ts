@@ -37,7 +37,7 @@ export function replace(documentId: string, findings: LintFinding[], total: numb
 }
 
 export function markStale(documentId: string, text: string): void {
-    if (active === null || active.documentId !== documentId || active.summary.stale || active.text === text) return;
+    if (active?.documentId !== documentId || active.summary.stale || active.text === text) return;
     const summary = { ...active.summary, stale: true };
     active = { ...active, summary };
     publish(summary);

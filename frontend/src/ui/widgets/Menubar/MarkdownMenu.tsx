@@ -45,7 +45,7 @@ export default function MarkdownMenu({
     onTrigger,
     showTrigger = true,
     anchorElement,
-}: MarkdownMenuProps): React.JSX.Element {
+}: Readonly<MarkdownMenuProps>): React.JSX.Element {
     const [trigger, setTrigger] = useState<HTMLButtonElement | null>(null);
     const snapshot = useRef<EditorActionSnapshot | undefined>(undefined);
     useEffect(() => {
@@ -106,6 +106,10 @@ export default function MarkdownMenu({
                                     item.shortcut === undefined
                                         ? undefined
                                         : formatShortcut(item.shortcut, currentPlatform());
+                                let title: string | undefined;
+                                if (cancellable) title = t('tidy.running');
+                                else if (availability.kind === 'unavailable')
+                                    title = t(actionUnavailableLabelKey(availability.reason));
                                 return (
                                     <MenuItem
                                         accelerator={cancellable ? undefined : accelerator}
@@ -118,13 +122,7 @@ export default function MarkdownMenu({
                                                 ? t('tidy.cancel')
                                                 : t(item.surfaceLabelKeys?.['markdown-menu'] ?? item.labelKey)
                                         }
-                                        title={
-                                            cancellable
-                                                ? t('tidy.running')
-                                                : availability.kind === 'unavailable'
-                                                  ? t(actionUnavailableLabelKey(availability.reason))
-                                                  : undefined
-                                        }
+                                        title={title}
                                         trailing={
                                             cancellable && progress !== null
                                                 ? `${progress.done}/${progress.total}`

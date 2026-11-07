@@ -20,7 +20,7 @@ const frameCsp =
 let pending: Promise<MermaidRealm> | undefined;
 
 function escapeAttribute(value: string): string {
-    return value.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+    return value.replaceAll('&', '&amp;').replaceAll('"', '&quot;').replaceAll('<', '&lt;');
 }
 
 function createRealm(): Promise<MermaidRealm> {
@@ -34,9 +34,9 @@ function createRealm(): Promise<MermaidRealm> {
     frame.srcdoc = `<meta http-equiv="Content-Security-Policy" content="${escapeAttribute(frameCsp)}"><script type="module" src="${escapeAttribute(scriptUrl)}"></script>`;
 
     return new Promise<MermaidRealm>((resolve, reject) => {
-        const timeout = window.setTimeout(() => fail(new Error('Mermaid rendering module did not load')), 10_000);
+        const timeout = globalThis.setTimeout(() => fail(new Error('Mermaid rendering module did not load')), 10_000);
         const fail = (error: unknown): void => {
-            window.clearTimeout(timeout);
+            globalThis.clearTimeout(timeout);
             frame.remove();
             reject(error);
         };
@@ -50,7 +50,7 @@ function createRealm(): Promise<MermaidRealm> {
                 }
                 void ready.then(
                     (realm) => {
-                        window.clearTimeout(timeout);
+                        globalThis.clearTimeout(timeout);
                         resolve(realm);
                     },
                     (error: unknown) => fail(error),

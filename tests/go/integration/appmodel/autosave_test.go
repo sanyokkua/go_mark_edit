@@ -5,6 +5,8 @@ import (
 	"os"
 	"testing"
 
+	"github.com/sanyokkua/go_mark_edit/internal/apperr"
+
 	. "github.com/sanyokkua/go_mark_edit/internal/appmodel"
 )
 
@@ -41,6 +43,35 @@ func TestAutosaveDebounceWritesTheLatestAcceptedBuffer(t *testing.T) {
 	metadata := state.Snapshot.Documents[documentID]
 	if metadata.Dirty || metadata.Status != string(SaveStatusAutosaved) {
 		t.Fatalf("autosaved metadata = %+v, want clean autosaved document", metadata)
+	}
+}
+
+func TestDiscardFenceRetainsLatestAutosaveWithoutWritingUntilCancel(t *testing.T) {
+	clock := &fakeAutosaveClock{}
+	service := NewAppModelServiceForHost(WithEmitter(&recordingEmitter{}), AppModelOption{AutosaveTimer: clock})
+	path, id := openAutosaveDocument(t, service, "base\n")
+	if err := service.UpdateBuffer(context.Background(), id, "first\n"); err != nil {
+		t.Fatal(err)
+	}
+	service.BeginShutdownDiscard()
+	if err := service.UpdateBuffer(context.Background(), id, "latest\n"); err != nil {
+		t.Fatal(err)
+	}
+	if clock.FireNext() {
+		t.Fatal("discard fence left an armed autosave")
+	}
+	if err := service.DrainDiscardBeforeClose(); err != nil {
+		t.Fatalf("discard drain: %+v", err)
+	}
+	if bytes, err := os.ReadFile(path); err != nil || string(bytes) != "base\n" {
+		t.Fatalf("disk while fenced = %q, %v", bytes, err)
+	}
+	service.EndShutdownDrain()
+	if !clock.FireNext() {
+		t.Fatal("cancel did not rearm latest intent")
+	}
+	if bytes, err := os.ReadFile(path); err != nil || string(bytes) != "latest\n" {
+		t.Fatalf("disk after cancel = %q, %v", bytes, err)
 	}
 }
 
@@ -154,5 +185,62 @@ func TestDisablingAutosaveCancelsPendingWorkWithoutClearingDirtyState(t *testing
 	}
 	if string(disk) != "after re-enable\n" {
 		t.Fatalf("disk content after re-enable = %q, want new edit", disk)
+	}
+}
+
+func TestMixedEndingsWaitForExplicitNormalization(t *testing.T) {
+	for _, boundary := range []string{"elapsed debounce", "close drain"} {
+		t.Run(boundary, func(t *testing.T) { testMixedEndingsWaitForExplicitNormalization(t, boundary) })
+	}
+}
+
+func testMixedEndingsWaitForExplicitNormalization(t *testing.T, boundary string) {
+	t.Helper()
+	ctx := context.Background()
+	clock := &fakeAutosaveClock{}
+	service := NewAppModelServiceForHost(WithEmitter(&recordingEmitter{}), AppModelOption{AutosaveTimer: clock})
+	path, id := writeMixedDocument(t, service, "a\r\nb\n")
+	if err := service.UpdateBuffer(ctx, id, "edited\n"); err != nil {
+		t.Fatal(err)
+	}
+	state, err := service.GetState(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	revision := state.Snapshot.Documents[id].ContentRevision
+	prompt := service.Save(ctx, id, revision, "")
+	if prompt.Status != apperr.WriteStatusNeedsNormalization || prompt.DecisionToken == "" {
+		t.Fatalf("Save = %+v, want normalization prompt", prompt)
+	}
+	if clock.Pending() != 0 {
+		t.Fatalf("mixed document scheduled %d timers, want none", clock.Pending())
+	}
+	if boundary == "elapsed debounce" {
+		clock.FireNext()
+	} else {
+		prepareMixedClose(t, service, id, state.Snapshot.TabSetRevision)
+	}
+	if clock.Pending() != 0 {
+		t.Fatalf("pending timers = %d, want none", clock.Pending())
+	}
+	disk, err := os.ReadFile(path)
+	if err != nil || string(disk) != "a\r\nb\n" {
+		t.Fatalf("disk before confirmation = %q, %v", disk, err)
+	}
+	saved := service.Save(ctx, id, revision, prompt.DecisionToken)
+	if saved.Status != apperr.WriteStatusCommitted {
+		t.Fatalf("Save with original token = %+v, want committed", saved)
+	}
+	disk, err = os.ReadFile(path)
+	if err != nil || string(disk) != "edited\r\n" {
+		t.Fatalf("disk after confirmation = %q, %v", disk, err)
+	}
+}
+
+func prepareMixedClose(t *testing.T, service *AppModelService, id string, revision uint64) {
+	t.Helper()
+	plan := service.PrepareClose(context.Background(), apperr.ClosePlanSingle, []string{id}, revision)
+	if plan.Error != nil || plan.Data == nil {
+		t.Fatalf("PrepareClose = %+v", plan)
 	}
 }

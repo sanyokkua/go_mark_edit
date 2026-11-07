@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-// Every current error code and result envelope has the JSON contract required by Wails.
+// Result envelopes expose only the JSON fields required by Wails.
 func TestResultEnvelopesExposeOnlyContractFields(t *testing.T) {
 	t.Parallel()
 
@@ -56,21 +56,30 @@ func TestResultEnvelopesExposeOnlyContractFields(t *testing.T) {
 			if err := json.Unmarshal(encoded, &got); err != nil {
 				t.Fatalf("unmarshal result: %v", err)
 			}
-			if len(got) != len(tt.wantKeys) {
-				t.Fatalf("JSON keys = %v, want exactly %v", mapKeys(got), tt.wantKeys)
-			}
-			for _, key := range tt.wantKeys {
-				if _, ok := got[key]; !ok {
-					t.Fatalf("missing JSON key %q in %s", key, encoded)
-				}
-			}
-			if tt.absentKey != "" {
-				if _, ok := got[tt.absentKey]; ok {
-					t.Fatalf("unexpected JSON key %q in %s", tt.absentKey, encoded)
-				}
-			}
+			assertResultKeys(t, got, encoded, tt.wantKeys, tt.absentKey)
 		})
 	}
+}
+
+func assertResultKeys(t *testing.T, got map[string]json.RawMessage, encoded []byte, wantKeys []string, absentKey string) {
+	t.Helper()
+	if len(got) != len(wantKeys) {
+		t.Fatalf("JSON keys = %v, want exactly %v", mapKeys(got), wantKeys)
+	}
+	for _, key := range wantKeys {
+		if _, ok := got[key]; !ok {
+			t.Fatalf("missing JSON key %q in %s", key, encoded)
+		}
+	}
+	if absentKey != "" {
+		if _, ok := got[absentKey]; ok {
+			t.Fatalf("unexpected JSON key %q in %s", absentKey, encoded)
+		}
+	}
+}
+
+func TestAllErrorCodesExposeTypeScriptNames(t *testing.T) {
+	t.Parallel()
 
 	wantCodes := map[ErrorCode]string{
 		ErrorCode("validation"):  "Validation",

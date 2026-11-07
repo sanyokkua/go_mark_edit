@@ -3,6 +3,8 @@ import { createElement } from 'react';
 import Markdown from 'react-markdown';
 
 import { createPipeline } from '../../../src/logic/markdown/pipeline';
+import { rehypeCodeHighlight } from '../../../src/logic/markdown/highlight';
+import type { Root } from 'hast';
 
 function code(language: string | undefined, body = 'package main'): HTMLElement {
     const source = `\`\`\`${language ?? ''}\n${body}\n\`\`\``;
@@ -95,4 +97,31 @@ it('highlights exactly 200000 source characters but leaves 200001 plain', () => 
     expect(overLimit.querySelector('[class^="hljs-"]')).toBeNull();
     expect(overLimit.classList.contains('hljs')).toBe(false);
     expect(overLimit.textContent).toContain(text);
+});
+
+// Captured from the original highlighting pipeline, including embedded grammars.
+it.each([
+    ...languages,
+    ['xml', '<script>const value = 1;</script><style>body { color: red; }</style>'],
+    ['php', '<div><?php echo "hi"; ?></div>'],
+    ['markdown', '# Heading\n\n**bold** and `code`'],
+    ...aliases,
+])('preserves rendered highlighting for %s: %s', (language, body) => {
+    expect(code(language, body).outerHTML).toMatchSnapshot();
+});
+
+it.each(['no-highlight', 'nohighlight'])('respects an explicit %s class', (className) => {
+    const codeNode = {
+        type: 'element' as const,
+        tagName: 'code',
+        properties: { className: ['language-go', className] },
+        children: [{ type: 'text' as const, value: 'package main\n  x' }],
+    };
+    const tree: Root = {
+        type: 'root',
+        children: [{ type: 'element', tagName: 'pre', properties: {}, children: [codeNode] }],
+    };
+    rehypeCodeHighlight()(tree);
+    expect(codeNode.properties.className).toEqual(['language-go', className]);
+    expect(codeNode.children).toEqual([{ type: 'text', value: 'package main\n  x' }]);
 });

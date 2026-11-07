@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test';
-import { chmod, readFile, unlink, writeFile } from 'node:fs/promises';
+import { chmod, readFile, realpath, unlink, writeFile } from 'node:fs/promises';
 
 import { expect, test } from '../support/harness';
 
@@ -120,7 +120,30 @@ test('creates a document, opens Recents, saves once, moves tabs, and restores sa
     await disableAutosave(app.page);
     await editDocument(app.page, saved);
     await app.page.keyboard.press('ControlOrMeta+S');
-    await expect(app.page.locator('[data-notification-code="save-success"]')).toHaveCount(1);
+    const successToast = app.page.locator('[data-notification-code="save-success"]');
+    await expect(successToast).toHaveCount(1);
+    await expect(successToast).toHaveAttribute('data-severity', 'success');
+    const stripe = await successToast.evaluate((toast) => {
+        const style = getComputedStyle(toast);
+        const accent = style.getPropertyValue('--accent').trim();
+        const probe = document.createElement('span');
+        probe.setAttribute('aria-hidden', 'true');
+        probe.style.color = 'var(--accent)';
+        toast.append(probe);
+        try {
+            return {
+                accent,
+                expected: getComputedStyle(probe).color,
+                color: style.borderInlineStartColor,
+                width: style.borderInlineStartWidth,
+            };
+        } finally {
+            probe.remove();
+        }
+    });
+    expect(stripe.accent).not.toBe('');
+    expect(stripe.width).toBe('3px');
+    expect(stripe.color).toBe(stripe.expected);
     await expect(app.page.locator('[aria-label="Document identity"]')).toContainText('Saved');
     expect(await readFile(first, 'utf8')).toBe(saved);
 
@@ -134,59 +157,64 @@ test('creates a document, opens Recents, saves once, moves tabs, and restores sa
     expect(await readFile(first, 'utf8')).toBe(saved);
 });
 
-test(
-    'reveals a missing real file and completes Save to recreate and Copy path remediations',
-    {
-        tag: '@native-clipboard',
-    },
-    async ({ app }) => {
-        const original = '# Recover me\n\nThe buffer remains available.\n';
-        const source = await app.writeDocument('recover.md', original);
-        const background = await app.writeDocument('stay-active.md', '# Active file stays unchanged\n');
-        await app.seedRecents([source, background]);
-        await app.launch();
-        await openRecentFromLauncher(app.page, 'recover.md');
+test('reveals a missing real file and completes Save to recreate and Copy path remediations', async ({ app }) => {
+    const original = '# Recover me\n\nThe buffer remains available.\n';
+    const source = await app.writeDocument('line\nbreak/recover.md', original);
+    const canonicalSource = await realpath(source);
+    const background = await app.writeDocument('stay-active.md', '# Active file stays unchanged\n');
+    await app.seedRecents([source, background]);
+    await app.launch();
+    await openRecentFromLauncher(app.page, 'recover.md');
 
-        await unlink(source);
-        await app.page.getByRole('tab', { name: 'recover.md' }).click({
-            button: 'right',
-        });
-        await app.page
-            .getByRole('menu', { name: 'Tab actions' })
-            .getByRole('menuitem', { name: 'Reveal in file manager', exact: true })
-            .click();
+    await app.page.getByRole('tab', { name: 'recover.md' }).click({ button: 'right' });
+    await app.page
+        .getByRole('menu', { name: 'Tab actions' })
+        .getByRole('menuitem', { name: 'Reveal in file manager', exact: true })
+        .click();
+    await expect.poll(() => app.recordedCalls('reveal')).toEqual([canonicalSource]);
 
-        const missing = app.page.locator('[data-notification-code="not_found"]');
-        await expect(missing).toHaveCount(1);
-        await expect(missing).toContainText('The document could not be found.');
-        await expect(missing).not.toContainText(source);
-        await expect(missing.getByRole('button', { name: 'Save to recreate' })).toBeEnabled();
-        await expect(missing.getByRole('button', { name: 'Copy path' })).toBeEnabled();
+    await unlink(source);
+    await app.page.getByRole('tab', { name: 'recover.md' }).click({
+        button: 'right',
+    });
+    await app.page
+        .getByRole('menu', { name: 'Tab actions' })
+        .getByRole('menuitem', { name: 'Reveal in file manager', exact: true })
+        .click();
 
-        await openRecentFromFileMenu(app.page, 'stay-active.md');
-        await missing.getByRole('button', { name: 'Save to recreate' }).click();
-        await expect(app.page.locator('[data-notification-code="save-success"]')).toHaveCount(1);
-        expect(await readFile(source, 'utf8')).toBe(original);
-        expect(await activeBufferContent(app.page)).toBe('# Active file stays unchanged\n');
-        expect(await readFile(background, 'utf8')).toBe('# Active file stays unchanged\n');
-        await expect(app.page.locator('[aria-label="Document identity"]')).toContainText('Saved');
+    const missing = app.page.locator('[data-notification-code="not_found"]');
+    await expect(missing).toHaveCount(1);
+    expect(await app.recordedCalls('reveal')).toEqual([canonicalSource]);
+    await expect(missing).toContainText('The document could not be found.');
+    await expect(missing).not.toContainText(source);
+    await expect(missing.getByRole('button', { name: 'Save to recreate' })).toBeEnabled();
+    await expect(missing.getByRole('button', { name: 'Copy path' })).toBeEnabled();
 
-        await unlink(source);
-        await app.page.getByRole('tab', { name: 'recover.md' }).click({
-            button: 'right',
-        });
-        await app.page
-            .getByRole('menu', { name: 'Tab actions' })
-            .getByRole('menuitem', { name: 'Reveal in file manager', exact: true })
-            .click();
-        const secondMissing = app.page.locator('[data-notification-code="not_found"]');
-        await expect(secondMissing).toHaveCount(1);
-        await secondMissing.getByRole('button', { name: 'Copy path' }).click();
-        await expect(app.page.getByRole('status').filter({ hasText: 'Copied path for recover.md' })).toHaveCount(1);
-        await expect(secondMissing).toHaveCount(0);
-        await expect(app.page.getByRole('status').filter({ hasText: 'Copied path for recover.md' })).toHaveCount(0);
-    },
-);
+    await openRecentFromFileMenu(app.page, 'stay-active.md');
+    await missing.getByRole('button', { name: 'Save to recreate' }).click();
+    await expect(app.page.locator('[data-notification-code="save-success"]')).toHaveCount(1);
+    expect(await readFile(source, 'utf8')).toBe(original);
+    expect(await activeBufferContent(app.page)).toBe('# Active file stays unchanged\n');
+    expect(await readFile(background, 'utf8')).toBe('# Active file stays unchanged\n');
+    await expect(app.page.locator('[aria-label="Document identity"]')).toContainText('Saved');
+
+    await unlink(source);
+    await app.page.getByRole('tab', { name: 'recover.md' }).click({
+        button: 'right',
+    });
+    await app.page
+        .getByRole('menu', { name: 'Tab actions' })
+        .getByRole('menuitem', { name: 'Reveal in file manager', exact: true })
+        .click();
+    const secondMissing = app.page.locator('[data-notification-code="not_found"]');
+    await expect(secondMissing).toHaveCount(1);
+    expect(await app.recordedCalls('reveal')).toEqual([canonicalSource]);
+    await secondMissing.getByRole('button', { name: 'Copy path' }).click();
+    await expect.poll(() => app.recordedCalls('clipboard')).toEqual([canonicalSource]);
+    await expect(app.page.getByRole('status').filter({ hasText: 'Copied path for recover.md' })).toHaveCount(1);
+    await expect(secondMissing).toHaveCount(0);
+    await expect(app.page.getByRole('status').filter({ hasText: 'Copied path for recover.md' })).toHaveCount(0);
+});
 
 test('offers Retry for a transient Save inspection refusal and commits after recovery', async ({ app }) => {
     const original = '# Retry me\n\nBefore.\n';
@@ -500,6 +528,142 @@ test('installs foreground reload content in the existing active editor', async (
     expect(await activeBufferContent(app.page)).toBe('# Reloaded editor content\n');
 });
 
+test('keeps each tab’s undo history when switching documents', async ({ app }) => {
+    const first = await app.writeDocument('undo-a.md', 'Alpha');
+    const second = await app.writeDocument('undo-b.md', 'Beta');
+    await app.seedRecents([first, second]);
+    await app.launch();
+    const { page } = app;
+    await openRecentFromLauncher(page, 'undo-a.md');
+    await openRecentFromFileMenu(page, 'undo-b.md');
+    await disableAutosave(page);
+    const firstTab = page.getByRole('tab', { name: 'undo-a.md' });
+    const lastTab = page.getByRole('tab', { name: 'undo-b.md' });
+    await firstTab.click();
+    await expect(page.locator('[data-editor-surface] .view-lines').first()).toHaveText('Alpha');
+    const editor = page.locator('[data-editor-surface] textarea').first();
+    await page.locator('[data-editor-surface] .view-lines').first().click();
+    await expect(editor).toBeFocused();
+    await editor.press('End');
+    await page.keyboard.insertText('abc');
+    await expect.poll(() => activeBufferContent(page)).toBe('Alphaabc');
+    await firstTab.press('End');
+    await expect.poll(() => activeBufferContent(page)).toBe('Beta');
+    await expect(lastTab).toBeFocused();
+    await expect(page.locator('[data-editor-surface] .view-lines').first()).toHaveText('Beta');
+    await lastTab.press('Home');
+    await expect.poll(() => activeBufferContent(page)).toBe('Alphaabc');
+    await expect(firstTab).toBeFocused();
+    await expect(page.locator('[data-editor-surface] .view-lines').first()).toHaveText('Alphaabc');
+    await page.locator('[data-editor-surface] .view-lines').first().click();
+    await editor.press(`${await editorModifier(page)}+z`);
+    await expect.poll(() => activeBufferContent(page)).toBe('Alpha');
+    await expect(page.locator('[data-editor-surface] .view-lines').first()).toHaveText('Alpha');
+    await page.getByRole('tab', { name: 'undo-b.md' }).click();
+    await expect.poll(() => activeBufferContent(page)).toBe('Beta');
+    await expect(page.locator('[data-editor-surface] .view-lines').first()).toHaveText('Beta');
+    expect(await readFile(first, 'utf8')).toBe('Alpha');
+    expect(await readFile(second, 'utf8')).toBe('Beta');
+});
+
+test('reload clears only the reloaded document’s undo history', async ({ app }) => {
+    const first = await app.writeDocument('reload-undo-a.md', 'Alpha');
+    const second = await app.writeDocument('reload-undo-b.md', 'Beta');
+    await app.seedRecents([first, second]);
+    await app.launch();
+    const { page } = app;
+    await openRecentFromLauncher(page, 'reload-undo-a.md');
+    await openRecentFromFileMenu(page, 'reload-undo-b.md');
+    await disableAutosave(page);
+    await expect.poll(() => activeBufferContent(page)).toBe('Beta');
+    await editDocument(page, 'Beta edited');
+    await page.getByRole('tab', { name: 'reload-undo-a.md' }).click();
+    await expect.poll(() => activeBufferContent(page)).toBe('Alpha');
+    await editDocument(page, 'Alpha edited');
+    await writeFile(first, 'Alpha external', 'utf8');
+    await page.evaluate(() => window.dispatchEvent(new Event('focus')));
+    const conflict = page.getByRole('dialog', { name: 'File changed on disk' });
+    await conflict.getByRole('button', { name: 'Reload from disk' }).click();
+    await expect(conflict).toHaveCount(0);
+    const editor = page.locator('[data-editor-surface] textarea').first();
+    await expect.poll(() => activeBufferContent(page)).toBe('Alpha external');
+    await expect(page.locator('[data-editor-surface] .view-lines').first()).toHaveText('Alpha external');
+    await page.locator('[data-editor-surface] .view-lines').first().click();
+    await expect(editor).toBeFocused();
+    await editor.press(`${await editorModifier(page)}+z`);
+    await expect.poll(() => activeBufferContent(page)).toBe('Alpha external');
+    await expect(page.locator('[data-editor-surface] .view-lines').first()).toHaveText('Alpha external');
+    await page.getByRole('tab', { name: 'reload-undo-b.md' }).click();
+    await expect.poll(() => activeBufferContent(page)).toBe('Beta edited');
+    await expect(page.locator('[data-editor-surface] .view-lines').first()).toHaveText('Beta edited');
+    await page.locator('[data-editor-surface] .view-lines').first().click();
+    await editor.press(`${await editorModifier(page)}+z`);
+    await expect.poll(() => activeBufferContent(page)).toBe('Beta');
+    await expect(page.locator('[data-editor-surface] .view-lines').first()).toHaveText('Beta');
+    expect(await readFile(first, 'utf8')).toBe('Alpha external');
+    expect(await readFile(second, 'utf8')).toBe('Beta');
+});
+
+test('keeps reloaded disk content after autosave and switching tabs', async ({ app }) => {
+    const external = '# Reloaded from disk\n';
+    const source = await app.writeDocument('reload-autosave.md', '# Original\n');
+    const other = await app.writeDocument('reload-other.md', '# Other\n');
+    await app.seedRecents([source, other]);
+    await app.launch();
+    await openRecentFromLauncher(app.page, 'reload-autosave.md');
+    await openRecentFromFileMenu(app.page, 'reload-other.md');
+    await app.page.getByRole('tab', { name: 'reload-autosave.md' }).click();
+    await app.page.getByRole('button', { name: 'Settings', exact: true }).click();
+    const settings = app.page.getByRole('menu', { name: 'Settings menu' });
+    const autosave = settings.getByRole('menuitemcheckbox', { name: 'Autosave' });
+    if (!(await autosave.isChecked())) await settings.locator('[data-settings-toggle="Autosave"]').click();
+    await expect(autosave).toBeChecked();
+    await app.page.keyboard.press('Escape');
+    await editDocument(app.page, '# Unsaved editor version\n');
+    await writeFile(source, external, 'utf8');
+    await app.page.evaluate(() => window.dispatchEvent(new Event('focus')));
+    const conflict = app.page.getByRole('dialog', { name: 'File changed on disk' });
+    await conflict.getByRole('button', { name: 'Reload from disk' }).click();
+    await expect(conflict).toHaveCount(0);
+    await app.page.getByRole('tab', { name: 'reload-other.md' }).click();
+    await app.page.getByRole('tab', { name: 'reload-autosave.md' }).click();
+    await app.page.waitForTimeout(2_000);
+    await expect(app.page.locator('[data-editor-surface] .view-lines').first()).toContainText('Reloaded from disk');
+    await expect.poll(() => activeBufferContent(app.page)).toBe(external);
+    expect(await readFile(source, 'utf8')).toBe(external);
+    await expect(
+        app.page.getByRole('tab', { name: 'reload-autosave.md' }).locator('..').getByLabel('Modified'),
+    ).toHaveCount(0);
+});
+
+test('keeps reloaded disk content when saved immediately', async ({ app }) => {
+    const external = '# Reloaded for immediate save\n';
+    const source = await app.writeDocument('reload-save.md', '# Original\n');
+    const other = await app.writeDocument('reload-save-other.md', '# Other\n');
+    await app.seedRecents([source, other]);
+    await app.launch();
+    await openRecentFromLauncher(app.page, 'reload-save.md');
+    await openRecentFromFileMenu(app.page, 'reload-save-other.md');
+    await app.page.getByRole('tab', { name: 'reload-save.md' }).click();
+    await disableAutosave(app.page);
+    await editDocument(app.page, '# Unsaved editor version\n');
+    await writeFile(source, external, 'utf8');
+    await app.page.evaluate(() => window.dispatchEvent(new Event('focus')));
+    const conflict = app.page.getByRole('dialog', { name: 'File changed on disk' });
+    await conflict.getByRole('button', { name: 'Reload from disk' }).click();
+    await expect(conflict).toHaveCount(0);
+    await app.page.keyboard.press('ControlOrMeta+S');
+    await expect(app.page.locator('[data-notification-code="save-success"]')).toHaveCount(1);
+    await expect(app.page.locator('[data-editor-surface] .view-lines').first()).toContainText(
+        'Reloaded for immediate save',
+    );
+    await expect.poll(() => activeBufferContent(app.page)).toBe(external);
+    expect(await readFile(source, 'utf8')).toBe(external);
+    await expect(
+        app.page.getByRole('tab', { name: 'reload-save.md' }).locator('..').getByLabel('Modified'),
+    ).toHaveCount(0);
+});
+
 test('retries a failed multi-tab close at a fresh revision with only its original targets', async ({ app }) => {
     const first = await app.writeDocument('close-first.md', '# First original\n');
     const second = await app.writeDocument('close-second.md', '# Second original\n');
@@ -666,3 +830,87 @@ for (const dismissFirst of [false, true]) {
         }
     });
 }
+
+test('keeps a long read-only marker and filename within the tab', async ({ app }) => {
+    const filename = 'Detailed documentation about the next product release.md';
+    const source = await app.writeDocument(filename, '# Read-only\n');
+    await chmod(source, 0o444);
+    await app.seedRecents([source]);
+    await app.launch();
+    await openRecentFromLauncher(app.page, filename);
+
+    const tab = app.page.getByRole('tab', { name: filename });
+    await expect(tab).toHaveAccessibleDescription(`Read-only · ${await realpath(source)}`);
+    const marker = tab.getByText('Read-only', { exact: true });
+    await expect(marker).toBeVisible();
+    // Only English is bundled, so use a longer translation to exercise the real tab geometry.
+    const layout = await marker.evaluate((element) => {
+        const tabButton = element.closest('[role="tab"]')!;
+        const basename = [...tabButton.children].find((child) =>
+            child.textContent?.includes('Detailed documentation'),
+        )!;
+        element.textContent = 'Nur mit eingeschränkten Leseberechtigungen verfügbar';
+        return {
+            tabRight: tabButton.getBoundingClientRect().right,
+            markerRight: element.getBoundingClientRect().right,
+            basenameWidth: basename.getBoundingClientRect().width,
+        };
+    });
+    expect(layout.basenameWidth).toBeGreaterThan(20);
+    expect(layout.markerRight).toBeLessThanOrEqual(layout.tabRight + 1);
+});
+
+test('Save As copies an opened write-protected file and makes the copy editable', async ({ app }) => {
+    const original = '# Protected\n\n- item\n';
+    const source = await app.writeDocument('locked.md', original);
+    const target = `${app.documentDirectory}/copy.md`;
+    await chmod(source, 0o444);
+    await app.seedRecents([source]);
+    await app.useSaveDialog(target);
+    await app.launch();
+    await openRecentFromLauncher(app.page, 'locked.md');
+    await app.page.getByRole('button', { name: 'Settings', exact: true }).click();
+    const settings = app.page.getByRole('menu', { name: 'Settings menu' });
+    const formatOnSave = settings.getByRole('menuitemcheckbox', { name: 'Format on save' });
+    if (!(await formatOnSave.isChecked())) await formatOnSave.click();
+    if (await settings.isVisible()) await app.page.keyboard.press('Escape');
+    await app.page.getByRole('button', { name: 'File', exact: true }).click();
+    const menu = app.page.getByRole('menu', { name: 'File' });
+    await expect(menu.getByRole('menuitem', { name: 'Save', exact: true })).toBeDisabled();
+    await expect(menu.getByRole('menuitem', { name: 'Save As', exact: true })).toBeEnabled();
+    await menu.getByRole('menuitem', { name: 'Save As', exact: true }).click();
+    await expect(app.page.getByRole('tab', { name: 'copy.md' })).toBeVisible();
+    expect(await readFile(source, 'utf8')).toBe(original);
+    expect(await readFile(target, 'utf8')).toBe(original);
+    await expect(app.page.locator('[data-notification-code="format-on-save-skipped"]')).toContainText(
+        'the document is read-only',
+    );
+    await editDocument(app.page, '# Editable copy\n');
+    await expect.poll(() => activeBufferContent(app.page)).toBe('# Editable copy\n');
+});
+
+test('Save As preserves unsaved edits after cancelling a write-protection conflict', async ({ app }) => {
+    const original = '# Original\n';
+    const edited = '# Unsaved user text\n';
+    const source = await app.writeDocument('changed-permissions.md', original);
+    const target = `${app.documentDirectory}/copy.md`;
+    await app.seedRecents([source]);
+    await app.useSaveDialog(target);
+    await app.launch();
+    await openRecentFromLauncher(app.page, 'changed-permissions.md');
+    await disableAutosave(app.page);
+    await editDocument(app.page, edited);
+    await chmod(source, 0o444);
+    await app.page.evaluate(() => window.dispatchEvent(new Event('focus')));
+    const prompt = app.page.getByRole('dialog', { name: 'File changed on disk' });
+    await expect(prompt).toBeVisible();
+    await expect(prompt.getByRole('button', { name: 'Keep mine' })).toHaveCount(0);
+    await expect(prompt.getByRole('button', { name: 'Skip' })).toHaveCount(0);
+    await prompt.getByRole('button', { name: 'Cancel', exact: true }).click();
+    await app.page.getByRole('button', { name: 'File', exact: true }).click();
+    await app.page.getByRole('menu', { name: 'File' }).getByRole('menuitem', { name: 'Save As', exact: true }).click();
+    await expect(app.page.getByRole('tab', { name: 'copy.md' })).toBeVisible();
+    expect(await readFile(source, 'utf8')).toBe(original);
+    expect(await readFile(target, 'utf8')).toBe(edited);
+    await editDocument(app.page, '# Editable copy\n');
+});

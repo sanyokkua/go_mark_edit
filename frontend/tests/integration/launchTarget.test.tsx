@@ -32,7 +32,13 @@ const strictWrapper = ({ children }: PropsWithChildren): React.JSX.Element => (
 );
 
 function renderLaunchTarget(ready: boolean, options: { wrapper?: typeof wrapper } = {}) {
-    const activation = { begin: jest.fn(() => 1), acknowledge: jest.fn(), isCurrent: jest.fn(() => true) };
+    const activation = {
+        begin: jest.fn(() => 1),
+        snapshot: jest.fn(() => 1),
+        refresh: jest.fn(),
+        acknowledge: jest.fn(),
+        isCurrent: jest.fn(() => true),
+    };
     return renderHook(
         ({ isReady }: { isReady: boolean }) => {
             const commands = useCommands(

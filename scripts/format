@@ -48,7 +48,7 @@ while IFS= read -r path; do
     esac
 done < <(git ls-files --cached --others --exclude-standard)
 
-shell_files=("scripts/build" "scripts/test" "scripts/verify" "scripts/format" "scripts/baseline")
+shell_files=("scripts/build" "scripts/test" "scripts/verify" "scripts/format" "scripts/baseline" "scripts/sonar")
 while IFS= read -r path; do
     [[ -n "$path" && -f "$REPO_ROOT/$path" && ! -L "$REPO_ROOT/$path" ]] || continue
     shell_files+=("$path")

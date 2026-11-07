@@ -57,7 +57,9 @@ it('opens a file and keeps selection, open highlight, and unsaved dot independen
     const { props } = renderNode();
     const row = screen.getByRole('treeitem', { name: 'z.md' });
     expect(row).toHaveAttribute('aria-selected', 'true');
-    expect(row).toHaveAttribute('aria-description', 'Open in a tab, Unsaved changes');
+    const descriptionId = row.getAttribute('aria-describedby');
+    expect(document.getElementById(descriptionId ?? '')).toHaveTextContent('Open in a tab, Unsaved changes');
+    expect(row).toHaveAccessibleDescription('Open in a tab, Unsaved changes');
     expect(row).toHaveAccessibleName('z.md');
     fireEvent.click(row);
     fireEvent.click(row);
@@ -93,7 +95,7 @@ it('selects an unreadable folder without expanding and forwards its context poin
     fireEvent.click(row);
     expect(props.onSelect).toHaveBeenCalledWith('/notes/broken');
     expect(props.onToggle).not.toHaveBeenCalled();
-    expect(row).toHaveAttribute('aria-description', 'Unreadable folder');
+    expect(row).toHaveAccessibleDescription('Unreadable folder');
     fireEvent.contextMenu(row, { clientX: 12, clientY: 14 });
     expect(props.onContextMenu).toHaveBeenCalledWith(unreadable, { x: 12, y: 14 });
     expect(screen.queryByRole('menu')).not.toBeInTheDocument();

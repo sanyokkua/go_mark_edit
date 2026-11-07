@@ -17,6 +17,8 @@ import (
 	"strings"
 )
 
+const mainGoFile = "main.go"
+
 type goSource struct {
 	path string
 	fset *token.FileSet
@@ -111,7 +113,7 @@ func loadProductionGoSources(root string) ([]goSource, error) {
 			return nil, err
 		}
 	}
-	mainPath := filepath.Join(root, "main.go")
+	mainPath := filepath.Join(root, mainGoFile)
 	if _, err := os.Stat(mainPath); err == nil {
 		paths = append(paths, mainPath)
 	}
@@ -130,68 +132,25 @@ func loadProductionGoSources(root string) ([]goSource, error) {
 }
 
 func checkBoundHandlers(root string, sources []goSource) []finding {
-	mainPath := filepath.Join(root, "main.go")
+	mainPath := filepath.Join(root, mainGoFile)
 	mainSource := sourceByPath(sources, mainPath)
 	if mainSource == nil {
-		return []finding{{rule: "L4", path: "main.go", text: "Bind list could not be read"}}
+		return []finding{{rule: "L4", path: mainGoFile, text: "Bind list could not be read"}}
 	}
 
-	boundFields := make(map[string]bool)
-	ast.Inspect(mainSource.file, func(node ast.Node) bool {
-		keyValue, ok := node.(*ast.KeyValueExpr)
-		if !ok || identifierName(keyValue.Key) != "Bind" {
-			return true
-		}
-		literal, ok := keyValue.Value.(*ast.CompositeLit)
-		if !ok {
-			return true
-		}
-		for _, element := range literal.Elts {
-			if selector, ok := element.(*ast.SelectorExpr); ok {
-				boundFields[selector.Sel.Name] = true
-			}
-		}
-		return true
-	})
+	boundFields := boundFieldsIn(mainSource.file)
+
 	if len(boundFields) == 0 {
-		return []finding{{rule: "L4", path: "main.go", text: "Bind list is empty or could not be read"}}
+		return []finding{{rule: "L4", path: mainGoFile, text: "Bind list is empty or could not be read"}}
 	}
 
-	boundTypes := make(map[string]bool)
-	for _, source := range sources {
-		ast.Inspect(source.file, func(node ast.Node) bool {
-			declaration, ok := node.(*ast.TypeSpec)
-			if !ok {
-				return true
-			}
-			structure, ok := declaration.Type.(*ast.StructType)
-			if !ok || declaration.Name.Name != "ApplicationContextHolder" {
-				return true
-			}
-			for _, field := range structure.Fields.List {
-				for _, name := range field.Names {
-					if boundFields[name.Name] {
-						if name := namedType(field.Type); name != "" {
-							boundTypes[name] = true
-						}
-					}
-				}
-			}
-			return true
-		})
-	}
+	boundTypes := boundTypesForFields(sources, boundFields, false)
 
 	findings := make([]finding, 0)
 	for _, source := range sources {
 		for _, declaration := range topLevelFunctions(source.file) {
-			if declaration.Recv == nil {
-				continue
-			}
-			if !ast.IsExported(declaration.Name.Name) {
-				continue
-			}
 			receiver := receiverTypeName(declaration.Recv)
-			if !boundTypes[receiver] {
+			if declaration.Recv == nil || !ast.IsExported(declaration.Name.Name) || !boundTypes[receiver] {
 				continue
 			}
 			method := fmt.Sprintf("%s.%s", receiver, declaration.Name.Name)
@@ -342,63 +301,8 @@ func checkCallerlessExports(root string, sources []goSource) []finding {
 	findings := make([]finding, 0)
 
 	for _, source := range sources {
-		for _, declaration := range source.file.Decls {
-			switch declaration := declaration.(type) {
-			case *ast.FuncDecl:
-				if declaration.Recv != nil {
-					if ast.IsExported(declaration.Name.Name) && !boundTypes[receiverTypeName(declaration.Recv)] && !callerlessExportException(declaration.Name.Name) {
-						position := source.fset.Position(declaration.Pos())
-						symbols = append(symbols, exportedSymbol{
-							name:        declaration.Name.Name,
-							qualified:   receiverTypeName(declaration.Recv) + "." + declaration.Name.Name,
-							packageName: source.file.Name.Name,
-							path:        position.Filename,
-							line:        position.Line,
-							declaration: declaration.Name.Pos(),
-							method:      true,
-						})
-					}
-				} else if ast.IsExported(declaration.Name.Name) {
-					position := source.fset.Position(declaration.Pos())
-					symbols = append(symbols, exportedSymbol{name: declaration.Name.Name, qualified: declaration.Name.Name, packageName: source.file.Name.Name, path: position.Filename, line: position.Line, declaration: declaration.Name.Pos()})
-				}
-			case *ast.GenDecl:
-				if declaration.Tok != token.TYPE && declaration.Tok != token.VAR && declaration.Tok != token.CONST {
-					continue
-				}
-				for _, specification := range declaration.Specs {
-					var names []*ast.Ident
-					switch specification := specification.(type) {
-					case *ast.TypeSpec:
-						names = []*ast.Ident{specification.Name}
-					case *ast.ValueSpec:
-						names = specification.Names
-					}
-					for _, name := range names {
-						if !ast.IsExported(name.Name) {
-							continue
-						}
-						position := source.fset.Position(name.Pos())
-						symbols = append(symbols, exportedSymbol{name: name.Name, qualified: name.Name, packageName: source.file.Name.Name, path: position.Filename, line: position.Line, declaration: name.Pos()})
-					}
-				}
-			}
-		}
-
-		ast.Inspect(source.file, func(node ast.Node) bool {
-			identifier, ok := node.(*ast.Ident)
-			if ok {
-				identifierUses[identifier.Name]++
-			}
-			selector, ok := node.(*ast.SelectorExpr)
-			if ok {
-				selectorUses[selector.Sel.Name]++
-				if packageName, ok := importedPackageName(source.file, selector.X); ok {
-					qualifiedUses[packageName+"."+selector.Sel.Name]++
-				}
-			}
-			return true
-		})
+		symbols = append(symbols, exportedSymbols(source, boundTypes)...)
+		countSourceUses(source, identifierUses, selectorUses, qualifiedUses)
 	}
 
 	for _, symbol := range symbols {
@@ -416,6 +320,78 @@ func checkCallerlessExports(root string, sources []goSource) []finding {
 		findings = append(findings, finding{rule: "L6", path: symbol.path, line: symbol.line, text: symbol.qualified + " has no production caller"})
 	}
 	return findings
+}
+
+func exportedSymbols(source goSource, boundTypes map[string]bool) []exportedSymbol {
+	var symbols []exportedSymbol
+	for _, declaration := range source.file.Decls {
+		switch declaration := declaration.(type) {
+		case *ast.FuncDecl:
+			if symbol, ok := exportedFunction(source, declaration, boundTypes); ok {
+				symbols = append(symbols, symbol)
+			}
+		case *ast.GenDecl:
+			symbols = append(symbols, exportedDeclarations(source, declaration)...)
+		}
+	}
+	return symbols
+}
+
+func exportedFunction(source goSource, declaration *ast.FuncDecl, boundTypes map[string]bool) (exportedSymbol, bool) {
+	name := declaration.Name.Name
+	if !ast.IsExported(name) {
+		return exportedSymbol{}, false
+	}
+	method := declaration.Recv != nil
+	qualified := name
+	if method {
+		receiver := receiverTypeName(declaration.Recv)
+		if boundTypes[receiver] || callerlessExportException(name) {
+			return exportedSymbol{}, false
+		}
+		qualified = receiver + "." + name
+	}
+	position := source.fset.Position(declaration.Pos())
+	return exportedSymbol{name: name, qualified: qualified, packageName: source.file.Name.Name, path: position.Filename, line: position.Line, declaration: declaration.Name.Pos(), method: method}, true
+}
+
+func exportedDeclarations(source goSource, declaration *ast.GenDecl) []exportedSymbol {
+	if declaration.Tok != token.TYPE && declaration.Tok != token.VAR && declaration.Tok != token.CONST {
+		return nil
+	}
+	var symbols []exportedSymbol
+	for _, specification := range declaration.Specs {
+		var names []*ast.Ident
+		switch specification := specification.(type) {
+		case *ast.TypeSpec:
+			names = []*ast.Ident{specification.Name}
+		case *ast.ValueSpec:
+			names = specification.Names
+		}
+		for _, name := range names {
+			if !ast.IsExported(name.Name) {
+				continue
+			}
+			position := source.fset.Position(name.Pos())
+			symbols = append(symbols, exportedSymbol{name: name.Name, qualified: name.Name, packageName: source.file.Name.Name, path: position.Filename, line: position.Line, declaration: name.Pos()})
+		}
+	}
+	return symbols
+}
+
+func countSourceUses(source goSource, identifiers, selectors, qualified map[string]int) {
+	ast.Inspect(source.file, func(node ast.Node) bool {
+		if identifier, ok := node.(*ast.Ident); ok {
+			identifiers[identifier.Name]++
+		}
+		if selector, ok := node.(*ast.SelectorExpr); ok {
+			selectors[selector.Sel.Name]++
+			if packageName, ok := importedPackageName(source.file, selector.X); ok {
+				qualified[packageName+"."+selector.Sel.Name]++
+			}
+		}
+		return true
+	})
 }
 
 func sourceForSymbol(sources []goSource, symbol exportedSymbol) goSource {
@@ -468,38 +444,45 @@ func fieldListSignature(fset *token.FileSet, fields *ast.FieldList) string {
 func interfaceMethodSignatures(sources []goSource) map[string]map[string]bool {
 	signatures := make(map[string]map[string]bool)
 	for _, source := range sources {
-		for _, declaration := range source.file.Decls {
-			genDecl, ok := declaration.(*ast.GenDecl)
-			if !ok || genDecl.Tok != token.TYPE {
+		forEachInterface(source, func(interfaceType *ast.InterfaceType, _ string) {
+			packageSignatures := signatures[source.file.Name.Name]
+			if packageSignatures == nil {
+				packageSignatures = make(map[string]bool)
+				signatures[source.file.Name.Name] = packageSignatures
+			}
+			collectInterfaceSignatures(source.fset, interfaceType, packageSignatures)
+		})
+	}
+	return signatures
+}
+
+func collectInterfaceSignatures(fset *token.FileSet, interfaceType *ast.InterfaceType, signatures map[string]bool) {
+	for _, field := range interfaceType.Methods.List {
+		if len(field.Names) == 0 || !ast.IsExported(field.Names[0].Name) {
+			continue
+		}
+		if function, ok := field.Type.(*ast.FuncType); ok {
+			signatures[functionSignature(fset, function)] = true
+		}
+	}
+}
+
+func forEachInterface(source goSource, visit func(*ast.InterfaceType, string)) {
+	for _, declaration := range source.file.Decls {
+		genDecl, ok := declaration.(*ast.GenDecl)
+		if !ok || genDecl.Tok != token.TYPE {
+			continue
+		}
+		for _, specification := range genDecl.Specs {
+			typeSpec, ok := specification.(*ast.TypeSpec)
+			if !ok {
 				continue
 			}
-			for _, specification := range genDecl.Specs {
-				typeSpec, ok := specification.(*ast.TypeSpec)
-				if !ok {
-					continue
-				}
-				interfaceType, ok := typeSpec.Type.(*ast.InterfaceType)
-				if !ok {
-					continue
-				}
-				packageSignatures := signatures[source.file.Name.Name]
-				if packageSignatures == nil {
-					packageSignatures = make(map[string]bool)
-					signatures[source.file.Name.Name] = packageSignatures
-				}
-				for _, field := range interfaceType.Methods.List {
-					if len(field.Names) == 0 || !ast.IsExported(field.Names[0].Name) {
-						continue
-					}
-					function, ok := field.Type.(*ast.FuncType)
-					if ok {
-						packageSignatures[functionSignature(source.fset, function)] = true
-					}
-				}
+			if interfaceType, ok := typeSpec.Type.(*ast.InterfaceType); ok {
+				visit(interfaceType, typeSpec.Name.Name)
 			}
 		}
 	}
-	return signatures
 }
 
 func importedPackageName(file *ast.File, expression ast.Expr) (string, bool) {
@@ -536,25 +519,10 @@ func importedPackageName(file *ast.File, expression ast.Expr) (string, bool) {
 func interfaceMethodUses(sources []goSource) map[string]bool {
 	interfaces := make(map[string][]string)
 	for _, source := range sources {
-		for _, declaration := range source.file.Decls {
-			genDecl, ok := declaration.(*ast.GenDecl)
-			if !ok || genDecl.Tok != token.TYPE {
-				continue
-			}
-			for _, specification := range genDecl.Specs {
-				typeSpec, ok := specification.(*ast.TypeSpec)
-				if !ok {
-					continue
-				}
-				interfaceType, ok := typeSpec.Type.(*ast.InterfaceType)
-				if !ok {
-					continue
-				}
-				interfaces[source.file.Name.Name+"."+typeSpec.Name.Name] = interfaceMethodNames(interfaceType)
-			}
-		}
+		forEachInterface(source, func(interfaceType *ast.InterfaceType, name string) {
+			interfaces[source.file.Name.Name+"."+name] = interfaceMethodNames(interfaceType)
+		})
 	}
-
 	uses := make(map[string]bool)
 	for _, source := range sources {
 		for _, declaration := range source.file.Decls {
@@ -563,22 +531,26 @@ func interfaceMethodUses(sources []goSource) map[string]bool {
 				continue
 			}
 			for _, specification := range genDecl.Specs {
-				valueSpec, ok := specification.(*ast.ValueSpec)
-				if !ok || len(valueSpec.Names) != 1 || valueSpec.Names[0].Name != "_" || len(valueSpec.Values) != 1 {
-					continue
-				}
-				receiver := expressionTypeName(valueSpec.Values[0])
-				if receiver == "" {
-					continue
-				}
-				methods := interfaceMethodNamesFromExpression(valueSpec.Type, source.file.Name.Name, interfaces)
-				for _, method := range methods {
-					uses[source.file.Name.Name+"."+receiver+"."+method] = true
-				}
+				recordInterfaceAssertion(source, specification, interfaces, uses)
 			}
 		}
 	}
 	return uses
+}
+
+func recordInterfaceAssertion(source goSource, specification ast.Spec, interfaces map[string][]string, uses map[string]bool) {
+	valueSpec, ok := specification.(*ast.ValueSpec)
+	if !ok || len(valueSpec.Names) != 1 || valueSpec.Names[0].Name != "_" || len(valueSpec.Values) != 1 {
+		return
+	}
+	receiver := expressionTypeName(valueSpec.Values[0])
+	if receiver == "" {
+		return
+	}
+	methods := interfaceMethodNamesFromExpression(valueSpec.Type, source.file.Name.Name, interfaces)
+	for _, method := range methods {
+		uses[source.file.Name.Name+"."+receiver+"."+method] = true
+	}
 }
 
 func interfaceMethodNamesFromExpression(expression ast.Expr, packageName string, interfaces map[string][]string) []string {
@@ -629,12 +601,18 @@ func standardProtocolMethod(name string) bool {
 }
 
 func boundHandlerTypes(root string, sources []goSource) map[string]bool {
-	mainSource := sourceByPath(sources, filepath.Join(root, "main.go"))
+	mainSource := sourceByPath(sources, filepath.Join(root, mainGoFile))
 	if mainSource == nil {
 		return nil
 	}
+	fields := boundFieldsIn(mainSource.file)
+
+	return boundTypesForFields(sources, fields, true)
+}
+
+func boundFieldsIn(file *ast.File) map[string]bool {
 	fields := make(map[string]bool)
-	ast.Inspect(mainSource.file, func(node ast.Node) bool {
+	ast.Inspect(file, func(node ast.Node) bool {
 		keyValue, ok := node.(*ast.KeyValueExpr)
 		if !ok || identifierName(keyValue.Key) != "Bind" {
 			return true
@@ -650,6 +628,10 @@ func boundHandlerTypes(root string, sources []goSource) map[string]bool {
 		}
 		return true
 	})
+	return fields
+}
+
+func boundTypesForFields(sources []goSource, fields map[string]bool, includeEmpty bool) map[string]bool {
 	types := make(map[string]bool)
 	for _, source := range sources {
 		ast.Inspect(source.file, func(node ast.Node) bool {
@@ -658,20 +640,27 @@ func boundHandlerTypes(root string, sources []goSource) map[string]bool {
 				return true
 			}
 			structure, ok := specification.Type.(*ast.StructType)
-			if !ok {
-				return true
-			}
-			for _, field := range structure.Fields.List {
-				for _, name := range field.Names {
-					if fields[name.Name] {
-						types[namedType(field.Type)] = true
-					}
-				}
+			if ok {
+				collectBoundTypes(structure, fields, types, includeEmpty)
 			}
 			return true
 		})
 	}
 	return types
+}
+
+func collectBoundTypes(structure *ast.StructType, fields, types map[string]bool, includeEmpty bool) {
+	for _, field := range structure.Fields.List {
+		for _, name := range field.Names {
+			if !fields[name.Name] {
+				continue
+			}
+			typeName := namedType(field.Type)
+			if includeEmpty || typeName != "" {
+				types[typeName] = true
+			}
+		}
+	}
 }
 
 func callerlessExportException(name string) bool {

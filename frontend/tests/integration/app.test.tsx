@@ -36,6 +36,8 @@ jest.mock('../../src/app/useShutdown', () => ({
 
 jest.mock('../../src/logic/adapter', () => ({
     appModelAdapter: {
+        subscribeBufferSyncErrors: jest.fn(() => jest.fn()),
+        subscribeSupersededBuffers: jest.fn(() => jest.fn()),
         newDocument: jest.fn(),
         chooseWorkspaceFolder: jest.fn(),
         openWorkspace: jest.fn(),
@@ -59,11 +61,14 @@ jest.mock('../../src/logic/adapter', () => ({
 
 import { useBootstrap } from '../../src/app/useBootstrap';
 import App from '../../src/app/App';
-import { appModelAdapter } from '../../src/logic/adapter';
+import { appModelAdapter, windowAdapter } from '../../src/logic/adapter';
 import { store } from '../../src/logic/store';
+import type { WireError } from '../../src/logic/utils/parseError';
+import { resetNotifications } from '../../src/logic/store/notificationsSlice';
 import { applyStatePatch, hydrateProjection } from '../../src/logic/store/appModelProjectionActions';
 import { createTidyWorker } from '../../src/logic/tidy/workerFactory';
 import { createCommandRecorder } from '../support/commandRecorder';
+import { t } from '../../src/i18n';
 
 const mockedUseBootstrap = useBootstrap as jest.MockedFunction<typeof useBootstrap>;
 
@@ -290,4 +295,66 @@ it('leaves sidebar visibility to the backend when a folder open publishes a new 
 
     await waitFor(() => expect(appModelAdapter.chooseWorkspaceFolder).toHaveBeenCalled());
     expect(appModelAdapter.setUILayout).not.toHaveBeenCalled();
+});
+
+it('reports a buffer sync error once through application notifications and unsubscribes', async () => {
+    mockedUseBootstrap.mockReturnValue(readyBootstrap());
+    hydrateEmptyProjection();
+    store.dispatch(resetNotifications());
+    const unsubscribe = jest.fn();
+    let listener: ((error: WireError) => void) | undefined;
+    jest.mocked(appModelAdapter.subscribeBufferSyncErrors).mockImplementation((onError) => {
+        listener = onError;
+        return unsubscribe;
+    });
+    const view = render(<App />);
+    await waitForAppearanceHydration();
+    expect(listener).toBeDefined();
+    act(() => listener?.({ code: 'io', title: 'Buffer delivery', message: 'Could not sync', retryable: true }));
+    expect(store.getState().notifications.items.filter((item) => item.code === 'io')).toHaveLength(1);
+    view.unmount();
+    expect(unsubscribe).toHaveBeenCalled();
+});
+
+it('warns once through application notifications when an editor update was based on replaced text', async () => {
+    mockedUseBootstrap.mockReturnValue(readyBootstrap());
+    hydrateEmptyProjection();
+    store.dispatch(resetNotifications());
+    const unsubscribe = jest.fn();
+    let listener: Parameters<typeof appModelAdapter.subscribeSupersededBuffers>[0] | undefined;
+    jest.mocked(appModelAdapter.subscribeSupersededBuffers).mockImplementation((onSuperseded) => {
+        listener = onSuperseded;
+        return unsubscribe;
+    });
+    const view = render(<App />);
+    await waitForAppearanceHydration();
+    const superseded = { documentId: 'document-1', content: 'kept', baseRevision: 4, currentRevision: 9 };
+    act(() => {
+        listener?.(superseded);
+        listener?.(superseded);
+    });
+    const warnings = store.getState().notifications.items.filter((item) => item.code === 'buffer-superseded');
+    expect(warnings).toEqual([
+        expect.objectContaining({
+            severity: 'warning',
+            title: t('editor.bufferSuperseded.title'),
+            message: t('editor.bufferSuperseded.message'),
+        }),
+    ]);
+    view.unmount();
+    expect(unsubscribe).toHaveBeenCalled();
+});
+
+it('reports a rejected fullscreen toggle', async () => {
+    mockedUseBootstrap.mockReturnValue(readyBootstrap());
+    hydrateEmptyProjection();
+    store.dispatch(resetNotifications());
+    (windowAdapter.toggleFullscreen as jest.Mock).mockRejectedValueOnce(new Error('fullscreen unavailable'));
+    render(<App />);
+    await waitForAppearanceHydration();
+    fireEvent.click(screen.getByRole('button', { name: 'View' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: /full screen/i }));
+    await waitFor(() =>
+        expect(store.getState().notifications.items.some((item) => item.code === 'internal')).toBe(true),
+    );
 });

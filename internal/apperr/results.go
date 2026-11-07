@@ -58,6 +58,28 @@ type VoidResult struct {
 	Error *WireError `json:"error,omitempty"`
 }
 
+// BufferUpdateStatus says whether the backend adopted an editor buffer update.
+type BufferUpdateStatus string
+
+const (
+	// BufferUpdateAccepted means the update is now the canonical buffer.
+	BufferUpdateAccepted BufferUpdateStatus = "accepted"
+	// BufferUpdateSuperseded means the update was based on text that a reload
+	// from disk has since replaced. The backend did not adopt it and it is not
+	// an error; the result names the revision the editor can resend it on.
+	BufferUpdateSuperseded BufferUpdateStatus = "superseded"
+)
+
+// BufferUpdateResult is the envelope for an editor buffer update. A superseded
+// result carries DocumentRevision, the document's current content revision, so
+// the editor session can resend its text on that base.
+type BufferUpdateResult struct {
+	Failure
+	Status           BufferUpdateStatus `json:"status,omitempty"`
+	DocumentRevision uint64             `json:"documentRevision,omitempty"`
+	Error            *WireError         `json:"error,omitempty"`
+}
+
 // LaunchTargetResult is the path a starting window accepted from its command
 // line or the operating system. Kind is "file" or "folder"; a result without a
 // Path means the window accepted nothing.
@@ -279,10 +301,19 @@ type AppStateSnapshot struct {
 	PendingClose       *PendingClose               `json:"pendingClose,omitempty"`
 }
 
+// PendingCloseOwner identifies which side controls a native close request.
+type PendingCloseOwner string
+
+const (
+	PendingCloseOwnerFrontend PendingCloseOwner = "frontend"
+	PendingCloseOwnerNative   PendingCloseOwner = "native"
+)
+
 // PendingClose identifies a native close request that the frontend must
 // discover during hydration.
 type PendingClose struct {
-	ID string `json:"id"`
+	ID    string            `json:"id"`
+	Owner PendingCloseOwner `json:"owner"`
 }
 
 // ActiveBuffer carries the canonical content only during explicit state hydration.
@@ -488,11 +519,33 @@ const (
 	WriteStatusRefused            WriteStatus = "refused"
 )
 
+// WriteWarning identifies which accompanying operation failed after a committed write.
+type WriteWarning string
+
+const (
+	WriteWarningDurability  WriteWarning = "durability"
+	WriteWarningRecentItems WriteWarning = "recent-items"
+	WriteWarningViewState   WriteWarning = "view-state"
+)
+
+// WriteWarningReason identifies the post-replacement check that failed. Unknown
+// errors leave the reason empty and retain the generic durability warning.
+type WriteWarningReason string
+
+const (
+	WriteWarningReasonMetadataStat    WriteWarningReason = "metadata-stat"
+	WriteWarningReasonReadback        WriteWarningReason = "readback"
+	WriteWarningReasonContentMismatch WriteWarningReason = "content-mismatch"
+	WriteWarningReasonDirectorySync   WriteWarningReason = "directory-sync"
+)
+
 // WriteResult distinguishes a committed disk replacement from a cancelled,
 // authorization, conflict, or classified refusal outcome.
 type WriteResult struct {
 	Failure
 	Status           WriteStatus            `json:"status"`
+	Warning          WriteWarning           `json:"warning,omitempty"`
+	WarningReason    WriteWarningReason     `json:"warningReason,omitempty"`
 	Data             *CommittedWriteOutcome `json:"data,omitempty"`
 	DecisionToken    string                 `json:"decisionToken,omitempty"`
 	ProposedEnding   string                 `json:"proposedEnding,omitempty"`
@@ -509,6 +562,7 @@ type DiskVersion struct {
 	ModifiedUnixNano int64  `json:"modifiedUnixNano"`
 	Mode             uint32 `json:"mode"`
 	FileIdentity     string `json:"fileIdentity,omitempty"`
+	RawHash          string `json:"rawHash,omitempty"`
 }
 
 // MarshalJSON encodes the nanosecond timestamp as text so the JavaScript
@@ -520,6 +574,7 @@ func (version DiskVersion) MarshalJSON() ([]byte, error) {
 		ModifiedUnixNano string `json:"modifiedUnixNano"`
 		Mode             uint32 `json:"mode"`
 		FileIdentity     string `json:"fileIdentity,omitempty"`
+		RawHash          string `json:"rawHash,omitempty"`
 	}
 	return json.Marshal(wireDiskVersion{
 		Exists:           version.Exists,
@@ -527,6 +582,7 @@ func (version DiskVersion) MarshalJSON() ([]byte, error) {
 		ModifiedUnixNano: strconv.FormatInt(version.ModifiedUnixNano, 10),
 		Mode:             version.Mode,
 		FileIdentity:     version.FileIdentity,
+		RawHash:          version.RawHash,
 	})
 }
 
@@ -539,6 +595,7 @@ func (version *DiskVersion) UnmarshalJSON(data []byte) error {
 		ModifiedUnixNano json.RawMessage `json:"modifiedUnixNano"`
 		Mode             uint32          `json:"mode"`
 		FileIdentity     string          `json:"fileIdentity,omitempty"`
+		RawHash          string          `json:"rawHash,omitempty"`
 	}
 	var wire wireDiskVersion
 	if err := json.Unmarshal(data, &wire); err != nil {
@@ -554,6 +611,7 @@ func (version *DiskVersion) UnmarshalJSON(data []byte) error {
 		ModifiedUnixNano: modifiedUnixNano,
 		Mode:             wire.Mode,
 		FileIdentity:     wire.FileIdentity,
+		RawHash:          wire.RawHash,
 	}
 	return nil
 }

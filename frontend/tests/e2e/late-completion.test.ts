@@ -81,10 +81,25 @@ async function stopHeldLock(child: ChildProcess): Promise<void> {
     }
 }
 
+test.use({ installClock: true });
+
 test(
     'a late recent-file completion remains single and respects retry and cancel',
     { tag: '@perf' },
     async ({ app }) => {
+        let openRequests = 0;
+        app.page.on('websocket', (socket) => {
+            socket.on('framesent', ({ payload }) => {
+                if (
+                    typeof payload === 'string' &&
+                    payload.startsWith('C') &&
+                    payload.includes('AppModelHandler.OpenRecentFile')
+                ) {
+                    openRequests++;
+                }
+            });
+        });
+
         const source = await app.writeDocument('late.md', '# Late');
         const other = await app.writeDocument('other.md', '# Other');
         await app.seedRecents([other, source]);
@@ -98,21 +113,22 @@ test(
             try {
                 const recent = launcher.getByRole('button', { name: 'late.md' });
                 await expect(recent).toBeVisible();
-                const startedAt = Date.now();
+                const previousRequests = openRequests;
                 await recent.click();
+                await expect.poll(() => openRequests).toBe(previousRequests + 1);
+                await app.page.clock.fastForward(10_001);
 
                 const stuck = app.page.locator('[data-notification-code="command-stuck"]');
-                await expect(stuck).toBeVisible({ timeout: 11_000 });
+                await expect(stuck).toBeVisible();
                 if (remediation === 'retry') {
-                    const retryAt = startedAt + 10_500;
-                    const wait = retryAt - Date.now();
-                    if (wait > 0) await app.page.waitForTimeout(wait);
                     await stuck.getByRole('button', { name: 'Retry', exact: true }).click();
+                    await expect.poll(() => openRequests).toBe(previousRequests + 2);
                 } else {
                     await stuck.getByRole('button', { name: 'Cancel', exact: true }).click();
                     await expect(stuck).toHaveCount(0);
                 }
 
+                await stopHeldLock(heldLock.process);
                 await expect(app.page.getByRole('tab', { name: 'late.md' })).toBeVisible({
                     timeout: 20_000,
                 });

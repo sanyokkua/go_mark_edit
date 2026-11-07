@@ -31,7 +31,7 @@ export function useAppPresentation({
     const [settingsOpen, setSettingsOpen] = useState(false);
     const [aboutOpen, setAboutOpen] = useState(false);
     const [shortcutsOpen, setShortcutsOpen] = useState(false);
-    const [requestedMenu, requestMenu] = useState<ApplicationMenuTarget | null>(null);
+    const [requestedMenu, setRequestedMenu] = useState<ApplicationMenuTarget | null>(null);
     const [tableRequest, setTableRequest] = useState<EditorActionSnapshot | null>(null);
     const closeTable = useCallback((): void => setTableRequest(null), []);
     const modalOpen = settingsOpen || aboutOpen || shortcutsOpen || tableRequest !== null || workflowModalOpen;
@@ -53,7 +53,7 @@ export function useAppPresentation({
             onAbout: () => setAboutOpen(true),
             onShortcuts: () => setShortcutsOpen(true),
             requestedMenu,
-            onRequestedMenuHandled: () => requestMenu(null),
+            onRequestedMenuHandled: () => setRequestedMenu(null),
         }),
         [
             close.onCloseDocument,
@@ -71,7 +71,7 @@ export function useAppPresentation({
     return {
         modalOpen,
         menuState,
-        requestMenu,
+        requestMenu: setRequestedMenu,
         requestTable: setTableRequest,
         settingsOpen,
         setSettingsOpen,

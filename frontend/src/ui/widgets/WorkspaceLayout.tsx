@@ -12,7 +12,7 @@ import styles from './AppShell.module.css';
 
 export interface WorkspaceLayoutProps extends PropsWithChildren {
     documentState: 'active' | 'empty';
-    treeRevealRequest?: WorkspaceTreeProps['revealRequest'];
+    treeRevealRequest?: Exclude<WorkspaceTreeProps['revealRequest'], undefined>;
 }
 
 interface PendingWidth {

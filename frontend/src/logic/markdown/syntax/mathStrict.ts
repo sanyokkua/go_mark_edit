@@ -1,5 +1,5 @@
 import { markdownLineEnding, markdownLineEndingOrSpace, unicodeWhitespace } from 'micromark-util-character';
-import type {} from 'micromark-extension-math';
+import type { Options as MathOptions } from 'micromark-extension-math';
 import type { Code, Construct, State } from 'micromark-util-types';
 import remarkMath from 'remark-math';
 import type { Processor } from 'unified';
@@ -23,10 +23,10 @@ function eligibleClosers(source: string): Uint32Array {
     let nearest = 0;
 
     for (let index = source.length - 1; index >= 0; index--) {
-        if (source.charCodeAt(index) === dollar) {
+        if (source.codePointAt(index) === dollar) {
             let slashes = 0;
-            while (source.charCodeAt(index - slashes - 1) === backslash) slashes++;
-            const before = index > 0 ? source.charCodeAt(index - 1) : null;
+            while (source.codePointAt(index - slashes - 1) === backslash) slashes++;
+            const before = index > 0 ? (source.codePointAt(index - 1) ?? null) : null;
             if (slashes % 2 === 0 && !unicodeWhitespace(before) && !digitAt(source, index + 1)) nearest = index;
         }
         next[index] = nearest;
@@ -107,11 +107,14 @@ function strictDollarSyntax(index: { current: Uint32Array | undefined }): Constr
 
 /** Add stock display math and strict single-dollar inline math to a remark parser. */
 export function remarkMathStrict(this: Processor): void {
-    this.use(remarkMath, { singleDollarTextMath: false });
+    const mathOptions = { singleDollarTextMath: false } satisfies MathOptions;
+    this.use(remarkMath, mathOptions);
     const parseMarkdown = this.parser;
     if (!parseMarkdown) throw new Error('Strict math syntax needs a remark parser');
     const index: { current: Uint32Array | undefined } = { current: undefined };
-    (this.data().micromarkExtensions ??= []).push({ text: { [dollar]: strictDollarSyntax(index) } });
+    const data = this.data();
+    data.micromarkExtensions ??= [];
+    data.micromarkExtensions.push({ text: { [dollar]: strictDollarSyntax(index) } });
     this.parser = (document, file) => {
         const previous = index.current;
         index.current = eligibleClosers(document);

@@ -84,24 +84,7 @@ func TestSplitRatioRestoresPerCanonicalPathAcrossServiceRestart(t *testing.T) {
 		}
 	}
 	service := appmodel.NewAppModelServiceForHost(appmodel.AppModelOption{FileMetadataRepository: repository}, appmodel.WithEmitter(&recordingEmitter{}))
-	for _, item := range []struct {
-		path  string
-		ratio float64
-	}{{firstPath, 0.34}, {secondPath, 0.76}} {
-		state, err := service.GetState(ctx)
-		if err != nil {
-			t.Fatal(err)
-		}
-		opened := service.OpenPath(ctx, item.path, state.Snapshot.TabSetRevision)
-		if opened.DocumentID == "" {
-			t.Fatalf("open %s: %+v", item.path, opened)
-		}
-		view := validDocView(true, true)
-		view.SplitRatio = ratio(item.ratio)
-		if err := service.SetDocView(ctx, opened.DocumentID, view); err != nil {
-			t.Fatal(err)
-		}
-	}
+	setSplitRatios(t, ctx, service, firstPath, secondPath)
 	restarted := appmodel.NewAppModelServiceForHost(appmodel.AppModelOption{FileMetadataRepository: repository}, appmodel.WithEmitter(&recordingEmitter{}))
 	for _, item := range []struct {
 		path  string
@@ -121,6 +104,28 @@ func TestSplitRatioRestoresPerCanonicalPathAcrossServiceRestart(t *testing.T) {
 		}
 		if got := state.Snapshot.Documents[opened.DocumentID].View.SplitRatio; got != item.ratio {
 			t.Fatalf("restored %s ratio = %v, want %v", item.path, got, item.ratio)
+		}
+	}
+}
+
+func setSplitRatios(t *testing.T, ctx context.Context, service *appmodel.AppModelService, firstPath, secondPath string) {
+	t.Helper()
+	for _, item := range []struct {
+		path  string
+		ratio float64
+	}{{firstPath, 0.34}, {secondPath, 0.76}} {
+		state, err := service.GetState(ctx)
+		if err != nil {
+			t.Fatal(err)
+		}
+		opened := service.OpenPath(ctx, item.path, state.Snapshot.TabSetRevision)
+		if opened.DocumentID == "" {
+			t.Fatalf("open %s: %+v", item.path, opened)
+		}
+		view := validDocView(true, true)
+		view.SplitRatio = ratio(item.ratio)
+		if err := service.SetDocView(ctx, opened.DocumentID, view); err != nil {
+			t.Fatal(err)
 		}
 	}
 }

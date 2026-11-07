@@ -132,7 +132,7 @@ func (service *AppModelService) markDetached(ctx context.Context, documentID str
 	service.mu.Lock()
 	defer service.mu.Unlock()
 	document, exists := service.state.documents[documentID]
-	if !exists || document.detached {
+	if service.preparedQuitFenced || !exists || document.detached {
 		return
 	}
 	before := service.snapshotLocked()

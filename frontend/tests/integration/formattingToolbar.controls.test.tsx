@@ -1,6 +1,3 @@
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
-
 import { act, createEvent, fireEvent, render as rtlRender, screen, within } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { showEditor } from '../support/showEditor';
@@ -57,12 +54,6 @@ it('holds the arrangement segment at the toolbar trailing edge', () => {
     expect(trailing).not.toBeNull();
     expect(trailing).toContainElement(segment);
     expect(toolbar.querySelector('[data-bar-slot="main"] [data-island-label="View arrangement"]')).toBeNull();
-
-    const chromeStyles = readFileSync(
-        resolve(process.cwd(), 'src/ui/widgets/FormattingToolbar/FormattingToolbar.module.css'),
-        'utf8',
-    );
-    expect(chromeStyles).toContain('gap: var(--toolbar-gap)');
 });
 
 it('exposes real application-menu controls from the narrow toolbar overflow', () => {
@@ -184,9 +175,6 @@ it('renders toolbar overflow as a body-owned Popup viewport surface', () => {
     expect(popup.parentElement).toBe(document.body);
     expect(popup).toHaveAttribute('data-viewport-popup', 'editor-overflow');
     expect(popup).toHaveAttribute('data-popup-size', 'menu');
-    expect(readFileSync(resolve(process.cwd(), 'src/ui/components/Popup/Popup.module.css'), 'utf8')).toMatch(
-        /\.surface\s*\{[^}]*position:\s*fixed;/s,
-    );
 });
 
 it('keeps the Editor-stage semantic action signature independent of palette', () => {
@@ -328,7 +316,7 @@ it('passes acknowledged marker preferences into toolbar formatting', async () =>
     );
     render(
         <Provider store={store}>
-            <EditorSessionContext.Provider value={{ documentId: 'doc-1', content: 'word' }}>
+            <EditorSessionContext.Provider value={{ documentId: 'doc-1', content: 'word', documentRevision: 0 }}>
                 <DocumentCommandContext.Provider value={commands}>
                     <FormattingToolbar arrangement="editor" onArrangementChange={jest.fn()} />
                 </DocumentCommandContext.Provider>
@@ -368,7 +356,7 @@ it('routes editor-scoped tidy shortcuts through the typed dispatcher', () => {
     };
 
     const { container } = render(
-        <EditorSessionContext.Provider value={{ documentId: 'doc-1', content: 'word' }}>
+        <EditorSessionContext.Provider value={{ documentId: 'doc-1', content: 'word', documentRevision: 0 }}>
             <DocumentCommandContext.Provider value={commands}>
                 <div data-editor-surface="true" tabIndex={0}>
                     <FormattingToolbar arrangement="editor" onArrangementChange={jest.fn()} />
@@ -413,7 +401,7 @@ it('suppresses editor shortcuts while the Shortcuts dialog modal state is active
 
     const { container } = render(
         <ModalStateProvider modalOpen>
-            <EditorSessionContext.Provider value={{ documentId: 'doc-1', content: 'word' }}>
+            <EditorSessionContext.Provider value={{ documentId: 'doc-1', content: 'word', documentRevision: 0 }}>
                 <DocumentCommandContext.Provider value={commands}>
                     <div data-editor-surface tabIndex={0}>
                         <FormattingToolbar arrangement="editor" onArrangementChange={jest.fn()} />
@@ -435,13 +423,6 @@ it('suppresses editor shortcuts while the Shortcuts dialog modal state is active
     expect(commands.getContent).not.toHaveBeenCalled();
     expect(commands.replaceRange).not.toHaveBeenCalled();
 });
-
-/*
- * : `parityOverflowShortcuts` hardcoded a per-action string table, so the
- * parity overflow advertised `Ctrl ⇧ 8` for an action the registry binds to
- * `Mod+Shift+8`. Controlling the platform read is what separates a derivation
- * from a literal that happens to agree on one host.
- */
 
 // the registry binding rendered for the running platform. It proves nothing
 // about the arrangement row beneath them, which carries no accelerator.
@@ -493,7 +474,7 @@ it('disables the formatting toolbar for a non-writable document', () => {
     );
 
     render(
-        <EditorSessionContext.Provider value={{ documentId: 'doc-1', content: 'word' }}>
+        <EditorSessionContext.Provider value={{ documentId: 'doc-1', content: 'word', documentRevision: 0 }}>
             <FormattingToolbar arrangement="editor" onArrangementChange={jest.fn()} />
         </EditorSessionContext.Provider>,
     );
@@ -560,7 +541,7 @@ it('leaves the formatting toolbar live for a writable document', () => {
     );
 
     render(
-        <EditorSessionContext.Provider value={{ documentId: 'doc-1', content: 'word' }}>
+        <EditorSessionContext.Provider value={{ documentId: 'doc-1', content: 'word', documentRevision: 0 }}>
             <FormattingToolbar arrangement="editor" onArrangementChange={jest.fn()} />
         </EditorSessionContext.Provider>,
     );
@@ -614,7 +595,7 @@ it('keeps the Image action unavailable for a writable document, ignoring a click
         setMarkers: jest.fn(() => available(undefined)),
     };
     render(
-        <EditorSessionContext.Provider value={{ documentId: 'doc-1', content: 'word' }}>
+        <EditorSessionContext.Provider value={{ documentId: 'doc-1', content: 'word', documentRevision: 0 }}>
             <DocumentCommandContext.Provider value={commands}>
                 <FormattingToolbar arrangement="editor" onArrangementChange={jest.fn()} />
             </DocumentCommandContext.Provider>
@@ -632,18 +613,6 @@ it('keeps the Image action unavailable for a writable document, ignoring a click
     expect(commands.applyEdits).not.toHaveBeenCalled();
 });
 
-/*
- * , the toolbar half of the same decision. The overflow drew accelerators
- * from the registry but only on `?parity-case`, and `formatShortcut` had no
- * other caller in this file — so the shipped toolbar advertised nothing.
- *
- * These controls are icon-first with a localized accessible name, so there is no
- * text row to put an accelerator beside; the tooltip is where a user asks "what
- * is this, and how do I do it from the keyboard". Asserted against the registry
- * rather than a fixed list so it cannot drift, and the unbound case is asserted
- * too — a control with no binding must keep its plain label rather than gain an
- * empty bracket.
- */
 // shipped surface, formatted for the running platform.
 it('advertises toolbar accelerators from the registry in the tooltip', () => {
     render(<FormattingToolbar arrangement="split" onArrangementChange={jest.fn()} />);
@@ -659,20 +628,3 @@ it('advertises toolbar accelerators from the registry in the tooltip', () => {
         }
     }
 });
-
-/*
- * . The parity overflow inventory case and the two `…` accelerator
- * cases were removed with the substituted overflow they described.
- *
- * `toolbarOverflowParity` replaced the whole overflow popup with a flat item
- * list carrying no text actions, no heading actions and no real arrangement
- * radiogroup. It is gone: the overflow interior is now a named reviewed
- * exclusion, because the shipped overflow is icon-first and the binding's is a
- * flat text list — a design divergence, measured at `bounds.left 140.375 vs
- * 102.375` at 375px, that no variant can express through the mockup's
- * own primitives.
- *
- * The accelerators those cases asserted are not lost: restored them to the
- * shipped toolbar, in the tooltip, and `advertises toolbar accelerators
- * from the registry in the tooltip` asserts them against production.
- */

@@ -38,8 +38,8 @@ export function useReadingPresentation({
             }
             dispatch(leaveReading());
         };
-        window.addEventListener('keydown', onKeyDown);
-        return (): void => window.removeEventListener('keydown', onKeyDown);
+        globalThis.addEventListener('keydown', onKeyDown);
+        return (): void => globalThis.removeEventListener('keydown', onKeyDown);
     }, [dispatch, modalOpen, overlayShown, reading]);
 
     useEffect((): void => {

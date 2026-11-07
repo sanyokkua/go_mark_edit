@@ -276,7 +276,7 @@ test('when a folder opens, the tree filters and orders rows and refreshes stale 
     await page.getByRole('treeitem', { name: 'archive', exact: true }).click({ position: { x: 4, y: 10 } });
     if (process.getuid?.() !== 0) {
         const locked = page.getByRole('treeitem', { name: 'locked', exact: true });
-        await expect(locked).toHaveAttribute('aria-description', 'Unreadable folder');
+        await expect(locked).toHaveAccessibleDescription('Unreadable folder');
         await locked.click({ position: { x: 4, y: 10 } });
         await expect(locked).not.toHaveAttribute('aria-expanded', 'true');
         await expect(page.getByRole('treeitem', { name: 'readme.md', exact: true })).toBeVisible();
@@ -392,7 +392,7 @@ test('when each tree row is right-clicked, its menu offers only actions that can
     if (process.getuid?.() !== 0) {
         await page.getByRole('treeitem', { name: 'archive', exact: true }).click({ position: { x: 4, y: 10 } });
         const locked = page.getByRole('treeitem', { name: 'locked', exact: true });
-        await expect(locked).toHaveAttribute('aria-description', 'Unreadable folder');
+        await expect(locked).toHaveAccessibleDescription('Unreadable folder');
         await locked.click({ button: 'right' });
         await expect(menu.getByRole('menuitem')).toHaveCount(2);
         for (const action of ['Reveal in file manager', 'Copy path']) {
@@ -533,6 +533,7 @@ test('when a folder is empty or closed, the sidebar explains its state and honor
     await savePrompt.getByRole('button', { name: 'Save all', exact: true }).click();
     await expect(app.page.getByText('No folder open')).toBeHidden();
     await expect(app.page.getByRole('tab', { name: 'one.md' })).toHaveCount(0);
+    await expect(app.page.getByRole('treeitem', { name: basename(root), exact: true })).toHaveCount(0);
     expect(await readFile(file, 'utf8')).toContain('Edited before closing');
     await app.openWorkspace(root);
     await rename(root, `${root}-moved`);

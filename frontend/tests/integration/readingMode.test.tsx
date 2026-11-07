@@ -92,7 +92,7 @@ jest.mock('@monaco-editor/react', () => {
         React.useEffect((): void => {
             mockMonaco.instances.push(mounted);
             onMount?.(mounted.instance, {
-                editor: { ScrollType: { Immediate: 1 } },
+                editor: { ScrollType: { Immediate: 1 }, setModelMarkers: jest.fn() },
                 KeyCode: { Enter: 3 },
             } as unknown as Parameters<NonNullable<EditorProps['onMount']>>[1]);
         }, [mounted]);
@@ -250,7 +250,7 @@ function Harness({ content }: { content: string }): React.JSX.Element {
                 Open settings
             </button>
             <WorkspaceTreeTestProvider>
-                <EditorSessionProvider activeBuffer={{ documentId: 'doc-1', content }}>
+                <EditorSessionProvider activeBuffer={{ documentId: 'doc-1', content, documentRevision: 0 }}>
                     <AppFrame
                         printRequest={null}
                         banners={[]}

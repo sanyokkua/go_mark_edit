@@ -18,6 +18,7 @@ import DocumentTabs from '../../src/ui/widgets/DocumentTabs/DocumentTabs';
 import { TabRemediationContext, type TabRemediationExecutor } from '../../src/ui/widgets/tabRemediation';
 import { EDITOR_TABPANEL_ID } from '../../src/ui/widgets/editorTabPanel';
 import Launcher from '../../src/ui/widgets/Launcher';
+import { conflictFixture } from '../support/appFixtures';
 
 function documentFor(documentId: string, path: string, dirty = false): DocumentMetadata {
     return {
@@ -119,6 +120,14 @@ it('Move tab actions sit between close and path groups', () => {
     });
 
     fireEvent.contextMenu(screen.getByRole('tab', { name: /one\.md/ }));
+    expect(screen.getByRole('menuitem', { name: 'Move tab left' })).toHaveAttribute(
+        'aria-keyshortcuts',
+        expect.stringMatching(/^(Ctrl\+Shift\+PageUp|⌘⇧⇞)$/),
+    );
+    expect(screen.getByRole('menuitem', { name: 'Move tab right' })).toHaveAttribute(
+        'aria-keyshortcuts',
+        expect.stringMatching(/^(Ctrl\+Shift\+PageDown|⌘⇧⇟)$/),
+    );
     expect(
         screen.getAllByRole('menuitem').map((item) => item.querySelector('span')?.textContent ?? item.textContent),
     ).toEqual([
@@ -242,11 +251,7 @@ it('keeps exactly one tab in the roving tabindex and moves it with the selection
     expect(screen.getByRole('tab', { name: /three\.md/u })).toHaveAttribute('aria-selected', 'true');
 });
 
-/*
- * gap 2 — Home and End are handled on the tablist (DocumentTabs.tsx:465) and move
- * DOM focus only; they deliberately do not activate, so no backend command is issued.
- */
-it('moves tab-strip focus to the first and last tab with Home and End', () => {
+it('focuses and activates the first and last tab with Home and End', async () => {
     hydrate(
         [
             documentFor('one', '/repo/one.md'),
@@ -255,17 +260,38 @@ it('moves tab-strip focus to the first and last tab with Home and End', () => {
         ],
         'two',
     );
-    const activateDocument = jest.fn(async () => ({}));
+    const activateDocument = jest.fn((documentId: string, expectedTabSetRevision: number) => {
+        const { revision, tabSetRevision } = store.getState().documents;
+        expect(expectedTabSetRevision).toBe(tabSetRevision);
+        store.dispatch(
+            applyStatePatch({
+                revision: revision + 1,
+                tabSetRevision: tabSetRevision + 1,
+                activeDocumentId: documentId,
+            }),
+        );
+        return Promise.resolve({});
+    });
     renderTabs({ activateDocument });
 
-    const tablist = screen.getByRole('tablist');
-    fireEvent.keyDown(tablist, { key: 'End' });
-    expect(screen.getByRole('tab', { name: /three\.md/u })).toHaveFocus();
+    const middle = screen.getByRole('tab', { name: /two\.md/u });
+    const last = screen.getByRole('tab', { name: /three\.md/u });
+    const first = screen.getByRole('tab', { name: /one\.md/u });
+    middle.focus();
+    fireEvent.keyDown(middle, { key: 'End' });
+    await waitFor(() => expect(last).toHaveAttribute('aria-selected', 'true'));
+    expect(last).toHaveFocus();
+    expect(last).toHaveAttribute('tabindex', '0');
 
-    fireEvent.keyDown(tablist, { key: 'Home' });
-    expect(screen.getByRole('tab', { name: /one\.md/u })).toHaveFocus();
-
-    expect(activateDocument).not.toHaveBeenCalled();
+    fireEvent.keyDown(last, { key: 'Home' });
+    await waitFor(() => expect(first).toHaveAttribute('aria-selected', 'true'));
+    expect(first).toHaveFocus();
+    expect(first).toHaveAttribute('tabindex', '0');
+    expect(last).toHaveAttribute('tabindex', '-1');
+    expect(activateDocument.mock.calls).toEqual([
+        ['three', 4],
+        ['one', 5],
+    ]);
 });
 
 /*
@@ -1422,4 +1448,24 @@ it('refuses the fallback switch when the outgoing flush rejects', async () => {
     await waitFor(() => expect(store.getState().notifications.items).toHaveLength(1));
     expect(store.getState().documents.activeDocumentId).toBe('one');
     expect(activateDocument).not.toHaveBeenCalled();
+});
+
+it('routes a fallback close activation conflict to the external owner', async () => {
+    hydrate([documentFor('one', '/repo/one.md'), documentFor('two', '/repo/two.md')]);
+    const onExternalConflict = jest.fn();
+    const adapter = {
+        closeDocument: jest.fn(async (): Promise<TabTransitionResult> => ({
+            status: 'closed',
+            orderedDocumentIds: ['two'],
+            activeDocumentId: 'two',
+            conflict: conflictFixture('two'),
+        })),
+    };
+    render(
+        <Provider store={store}>
+            <DocumentTabs adapter={adapter} onExternalConflict={onExternalConflict} />
+        </Provider>,
+    );
+    fireEvent.click(screen.getByRole('button', { name: /close .*one\.md/i }));
+    await waitFor(() => expect(onExternalConflict).toHaveBeenCalledWith(conflictFixture('two')));
 });

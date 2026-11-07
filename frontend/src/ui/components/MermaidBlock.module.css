@@ -14,14 +14,15 @@
 }
 
 .placeholder,
-.error {
-    border: var(--control-border-width) solid var(--stroke-soft);
-    border-radius: var(--preview-code-block-radius);
-    padding: var(--preview-code-block-padding);
+.loading {
+    display: block;
 }
 
 .placeholder,
 .error {
+    border: var(--control-border-width) solid var(--stroke-soft);
+    border-radius: var(--preview-code-block-radius);
+    padding: var(--preview-code-block-padding);
     color: var(--err);
 }
 

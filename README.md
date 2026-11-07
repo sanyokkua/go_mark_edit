@@ -43,10 +43,21 @@ branches are squash-merged. See "Git workflow" in `AGENTS.md`.
 
 ## Build and release
 
-CI tests Go packages on macOS and Windows and runs full verification on Linux. The current release
-workflow packages macOS arm64. Versioned builds accept `X.Y.Z`, `X.Y.Z-alpha.N`, and
-`X.Y.Z-beta.N`; alpha and beta tags create GitHub prereleases. Manual release dispatch builds an
-artifact without publishing a release. See [the project guide](docs/index.md#103-ci-and-release).
+PRs and master pushes run shared verification on Linux, macOS and Windows. Releases require verification
+of the exact commit and produce macOS ARM64, Windows AMD64/ARM64 and Linux AMD64/ARM64 assets.
+Stable tags publish ordinary releases; alpha and beta tags publish prereleases. Manual release dispatch
+creates dry-run artifacts only. See [the project guide](docs/index.md#103-ci-and-release).
+
+Release files are unsigned and not notarized, so the operating system warns on first run:
+
+- macOS: unzip, then Control-click `GoMarkEdit.app` and choose Open, or run
+  `xattr -dr com.apple.quarantine GoMarkEdit.app`.
+- Windows: SmartScreen shows "Windows protected your PC"; choose More info, then Run anyway. The WebView2
+  runtime must already be installed.
+- Linux: `chmod +x` the file; GTK 3 and WebKitGTK 4.1 are required.
+
+Compare the file with `SHA256SUMS.txt` before running it; a matching hash detects corruption, not a
+malicious publisher.
 
 ## Contributing
 

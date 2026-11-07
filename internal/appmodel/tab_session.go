@@ -7,11 +7,17 @@ import (
 	"github.com/sanyokkua/go_mark_edit/internal/bridge"
 )
 
+const tabDocumentClosedMessage = "The document is no longer open."
+
 // ActivateDocument changes only the backend-owned active identity. The returned
 // acknowledgement is the sole source payload that may be installed by a caller.
 func (service *AppModelService) ActivateDocument(ctx context.Context, documentID string, expectedTabSetRevision uint64) apperr.DocumentTransitionOutcome {
 	service.mu.Lock()
 
+	if service.preparedQuitFenced {
+		service.mu.Unlock()
+		return bridge.Refused[apperr.DocumentTransitionResult](apperr.ClassifiedConflict, documentID, "Shutdown is in progress.", apperr.RemediationRetry)
+	}
 	if service.state.tabSetRevision != expectedTabSetRevision {
 		service.mu.Unlock()
 		return bridge.Refused[apperr.DocumentTransitionResult](apperr.ClassifiedConflict, documentID, "The tab set changed; activation must be retried.", apperr.RemediationRetry)
@@ -19,7 +25,7 @@ func (service *AppModelService) ActivateDocument(ctx context.Context, documentID
 	document, exists := service.state.documents[documentID]
 	if !exists {
 		service.mu.Unlock()
-		return bridge.Refused[apperr.DocumentTransitionResult](apperr.ClassifiedNotFound, documentID, "The document is no longer open.", apperr.RemediationNone)
+		return bridge.Refused[apperr.DocumentTransitionResult](apperr.ClassifiedNotFound, documentID, tabDocumentClosedMessage, apperr.RemediationNone)
 	}
 	if service.state.activeDocumentID == documentID {
 		outcome := activeDocumentTransition(documentID, service.state.revision, document)
@@ -65,13 +71,17 @@ func activeDocumentTransition(documentID string, projectionRevision uint64, docu
 // same insertion point, or the previous tab when the closed tab was last.
 func (service *AppModelService) CloseDocument(ctx context.Context, documentID string, expectedTabSetRevision uint64) apperr.TabTransitionOutcome {
 	service.mu.Lock()
+	if err := service.validateCloseOwnershipLocked(""); err != nil {
+		service.mu.Unlock()
+		return bridge.Refused[apperr.TabTransitionResult](apperr.ClassifiedConflict, documentID, err.Error(), apperr.RemediationRetry)
+	}
 	if service.state.tabSetRevision != expectedTabSetRevision {
 		service.mu.Unlock()
 		return bridge.Refused[apperr.TabTransitionResult](apperr.ClassifiedConflict, documentID, "The tab set changed; close must be retried.", apperr.RemediationRetry)
 	}
 	if _, exists := service.state.documents[documentID]; !exists {
 		service.mu.Unlock()
-		return bridge.Refused[apperr.TabTransitionResult](apperr.ClassifiedNotFound, documentID, "The document is no longer open.", apperr.RemediationNone)
+		return bridge.Refused[apperr.TabTransitionResult](apperr.ClassifiedNotFound, documentID, tabDocumentClosedMessage, apperr.RemediationNone)
 	}
 	service.mu.Unlock()
 
@@ -83,6 +93,10 @@ func (service *AppModelService) CloseDocument(ctx context.Context, documentID st
 	service.flushAutosaveForClose(documentID)
 
 	service.mu.Lock()
+	if err := service.validateCloseOwnershipLocked(""); err != nil {
+		service.mu.Unlock()
+		return bridge.Refused[apperr.TabTransitionResult](apperr.ClassifiedConflict, documentID, err.Error(), apperr.RemediationRetry)
+	}
 	if service.state.tabSetRevision != expectedTabSetRevision {
 		service.mu.Unlock()
 		return bridge.Refused[apperr.TabTransitionResult](apperr.ClassifiedConflict, documentID, "The tab set changed; close must be retried.", apperr.RemediationRetry)
@@ -90,7 +104,7 @@ func (service *AppModelService) CloseDocument(ctx context.Context, documentID st
 	document, exists := service.state.documents[documentID]
 	if !exists {
 		service.mu.Unlock()
-		return bridge.Refused[apperr.TabTransitionResult](apperr.ClassifiedNotFound, documentID, "The document is no longer open.", apperr.RemediationNone)
+		return bridge.Refused[apperr.TabTransitionResult](apperr.ClassifiedNotFound, documentID, tabDocumentClosedMessage, apperr.RemediationNone)
 	}
 	// Still dirty after the flush means there was nothing accepted to write, or
 	// the write did not clean the document — either way it needs a close plan.
@@ -102,7 +116,7 @@ func (service *AppModelService) CloseDocument(ctx context.Context, documentID st
 		return bridge.Refused[apperr.TabTransitionResult](apperr.ClassifiedConflict, documentID, "The document has unsaved changes; prepare a close plan first.", apperr.RemediationRetry)
 	}
 	service.mu.Unlock()
-	return service.closeDocuments(ctx, []string{documentID}, &expectedTabSetRevision)
+	return service.closeDocuments(ctx, []string{documentID}, &expectedTabSetRevision, "")
 }
 
 func (service *AppModelService) rememberClosedLocked(path string, document *openDocument) {

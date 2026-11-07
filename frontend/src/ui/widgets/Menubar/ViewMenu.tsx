@@ -19,7 +19,6 @@ export interface ViewMenuProps {
     open?: boolean;
     onOpenChange?: (open: boolean) => void;
     modalOpen?: boolean;
-    modal?: boolean;
     onTrigger?: () => void;
     onTriggerPointerDown?: (trigger: HTMLButtonElement) => void;
     anchorRef?: RefObject<HTMLElement | null>;
@@ -45,6 +44,81 @@ export interface ViewMenuProps {
     onDistractionFreeReading?: () => void;
     problemsOpen?: boolean;
     onToggleProblems?: () => void;
+}
+
+type ArrangementSectionProps = Pick<
+    ViewMenuProps,
+    | 'arrangement'
+    | 'documentOpen'
+    | 'editorVisible'
+    | 'previewVisible'
+    | 'onArrangementChange'
+    | 'onEditorVisibilityChange'
+    | 'onPreviewVisibilityChange'
+> & {
+    dispatchWindowAction: (actionId: ActionId, invoke: () => void) => void;
+    setOpen: (open: boolean) => void;
+};
+
+function ArrangementSection({
+    arrangement,
+    documentOpen,
+    editorVisible,
+    previewVisible,
+    onArrangementChange,
+    onEditorVisibilityChange,
+    onPreviewVisibilityChange,
+    dispatchWindowAction,
+    setOpen,
+}: Readonly<ArrangementSectionProps>): React.JSX.Element {
+    const editorToggleDisabled = editorVisible && !previewVisible;
+    const previewToggleDisabled = previewVisible && !editorVisible;
+    return (
+        <>
+            {arrangement === undefined || onArrangementChange === undefined ? (
+                <>
+                    <MenuItem
+                        checked={editorVisible}
+                        disabled={editorToggleDisabled}
+                        label={t('view.menu.showEditor')}
+
+                        onSelect={(): void =>
+                            dispatchWindowAction('editor', () => onEditorVisibilityChange(!editorVisible))
+                        }
+                    />
+                    <MenuItem
+                        checked={previewVisible}
+                        disabled={previewToggleDisabled}
+                        label={t('view.menu.showPreview')}
+
+                        onSelect={(): void =>
+                            dispatchWindowAction('preview', () => onPreviewVisibilityChange(!previewVisible))
+                        }
+                    />
+                </>
+            ) : (
+                <div aria-label={t('editor.arrangement')} role="group">
+                    {(['editor', 'split', 'preview'] as const).map((value) => (
+                        <MenuItem
+                            checked={arrangement === value}
+                            data-availability={documentOpen ? 'enabled' : 'unavailable'}
+                            disabled={!documentOpen}
+                            key={value}
+                            label={t(getAction(value).labelKey)}
+                            radio
+                            title={documentOpen ? undefined : t('view.menu.noDocument')}
+
+                            onSelect={(): void => {
+                                if (!documentOpen) return;
+                                dispatchWindowAction(value, () => onArrangementChange(value));
+                                setOpen(false);
+                            }}
+                        />
+                    ))}
+                </div>
+            )}
+        </>
+    );
 }
 
 const ViewMenu: React.FC<ViewMenuProps> = ({
@@ -95,8 +169,6 @@ const ViewMenu: React.FC<ViewMenuProps> = ({
             windowFocused: true,
         });
     };
-    const editorToggleDisabled = editorVisible && !previewVisible;
-    const previewToggleDisabled = previewVisible && !editorVisible;
     const assistantAction = getAction('toggle-assistant');
     const assistantAvailability = getActionAvailability(assistantAction.id, {
         modalOpen,
@@ -107,9 +179,21 @@ const ViewMenu: React.FC<ViewMenuProps> = ({
         return shortcut === undefined ? undefined : formatShortcut(shortcut, currentPlatform());
     };
 
-    const toggle = (checked: boolean): React.JSX.Element => (
-        <span aria-hidden="true" className={switchTrackClassName} data-checked={checked} />
-    );
+    const renderEditorToggle = (
+        actionId: ActionId,
+        checked: boolean | undefined,
+        onChange: ((enabled: boolean) => void) | undefined,
+    ): React.JSX.Element | null => {
+        if (checked === undefined || onChange === undefined) return null;
+        return (
+            <MenuItem
+                checked={checked}
+                label={t(getAction(actionId).labelKey)}
+                trailing={<span aria-hidden="true" className={switchTrackClassName} data-checked={checked} />}
+                onSelect={(): void => dispatchWindowAction(actionId, () => onChange(!checked))}
+            />
+        );
+    };
 
     const popupAnchor = {
         trigger: showTrigger ? triggerElement : (anchorElement ?? hiddenAnchor),
@@ -181,48 +265,17 @@ const ViewMenu: React.FC<ViewMenuProps> = ({
                     label={t(assistantAction.labelKey)}
                     title={assistantAvailability.kind !== 'available' ? t('action.unavailable') : undefined}
                 />
-                {arrangement === undefined || onArrangementChange === undefined ? (
-                    <>
-                        <MenuItem
-                            checked={editorVisible}
-                            disabled={editorToggleDisabled}
-                            label={t('view.menu.showEditor')}
-
-                            onSelect={(): void =>
-                                dispatchWindowAction('editor', () => onEditorVisibilityChange(!editorVisible))
-                            }
-                        />
-                        <MenuItem
-                            checked={previewVisible}
-                            disabled={previewToggleDisabled}
-                            label={t('view.menu.showPreview')}
-
-                            onSelect={(): void =>
-                                dispatchWindowAction('preview', () => onPreviewVisibilityChange(!previewVisible))
-                            }
-                        />
-                    </>
-                ) : (
-                    <div aria-label={t('editor.arrangement')} role="group">
-                        {(['editor', 'split', 'preview'] as const).map((value) => (
-                            <MenuItem
-                                checked={arrangement === value}
-                                data-availability={documentOpen ? 'enabled' : 'unavailable'}
-                                disabled={!documentOpen}
-                                key={value}
-                                label={t(getAction(value).labelKey)}
-                                radio
-                                title={documentOpen ? undefined : t('view.menu.noDocument')}
-
-                                onSelect={(): void => {
-                                    if (!documentOpen) return;
-                                    dispatchWindowAction(value, () => onArrangementChange(value));
-                                    setOpen(false);
-                                }}
-                            />
-                        ))}
-                    </div>
-                )}
+                <ArrangementSection
+                    arrangement={arrangement}
+                    documentOpen={documentOpen}
+                    editorVisible={editorVisible}
+                    previewVisible={previewVisible}
+                    onArrangementChange={onArrangementChange}
+                    onEditorVisibilityChange={onEditorVisibilityChange}
+                    onPreviewVisibilityChange={onPreviewVisibilityChange}
+                    dispatchWindowAction={dispatchWindowAction}
+                    setOpen={setOpen}
+                />
                 <PopupSeparator />
                 {onToggleProblems === undefined ? null : (
                     <MenuItem
@@ -247,34 +300,9 @@ const ViewMenu: React.FC<ViewMenuProps> = ({
                         }}
                     />
                 )}
-                {lineNumbers === undefined || onLineNumbersChange === undefined ? null : (
-                    <MenuItem
-                        checked={lineNumbers}
-                        label={t(getAction('line-numbers').labelKey)}
-                        trailing={toggle(lineNumbers)}
-                        onSelect={(): void =>
-                            dispatchWindowAction('line-numbers', () => onLineNumbersChange(!lineNumbers))
-                        }
-                    />
-                )}
-                {wordWrap === undefined || onWordWrapChange === undefined ? null : (
-                    <MenuItem
-                        checked={wordWrap}
-                        label={t(getAction('word-wrap').labelKey)}
-                        trailing={toggle(wordWrap)}
-                        onSelect={(): void => dispatchWindowAction('word-wrap', () => onWordWrapChange(!wordWrap))}
-                    />
-                )}
-                {scrollSync === undefined || onScrollSyncChange === undefined ? null : (
-                    <MenuItem
-                        checked={scrollSync}
-                        label={t(getAction('scroll-sync').labelKey)}
-                        trailing={toggle(scrollSync)}
-                        onSelect={(): void =>
-                            dispatchWindowAction('scroll-sync', () => onScrollSyncChange(!scrollSync))
-                        }
-                    />
-                )}
+                {renderEditorToggle('line-numbers', lineNumbers, onLineNumbersChange)}
+                {renderEditorToggle('word-wrap', wordWrap, onWordWrapChange)}
+                {renderEditorToggle('scroll-sync', scrollSync, onScrollSyncChange)}
                 <PopupSeparator />
                 <MenuItem
                     accelerator={acceleratorFor('distraction-free-reading')}

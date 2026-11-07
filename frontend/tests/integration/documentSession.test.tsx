@@ -34,7 +34,7 @@ it('waits for the projection before installing a reload and advances the epoch e
     act(() =>
         result.current.onBootstrapReady({
             status: 'ready',
-            activeBuffer: { documentId: 'one', content: 'original' },
+            activeBuffer: { documentId: 'one', content: 'original', documentRevision: 0 },
             applicationVersion: 'dev',
         }),
     );
@@ -84,7 +84,7 @@ it.each([null, ''])(
         act(() =>
             result.current.onBootstrapReady({
                 status: 'ready',
-                activeBuffer: { documentId: 'one', content: 'original' },
+                activeBuffer: { documentId: 'one', content: 'original', documentRevision: 0 },
                 applicationVersion: 'dev',
             }),
         );
@@ -128,4 +128,27 @@ it('ignores an older reconciliation snapshot after another document became activ
     expect(result.current.activeBuffer?.content).toBe('second');
     expect(result.current.activeDocument?.documentId).toBe('two');
     expect(result.current.externalEpoch).toBe(0);
+});
+
+it('keeps reload epochs specific to each document across tab switches', () => {
+    project('one', 1);
+    const { result } = renderHook(() => useDocumentSession(), { wrapper });
+    const install = (id: string, revision: number, reason?: 'reload'): void => {
+        const generation = result.current.activation.begin();
+        act(() => {
+            project(id, revision, id === 'one' ? 1 : 0);
+            result.current.activation.acknowledge(
+                generation,
+                { documentId: id, content: id, documentRevision: id === 'one' ? 1 : 0, projectionRevision: revision },
+                id,
+                reason,
+            );
+        });
+    };
+    install('one', 2, 'reload');
+    expect(result.current.externalEpoch).toBe(1);
+    install('two', 3);
+    expect(result.current.externalEpoch).toBe(0);
+    install('one', 4);
+    expect(result.current.externalEpoch).toBe(1);
 });

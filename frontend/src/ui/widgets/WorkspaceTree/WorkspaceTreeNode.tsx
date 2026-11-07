@@ -1,4 +1,4 @@
-import { useRef, type KeyboardEvent } from 'react';
+import { useId, useRef, type KeyboardEvent } from 'react';
 
 import type { WorkspaceNode } from '../../../logic/store/appModelTypes';
 import { t } from '../../../i18n';
@@ -23,6 +23,14 @@ interface WorkspaceTreeNodeProps {
     registerRow: (path: string, element: HTMLLIElement | null) => void;
 }
 
+function describeWorkspaceNode(node: WorkspaceNode, open: boolean, dirty: boolean): string {
+    const descriptions: string[] = [];
+    if (node.unreadable) descriptions.push(t('workspace.tree.unreadable'));
+    if (open) descriptions.push(t('workspace.tree.openInTab'));
+    if (dirty) descriptions.push(t('workspace.tree.unsaved'));
+    return descriptions.join(', ');
+}
+
 export default function WorkspaceTreeNode({
     node,
     depth,
@@ -38,10 +46,14 @@ export default function WorkspaceTreeNode({
     onKeyDownRow,
     onContextMenu,
     registerRow,
-}: WorkspaceTreeNodeProps): React.JSX.Element {
+}: Readonly<WorkspaceTreeNodeProps>): React.JSX.Element {
     const rowRef = useRef<HTMLLIElement | null>(null);
+    const descriptionId = useId();
     const expanded = expandedPaths.has(node.path);
     const hasVisibleChildren = node.isDir && expanded && !node.unreadable && (node.children?.length ?? 0) > 0;
+    const open = openPaths.has(node.path);
+    const dirty = dirtyPaths.has(node.path);
+    const description = describeWorkspaceNode(node, open, dirty);
     const activate = (): void => {
         onSelect(node.path);
         onFocusRow(node.path);
@@ -59,13 +71,7 @@ export default function WorkspaceTreeNode({
             role="treeitem"
             aria-expanded={node.isDir && !node.unreadable ? expanded : undefined}
             aria-selected={selectedPath === node.path}
-            aria-description={
-                [
-                    ...(node.unreadable ? [t('workspace.tree.unreadable')] : []),
-                    ...(openPaths.has(node.path) ? [t('workspace.tree.openInTab')] : []),
-                    ...(dirtyPaths.has(node.path) ? [t('workspace.tree.unsaved')] : []),
-                ].join(', ') || undefined
-            }
+            aria-describedby={description ? descriptionId : undefined}
             aria-label={node.name}
             tabIndex={focusedPath === node.path ? 0 : -1}
             onClick={(event): void => {
@@ -89,7 +95,7 @@ export default function WorkspaceTreeNode({
             <div className={styles.nodeRow}>
                 <Button
                     variant="quiet"
-                    className={`${styles.nodeButton} ${openPaths.has(node.path) ? styles.openNode : ''} ${depth === 0 ? styles.rootNode : ''}`}
+                    className={`${styles.nodeButton} ${open ? styles.openNode : ''} ${depth === 0 ? styles.rootNode : ''}`}
                     aria-label={node.name}
                     tabIndex={-1}
                 >
@@ -103,9 +109,14 @@ export default function WorkspaceTreeNode({
                         {node.name}
                     </span>
                     {node.unreadable ? <Icon name="warning" className={styles.trailingMark} /> : null}
-                    {dirtyPaths.has(node.path) ? <span aria-hidden="true" className={styles.dirtyDot} /> : null}
+                    {dirty ? <span aria-hidden="true" className={styles.dirtyDot} /> : null}
                 </Button>
             </div>
+            {description ? (
+                <span id={descriptionId} hidden>
+                    {description}
+                </span>
+            ) : null}
             {hasVisibleChildren ? (
                 <ul className={styles.children} role="group">
                     {node.children?.map((child) => (

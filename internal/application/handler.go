@@ -9,6 +9,8 @@ import (
 	"github.com/sanyokkua/go_mark_edit/internal/logging"
 )
 
+const nativeCloseErrorSource = "native close"
+
 // ApplicationHandler is the small Wails-bound lifecycle acknowledgement
 // surface. It delegates to the native-window service only.
 type ApplicationHandler struct {
@@ -33,6 +35,32 @@ type ApplicationServiceAPI interface {
 type NativeCloseServiceAPI interface {
 	AuthorizeQuit(context.Context, string) *apperr.ClassifiedError
 	CancelQuit(context.Context, string) *apperr.ClassifiedError
+	AcknowledgeRecoveryClose(context.Context, string) *apperr.ClassifiedError
+	DiscardAndAuthorizeQuit(context.Context, string) *apperr.ClassifiedError
+}
+
+// AcknowledgeRecoveryClose reserves a close for the recovery interface.
+func (handler *ApplicationHandler) AcknowledgeRecoveryClose(request bridge.Request, closeID string) (result apperr.ClassifiedVoidResult) {
+	defer bridge.Guard(&result)
+	return bridge.Once(handler.outcomes, request, func() apperr.ClassifiedVoidResult {
+		service, ok := handler.service.(NativeCloseServiceAPI)
+		if !ok {
+			return bridge.Refused[apperr.ClassifiedVoidResult](apperr.ClassifiedUnsupportedInput, nativeCloseErrorSource, "This build cannot acknowledge recovery.", apperr.RemediationNone)
+		}
+		return bridge.FromClassified[apperr.ClassifiedVoidResult](service.AcknowledgeRecoveryClose(handler.context(), closeID))
+	})
+}
+
+// DiscardAndAuthorizeQuit authorizes a recovery close without starting autosaves.
+func (handler *ApplicationHandler) DiscardAndAuthorizeQuit(request bridge.Request, closeID string) (result apperr.ClassifiedVoidResult) {
+	defer bridge.Guard(&result)
+	return bridge.Once(handler.outcomes, request, func() apperr.ClassifiedVoidResult {
+		service, ok := handler.service.(NativeCloseServiceAPI)
+		if !ok {
+			return bridge.Refused[apperr.ClassifiedVoidResult](apperr.ClassifiedUnsupportedInput, nativeCloseErrorSource, "This build cannot discard during recovery.", apperr.RemediationNone)
+		}
+		return bridge.FromClassified[apperr.ClassifiedVoidResult](service.DiscardAndAuthorizeQuit(handler.context(), closeID))
+	})
 }
 
 func NewApplicationHandler(service ApplicationServiceAPI, logger *logging.Logger, contextProvider func() context.Context, outcomeCaches ...*bridge.OutcomeCache) *ApplicationHandler {
@@ -116,7 +144,7 @@ func (handler *ApplicationHandler) AuthorizeQuit(request bridge.Request, closeID
 	return bridge.Once(handler.outcomes, request, func() apperr.ClassifiedVoidResult {
 		service, ok := handler.service.(NativeCloseServiceAPI)
 		if !ok {
-			return bridge.Refused[apperr.ClassifiedVoidResult](apperr.ClassifiedUnsupportedInput, "native close", "This build cannot authorize a native close.", apperr.RemediationNone)
+			return bridge.Refused[apperr.ClassifiedVoidResult](apperr.ClassifiedUnsupportedInput, nativeCloseErrorSource, "This build cannot authorize a native close.", apperr.RemediationNone)
 		}
 		if refusal := service.AuthorizeQuit(handler.context(), closeID); refusal != nil {
 			logger := handler.zlog()
@@ -137,7 +165,7 @@ func (handler *ApplicationHandler) CancelQuit(request bridge.Request, closeID st
 	return bridge.Once(handler.outcomes, request, func() apperr.ClassifiedVoidResult {
 		service, ok := handler.service.(NativeCloseServiceAPI)
 		if !ok {
-			return bridge.FromClassified[apperr.ClassifiedVoidResult](bridge.ClassifiedWithID(apperr.ClassifiedUnsupportedInput, "native close", "This build cannot cancel a native close.", apperr.RemediationNone, closeID))
+			return bridge.FromClassified[apperr.ClassifiedVoidResult](bridge.ClassifiedWithID(apperr.ClassifiedUnsupportedInput, nativeCloseErrorSource, "This build cannot cancel a native close.", apperr.RemediationNone, closeID))
 		}
 		if refusal := service.CancelQuit(handler.context(), closeID); refusal != nil {
 			logger := handler.zlog()

@@ -90,18 +90,8 @@
     border: 0;
     color: var(--muted);
     font: inherit;
-}
-
-.tab,
-.tabClose,
-.tabAdd,
-.contextMenuItem {
     cursor: pointer;
     white-space: nowrap;
-}
-
-.contextMenuItem {
-    padding: var(--tab-padding);
 }
 
 .tab {
@@ -118,19 +108,34 @@
 
 .tabLabel {
     display: inline-block;
+    flex: 1 1 auto;
+    min-inline-size: 0;
     max-width: var(--tab-max-width);
     overflow: hidden;
     text-overflow: ellipsis;
     vertical-align: bottom;
 }
 
+.conflictMarker,
+.readOnlyMarker {
+    flex: 0 1 auto;
+    min-inline-size: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.conflictMarker {
+    color: var(--accent);
+    max-inline-size: 50%;
+}
+
+.readOnlyMarker {
+    max-inline-size: calc(var(--tab-max-width) / 3);
+}
+
 .tab[aria-selected='true'] {
     color: var(--tab-active-color);
     box-shadow: none;
-}
-
-.tabClose {
-    color: var(--faint);
 }
 
 .tabAdd {
@@ -145,10 +150,14 @@
     padding: 0;
     text-align: center;
     white-space: normal;
+    block-size: var(--tab-add-size);
+    inline-size: var(--tab-add-size);
 }
 
 .tabClose {
     align-items: center;
+    flex: none;
+    color: var(--faint);
     display: inline-flex;
     justify-content: center;
     min-inline-size: 0;
@@ -159,13 +168,9 @@
     display: block;
 }
 
-.tabAdd {
-    block-size: var(--tab-add-size);
-    inline-size: var(--tab-add-size);
-}
-
 .modifiedDot {
     align-items: center;
+    flex: none;
     background: transparent;
     border-radius: 50%;
     color: var(--accent);

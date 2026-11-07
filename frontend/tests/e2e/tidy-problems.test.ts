@@ -165,6 +165,94 @@ test('clears the prior document summary on activation and publishes fresh clean 
     app.expectNoForeignRequests();
 });
 
+async function holdSavingWithStaleProblems(page: Page, source: string): Promise<void> {
+    await page.evaluate(async (source) => {
+        const storePath = '/src/logic/store/index.ts';
+        const actionsPath = '/src/logic/store/appModelProjectionActions.ts';
+        const summaryPath = '/src/logic/operations/problemsSummary.ts';
+        const { store } = (await import(/* @vite-ignore */ storePath)) as typeof import('../../src/logic/store');
+        const { applyStatePatch } = (await import(
+            /* @vite-ignore */ actionsPath
+        )) as typeof import('../../src/logic/store/appModelProjectionActions');
+        const summary = (await import(
+            /* @vite-ignore */ summaryPath
+        )) as typeof import('../../src/logic/operations/problemsSummary');
+        const { activeDocumentId, byId, revision } = store.getState().documents;
+        const document = activeDocumentId === null ? undefined : byId[activeDocumentId];
+        if (document === undefined) throw new Error('Expected an active document');
+
+        // Hold the projected write state so the check does not race the filesystem write.
+        summary.replace(document.documentId, [], 12_000, source);
+        summary.markStale(document.documentId, `X${source}`);
+        store.dispatch(
+            applyStatePatch({
+                revision: revision + 1,
+                documents: { upsert: { [document.documentId]: { ...document, writeInFlight: true } } },
+            }),
+        );
+    }, source);
+}
+
+test('keeps Details within the minimum-width status row while saving stale findings', async ({ app }) => {
+    const source = '# Findings\n';
+    const page = await openDocument(app, 'saving-findings.md', source);
+    await page.setViewportSize({ width: 375, height: 720 });
+    const row = page.getByRole('status', { name: 'Document status' });
+    await expect(row).toContainText('Markdown · Full');
+
+    await holdSavingWithStaleProblems(page, source);
+
+    await expect(row.getByRole('button', { name: /12,000 problems.*out of date/u })).toBeInViewport({ ratio: 1 });
+    await expect(row.getByText('Saving', { exact: true })).toBeInViewport({ ratio: 1 });
+    await expect(row.getByRole('button', { name: 'Document details' })).toBeInViewport({ ratio: 1 });
+});
+
+test('fits the status to the workspace column and restores facts as it grows', async ({ app }) => {
+    const source = '# Workspace findings\n';
+    const page = await openDocument(app, 'workspace-findings.md', source);
+    await app.openWorkspace(app.documentDirectory);
+    const sidebar = page.getByRole('complementary', { name: 'Sidebar' });
+    await expect(sidebar).toBeVisible();
+    await holdSavingWithStaleProblems(page, source);
+
+    const row = page.getByRole('status', { name: 'Document status' });
+    const standard = row.locator('[data-status-item="standard-kind"]');
+    const encoding = row.locator('[data-status-item="encoding"]');
+    const problems = row.getByRole('button', { name: /12,000 problems.*out of date/u });
+    const saving = row.locator('[data-write-in-flight="true"]');
+    const details = row.getByRole('button', { name: 'Document details' });
+    await expect(standard).toBeVisible();
+    await expect(encoding).toBeVisible();
+
+    await page.setViewportSize({ width: 377, height: 720 });
+    await expect(sidebar).toBeVisible();
+    await expect(row).toHaveCSS('flex-wrap', 'nowrap');
+    await expect(problems).toBeInViewport({ ratio: 1 });
+    await expect(saving).toBeInViewport({ ratio: 1 });
+    await expect(details).toBeInViewport({ ratio: 1 });
+    await expect(encoding).toHaveCount(0);
+
+    await details.focus();
+    await details.press('Enter');
+    const popup = page.getByRole('region', { name: 'Document details' });
+    await expect(popup).toContainText('UTF-8');
+    await expect(popup).toContainText('Markdown');
+    await popup.press('Escape');
+    await expect(details).toBeFocused();
+
+    // The viewport stays at 377 px. The newly available sidebar width is enough
+    // to return the Markdown standard, even during the held write.
+    await page.keyboard.press('ControlOrMeta+\\');
+    await expect(sidebar).toHaveCount(0);
+    await expect(standard).toBeInViewport({ ratio: 1 });
+    await expect(details).toBeInViewport({ ratio: 1 });
+
+    await page.setViewportSize({ width: 1280, height: 720 });
+    await expect(encoding).toBeInViewport({ ratio: 1 });
+    await expect(details).toBeFocused();
+    app.expectNoForeignRequests();
+});
+
 for (const count of [1500, 12000] as const) {
     test(`shows the exact total and bounded rows when Lint finds ${count.toLocaleString('en-US')} issues`, async ({
         app,

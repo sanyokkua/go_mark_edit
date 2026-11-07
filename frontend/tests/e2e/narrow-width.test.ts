@@ -49,6 +49,23 @@ test('keeps toolbar overflow and tab scrolling reachable at narrow widths', asyn
     ] as const) {
         await page.setViewportSize(viewport);
 
+        const toolbarLayout = await toolbar.evaluate((element) => {
+            const style = getComputedStyle(element);
+            const children = Array.from(element.children).filter((child) => getComputedStyle(child).display !== 'none');
+            const bounds = children.map((child) => child.getBoundingClientRect());
+            return {
+                gap: parseFloat(style.columnGap),
+                wrap: style.flexWrap,
+                singleRow: bounds.every(
+                    (box) =>
+                        box.top >= element.getBoundingClientRect().top &&
+                        box.bottom <= element.getBoundingClientRect().bottom,
+                ),
+            };
+        });
+        expect(toolbarLayout.gap).toBeGreaterThan(0);
+        expect(toolbarLayout.wrap).toBe('nowrap');
+        expect(toolbarLayout.singleRow).toBe(true);
         await expect(toolbar).toHaveAttribute('data-bar-overflow', 'menu');
         await expect(toolbar).toHaveAttribute('data-bar-overflowing', 'true');
         const overflowTrigger = toolbar.getByRole('button', {
@@ -58,6 +75,8 @@ test('keeps toolbar overflow and tab scrolling reachable at narrow widths', asyn
         await overflowTrigger.click();
         const overflowPopup = page.locator('[data-viewport-popup="editor-overflow"]');
         await expect(overflowPopup).toBeVisible();
+        await expect(overflowPopup).toHaveCSS('position', 'fixed');
+        await expect(overflowPopup).not.toHaveCSS('box-shadow', 'none');
         await expectCompactMenuRows(overflowPopup);
         const link = overflowPopup.getByRole('menuitem', { name: 'Link', exact: true });
         await expect(link).toBeVisible();

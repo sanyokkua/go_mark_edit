@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useCallback, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 
 import Popup, { PopupTrigger } from '../Popup';
 import Button from '../../primitives/Button';
@@ -47,13 +47,91 @@ export interface StatusBarProps {
 
 const NARROW_WIDTH = 376;
 const NARROW_DROP_PRIORITY = 2;
+const DETAILS_ID = 'document-status-details';
+
+interface StatusLayout {
+    readonly compact: boolean;
+    readonly droppedIds: ReadonlySet<string>;
+}
+
+interface MeasuredFact {
+    readonly id: string | undefined;
+    readonly width: number;
+    readonly priority: number;
+    readonly fixed: boolean;
+}
 
 function translationKey(prefix: string, value: string): string {
     return `status.${prefix}.${value.toLowerCase()}`;
 }
 
 function viewportWidth(): number {
-    return typeof window === 'undefined' ? Number.POSITIVE_INFINITY : window.innerWidth;
+    const browserWindow = globalThis.window;
+    return browserWindow === undefined ? Number.POSITIVE_INFINITY : browserWindow.innerWidth;
+}
+
+function rowSpacing(row: HTMLElement, compact: boolean): { inset: number; gap: number } {
+    const wasCompact = row.dataset.statusCompact !== undefined;
+    row.toggleAttribute('data-status-compact', compact);
+    const style = getComputedStyle(row);
+    const pixels = (value: string): number => Number.parseFloat(value) || 0;
+    const inset =
+        pixels(style.paddingInlineStart) +
+        pixels(style.paddingInlineEnd) +
+        pixels(style.borderInlineStartWidth) +
+        pixels(style.borderInlineEndWidth);
+    const gap = pixels(style.columnGap);
+    row.toggleAttribute('data-status-compact', wasCompact);
+    return { inset, gap };
+}
+
+function fitStatus(row: HTMLElement, items: readonly HTMLElement[], details: HTMLButtonElement): StatusLayout {
+    const narrow = viewportWidth() <= NARROW_WIDTH;
+    const droppedIds = new Set<string>();
+    const measured: MeasuredFact[] = [];
+    let compact = narrow && items.some((item) => item.dataset.writeInFlight === 'true');
+    let totalWidth = details.getBoundingClientRect().width;
+
+    for (const item of items) {
+        const id = item.dataset.statusMeasureId;
+        const priority = Number(item.dataset.statusDropPriority);
+        const fixed = id === undefined || id === 'problems' || item.dataset.writeInFlight === 'true';
+        if (!fixed && narrow && priority >= NARROW_DROP_PRIORITY && id !== 'standard-kind') {
+            droppedIds.add(id);
+            continue;
+        }
+        const width = item.getBoundingClientRect().width;
+        totalWidth += width;
+        measured.push({ id, width, priority, fixed });
+    }
+
+    const rowWidth = row.getBoundingClientRect().width;
+    if (rowWidth === 0) return { compact, droppedIds };
+
+    // The spacer contributes one additional gap and has no minimum width.
+    let { inset, gap } = rowSpacing(row, compact);
+    let usedWidth = totalWidth + inset + gap * (measured.length + 1);
+    if (usedWidth <= rowWidth) return { compact, droppedIds };
+
+    if (!compact) {
+        compact = true;
+        ({ inset, gap } = rowSpacing(row, compact));
+        usedWidth = totalWidth + inset + gap * (measured.length + 1);
+    }
+    const candidates = measured
+        .filter((fact) => !fact.fixed)
+        .reverse()
+        .sort((left, right) => {
+            const standardLast = Number(left.id === 'standard-kind') - Number(right.id === 'standard-kind');
+            return standardLast || right.priority - left.priority;
+        });
+    for (const candidate of candidates) {
+        if (usedWidth <= rowWidth) break;
+        if (candidate.id === undefined) continue;
+        droppedIds.add(candidate.id);
+        usedWidth -= candidate.width + gap;
+    }
+    return { compact, droppedIds };
 }
 
 function legacyFacts(props: StatusBarProps): StatusFact[] {
@@ -157,14 +235,24 @@ function factDetail(fact: StatusFact, dropped: boolean): React.JSX.Element {
     );
 }
 
-function rowFact(fact: StatusFact): React.JSX.Element {
+interface RowFactProps {
+    readonly fact: StatusFact;
+    readonly ref: React.RefCallback<HTMLSpanElement>;
+    readonly dropped?: boolean;
+    readonly synthetic?: boolean;
+}
+
+function RowFact({ fact, ref, dropped = false, synthetic = false }: RowFactProps): React.JSX.Element {
     return (
         <span
-            className={styles.responsiveItem}
+            aria-hidden={dropped || undefined}
+            className={dropped ? `${styles.responsiveItem} ${styles.dropped}` : styles.responsiveItem}
             data-status-drop-priority={fact.dropPriority}
-            data-status-item={fact.id}
+            data-status-item={dropped ? undefined : fact.id}
+            data-status-measure-id={synthetic ? undefined : fact.id}
             data-write-in-flight={fact.transient ? 'true' : undefined}
-            key={fact.id}
+            inert={dropped || undefined}
+            ref={ref}
         >
             {fact.marker === 'accent-dot' ? <span aria-hidden="true" className={styles.dot} /> : null}
             {fact.onActivate === undefined ? (
@@ -187,18 +275,16 @@ function rowFact(fact: StatusFact): React.JSX.Element {
 const StatusBar: React.FC<StatusBarProps> = (props: StatusBarProps): React.JSX.Element => {
     const { capability, facts, readOnly, saveIdentity, status = 'not-saved', transient, writeInFlight = false } = props;
     const inventory = facts ?? legacyFacts(props);
-    const [currentWidth, setCurrentWidth] = useState(viewportWidth);
     const [detailsOpen, setDetailsOpen] = useState(false);
     const [detailsTrigger, setDetailsTrigger] = useState<HTMLButtonElement | null>(null);
-    const narrow = currentWidth <= NARROW_WIDTH;
+    const [layout, setLayout] = useState<StatusLayout>({ compact: false, droppedIds: new Set() });
+    const rowRef = useRef<HTMLDivElement>(null);
+    const observerRef = useRef<ResizeObserver | null>(null);
     const resolvedReadOnly = readOnly ?? status === 'read-only';
     const resolvedSaveIdentity = saveIdentity ?? t(translationKey('saveStatus', status));
     const resolvedTransient = transient ?? (writeInFlight ? t('status.writeInFlight') : undefined);
     const orderedFacts = [...inventory].sort((left, right) => left.dropPriority - right.dropPriority);
-    const droppedIds = new Set(
-        orderedFacts.filter((fact) => narrow && fact.dropPriority >= NARROW_DROP_PRIORITY).map((fact) => fact.id),
-    );
-    const rowFacts = orderedFacts.filter((fact) => fact.placement !== 'details' && !droppedIds.has(fact.id));
+    const rowFacts = orderedFacts.filter((fact) => fact.placement !== 'details');
     const leadingFacts = rowFacts.filter((fact) => fact.placement !== 'trailing');
     const trailingFacts = rowFacts.filter((fact) => fact.placement === 'trailing');
     const transientFact: StatusFact | undefined =
@@ -213,30 +299,81 @@ const StatusBar: React.FC<StatusBarProps> = (props: StatusBarProps): React.JSX.E
                   placement: 'trailing',
                   transient: true,
               };
-    const detailsFacts = orderedFacts.map((fact) => factDetail(fact, droppedIds.has(fact.id)));
+    const detailsFacts = orderedFacts.map((fact) => factDetail(fact, layout.droppedIds.has(fact.id)));
     const readOnlyDetail = readOnlyReason(capability);
     const hasReadOnlyFact = orderedFacts.some((fact) => fact.id === 'read-only');
 
-    useEffect((): (() => void) => {
-        const onResize = (): void => setCurrentWidth(viewportWidth());
-        window.addEventListener('resize', onResize);
-        return (): void => window.removeEventListener('resize', onResize);
+    const measure = useCallback((): void => {
+        const row = rowRef.current;
+        const details = row?.querySelector<HTMLButtonElement>(`:scope > [aria-controls="${DETAILS_ID}"]`);
+        if (row === null || details == null) return;
+        const items = Array.from(row.querySelectorAll<HTMLElement>(':scope > [data-status-drop-priority]'));
+        const next = fitStatus(row, items, details);
+        const focused = row.ownerDocument.activeElement;
+        if (
+            items.some((item) => {
+                const id = item.dataset.statusMeasureId;
+                return id !== undefined && next.droppedIds.has(id) && item.contains(focused);
+            })
+        ) {
+            details.focus({ preventScroll: true });
+        }
+        setLayout((current) =>
+            current.compact === next.compact &&
+            current.droppedIds.size === next.droppedIds.size &&
+            [...next.droppedIds].every((id) => current.droppedIds.has(id))
+                ? current
+                : next,
+        );
     }, []);
+
+    const observeFact = useCallback<React.RefCallback<HTMLSpanElement>>((item) => {
+        if (item === null) return;
+        observerRef.current?.observe(item);
+        return (): void => observerRef.current?.unobserve(item);
+    }, []);
+
+    useLayoutEffect((): (() => void) | undefined => {
+        const row = rowRef.current;
+        if (row === null) return;
+        globalThis.addEventListener('resize', measure);
+        const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(measure);
+        observerRef.current = observer;
+        observer?.observe(row);
+        for (const item of row.querySelectorAll(':scope > [data-status-drop-priority], :scope > button')) {
+            observer?.observe(item);
+        }
+        return (): void => {
+            observerRef.current = null;
+            observer?.disconnect();
+            globalThis.removeEventListener('resize', measure);
+        };
+    }, [measure]);
+
+    useLayoutEffect(() => {
+        measure();
+    });
 
     return (
         <div className={styles.dock} data-status-dock="true">
-            <footer
+            <div
                 aria-label={t('status.ariaLabel')}
                 className={styles.statusBar}
+                data-status-compact={layout.compact ? '' : undefined}
                 data-status-state={status}
+                ref={rowRef}
                 role="status"
             >
-                {leadingFacts.map(rowFact)}
+                {leadingFacts.map((fact) => (
+                    <RowFact key={fact.id} dropped={layout.droppedIds.has(fact.id)} fact={fact} ref={observeFact} />
+                ))}
                 <span className={styles.spacer} />
-                {transientFact !== undefined ? rowFact(transientFact) : null}
-                {trailingFacts.map(rowFact)}
+                {transientFact !== undefined ? <RowFact synthetic fact={transientFact} ref={observeFact} /> : null}
+                {trailingFacts.map((fact) => (
+                    <RowFact key={fact.id} dropped={layout.droppedIds.has(fact.id)} fact={fact} ref={observeFact} />
+                ))}
                 <PopupTrigger
-                    aria-controls="document-status-details"
+                    aria-controls={DETAILS_ID}
                     aria-expanded={detailsOpen}
                     className={`${styles.detailsTrigger} ${styles.pill}`}
                     expanded={detailsOpen}
@@ -246,12 +383,12 @@ const StatusBar: React.FC<StatusBarProps> = (props: StatusBarProps): React.JSX.E
                 >
                     {t('status.details')}
                 </PopupTrigger>
-            </footer>
+            </div>
             <Popup
                 anchor={{ trigger: detailsTrigger }}
                 aria-label={t('status.details')}
                 className={popupStyles.details}
-                id="document-status-details"
+                id={DETAILS_ID}
                 initialFocus="popup"
                 open={detailsOpen}
                 returnFocusTo={detailsTrigger}

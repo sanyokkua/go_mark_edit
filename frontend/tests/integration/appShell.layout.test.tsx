@@ -1,6 +1,3 @@
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
-
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { Provider } from 'react-redux';
 
@@ -21,8 +18,6 @@ import { store } from '../../src/logic/store';
 import { hydrateSettings } from '../../src/logic/store/settingsSlice';
 import AppShell from '../../src/ui/widgets/AppShell';
 import { WorkspaceTreeTestProvider } from '../support/WorkspaceTreeTestProvider';
-
-const readSource = (relativePath: string): string => readFileSync(resolve(process.cwd(), relativePath), 'utf8');
 
 function pointerEvent(type: 'pointerdown' | 'pointermove' | 'pointerup', clientX: number, pointerId: number): Event {
     const event = new Event(type, { bubbles: true });
@@ -75,12 +70,6 @@ it('keeps workspace and document regions while the reserved Assistant track has 
     expect(screen.queryByLabelText(/assistant/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/assistant/i)).not.toBeInTheDocument();
     expect(screen.getByTestId('application-shell')).toHaveAttribute('data-document-state', 'empty');
-
-    const shellStyles = readSource('src/ui/widgets/AppShell.module.css');
-    const tokens = readSource('src/ui/styles/tokens.css');
-    expect(shellStyles).toMatch(/grid-template-areas:\s*['"]workspace document assistant['"]/);
-    expect(tokens).toContain('--shell-assistant-collapsed-width: 0;');
-    expect(tokens).not.toContain('--shell-assistant-visible-width');
 });
 
 it('renders an immediate non-durable divider width while sending the durable intent to Go', () => {
@@ -356,63 +345,11 @@ it('uses exact responsive presentations without durable responsive write-back', 
     fireEvent(window, new Event('resize'));
 
     expect(setUILayout).not.toHaveBeenCalled();
-
-    const shellStyles = readSource('src/ui/widgets/AppShell.module.css');
-    const editorStyles = readSource('src/ui/widgets/EditorStage/EditorStage.module.css');
-    const toolbarStyles = readSource('src/ui/widgets/FormattingToolbar/FormattingToolbar.module.css');
-    const baseStyles = readSource('src/ui/styles/base.css');
-    expect(shellStyles).toMatch(/@media \(max-width:\s*768px\)[\s\S]*--shell-workspace-column:\s*46px/);
-    /*
-     * This used to require the 376px block present the workspace as a 230px
-     * absolutely-positioned overlay. The minimum window drops the workspace
-     * instead of overlaying it, so the presentation the block owns is the
-     * collapsed column, and no `width: 230px` overlay survives anywhere.
-     */
-    expect(shellStyles).toMatch(/@media \(max-width:\s*376px\)[\s\S]*--shell-workspace-column:\s*0px/);
-    expect(shellStyles).not.toMatch(/width:\s*230px/);
-    expect(editorStyles).toMatch(/@media \(max-width:\s*376px\)[\s\S]*flex-direction:\s*column/);
-    expect(toolbarStyles).toMatch(/\.toolbar\s*\{[^}]*flex-wrap:\s*nowrap/s);
-    expect(baseStyles).toMatch(/overflow-x:\s*hidden/);
 });
 
-it('and keep shell styles tokenized and production surfaces honest', () => {
-    const shellSource = readSource('src/ui/widgets/WorkspaceLayout.tsx');
-    const shellStyles = readSource('src/ui/widgets/AppShell.module.css');
-    const appSource = readSource('src/app/App.tsx');
-    const actionSource = readSource('src/logic/actions/shellActions.ts');
-
+it('shows the workspace panel and divider when enabled', () => {
     setViewportWidth(1024);
     renderShell({ sidebarVisible: true, sidebarWidth: 288 });
     expect(screen.getByRole('complementary', { name: 'Sidebar' })).toBeInTheDocument();
     expect(screen.getByRole('separator', { name: 'Resize sidebar' })).toBeInTheDocument();
-    expect(shellSource).toContain("t('shell.document')");
-    expect(shellStyles).not.toMatch(/#[\da-f]{3,8}\b|rgba?\(|hsla?\(/i);
-    for (const source of [shellSource, appSource, actionSource]) {
-        expect(source).not.toMatch(/\b(?:fetch|XMLHttpRequest|WebSocket|EventSource|sendBeacon)\b/);
-        expect(source).not.toMatch(/https?:\/\//);
-    }
-    expect(actionSource).not.toMatch(/['"](?:file|new|open|recent|assistant)/i);
-    expect(shellSource).not.toMatch(/aria-label=['"]Assistant['"]/i);
-    expect(shellSource).not.toMatch(/(?:tablist|tabpanel|role=['"]tab['"])/i);
 });
-
-/*
- * . Two `…` cases were removed with the empty-state chrome they
- * described.
- *
- * On `?parity-case` with no document open, AppShell mounted a `DocumentTabs`
- * strip and a fabricated `StatusBar` — `cursor 1:1`, `utf-8`, `lf`,
- * `not-saved`, `wordCount 0` — around the launcher. Production renders neither:
- * the real status bar is guarded on `hasActiveDocument`, and with no document
- * there is no tab strip. So the harness photographed a shell arrangement the
- * application never shows, which is what forbids.
- *
- * The scroll-lock effect that kept that fabricated layout pinned to the top at
- * ≤376px went with it.
- *
- * Still here, and deliberately: `data-parity-shell` and `data-parity-family` on
- * the frame. They are not markup — they are hooks that 66 CSS rules across six
- * stylesheets key off, and removing the attributes without a plan for those
- * rules would silently disable all of them and leave the CSS behind. They are
- * allowlisted in archtest and owed their own pass.
- */

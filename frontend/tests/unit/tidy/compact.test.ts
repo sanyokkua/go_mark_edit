@@ -1,5 +1,6 @@
 import { runOnText } from '../../../src/logic/tidy/engine';
-import { applyEdits } from '../../../src/logic/tidy/edits';
+import { parseFull } from '../../../src/logic/tidy/parser';
+import { applyEdits, compactEdits } from '../../../src/logic/tidy/edits';
 import type { TidyPreferences } from '../../../src/logic/tidy/prefs';
 
 const prefs: TidyPreferences = { bullet: '-', emphasis: '_', heading: 'atx' };
@@ -61,4 +62,25 @@ test('when inline math spans lines, Compact preserves whitespace inside it', () 
 
 test('when a document is already compact, Compact returns no edits', () => {
     expect(runOnText('compact', 'one\n\ntwo\n', prefs)).toEqual({ kind: 'edits', edits: [] });
+});
+
+test('Compact strips only ASCII horizontal whitespace and preserves hard breaks', () => {
+    expect(compact('x\u00a0 \t\n')).toBe('x\u00a0\n');
+    expect(compact('x \u00a0\n')).toBe('x \u00a0\n');
+    expect(compact('one  \nnext\n')).toBe('one  \nnext\n');
+    expect(compact('one \t\nnext\n')).toBe('one\nnext\n');
+    for (const suffix of ['\r', '\u2028', '\u2029']) {
+        const source = `x ${suffix}\n`;
+        expect(compactEdits(source, parseFull(source))).toEqual([]);
+    }
+});
+
+test('Compact handles long interior whitespace without repeated suffix scans', () => {
+    const source = 'x' + ' '.repeat(40_000) + 'x\n';
+    const tree = parseFull(source);
+    const start = performance.now();
+    const edits = compactEdits(source, tree);
+    const elapsed = performance.now() - start;
+    expect(edits).toEqual([]);
+    expect(elapsed).toBeLessThan(1200);
 });

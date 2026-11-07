@@ -144,16 +144,8 @@ const iconShapes: Record<IconName, React.JSX.Element> = {
             <path d="M7.5 7v3.5m0-6v.01" />
         </>
     ),
-    tip: (
-        <>
-            <path d="M5 10h5m-4 2h3M7.5 1.5a4 4 0 0 1 2.5 7.1V10h-5V8.6A4 4 0 0 1 7.5 1.5Z" />
-        </>
-    ),
-    important: (
-        <>
-            <path d="M7.5 1.5 9 5.8l4.5 1.7L9 9.2l-1.5 4.3L6 9.2 1.5 7.5 6 5.8Z" />
-        </>
-    ),
+    tip: <path d="M5 10h5m-4 2h3M7.5 1.5a4 4 0 0 1 2.5 7.1V10h-5V8.6A4 4 0 0 1 7.5 1.5Z" />,
+    important: <path d="M7.5 1.5 9 5.8l4.5 1.7L9 9.2l-1.5 4.3L6 9.2 1.5 7.5 6 5.8Z" />,
     caution: (
         <>
             <path d="M5 2h5l3 3v5l-3 3H5l-3-3V5Z" />
@@ -173,10 +165,6 @@ function cssSize(value: number | string): string {
     return typeof value === 'number' ? `${value}px` : value;
 }
 
-function cssStroke(value: number | string): string {
-    return String(value);
-}
-
 const Icon: React.FC<IconProps> = ({
     name,
     size,
@@ -188,7 +176,7 @@ const Icon: React.FC<IconProps> = ({
     const tokenStyle = {
         ...style,
         ...(size === undefined ? {} : { '--icon-size': cssSize(size) }),
-        ...(stroke === undefined ? {} : { '--icon-stroke': cssStroke(stroke) }),
+        ...(stroke === undefined ? {} : { '--icon-stroke': String(stroke) }),
     } as React.CSSProperties;
 
     return (

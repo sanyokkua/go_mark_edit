@@ -5,7 +5,7 @@ export const language: languages.IMonarchLanguage = {
     tokenizer: {
         root: [
             [/^(?:diff\b|index\b|---\s|\+\+\+\s).*$/, 'keyword'],
-            [/^@@.*@@.*$/, 'number'],
+            [/^(?=(@@.*@@))\1.*$/, 'number'],
             [/^\+.*$/, 'string'],
             [/^-.*$/, 'comment'],
         ],

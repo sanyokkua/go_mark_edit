@@ -10,6 +10,7 @@ import { notifyToast } from '../logic/store/notificationsSlice';
 import type { TidyPreferences } from '../logic/tidy/prefs';
 import type { LintFinding, TidyOutcome } from '../logic/tidy/protocol';
 import { runTidy } from '../logic/tidy/runTidy';
+import { utf8ByteLength } from '../logic/utils/utf8ByteLength';
 import type { EditorMarker } from '../ui/components/CodeEditor';
 import { DocumentCommandContext, EditorSessionContext, EditorSessionEpochContext } from '../ui/widgets/editorSession';
 import type { TidyCommands } from '../ui/widgets/tidyCommandsContext';
@@ -27,6 +28,20 @@ function normalize(text: string): string {
     return text.replace(/\r\n?/gu, '\n');
 }
 
+function isEligibleTidyTarget(
+    op: Parameters<TidyCommands['run']>[0],
+    options: NonNullable<Parameters<TidyCommands['run']>[1]>,
+    documentId: string,
+    state: { projectedDocumentId: string | null; capability: string | undefined },
+): boolean {
+    return (
+        (options.documentId === undefined || options.documentId === documentId) &&
+        state.projectedDocumentId === documentId &&
+        state.capability !== undefined &&
+        (op === 'lint' || state.capability === 'writable')
+    );
+}
+
 function tidyPreferences(settings: ReturnType<typeof useEditorSettings>['markdownSettings']): TidyPreferences | null {
     if (
         settings === undefined ||
@@ -42,6 +57,12 @@ function tidyPreferences(settings: ReturnType<typeof useEditorSettings>['markdow
     };
 }
 
+function markerMessage(finding: LintFinding): string {
+    const ruleLabel = t(`lint.rule.${finding.rule}.label`);
+    const severityLabel = t(`problems.severity.${finding.severity}`);
+    return `${ruleLabel} · ${severityLabel}\n${t(finding.message.key, finding.message.args)}\n${t(finding.hint)}`;
+}
+
 function markerFor(finding: LintFinding): EditorMarker {
     return {
         startLine: finding.startLine,
@@ -49,8 +70,50 @@ function markerFor(finding: LintFinding): EditorMarker {
         endLine: finding.endLine,
         endColumn: finding.endColumn,
         severity: finding.severity,
-        message: `${t(`lint.rule.${finding.rule}.label`)} · ${t(`problems.severity.${finding.severity}`)}\n${t(finding.message.key, finding.message.args)}\n${t(finding.hint)}`,
+        message: markerMessage(finding),
     };
+}
+
+function isStaleRun(
+    captured: ActiveRun,
+    latest: {
+        activeBuffer: { documentId: string } | null;
+        projectedDocumentId: string | null;
+        commands: DocumentCommandAPI | null;
+        externalEpoch: number;
+    },
+    now: ReturnType<DocumentCommandAPI['getContent']>,
+): boolean {
+    return (
+        captured.invalidated ||
+        latest.activeBuffer?.documentId !== captured.documentId ||
+        latest.projectedDocumentId !== captured.documentId ||
+        latest.commands !== captured.commands ||
+        latest.externalEpoch !== captured.externalEpoch ||
+        now.status !== 'available' ||
+        normalize(now.value) !== captured.text
+    );
+}
+
+function applyTidyOutcome(
+    outcome: TidyOutcome,
+    commands: DocumentCommandAPI,
+    documentId: string,
+    text: string,
+): TidyOutcome {
+    if (
+        outcome.kind === 'edits' &&
+        outcome.edits.length > 0 &&
+        commands.applyEdits(outcome.edits).status !== 'available'
+    )
+        return { kind: 'failed' };
+    if (outcome.kind === 'findings') {
+        const markers = outcome.findings.slice(0, 1000).map(markerFor);
+        if (commands.setMarkers(markers).status === 'available') {
+            problemsSummary.replace(documentId, outcome.findings, outcome.total, text);
+        } else return { kind: 'failed' };
+    }
+    return outcome;
 }
 
 export function useTidyCommands(): TidyCommands {
@@ -119,7 +182,10 @@ export function useTidyCommands(): TidyCommands {
     }, [activeBuffer?.documentId, commands, externalEpoch]);
 
     const showOutcomeNotice = useCallback(
-        (kind: 'refused' | 'failed' | 'cancelled' | 'stale', documentId: string): void => {
+        (origin: 'user' | 'on-save', outcome: TidyOutcome, documentId: string): void => {
+            if (origin !== 'user') return;
+            const { kind } = outcome;
+            if (kind !== 'refused' && kind !== 'failed' && kind !== 'cancelled' && kind !== 'stale') return;
             dispatch(
                 notifyToast({
                     code: `tidy-${kind}`,
@@ -142,10 +208,7 @@ export function useTidyCommands(): TidyCommands {
             const prefs = tidyPreferences(state.markdownSettings);
             if (
                 documentId === undefined ||
-                (options.documentId !== undefined && options.documentId !== documentId) ||
-                state.projectedDocumentId !== documentId ||
-                state.capability === undefined ||
-                (op !== 'lint' && state.capability !== 'writable') ||
+                !isEligibleTidyTarget(op, options, documentId, state) ||
                 selectedCommands === null ||
                 prefs === null
             )
@@ -154,12 +217,13 @@ export function useTidyCommands(): TidyCommands {
             try {
                 content = selectedCommands.getContent();
             } catch {
-                if (origin === 'user') showOutcomeNotice('failed', documentId);
-                return { kind: 'failed' };
+                const outcome: TidyOutcome = { kind: 'failed' };
+                showOutcomeNotice(origin, outcome, documentId);
+                return outcome;
             }
             if (content.status !== 'available') return { kind: 'failed' };
             const text = normalize(content.value);
-            const handle = acquire(op, { documentId, size: new Blob([text]).size });
+            const handle = acquire(op, { documentId, size: utf8ByteLength(text) });
             if (handle === null) return { kind: 'busy' };
             const captured: ActiveRun = {
                 handle,
@@ -186,40 +250,14 @@ export function useTidyCommands(): TidyCommands {
                 if (handle.signal.aborted) outcome = { kind: 'cancelled' };
                 const latest = current.current;
                 const now = selectedCommands.getContent();
-                if (
-                    captured.invalidated ||
-                    latest.activeBuffer?.documentId !== documentId ||
-                    latest.projectedDocumentId !== documentId ||
-                    latest.commands !== captured.commands ||
-                    latest.externalEpoch !== captured.externalEpoch ||
-                    now.status !== 'available' ||
-                    normalize(now.value) !== text
-                )
-                    outcome = { kind: 'stale' };
-                if (
-                    outcome.kind === 'edits' &&
-                    outcome.edits.length > 0 &&
-                    selectedCommands.applyEdits(outcome.edits).status !== 'available'
-                )
-                    outcome = { kind: 'failed' };
-                if (outcome.kind === 'findings') {
-                    const markers = outcome.findings.slice(0, 1000).map(markerFor);
-                    if (selectedCommands.setMarkers(markers).status === 'available') {
-                        problemsSummary.replace(documentId, outcome.findings, outcome.total, text);
-                    } else outcome = { kind: 'failed' };
-                }
-                if (
-                    origin === 'user' &&
-                    (outcome.kind === 'refused' ||
-                        outcome.kind === 'failed' ||
-                        outcome.kind === 'cancelled' ||
-                        outcome.kind === 'stale')
-                )
-                    showOutcomeNotice(outcome.kind, documentId);
+                if (isStaleRun(captured, latest, now)) outcome = { kind: 'stale' };
+                outcome = applyTidyOutcome(outcome, selectedCommands, documentId, text);
+                showOutcomeNotice(origin, outcome, documentId);
                 return outcome;
             } catch {
-                if (origin === 'user') showOutcomeNotice('failed', documentId);
-                return { kind: 'failed' };
+                const outcome: TidyOutcome = { kind: 'failed' };
+                showOutcomeNotice(origin, outcome, documentId);
+                return outcome;
             } finally {
                 if (running.current === captured) running.current = null;
                 handle.release();

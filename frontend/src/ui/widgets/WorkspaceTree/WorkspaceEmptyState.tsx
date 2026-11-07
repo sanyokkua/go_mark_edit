@@ -6,7 +6,7 @@ interface WorkspaceEmptyStateProps {
     onOpenFolder: () => unknown;
 }
 
-export default function WorkspaceEmptyState({ onOpenFolder }: WorkspaceEmptyStateProps): React.JSX.Element {
+export default function WorkspaceEmptyState({ onOpenFolder }: Readonly<WorkspaceEmptyStateProps>): React.JSX.Element {
     return (
         <div className={styles.emptyState}>
             <p>{t('workspace.tree.noFolder')}</p>

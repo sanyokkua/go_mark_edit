@@ -49,7 +49,7 @@ export function AppDialogs({
     drops,
     recovery,
     announcement,
-}: AppDialogsProps): React.JSX.Element {
+}: Readonly<AppDialogsProps>): React.JSX.Element {
     const recoveryCancel = useRef<HTMLButtonElement | null>(null);
     const ready = status === 'ready';
     return (

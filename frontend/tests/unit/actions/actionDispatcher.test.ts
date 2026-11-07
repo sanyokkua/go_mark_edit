@@ -363,3 +363,12 @@ it('dispatches Export to PDF for an open read-only document and refuses it witho
     ).resolves.toMatchObject({ status: 'unavailable', reason: 'modal' });
     expect(invoke).toHaveBeenCalledTimes(1);
 });
+
+it('dispatches Save As for a write-protected document even when it is not writable', async () => {
+    const invoke = jest.fn();
+    const projectedState = { activeDocumentId: 'doc', documents: { doc: { capability: 'write-protected-read-only' } } };
+    expect(await dispatchAction('save-as', { projectedState, writable: false, invoke })).toMatchObject({
+        status: 'mutated',
+    });
+    expect(invoke).toHaveBeenCalledTimes(1);
+});

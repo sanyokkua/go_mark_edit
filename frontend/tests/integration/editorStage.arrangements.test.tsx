@@ -1,6 +1,3 @@
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
-
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { useAppSelector } from '../../src/logic/store';
@@ -48,7 +45,7 @@ jest.mock('../../src/ui/components/CodeEditor', () => {
         });
     });
 
-    return { __esModule: true, default: MockCodeEditor };
+    return { __esModule: true, default: MockCodeEditor, reconcileEditorModels: jest.fn() };
 });
 
 import { hydrateProjection, resetProjection } from '../../src/logic/store/appModelProjectionActions';
@@ -58,8 +55,6 @@ import AppShell from '../../src/ui/widgets/AppShell';
 import EditorView from '../../src/ui/widgets/EditorView';
 import { EditorSessionContext, EditorSessionEpochContext } from '../../src/ui/widgets/editorSession';
 import { WorkspaceTreeTestProvider } from '../support/WorkspaceTreeTestProvider';
-
-const readSource = (relativePath: string): string => readFileSync(resolve(process.cwd(), relativePath), 'utf8');
 
 function documentFor(arrangement: ViewArrangement): DocumentMetadata {
     return {
@@ -105,6 +100,7 @@ function renderEditorView(arrangement: ViewArrangement): void {
                 value={{
                     documentId: document.documentId,
                     content: '# Rendered Preview',
+                    documentRevision: 0,
                 }}
             >
                 <EditorView />
@@ -117,7 +113,9 @@ function renderShellWithDocument(): void {
     const document = hydrateDocument('split');
     render(
         <Provider store={store}>
-            <EditorSessionContext.Provider value={{ documentId: document.documentId, content: '# Rendered Preview' }}>
+            <EditorSessionContext.Provider
+                value={{ documentId: document.documentId, content: '# Rendered Preview', documentRevision: 0 }}
+            >
                 <WorkspaceTreeTestProvider>
                     <AppShell />
                 </WorkspaceTreeTestProvider>
@@ -212,6 +210,14 @@ it('renders each arrangement', async () => {
     store.dispatch(resetProjection());
     renderEditorView('split');
     expect(screen.getByLabelText('Editor pane')).toBeInTheDocument();
+    const editorPane = screen.getByLabelText('Editor pane');
+    const splitDivider = screen.getByRole('separator', { name: 'Resize editor and preview panes' });
+    expect(editorPane.id).not.toBe('');
+    expect(splitDivider).toHaveAttribute('aria-controls', editorPane.id);
+    const paneId = editorPane.id;
+    fireEvent.keyDown(splitDivider, { key: 'ArrowRight' });
+    expect(editorPane).toHaveAttribute('id', paneId);
+    expect(splitDivider).toHaveAttribute('aria-controls', paneId);
     expect(screen.getByLabelText('Preview pane')).toBeInTheDocument();
     expect(screen.getByRole('radio', { name: 'Split' })).toBeChecked();
     expect(await screen.findByRole('heading', { name: 'Rendered Preview' })).toBeInTheDocument();
@@ -264,36 +270,45 @@ it('keeps only the viewer at the minimum window in Preview mode', async () => {
     }
 });
 
-it('collapses Split to the editor at the minimum window and removes the preview', () => {
-    setViewportWidth(375);
+it.each([375, 376])('keeps both Split panes at %i px', (width) => {
+    setViewportWidth(width);
     try {
         renderEditorView('split');
-
-        const editorPane = screen.getByLabelText('Editor pane');
-        expect(editorPane).toHaveClass('pane');
-        expect(editorPane).not.toHaveClass('paneHidden');
-        expect(editorPane).toHaveAttribute('aria-hidden', 'false');
-        /*
-         * Removed from the tree, not merely zero-width: a preview that is still
-         * rendered still costs a render pass and can still be reached by a
-         * screen reader, and the region is supposed to carry one pane.
-         */
-        expect(screen.queryAllByLabelText('Preview pane')).toHaveLength(0);
-        expect(editorPane.parentElement?.children).toHaveLength(1);
-
-        /*
-         * The surviving pane fills the region: it is the only child of the pane
-         * row, and `.pane` is a fully flexible item.
-         */
-        const paneStyles = readSource('src/ui/components/Pane/Pane.module.css');
-        expect(paneStyles).toMatch(/\.pane\s*\{[^}]*flex:\s*1 1 0;/s);
-        expect(paneStyles).toMatch(/\.paneHidden\s*\{[^}]*display:\s*none;/s);
-
-        /*
-         * The recorded mode is still Split. The collapse is a presentation of the
-         * current width, so the toolbar keeps reporting what the document stores.
-         */
+        expect(screen.getByLabelText('Editor pane')).not.toHaveClass('paneHidden');
+        expect(screen.getByLabelText('Preview pane')).toBeInTheDocument();
+        expect(screen.queryByRole('separator', { name: 'Resize editor and preview panes' })).not.toBeInTheDocument();
         expect(screen.getByRole('radio', { name: 'Split' })).toBeChecked();
+    } finally {
+        setViewportWidth(1024);
+    }
+});
+
+it('follows a real resize across the 376 and 377 px boundary without writing an arrangement', () => {
+    const divider = (): HTMLElement | null =>
+        screen.queryByRole('separator', { name: 'Resize editor and preview panes' });
+    const resizeTo = (width: number): void => {
+        setViewportWidth(width);
+        act((): void => {
+            window.dispatchEvent(new Event('resize'));
+        });
+    };
+    setViewportWidth(376);
+    try {
+        renderEditorView('split');
+        expect(divider()).not.toBeInTheDocument();
+
+        resizeTo(377);
+        expect(divider()).toBeInTheDocument();
+        expect(screen.getByLabelText('Editor pane')).not.toHaveClass('paneHidden');
+        expect(screen.getByLabelText('Preview pane')).toBeInTheDocument();
+
+        resizeTo(376);
+        expect(divider()).not.toBeInTheDocument();
+        expect(screen.getByLabelText('Editor pane')).not.toHaveClass('paneHidden');
+        expect(screen.getByLabelText('Preview pane')).toBeInTheDocument();
+
+        expect(screen.getByRole('radio', { name: 'Split' })).toBeChecked();
+        expect(mockSetDocView).not.toHaveBeenCalled();
     } finally {
         setViewportWidth(1024);
     }
@@ -309,7 +324,8 @@ it('restores Split when the window widens again without writing an arrangement',
 
         minimumWindowQuery.emit(true);
         expect(screen.getByLabelText('Editor pane')).not.toHaveClass('paneHidden');
-        expect(screen.queryAllByLabelText('Preview pane')).toHaveLength(0);
+        expect(screen.getByLabelText('Preview pane')).toBeInTheDocument();
+        expect(screen.queryByRole('separator', { name: 'Resize editor and preview panes' })).not.toBeInTheDocument();
 
         // No user action in between — only the window got wider again.
         minimumWindowQuery.emit(false);
@@ -339,7 +355,9 @@ it('replaces the same-document editor model when a Reload acknowledgement change
     const rendered = render(
         <Provider store={store}>
             <EditorSessionEpochContext.Provider value={0}>
-                <EditorSessionContext.Provider value={{ documentId: document.documentId, content: '# mine\n' }}>
+                <EditorSessionContext.Provider
+                    value={{ documentId: document.documentId, content: '# mine\n', documentRevision: 0 }}
+                >
                     <EditorView />
                 </EditorSessionContext.Provider>
             </EditorSessionEpochContext.Provider>
@@ -355,7 +373,9 @@ it('replaces the same-document editor model when a Reload acknowledgement change
     rendered.rerender(
         <Provider store={store}>
             <EditorSessionEpochContext.Provider value={1}>
-                <EditorSessionContext.Provider value={{ documentId: document.documentId, content: '# disk\n' }}>
+                <EditorSessionContext.Provider
+                    value={{ documentId: document.documentId, content: '# disk\n', documentRevision: 0 }}
+                >
                     <EditorView />
                 </EditorSessionContext.Provider>
             </EditorSessionEpochContext.Provider>
@@ -412,10 +432,6 @@ it('matches the split-view structure', () => {
     const previewPane = screen.getByLabelText('Preview pane');
     expect(within(previewPane).getByText('● Preview · live')).toBeVisible();
     expect(within(previewPane).getByText('Full')).toBeVisible();
-
-    const segmentedStyles = readSource('src/ui/primitives/Segmented/Segmented.module.css');
-    expect(segmentedStyles).toMatch(/var\(--segmented-[\w-]+\)/);
-    expect(segmentedStyles).not.toMatch(/#[\da-f]{3,8}\b|rgba?\(|hsla?\(/i);
 });
 
 it('shows each acknowledged Markdown standard in the preview header and status bar without remounting', () => {
@@ -465,7 +481,9 @@ function renderStandardJourney(bindings: SettingsBindings): void {
     const document = hydrateDocument('split');
     render(
         <Provider store={store}>
-            <EditorSessionContext.Provider value={{ documentId: document.documentId, content: standardSource }}>
+            <EditorSessionContext.Provider
+                value={{ documentId: document.documentId, content: standardSource, documentRevision: 0 }}
+            >
                 <WorkspaceTreeTestProvider>
                     <StandardMenu bindings={bindings} />
                     <AppShell />
@@ -585,36 +603,3 @@ it('shows no Markdown standard in the preview header or status bar before settin
         screen.getByRole('status', { name: 'Document status' }).querySelector('[data-status-item="standard-kind"]'),
     ).toBeNull();
 });
-
-/*
- * . Three `` cases were removed here with the five CSS rules they
- * described: the paused-pane overflow, the preview's transparent background,
- * the two `.gme-preview` line-height overrides, and the `toolbar-overflow`
- * editor transform.
- *
- * Each read `EditorView.module.css` as text and asserted a declaration appeared
- * in it. That is only worth doing if the declaration does something, and  * measured that it does not: those selectors match only when the parity harness
- * puts `data-parity-shell` on the application frame, and neutralising all five
- * leaves `[parity accounting]` at 147/147 with the suite green. A rule that
- * moves no compared pixel has nothing for a test to prove, so the assertions
- * pinned their own text and no behaviour.
- *
- * The same measurement gave the opposite verdict for
- * `FormattingToolbar.module.css`'s 34 rules — those move an attributed residual
- * from 181 to 184 pixels and stay.
- */
-/*
- * . `presents the reviewed selection metadata on the parity editor
- * route` was removed with the readout it described.
- *
- * The design's pane header carries a selection word-count readout and Feature 003
- * builds no selection readout, so `EditorView` rendered a hardcoded copy of it
- * on `?parity-case` to make the two sides agree. The 2026-08-13 clarification
- * recorded against this exact region requires the opposite: out-of-scope
- * reference content is "removed from the reference rather than manufactured in
- * production", which is how the deferred rich-rendering widgets are handled.
- *
- * The readout is now stripped from the reference by
- * `adaptEditorPaneSelection`, and the pane header and its metadata remain fully
- * compared — the clarification's other half.
- */

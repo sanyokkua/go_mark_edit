@@ -103,19 +103,20 @@ const Segmented = <Value extends string>({
         >
             {options.map((option, index): React.JSX.Element => {
                 const selected = option.value === value;
+                const optionStyle = selected ? styles.optionSelected : styles.option;
+                const tabIndex = !disabled && (selected || (value === undefined && index === 0)) ? 0 : -1;
                 const buttonProps: SegmentedOptionButtonProps = {
                     ref: (element): void => {
                         optionRefs.current[index] = element;
                     },
                     'aria-checked': selected,
                     disabled,
-                    className:
-                        `${renderOption === undefined ? (selected ? styles.optionSelected : styles.option) : ''} ${optionClassName ?? ''}`.trim(),
+                    className: `${renderOption === undefined ? optionStyle : ''} ${optionClassName ?? ''}`.trim(),
                     'data-action-id': option.value,
                     'data-icon': option.value,
                     'data-segmented-value': option.value,
                     role: 'radio',
-                    tabIndex: disabled ? -1 : selected || (value === undefined && index === 0) ? 0 : -1,
+                    tabIndex,
                     type: 'button',
                     onClick: (): void => requestValue(option.value),
                     onMouseDown: (event): void => {

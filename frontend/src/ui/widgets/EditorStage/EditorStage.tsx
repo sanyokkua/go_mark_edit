@@ -3,6 +3,7 @@ import {
     useCallback,
     useContext,
     useEffect,
+    useId,
     useImperativeHandle,
     useLayoutEffect,
     useRef,
@@ -61,7 +62,8 @@ export interface EditorStageHandle {
 
 export type EditorStageVariant = 'normal' | 'reading';
 
-export interface EditorStageProps {
+export interface EditorStageProps extends Pick<PreviewPaneContentProps, 'onOpenLink'> {
+    openDocumentIds?: readonly string[];
     activeBuffer: ActiveBuffer;
     activeDocument?: DocumentMetadata;
     adapter?: EditorStageAdapter;
@@ -70,7 +72,6 @@ export interface EditorStageProps {
     labelledBy?: string;
     onLiveCursorChange: (cursor: EditorPosition) => void;
     onEditorReady?: (documentId: string) => void;
-    onOpenLink?: PreviewPaneContentProps['onOpenLink'];
     fragmentRequest?: FragmentRequest | null;
     onPreviewRefresh?: (accepted: LivePreviewSnapshot) => Promise<LivePreviewSnapshot>;
     onPreviewWarning: (target: string, reason: string) => void;
@@ -88,7 +89,8 @@ export interface FragmentRequest {
     seq: number;
 }
 
-interface ActiveEditorProps {
+interface ActiveEditorProps extends Pick<PreviewPaneContentProps, 'onOpenLink'> {
+    openDocumentIds?: readonly string[];
     activeBuffer: ActiveBuffer;
     adapter: EditorStageAdapter;
     documentPath: string;
@@ -96,7 +98,6 @@ interface ActiveEditorProps {
     handledFragmentRef: { current: number };
     onLiveCursorChange: (cursor: EditorPosition) => void;
     onEditorReady?: (documentId: string) => void;
-    onOpenLink?: PreviewPaneContentProps['onOpenLink'];
     onPreviewWarning: (target: string, reason: string) => void;
     onPreviewScrollHandler: (handler: ((scrollTop: number) => void) | null) => void;
     onScrollPortReady: (port: EditorScrollPort | null) => void;
@@ -113,6 +114,7 @@ const ActiveEditor = forwardRef<ActiveEditorHandle, ActiveEditorProps>(function 
     {
         activeBuffer,
         adapter,
+        openDocumentIds,
         documentPath,
         fragmentRequest,
         handledFragmentRef,
@@ -141,6 +143,7 @@ const ActiveEditor = forwardRef<ActiveEditorHandle, ActiveEditorProps>(function 
         adapter,
         activeBuffer.content,
         externalEpoch,
+        activeBuffer.documentRevision,
     );
 
     useEffect((): void => {
@@ -184,9 +187,7 @@ const ActiveEditor = forwardRef<ActiveEditorHandle, ActiveEditorProps>(function 
     const synchronizeMountedEditorTheme = useCallback((): void => {
         if (
             visible &&
-            fragmentRequest !== null &&
-            fragmentRequest !== undefined &&
-            fragmentRequest.documentId === activeBuffer.documentId &&
+            fragmentRequest?.documentId === activeBuffer.documentId &&
             fragmentRequest.seq > handledFragmentRef.current
         ) {
             setMountedEditorEpoch((epoch) => epoch + 1);
@@ -219,6 +220,8 @@ const ActiveEditor = forwardRef<ActiveEditorHandle, ActiveEditorProps>(function 
             documentId={activeBuffer.documentId}
             initialValue={activeBuffer.content}
             activationId={synchronizedBuffer.activationId}
+            externalEpoch={externalEpoch}
+            openDocumentIds={openDocumentIds}
             fontSize={editorSettings.fontSize as 13 | 14 | 16}
             lineNumbers={editorSettings.lineNumbers ? 'on' : 'off'}
             wordWrap={editorSettings.wordWrap ? 'on' : 'off'}
@@ -265,14 +268,13 @@ const ActiveEditor = forwardRef<ActiveEditorHandle, ActiveEditorProps>(function 
     );
 });
 
-interface LivePreviewProps {
+interface LivePreviewProps extends Pick<PreviewPaneContentProps, 'onOpenLink'> {
     activeBuffer: ActiveBuffer;
     adapter: EditorStageAdapter;
     claimScrollRestore: (documentId: string, variant: EditorStageVariant) => boolean;
     documentPath: string;
     fragmentRequest?: FragmentRequest | null;
     handledFragmentRef: { current: number };
-    onOpenLink?: PreviewPaneContentProps['onOpenLink'];
     onPreviewRefresh?: (accepted: LivePreviewSnapshot) => Promise<LivePreviewSnapshot>;
     onPreviewWarning: (target: string, reason: string) => void;
     onScrollChange: (scrollTop: number) => void;
@@ -304,7 +306,7 @@ const LivePreview: React.FC<LivePreviewProps> = ({
     const storedStandard = markdownSettings?.standard;
     const standard = storedStandard !== undefined && isMarkdownStandard(storedStandard) ? storedStandard : undefined;
     const settingsLoaded = standard !== undefined;
-    const accepted = useLivePreviewSnapshot(activeBuffer, adapter);
+    const accepted = useLivePreviewSnapshot(activeBuffer, visible, adapter);
     const contentRef = useRef<HTMLDivElement | null>(null);
     const [committedPreview, setCommittedPreview] = useState<CommittedMarkdownPreview | null>(null);
     const onPreviewCommitted = useCallback((preview: CommittedMarkdownPreview): void => {
@@ -447,6 +449,7 @@ const EditorStage = forwardRef<EditorStageHandle, EditorStageProps>(function Edi
     {
         activeBuffer,
         activeDocument,
+        openDocumentIds,
         adapter = appModelAdapter,
         fragmentRequest,
         editorVisible,
@@ -466,6 +469,7 @@ const EditorStage = forwardRef<EditorStageHandle, EditorStageProps>(function Edi
     }: EditorStageProps,
     ref,
 ): React.JSX.Element {
+    const editorPaneId = useId();
     const activeEditorRef = useRef<ActiveEditorHandle | null>(null);
     const stageRef = useRef<HTMLDivElement | null>(null);
     const minimumWindow = useMinimumWindow();
@@ -479,6 +483,13 @@ const EditorStage = forwardRef<EditorStageHandle, EditorStageProps>(function Edi
     }, []);
     const scrollSyncEnabled = useEditorSettings().settings.scrollSync;
     const [editorPort, setEditorPort] = useState<EditorScrollPort | null>(null);
+    const registerEditorPort = useCallback(
+        (port: EditorScrollPort | null): void => {
+            if (port !== null) port.setScrollTop(view.scroll.editor);
+            setEditorPort(port);
+        },
+        [view.scroll.editor],
+    );
     const [previewContainer, setPreviewContainer] = useState<HTMLElement | null>(null);
     const scrollSyncActive = useScrollSync({
         enabled: scrollSyncEnabled,
@@ -536,6 +547,7 @@ const EditorStage = forwardRef<EditorStageHandle, EditorStageProps>(function Edi
                         <ActiveEditor
                             ref={activeEditorRef}
                             activeBuffer={activeBuffer}
+                            openDocumentIds={openDocumentIds}
                             adapter={adapter}
                             documentPath={activeDocument?.path ?? ''}
                             fragmentRequest={fragmentRequest}
@@ -548,7 +560,7 @@ const EditorStage = forwardRef<EditorStageHandle, EditorStageProps>(function Edi
                             onOpenLink={onOpenLink}
                             onPreviewWarning={onPreviewWarning}
                             onPreviewScrollHandler={registerPreviewScrollHandler}
-                            onScrollPortReady={setEditorPort}
+                            onScrollPortReady={registerEditorPort}
                         />
                     </EditorContextMenu>
                 }
@@ -564,11 +576,13 @@ const EditorStage = forwardRef<EditorStageHandle, EditorStageProps>(function Edi
                     ),
                 }}
                 hidden={!editorVisible}
+                id={editorPaneId}
                 identity="editor"
             />
             {split ? (
                 <SplitDivider
                     ariaLabel={t('editor.resizeSplit')}
+                    controls={editorPaneId}
                     identity={activeBuffer.documentId}
                     value={splitRatio.ratio}
                     valueText={(ratio) => t('editor.splitPercentage', { percent: Math.round(ratio * 100) })}

@@ -1,5 +1,5 @@
 import { store } from '../../../src/logic/store';
-import { dismissNotification } from '../../../src/logic/store/notificationsSlice';
+import { dismissNotification, notifyError } from '../../../src/logic/store/notificationsSlice';
 import type { AppModelState, DocViewInput } from '../../../src/logic/store/appModelTypes';
 import type { WireError } from '../../../src/logic/utils/parseError';
 import {
@@ -31,7 +31,7 @@ const state: AppModelState = {
         activeDocumentId: '',
         ui: {},
     },
-    activeBuffer: { documentId: '', content: '' },
+    activeBuffer: { documentId: '', content: '', documentRevision: 0 },
 };
 
 const runtime: AppModelRuntime = {
@@ -47,8 +47,9 @@ afterEach((): void => {
 
 it('sends only the latest rapid edit within 50 ms of typing stopping', async () => {
     jest.useFakeTimers();
-    const updateBuffer = jest.fn<Promise<VoidResult>, [string, string]>(
-        async (documentId: string, content: string): Promise<VoidResult> => {
+    const updateBuffer = jest.fn<Promise<VoidResult>, [string, string, number]>(
+        async (documentId: string, content: string, baseRevision: number): Promise<VoidResult> => {
+            void baseRevision;
             void documentId;
             void content;
             return {};
@@ -71,9 +72,9 @@ it('sends only the latest rapid edit within 50 ms of typing stopping', async () 
         runtime,
     );
 
-    await adapter.updateBuffer('document-1', 'first');
+    await adapter.updateBuffer('document-1', 'first', 0);
     await jest.advanceTimersByTimeAsync(15);
-    await adapter.updateBuffer('document-1', 'latest');
+    await adapter.updateBuffer('document-1', 'latest', 0);
 
     expect(updateBuffer).not.toHaveBeenCalled();
     await jest.advanceTimersByTimeAsync(49);
@@ -81,7 +82,7 @@ it('sends only the latest rapid edit within 50 ms of typing stopping', async () 
     await jest.advanceTimersByTimeAsync(1);
 
     expect(updateBuffer).toHaveBeenCalledTimes(1);
-    expect(updateBuffer).toHaveBeenCalledWith('document-1', 'latest');
+    expect(updateBuffer).toHaveBeenCalledWith('document-1', 'latest', 0);
 });
 
 it('flushes the latest buffer with ordered acknowledgement', async () => {
@@ -89,8 +90,9 @@ it('flushes the latest buffer with ordered acknowledgement', async () => {
     const first = deferred<VoidResult>();
     const second = deferred<VoidResult>();
     let updateCount = 0;
-    const updateBuffer = jest.fn<Promise<VoidResult>, [string, string]>(
-        (documentId: string, content: string): Promise<VoidResult> => {
+    const updateBuffer = jest.fn<Promise<VoidResult>, [string, string, number]>(
+        (documentId: string, content: string, baseRevision: number): Promise<VoidResult> => {
+            void baseRevision;
             void documentId;
             void content;
             updateCount += 1;
@@ -116,17 +118,17 @@ it('flushes the latest buffer with ordered acknowledgement', async () => {
     const accepted = jest.fn();
     const unsubscribe = adapter.subscribeAcceptedBuffers(accepted);
 
-    await adapter.updateBuffer('document-1', 'first');
+    await adapter.updateBuffer('document-1', 'first', 0);
     await jest.advanceTimersByTimeAsync(BUFFER_SYNC_MS);
-    expect(updateBuffer).toHaveBeenCalledWith('document-1', 'first');
+    expect(updateBuffer).toHaveBeenCalledWith('document-1', 'first', 0);
 
-    await adapter.updateBuffer('document-1', 'latest');
+    await adapter.updateBuffer('document-1', 'latest', 0);
     const flush = adapter.flushBuffer('document-1');
     expect(updateBuffer).toHaveBeenCalledTimes(1);
 
     first.resolve({});
     await jest.advanceTimersByTimeAsync(0);
-    expect(updateBuffer).toHaveBeenNthCalledWith(2, 'document-1', 'latest');
+    expect(updateBuffer).toHaveBeenNthCalledWith(2, 'document-1', 'latest', 0);
 
     second.resolve({});
     await expect(flush).resolves.toBeUndefined();
@@ -146,8 +148,9 @@ it('flushes the latest buffer with ordered acknowledgement', async () => {
 it('publishes the identical accepted buffer generation', async () => {
     jest.useFakeTimers();
     const acknowledgement = deferred<VoidResult>();
-    const updateBuffer = jest.fn<Promise<VoidResult>, [string, string]>(
-        (documentId: string, content: string): Promise<VoidResult> => {
+    const updateBuffer = jest.fn<Promise<VoidResult>, [string, string, number]>(
+        (documentId: string, content: string, baseRevision: number): Promise<VoidResult> => {
+            void baseRevision;
             void documentId;
             void content;
             return acknowledgement.promise;
@@ -165,13 +168,13 @@ it('publishes the identical accepted buffer generation', async () => {
     const accepted = jest.fn();
     adapter.subscribeAcceptedBuffers(accepted);
 
-    await adapter.updateBuffer('document-1', 'first keystroke');
-    await adapter.updateBuffer('document-1', 'accepted snapshot');
+    await adapter.updateBuffer('document-1', 'first keystroke', 0);
+    await adapter.updateBuffer('document-1', 'accepted snapshot', 0);
 
     await jest.advanceTimersByTimeAsync(BUFFER_SYNC_MS);
 
     expect(updateBuffer).toHaveBeenCalledTimes(1);
-    expect(updateBuffer).toHaveBeenCalledWith('document-1', 'accepted snapshot');
+    expect(updateBuffer).toHaveBeenCalledWith('document-1', 'accepted snapshot', 0);
     expect(accepted).not.toHaveBeenCalled();
 
     acknowledgement.resolve({});
@@ -194,8 +197,9 @@ it('retains the working copy after synchronization failure', async () => {
         retryable: true,
     } satisfies WireError;
     let updateCount = 0;
-    const updateBuffer = jest.fn<Promise<VoidResult>, [string, string]>(
-        (documentId: string, content: string): Promise<VoidResult> => {
+    const updateBuffer = jest.fn<Promise<VoidResult>, [string, string, number]>(
+        (documentId: string, content: string, baseRevision: number): Promise<VoidResult> => {
+            void baseRevision;
             void documentId;
             void content;
             updateCount += 1;
@@ -223,8 +227,11 @@ it('retains the working copy after synchronization failure', async () => {
     );
     const accepted = jest.fn();
     adapter.subscribeAcceptedBuffers(accepted);
+    adapter.subscribeBufferSyncErrors((error) => {
+        store.dispatch(notifyError(error));
+    });
 
-    await adapter.updateBuffer('document-1', 'local working copy');
+    await adapter.updateBuffer('document-1', 'local working copy', 0);
     await jest.advanceTimersByTimeAsync(BUFFER_SYNC_MS);
 
     expect(store.getState().notifications.items).toEqual(
@@ -234,7 +241,7 @@ it('retains the working copy after synchronization failure', async () => {
     expect(JSON.stringify(store.getState())).not.toContain('local working copy');
 
     await expect(adapter.flushBuffer('document-1')).resolves.toBeUndefined();
-    expect(updateBuffer).toHaveBeenNthCalledWith(2, 'document-1', 'local working copy');
+    expect(updateBuffer).toHaveBeenNthCalledWith(2, 'document-1', 'local working copy', 0);
 
     await adapter.updateDocView('document-1', {
         editorVisible: true,

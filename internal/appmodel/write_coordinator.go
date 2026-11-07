@@ -1,6 +1,7 @@
 package appmodel
 
 import (
+	"bytes"
 	"errors"
 	"sync"
 
@@ -14,6 +15,7 @@ type WriteSnapshot struct {
 	CanonicalContent    string
 	TargetPath          string
 	ExpectedDiskVersion *file.DiskVersion
+	ExpectedRawHash     string
 	EncodedData         []byte
 }
 
@@ -44,6 +46,13 @@ type WriteCommitObserver func(CommittedWriteResult, SaveOrigin)
 
 // DocumentWriteCoordinator serializes replacement attempts for one document.
 type DocumentWriteCoordinator struct {
+	// disk is held by a write from its replacement until the document has
+	// adopted the written baseline, and by each comparison of the file with
+	// the loaded baseline (the save's disk check and the external-change
+	// check), so a comparison never pairs the pre-write baseline with the
+	// written bytes. Reload and Keep mine read the file without it and act
+	// only when the file still has the version and hash the user was shown.
+	disk          sync.Mutex
 	mu            sync.Mutex
 	executor      WriteExecutor
 	publisher     writePublisher
@@ -98,6 +107,13 @@ func (coordinator *DocumentWriteCoordinator) Commit(snapshot WriteSnapshot) (Com
 	return result, nil
 }
 
+// claimDisk excludes concurrent writes and disk inspections of this document
+// until the returned release is called.
+func (coordinator *DocumentWriteCoordinator) claimDisk() func() {
+	coordinator.disk.Lock()
+	return coordinator.disk.Unlock
+}
+
 // waitForIdle blocks until no replacement is in flight for this document.
 //
 // Taking the same mutex Commit holds is the whole wait, and it is deliberately
@@ -111,6 +127,16 @@ func (coordinator *DocumentWriteCoordinator) waitForIdle() {
 
 func reusableCommit(committed CommittedWriteResult, requested WriteSnapshot) bool {
 	if committed.Snapshot.DocumentID != requested.DocumentID || committed.Snapshot.ContentRevision != requested.ContentRevision || committed.Snapshot.CanonicalContent != requested.CanonicalContent || committed.Snapshot.TargetPath != requested.TargetPath {
+		return false
+	}
+	if !bytes.Equal(committed.Snapshot.EncodedData, requested.EncodedData) {
+		return false
+	}
+	if requested.ExpectedRawHash != "" {
+		if requested.ExpectedRawHash != hashBytes(committed.Snapshot.EncodedData) {
+			return false
+		}
+	} else if requested.ExpectedDiskVersion != nil && requested.ExpectedDiskVersion.Exists {
 		return false
 	}
 	if requested.ExpectedDiskVersion == nil {

@@ -21,7 +21,7 @@ export default function WorkspaceTreeContextMenu({
     onOpenChange,
     onAction,
     onClose,
-}: WorkspaceTreeContextMenuProps): React.JSX.Element | null {
+}: Readonly<WorkspaceTreeContextMenuProps>): React.JSX.Element | null {
     if (!open || node === undefined) return null;
     const context = {
         workspaceOpen: true,

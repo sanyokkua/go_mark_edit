@@ -171,11 +171,11 @@ describe('WorkspaceTree', () => {
         renderTree();
         const row = screen.getByRole('treeitem', { name: 'readme.md' });
         expect(row).toHaveAttribute('aria-selected', 'true');
-        expect(row).toHaveAttribute('aria-description', 'Open in a tab, Unsaved changes');
+        expect(row).toHaveAccessibleDescription('Open in a tab, Unsaved changes');
         expect(row).toHaveAccessibleName('readme.md');
         fireEvent.click(screen.getByRole('treeitem', { name: 'Folder' }));
         expect(row).toHaveAttribute('aria-selected', 'false');
-        expect(row).toHaveAttribute('aria-description', 'Open in a tab, Unsaved changes');
+        expect(row).toHaveAccessibleDescription('Open in a tab, Unsaved changes');
         expect(row).toHaveAccessibleName('readme.md');
     });
 
@@ -195,7 +195,7 @@ describe('WorkspaceTree', () => {
         fireEvent.click(row);
         expect(row).toHaveAttribute('aria-selected', 'true');
         expect(row).not.toHaveAttribute('aria-expanded', 'true');
-        expect(row).toHaveAttribute('aria-description', 'Unreadable folder');
+        expect(row).toHaveAccessibleDescription('Unreadable folder');
         expect(screen.queryByRole('button', { name: 'inside.md' })).not.toBeInTheDocument();
     });
 

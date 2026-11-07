@@ -188,71 +188,81 @@ func TestOpenRejectsCorruptOrUnsupportedSchemaSafely(t *testing.T) {
 	t.Run("EC-SET-2 newer schema is rejected without recovery", func(t *testing.T) {
 		ctx := context.Background()
 		path := filepath.Join(t.TempDir(), "settings.db")
-		seed, err := Open(ctx, path)
-		if err != nil {
-			t.Fatalf("open seed database: %v", err)
-		}
-		if err := writeTestSetting(seed, ctx, testSetting{
-			Key: "editor.autosave", Value: "false", Type: "bool",
-		}); err != nil {
-			if closeErr := seed.Close(); closeErr != nil {
-				t.Errorf("close seed database after upsert failure: %v", closeErr)
-			}
-			t.Fatalf("seed existing setting: %v", err)
-		}
-		if err := seed.Close(); err != nil {
-			t.Fatalf("close seed database: %v", err)
-		}
+		seedUnsupportedSchema(t, ctx, path)
+		checkUnsupportedSchema(t, ctx, path)
+	})
+}
 
-		raw, err := sql.Open("sqlite", "file:"+path)
-		if err != nil {
-			t.Fatalf("open raw database: %v", err)
+func seedUnsupportedSchema(t *testing.T, ctx context.Context, path string) {
+	t.Helper()
+	seed, err := Open(ctx, path)
+	if err != nil {
+		t.Fatalf("open seed database: %v", err)
+	}
+	if err := writeTestSetting(seed, ctx, testSetting{
+		Key: "editor.autosave", Value: "false", Type: "bool",
+	}); err != nil {
+		if closeErr := seed.Close(); closeErr != nil {
+			t.Errorf("close seed database after upsert failure: %v", closeErr)
 		}
-		if _, err := raw.ExecContext(ctx, "INSERT INTO goose_db_version (version_id, is_applied) VALUES (?, ?)", 999, true); err != nil {
-			if closeErr := raw.Close(); closeErr != nil {
-				t.Errorf("close raw database after schema write failure: %v", closeErr)
-			}
-			t.Fatalf("record newer schema version: %v", err)
-		}
-		if err := raw.Close(); err != nil {
-			t.Fatalf("close raw database: %v", err)
-		}
+		t.Fatalf("seed existing setting: %v", err)
+	}
+	if err := seed.Close(); err != nil {
+		t.Fatalf("close seed database: %v", err)
+	}
 
-		database, err := Open(ctx, path)
-		if database != nil {
-			if closeErr := database.Close(); closeErr != nil {
-				t.Errorf("close unsupported-schema database: %v", closeErr)
-			}
-			t.Fatal("newer schema unexpectedly opened")
+	raw, err := sql.Open("sqlite", "file:"+path)
+	if err != nil {
+		t.Fatalf("open raw database: %v", err)
+	}
+	if _, err := raw.ExecContext(ctx, "INSERT INTO goose_db_version (version_id, is_applied) VALUES (?, ?)", 999, true); err != nil {
+		if closeErr := raw.Close(); closeErr != nil {
+			t.Errorf("close raw database after schema write failure: %v", closeErr)
 		}
-		if !errors.Is(err, ErrUnsupportedSchema) {
-			t.Fatalf("open newer schema error = %v, want ErrUnsupportedSchema", err)
-		}
-		backups, err := filepath.Glob(path + ".corrupt-" + "*")
-		if err != nil {
-			t.Fatalf("find unexpected schema backups: %v", err)
-		}
-		if len(backups) != 0 {
-			t.Fatalf("newer schema must not be recovered, found backups %v", backups)
-		}
+		t.Fatalf("record newer schema version: %v", err)
+	}
+	if err := raw.Close(); err != nil {
+		t.Fatalf("close raw database: %v", err)
+	}
 
-		check, err := sql.Open("sqlite", "file:"+path)
-		if err != nil {
-			t.Fatalf("reopen raw newer database: %v", err)
+}
+
+func checkUnsupportedSchema(t *testing.T, ctx context.Context, path string) {
+	t.Helper()
+	database, err := Open(ctx, path)
+	if database != nil {
+		if closeErr := database.Close(); closeErr != nil {
+			t.Errorf("close unsupported-schema database: %v", closeErr)
 		}
-		t.Cleanup(func() {
-			if err := check.Close(); err != nil {
-				t.Errorf("close raw newer database: %v", err)
-			}
-		})
-		var value string
-		if err := check.QueryRowContext(ctx, "SELECT value FROM settings WHERE key = ?", "editor.autosave").Scan(&value); err != nil {
-			t.Fatalf("read preserved setting: %v", err)
-		}
-		if value != "false" {
-			t.Fatalf("preserved setting value = %q, want false", value)
+		t.Fatal("newer schema unexpectedly opened")
+	}
+	if !errors.Is(err, ErrUnsupportedSchema) {
+		t.Fatalf("open newer schema error = %v, want ErrUnsupportedSchema", err)
+	}
+	backups, err := filepath.Glob(path + ".corrupt-" + "*")
+	if err != nil {
+		t.Fatalf("find unexpected schema backups: %v", err)
+	}
+	if len(backups) != 0 {
+		t.Fatalf("newer schema must not be recovered, found backups %v", backups)
+	}
+
+	check, err := sql.Open("sqlite", "file:"+path)
+	if err != nil {
+		t.Fatalf("reopen raw newer database: %v", err)
+	}
+	t.Cleanup(func() {
+		if err := check.Close(); err != nil {
+			t.Errorf("close raw newer database: %v", err)
 		}
 	})
+	var value string
+	if err := check.QueryRowContext(ctx, "SELECT value FROM settings WHERE key = ?", "editor.autosave").Scan(&value); err != nil {
+		t.Fatalf("read preserved setting: %v", err)
+	}
+	if value != "false" {
+		t.Fatalf("preserved setting value = %q, want false", value)
+	}
 }
 
 func TestOpenCorruptRecoveryHelperProcess(t *testing.T) {

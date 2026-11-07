@@ -16,25 +16,36 @@ export const shortcutAliases: Readonly<Partial<Record<ActionId, readonly string[
     ),
 );
 
-const specialKeys: Record<string, string> = {
-    ',': ',',
-    '.': '.',
-    '?': '?',
-    '\\': '\\',
+const macShortcutParts: Readonly<Record<string, string>> = {
+    Mod: '⌘',
+    Ctrl: '⌃',
+    Tab: '⇥',
+    PageUp: '⇞',
+    PageDown: '⇟',
+    Alt: '⌥',
+    Shift: '⇧',
+    Enter: '↩',
+};
+
+const otherShortcutParts: Readonly<Record<string, string>> = {
+    Mod: 'Ctrl',
+    Ctrl: 'Ctrl',
+    Tab: 'Tab',
+    PageUp: 'PageUp',
+    PageDown: 'PageDown',
+    Alt: 'Alt',
+    Shift: 'Shift',
+    Enter: 'Enter',
 };
 
 export function formatShortcut(binding: string, platform: Platform): string {
     if (binding === 'F11') return binding;
+    const isMac = platform === 'darwin';
+    const parts = isMac ? macShortcutParts : otherShortcutParts;
     return binding
         .split('+')
-        .map((part) => {
-            if (part === 'Mod') return platform === 'darwin' ? '⌘' : 'Ctrl';
-            if (part === 'Alt') return platform === 'darwin' ? '⌥' : 'Alt';
-            if (part === 'Shift') return platform === 'darwin' ? '⇧' : 'Shift';
-            if (part === 'Enter') return platform === 'darwin' ? '↩' : 'Enter';
-            return specialKeys[part] ?? part.toUpperCase();
-        })
-        .join(platform === 'darwin' ? '' : '+');
+        .map((part) => parts[part] ?? part.toUpperCase())
+        .join(isMac ? '' : '+');
 }
 
 interface KeyboardLikeEvent {
@@ -50,7 +61,7 @@ function physicalKeyToken(event: KeyboardLikeEvent): string | undefined {
     const code = event.code;
     if (code === undefined) return undefined;
     if (/^Key[A-Z]$/.test(code)) return code.slice(3);
-    if (/^Digit[0-9]$/.test(code)) return code.slice(5);
+    if (/^Digit\d$/.test(code)) return code.slice(5);
     const punctuation: Record<string, string> = {
         Comma: ',',
         Period: '.',
@@ -60,16 +71,13 @@ function physicalKeyToken(event: KeyboardLikeEvent): string | undefined {
     return punctuation[code];
 }
 
-export function shortcutForKeyEvent(event: KeyboardLikeEvent, platform: Platform): string | undefined {
-    const key = event.key.length === 1 ? event.key.toUpperCase() : event.key;
-    const physicalKey = physicalKeyToken(event);
-    const modifier = platform === 'darwin' ? event.metaKey : event.ctrlKey;
-    if (key === 'F11' && !event.metaKey && !event.ctrlKey && !event.altKey && !event.shiftKey) {
-        return 'F11';
-    }
-    if (!modifier && !event.altKey && !(platform === 'darwin' && event.ctrlKey)) {
-        return undefined;
-    }
+function shortcutCandidates(
+    event: KeyboardLikeEvent,
+    platform: Platform,
+    modifier: boolean,
+    key: string,
+    physicalKey: string | undefined,
+): string[] {
     const modifierSets: string[][] = [];
     if (modifier) modifierSets.push(['Mod']);
     if (platform === 'darwin' && event.ctrlKey) modifierSets.push(['Ctrl']);
@@ -88,15 +96,30 @@ export function shortcutForKeyEvent(event: KeyboardLikeEvent, platform: Platform
             ),
         );
     }
+    return candidates;
+}
+
+export function shortcutForKeyEvent(event: KeyboardLikeEvent, platform: Platform): string | undefined {
+    const key = event.key.length === 1 ? event.key.toUpperCase() : event.key;
+    const physicalKey = physicalKeyToken(event);
+    const modifier = platform === 'darwin' ? event.metaKey : event.ctrlKey;
+    if (key === 'F11' && !event.metaKey && !event.ctrlKey && !event.altKey && !event.shiftKey) {
+        return 'F11';
+    }
+    if (!modifier && !event.altKey && !(platform === 'darwin' && event.ctrlKey)) {
+        return undefined;
+    }
+    const candidates = shortcutCandidates(event, platform, modifier, key, physicalKey);
     const registered = actionRegistry.flatMap((action) => [action.shortcut, ...(action.shortcutAliases ?? [])]);
     for (const candidate of candidates) {
         const direct = registered.find((binding) => binding === candidate);
         if (direct !== undefined) return direct;
-        // Ctrl+PageUp/PageDown are physical Control bindings on every platform;
-        // Mod is the platform-neutral spelling used by the registry primary map.
-        const controlBinding = candidate.replace(/^Mod\+/, 'Ctrl+');
-        const control = registered.find((binding) => binding === controlBinding);
-        if (control !== undefined) return control;
+        // Outside macOS, Mod and physical Ctrl name the same modifier.
+        if (platform !== 'darwin') {
+            const controlBinding = candidate.replace(/^Mod\+/, 'Ctrl+');
+            const control = registered.find((binding) => binding === controlBinding);
+            if (control !== undefined) return control;
+        }
     }
     return undefined;
 }

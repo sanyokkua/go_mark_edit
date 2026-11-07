@@ -5,6 +5,7 @@ import (
 	"embed"
 	"fmt"
 	"os"
+	"path/filepath"
 	goruntime "runtime"
 	"strings"
 	"unicode"
@@ -101,8 +102,20 @@ func main() {
 		})
 		return result == "Overwrite", err
 	})
+	modelOptions := []appmodel.AppModelOption{appmodel.WithDialogs(dialogs, dialogs)}
+	if application.E2EHeadlessEnabled() {
+		configDir, err := fileUtils.GetAppConfigDir()
+		if err != nil {
+			bootstrapLogger.Error().Err(err).Msg("resolve headless recording directory")
+			os.Exit(1)
+		}
+		modelOptions = append(modelOptions,
+			appmodel.WithRevealPort(file.NewRecordingRevealPort(filepath.Join(configDir, "e2e-reveal.jsonl"))),
+			appmodel.WithClipboardWriter(file.NewRecordingClipboardWriter(filepath.Join(configDir, "e2e-clipboard.jsonl"))),
+		)
+	}
 	applicationContext := application.NewApplicationContextHolderWithOptions(fileUtils, appLogger, application.ApplicationContextOptions{
-		AppModelOptions:   []appmodel.AppModelOption{appmodel.WithDialogs(dialogs, dialogs)},
+		AppModelOptions:   modelOptions,
 		NewWindowLauncher: application.NewOSNewWindowLauncher(appLogger),
 		StartupArgs:       os.Args[1:],
 		WindowRegistry:    application.NewDefaultWindowRegistry(),
@@ -181,26 +194,18 @@ func newAppOptions(applicationContext *application.ApplicationContextHolder) *op
 }
 
 func newAppOptionsWithLogger(applicationContext *application.ApplicationContextHolder, appLogger *logging.Logger, overrides ...nativeRuntimePorts) *options.App {
-	ports := productionNativeRuntimePorts()
-	if len(overrides) > 0 {
-		if overrides[0].showStartupRecoveryWindow != nil {
-			ports.showStartupRecoveryWindow = overrides[0].showStartupRecoveryWindow
-		}
-		if overrides[0].emitNativeCloseRequest != nil {
-			ports.emitNativeCloseRequest = overrides[0].emitNativeCloseRequest
-		}
-		if overrides[0].quitNativeApplication != nil {
-			ports.quitNativeApplication = overrides[0].quitNativeApplication
-		}
-	}
+	ports := nativePortsWithOverrides(overrides)
 	applicationContext.SetNativeWindow(wailsNativeWindow{})
 	applicationContext.ConfigureShutdown(
 		application.WithCloseRequestedEmitter(ports.emitNativeCloseRequest),
 		application.WithNativeQuit(ports.quitNativeApplication),
-		application.WithNativeConfirmation(func(ctx context.Context, documents []string) (bool, error) {
+		application.WithNativeConfirmation(func(ctx context.Context, documents []string, possibleUndelivered bool) (bool, error) {
 			message := "There are unsaved changes."
+			if possibleUndelivered {
+				message = "The interface did not respond. Changes may not have reached the application."
+			}
 			if len(documents) > 0 {
-				message = "The following documents have unsaved changes:\n\n" + strings.Join(documents, "\n")
+				message += "\n\nKnown unsaved documents:\n" + strings.Join(documents, "\n")
 			}
 			result, err := runtime.MessageDialog(ctx, runtime.MessageDialogOptions{
 				Type:          runtime.QuestionDialog,
@@ -219,23 +224,7 @@ func newAppOptionsWithLogger(applicationContext *application.ApplicationContextH
 		PreviewHandler: application.NewPreviewImageHandler(applicationContext.AppModelService),
 		Menu:           nativeMenuForPlatform(goruntime.GOOS),
 		OnFileOpen:     applicationContext.AcceptOpenRequest,
-		OnStartup: func(ctx context.Context) {
-			applicationContext.SetContext(ctx)
-			if err := applicationContext.Init(ctx); err != nil {
-				if appLogger != nil {
-					appLogger.Error(err.Error())
-				}
-				ports.showStartupRecoveryWindow(ctx)
-				return
-			}
-			if err := applicationContext.RestoreNativeWindow(ctx); err != nil {
-				if appLogger != nil {
-					appLogger.Error(err.Error())
-				}
-				ports.showStartupRecoveryWindow(ctx)
-				return
-			}
-		},
+		OnStartup:      startupApplication(applicationContext, appLogger, ports.showStartupRecoveryWindow),
 		OnShutdown: func(_ context.Context) {
 			_ = applicationContext.Close()
 			if appLogger != nil {
@@ -249,6 +238,39 @@ func newAppOptionsWithLogger(applicationContext *application.ApplicationContextH
 		EnumBind: []interface{}{apperr.AllErrorCodes},
 		Logger:   appLogger,
 	})
+}
+
+func nativePortsWithOverrides(overrides []nativeRuntimePorts) nativeRuntimePorts {
+	ports := productionNativeRuntimePorts()
+	if len(overrides) == 0 {
+		return ports
+	}
+	if overrides[0].showStartupRecoveryWindow != nil {
+		ports.showStartupRecoveryWindow = overrides[0].showStartupRecoveryWindow
+	}
+	if overrides[0].emitNativeCloseRequest != nil {
+		ports.emitNativeCloseRequest = overrides[0].emitNativeCloseRequest
+	}
+	if overrides[0].quitNativeApplication != nil {
+		ports.quitNativeApplication = overrides[0].quitNativeApplication
+	}
+	return ports
+}
+
+func startupApplication(applicationContext *application.ApplicationContextHolder, appLogger *logging.Logger, showRecovery func(context.Context)) func(context.Context) {
+	return func(ctx context.Context) {
+		applicationContext.SetContext(ctx)
+		err := applicationContext.Init(ctx)
+		if err == nil {
+			err = applicationContext.RestoreNativeWindow(ctx)
+		}
+		if err != nil {
+			if appLogger != nil {
+				appLogger.Error(err.Error())
+			}
+			showRecovery(ctx)
+		}
+	}
 }
 
 type wailsNativeWindow struct{}

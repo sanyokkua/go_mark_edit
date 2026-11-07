@@ -1,6 +1,6 @@
 import { useCallback, useContext, useEffect, useLayoutEffect, useRef, useState } from 'react';
 
-import type { EditorPosition } from '../components/CodeEditor';
+import { reconcileEditorModels, type EditorPosition } from '../components/CodeEditor';
 import { appModelAdapter } from '../../logic/adapter';
 import { dispatchAction } from '../../logic/actions/actionDispatcher';
 import type { LivePreviewSnapshot } from '../../logic/hooks/useLivePreview';
@@ -29,7 +29,6 @@ import EditorStage, {
 } from './EditorStage/EditorStage';
 import ProblemsPanel from './ProblemsPanel/ProblemsPanel';
 import { EDITOR_TABPANEL_ID, tabElementId } from './editorTabPanel';
-import { useMinimumWindow } from './minimumWindow';
 import styles from './EditorView.module.css';
 import { t } from '../../i18n';
 import { useModalState } from './modalStateContext';
@@ -50,14 +49,14 @@ function fallbackView(): DocumentView {
     };
 }
 
-export interface EditorViewProps {
+export interface EditorViewProps extends Pick<EditorStageProps, 'onOpenLink' | 'fragmentRequest'> {
     problemsOpen?: boolean;
     problemsSummary?: ProblemsSummary | null;
     onCloseProblems?: () => void;
-    tabRevealRequest?: DocumentTabsProps['revealRequest'];
+    tabRevealRequest?: Exclude<DocumentTabsProps['revealRequest'], undefined>;
     editorFocusRequest?: { documentId: string; sequence: number } | null;
     adapter?: EditorViewAdapter;
-    tabAdapter?: DocumentTabsProps['adapter'];
+    tabAdapter?: Exclude<DocumentTabsProps['adapter'], undefined>;
     onNewDocument?: (expectedTabSetRevision: number) => Promise<unknown>;
     onActivateDocument?: (documentId: string, expectedTabSetRevision: number) => Promise<DocumentTransitionResult>;
     onCloseDocument?: (
@@ -67,8 +66,6 @@ export interface EditorViewProps {
         targetDocumentIds?: string[],
     ) => Promise<TabTransitionResult>;
     onExternalConflict?: (preview: ConflictPreview) => void;
-    onOpenLink?: EditorStageProps['onOpenLink'];
-    fragmentRequest?: EditorStageProps['fragmentRequest'];
     onLiveCursorChange?: (cursor: EditorPosition) => void;
 }
 
@@ -100,7 +97,8 @@ const EditorView: React.FC<EditorViewProps> = ({
 }: EditorViewProps): React.JSX.Element | null => {
     const dispatch = useAppDispatch();
     const activeBuffer = useContext(EditorSessionContext);
-    const minimumWindow = useMinimumWindow();
+    const openDocumentIds = useAppSelector((state) => state.documents.orderedIds);
+    useEffect(() => reconcileEditorModels(openDocumentIds), [openDocumentIds]);
     const reading = useAppSelector((state) => state.reading.active);
     const tabsShown = useAppSelector((state) => state.reading.tabsShown);
     const readingWidth = useAppSelector((state) => state.settings.readingWidth);
@@ -228,9 +226,8 @@ const EditorView: React.FC<EditorViewProps> = ({
     }
 
     const view = activeDocument?.view ?? fallbackView();
-    const previewVisible =
-        reading || (minimumWindow ? view.previewVisible && !view.editorVisible : view.previewVisible);
-    const editorVisible = !reading && (minimumWindow ? !previewVisible : view.editorVisible);
+    const previewVisible = reading || view.previewVisible;
+    const editorVisible = !reading && view.editorVisible;
     const arrangement = arrangementFor(view);
 
     return (
@@ -251,6 +248,7 @@ const EditorView: React.FC<EditorViewProps> = ({
                 ref={stageRef}
                 activeBuffer={activeBuffer}
                 activeDocument={activeDocument}
+                openDocumentIds={openDocumentIds}
                 adapter={adapter}
                 editorVisible={editorVisible}
                 interactionBlocked={modalOpen}

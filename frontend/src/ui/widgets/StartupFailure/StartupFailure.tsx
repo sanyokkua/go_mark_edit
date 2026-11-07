@@ -50,10 +50,6 @@ const StartupFailure: React.FC<StartupFailureProps> = ({
                     <Button className={styles.retry} disabled={isRetrying} variant="primary" onClick={onRetry}>
                         {t('startup.retry')}
                     </Button>
-                ) : failure === null ? (
-                    <Button className={styles.retry} disabled={isRetrying} variant="primary" onClick={onRetry}>
-                        {t('startup.retry')}
-                    </Button>
                 ) : null}
                 <Button variant="secondary" onClick={onQuit}>
                     {t('startup.quit')}

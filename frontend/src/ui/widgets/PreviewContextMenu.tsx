@@ -21,7 +21,7 @@ const DOCUMENT_SELECTOR = 'article.gme-preview';
 /** The text selected inside the rendered document, or an empty string when the selection is elsewhere. */
 function selectedDocumentText(host: HTMLElement): string {
     const article = host.querySelector(DOCUMENT_SELECTOR);
-    const selection = window.getSelection();
+    const selection = globalThis.getSelection();
     if (article === null || selection === null || selection.isCollapsed || selection.rangeCount === 0) return '';
     return article.contains(selection.getRangeAt(0).commonAncestorContainer) ? selection.toString() : '';
 }
@@ -59,7 +59,7 @@ const PreviewContextMenu: React.FC<PreviewContextMenuProps> = ({
     useEffect((): void => {
         if (menu !== null || selectAllHost === null) return;
         const article = selectAllHost.querySelector(DOCUMENT_SELECTOR);
-        if (article !== null) window.getSelection()?.selectAllChildren(article);
+        if (article !== null) globalThis.getSelection()?.selectAllChildren(article);
     }, [menu, selectAllHost]);
 
     const open = (host: HTMLElement, point: { x: number; y: number }): void => {

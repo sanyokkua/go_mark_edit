@@ -9,10 +9,10 @@ import styles from './Launcher.module.css';
 
 export interface LauncherProps {
     recentItems?: readonly RecentItem[];
-    onNewDocument?: () => Promise<unknown> | unknown;
-    onOpenDocument?: () => Promise<unknown> | unknown;
-    onOpenFolder?: () => Promise<unknown> | unknown;
-    onOpenRecentItem?: (item: RecentItem) => Promise<unknown> | unknown;
+    onNewDocument?: () => unknown;
+    onOpenDocument?: () => unknown;
+    onOpenFolder?: () => unknown;
+    onOpenRecentItem?: (item: RecentItem) => unknown;
 }
 
 function safeSegment(value: string): string {
@@ -25,7 +25,7 @@ export function safeRecentLabel(path: string): string {
     return safeSegment(normalized.split('/').pop() ?? normalized);
 }
 
-function invoke(event: MouseEvent<HTMLButtonElement>, callback: (() => Promise<unknown> | unknown) | undefined): void {
+function invoke(event: MouseEvent<HTMLButtonElement>, callback: (() => unknown) | undefined): void {
     event.preventDefault();
     void callback?.();
 }

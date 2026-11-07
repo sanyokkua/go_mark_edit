@@ -27,7 +27,13 @@ async function split(page: Page): Promise<void> {
         .getByRole('radiogroup', { name: 'View arrangement' })
         .getByRole('radio', { name: 'Split', exact: true })
         .click();
-    await expect(page.getByRole('separator', { name: 'Resize editor and preview panes' })).toBeVisible();
+    const divider = page.getByRole('separator', { name: 'Resize editor and preview panes' });
+    await expect(divider).toBeVisible();
+    const pane = page.getByRole('region', { name: 'Editor pane' });
+    await expect(pane).toHaveAttribute('id', /.+/u);
+    const paneId = await pane.getAttribute('id');
+    if (paneId === null) throw new Error('Editor pane has no identity');
+    await expect(divider).toHaveAttribute('aria-controls', paneId);
 }
 
 async function currentRatio(page: Page): Promise<number> {
@@ -71,6 +77,8 @@ test('dragging and keyboard resizing change real pane widths without losing edit
     await openFirst(page, 'resize.md');
     await split(page);
     const divider = page.getByRole('separator', { name: 'Resize editor and preview panes' });
+    const controlledPaneId = await divider.getAttribute('aria-controls');
+    if (controlledPaneId === null) throw new Error('Split divider has no controlled pane');
     const initial = await paneWidths(page);
     expect(Math.abs(initial.editor - initial.preview)).toBeLessThan(2);
 
@@ -112,9 +120,32 @@ test('dragging and keyboard resizing change real pane widths without losing edit
     await arrangements.getByRole('radio', { name: 'Editor', exact: true }).click();
     await expect(divider).toHaveCount(0);
     await split(page);
+    await expect(divider).toHaveAttribute('aria-controls', controlledPaneId);
     await expect(divider).toHaveAttribute('aria-valuenow', '80');
-    await page.setViewportSize({ width: 375, height: 600 });
-    await expect(divider).toHaveCount(0);
+    for (const width of [375, 376, 377]) {
+        await page.setViewportSize({ width, height: 600 });
+        const editorPane = page.getByRole('region', { name: 'Editor pane' });
+        const previewPane = page.getByRole('region', { name: 'Preview pane' });
+        await expect(editorPane).toBeVisible();
+        await expect(previewPane).toBeVisible();
+        if (width <= 376) {
+            await expect(divider).toHaveCount(0);
+        } else {
+            await expect(divider).toBeVisible();
+        }
+        await expect
+            .poll(() =>
+                page.evaluate((stacked) => {
+                    const editor = document.querySelector('[data-pane-identity="editor"]')?.getBoundingClientRect();
+                    const preview = document.querySelector('[data-pane-identity="preview"]')?.getBoundingClientRect();
+                    if (!editor || !preview) return Number.NEGATIVE_INFINITY;
+                    return stacked ? preview.y - editor.bottom : preview.x - editor.right;
+                }, width <= 376),
+            )
+            .toBeGreaterThanOrEqual(0);
+        expect(await currentRatio(page)).toBe(0.8);
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    }
     await page.setViewportSize({ width: 1280, height: 720 });
     await expect(divider).toHaveAttribute('aria-valuenow', '80');
 });

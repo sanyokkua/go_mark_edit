@@ -20,9 +20,9 @@ it('exposes the frozen Editor-stage bindings', () => {
 });
 
 it('binds next and previous navigation to the exact alternate keys', () => {
-    expect(shortcutRegistry['next-tab']).toBe('Mod+Tab');
+    expect(shortcutRegistry['next-tab']).toBe('Ctrl+Tab');
     expect(shortcutAliases['next-tab']).toEqual(['Ctrl+PageDown']);
-    expect(shortcutRegistry['previous-tab']).toBe('Mod+Shift+Tab');
+    expect(shortcutRegistry['previous-tab']).toBe('Ctrl+Shift+Tab');
     expect(shortcutAliases['previous-tab']).toEqual(['Ctrl+PageUp']);
     expect(
         shortcutForKeyEvent(
@@ -178,4 +178,33 @@ it('normalizes shifted physical keys and punctuation by code', () => {
             'darwin',
         ),
     ).toBe('Mod+?');
+});
+
+it.each(['darwin', 'linux', 'win32'] as const)('resolves physical Control tab shortcuts on %s', (platform) => {
+    const event = { key: 'Tab', metaKey: false, ctrlKey: true, altKey: false, shiftKey: false };
+    expect(shortcutForKeyEvent(event, platform)).toBe('Ctrl+Tab');
+    expect(shortcutForKeyEvent({ ...event, shiftKey: true }, platform)).toBe('Ctrl+Shift+Tab');
+    expect(shortcutForKeyEvent({ ...event, key: 'PageDown' }, platform)).toBe('Ctrl+PageDown');
+    expect(shortcutForKeyEvent({ ...event, key: 'PageUp' }, platform)).toBe('Ctrl+PageUp');
+});
+
+it('does not map Command tab navigation to physical Control bindings on macOS', () => {
+    const event = { key: 'Tab', metaKey: true, ctrlKey: false, altKey: false, shiftKey: false };
+    expect(shortcutForKeyEvent(event, 'darwin')).toBeUndefined();
+    expect(shortcutForKeyEvent({ ...event, shiftKey: true }, 'darwin')).toBeUndefined();
+    expect(shortcutForKeyEvent({ ...event, key: 'PageUp' }, 'darwin')).toBeUndefined();
+    expect(shortcutForKeyEvent({ ...event, key: 'PageDown' }, 'darwin')).toBeUndefined();
+});
+
+it('formats Control, Tab and page navigation for each platform', () => {
+    expect(formatShortcut('Ctrl+Tab', 'darwin')).toBe('⌃⇥');
+    expect(formatShortcut('Ctrl+Shift+Tab', 'darwin')).toBe('⌃⇧⇥');
+    expect(formatShortcut('Ctrl+PageUp', 'darwin')).toBe('⌃⇞');
+    expect(formatShortcut('Ctrl+PageDown', 'darwin')).toBe('⌃⇟');
+    for (const platform of ['linux', 'win32'] as const) {
+        expect(formatShortcut('Ctrl+Tab', platform)).toBe('Ctrl+Tab');
+        expect(formatShortcut('Ctrl+Shift+Tab', platform)).toBe('Ctrl+Shift+Tab');
+        expect(formatShortcut('Ctrl+PageUp', platform)).toBe('Ctrl+PageUp');
+        expect(formatShortcut('Ctrl+PageDown', platform)).toBe('Ctrl+PageDown');
+    }
 });

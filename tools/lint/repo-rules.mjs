@@ -27,11 +27,10 @@ const referenceRoots = [
 
 function parseArguments(argumentsList) {
     let root = defaultRoot;
-    let includeDocs = true;
+    const includeDocs = true;
     for (let index = 0; index < argumentsList.length; index += 1) {
         const argument = argumentsList[index];
         if (argument === '--root') root = resolve(process.cwd(), argumentsList[++index]);
-        if (argument === '--docs') includeDocs = true;
     }
     return { root, includeDocs };
 }
@@ -113,11 +112,10 @@ function isIllegalTestPlacement(path) {
 }
 
 function cleanCandidate(candidate) {
-    return candidate
-        .trim()
-        .replace(/^['"]|['"]$/g, '')
-        .replace(/[),.;:]+$/g, '')
-        .replace(/^\.?\//, '');
+    const cleaned = candidate.trim().replace(/^['"]|['"]$/g, '');
+    let end = cleaned.length;
+    while (end > 0 && '),.;:'.includes(cleaned[end - 1])) end -= 1;
+    return cleaned.slice(0, end).replace(/^\.?\//, '');
 }
 
 function pathCandidate(candidate) {

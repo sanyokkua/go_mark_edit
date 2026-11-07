@@ -55,15 +55,17 @@ jest.mock('@monaco-editor/react', () => {
                 restoreViewState: runtime.restoreViewState,
                 setPosition: runtime.setPosition,
                 setSelection: jest.fn(),
+                setScrollTop: jest.fn(),
                 revealLineInCenter: jest.fn(),
                 updateOptions: jest.fn(),
             };
             const mount = (): void =>
                 onMountRef.current?.(
                     instance as unknown as editor.IStandaloneCodeEditor,
-                    { editor: { ScrollType: { Immediate: 1 } }, KeyCode: { Enter: 3 } } as unknown as Parameters<
-                        NonNullable<EditorProps['onMount']>
-                    >[1],
+                    {
+                        editor: { ScrollType: { Immediate: 1 }, setModelMarkers: jest.fn() },
+                        KeyCode: { Enter: 3 },
+                    } as unknown as Parameters<NonNullable<EditorProps['onMount']>>[1],
                 );
             if (mockDeferMonacoMount) mockPendingMonacoMounts.push(mount);
             else mount();
@@ -571,6 +573,7 @@ it('publishes only a fragment request for a link to the installed document', asy
     (appModelAdapter.openPreviewLink as jest.Mock).mockResolvedValue({
         status: 'focused',
         documentId: 'source',
+        treePath: '/notes/source.md',
         activeBuffer: { documentId: 'source', content: 'stale copy', documentRevision: 0, projectionRevision: 1 },
     });
     const owner = renderHook(useLinkOwner, { wrapper });
@@ -586,6 +589,7 @@ it('publishes only a fragment request for a link to the installed document', asy
         seq: 1,
     });
     expect(owner.result.current.commands.tabRevealRequest).toBeNull();
+    expect(owner.result.current.commands.treeRevealRequest).toBeNull();
 });
 
 it('reports backend link refusals without offering Retry', async () => {
@@ -749,7 +753,7 @@ it('keeps an unsaved source edit and shows a linked target in both editor and pr
     const sourceEditor = await screen.findByRole('textbox', { name: 'Markdown source' });
     expect(await screen.findByRole('link', { name: 'Go' })).toBeVisible();
     fireEvent.change(sourceEditor, { target: { value: '# Edited source\n\n[Go](./target.md)' } });
-    expect(appModelAdapter.updateBuffer).toHaveBeenCalledWith('source', '# Edited source\n\n[Go](./target.md)');
+    expect(appModelAdapter.updateBuffer).toHaveBeenCalledWith('source', '# Edited source\n\n[Go](./target.md)', 0);
     fireEvent.click(screen.getByRole('link', { name: 'Go' }));
 
     await waitFor(() =>

@@ -1,4 +1,5 @@
-import rehypeHighlight from 'rehype-highlight';
+import { createLowlight } from 'lowlight';
+import { toText } from 'hast-util-to-text';
 import javascript from 'highlight.js/lib/languages/javascript';
 import typescript from 'highlight.js/lib/languages/typescript';
 import go from 'highlight.js/lib/languages/go';
@@ -27,7 +28,6 @@ import diff from 'highlight.js/lib/languages/diff';
 import markdown from 'highlight.js/lib/languages/markdown';
 import type { Element, ElementContent, Root } from 'hast';
 import { visit } from 'unist-util-visit';
-import type { Pluggable } from 'unified';
 
 const languages = {
     javascript,
@@ -82,7 +82,7 @@ function textOf(node: ElementContent): string {
     return '';
 }
 
-/** Guard code blocks after sanitization, before rehype-highlight. */
+/** Guard code blocks after sanitization, before syntax highlighting. */
 export function rehypeHighlightGuard(): (tree: Root) => void {
     return (tree: Root): void =>
         visit(tree, 'element', (node, _index, parent) => {
@@ -105,12 +105,28 @@ export function rehypeHighlightGuard(): (tree: Root) => void {
         });
 }
 
-export const rehypeCodeHighlight: Pluggable = [
-    rehypeHighlight,
-    {
-        languages,
-        aliases,
-        detect: false,
-        plainText: ['mermaid'],
-    },
-];
+const lowlight = createLowlight(languages);
+lowlight.registerAlias(aliases);
+
+/** Highlight supported fenced code after the guard has marked plain blocks. */
+export function rehypeCodeHighlight(): (tree: Root) => void {
+    return (tree: Root): void =>
+        visit(tree, 'element', (node, _index, parent) => {
+            if (node.tagName !== 'code' || parent?.type !== 'element' || parent.tagName !== 'pre') return;
+            const classes = Array.isArray(node.properties.className) ? node.properties.className : [];
+            let language: string | undefined;
+            for (const value of classes) {
+                const name = String(value);
+                if (name === 'no-highlight' || name === 'nohighlight') return;
+                if (!language && name.startsWith('lang-')) language = name.slice(5);
+                if (!language && name.startsWith('language-')) language = name.slice(9);
+            }
+            if (!language || language === 'mermaid') return;
+            if (!classes.includes('hljs')) classes.unshift('hljs');
+            node.properties.className = classes;
+            // A preceding lang-* class can override the guarded language-* class.
+            if (!lowlight.registered(language)) return;
+            const result = lowlight.highlight(language, toText(node, { whitespace: 'pre' }));
+            if (result.children.length > 0) node.children = result.children as ElementContent[];
+        });
+}

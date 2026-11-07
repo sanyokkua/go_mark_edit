@@ -44,31 +44,24 @@ interface MeasuredItem {
     width: number;
 }
 
-function slotItems(content: React.ReactNode): React.ReactNode[] {
-    const items: React.ReactNode[] = [];
-    Children.forEach(content, (item) => {
-        if (isValidElement(item) && item.type === Fragment) {
-            const fragment = item as ReactElement<{ children?: React.ReactNode }>;
-            items.push(...slotItems(fragment.props.children));
-            return;
-        }
-        items.push(item);
-    });
+function flattenSlotItems(content: React.ReactNode): React.ReactNode[] {
+    return (
+        Children.map(content, (item) => {
+            if (isValidElement(item) && item.type === Fragment) {
+                const fragment = item as ReactElement<{ children?: React.ReactNode }>;
+                return flattenSlotItems(fragment.props.children);
+            }
+            return isValidElement(item) ? item : <span>{item}</span>;
+        }) ?? []
+    );
+}
 
-    return items.map((item, index) => {
-        if (!isValidElement(item)) {
-            return (
-                <span data-bar-item={index} key={`bar-item-${index}`}>
-                    {item}
-                </span>
-            );
-        }
-
-        return cloneElement(item as ReactElement<Record<string, unknown>>, {
-            'data-bar-item': index,
-            key: item.key ?? `bar-item-${index}`,
-        });
-    });
+function slotItems(content: React.ReactNode): React.ReactElement[] {
+    return (
+        Children.map(flattenSlotItems(content), (item, index) =>
+            cloneElement(item as ReactElement<Record<string, unknown>>, { 'data-bar-item': index }),
+        ) ?? []
+    );
 }
 
 function itemPriority(item: HTMLElement): number {
@@ -90,6 +83,26 @@ function sameIndexes(left: ReadonlySet<number>, right: ReadonlySet<number>): boo
         if (!right.has(value)) return false;
     }
     return true;
+}
+
+function selectOverflowItems(measuredItems: MeasuredItem[], itemCount: number, available: number): Set<number> {
+    const items =
+        measuredItems.length === itemCount
+            ? measuredItems
+            : Array.from({ length: itemCount }, (_, index) => ({ index, never: false, priority: 0, width: 0 }));
+    let remaining = items.reduce((total, item) => total + item.width, 0);
+    const next = new Set<number>();
+    const candidates = items
+        .filter((item) => !item.never)
+        .sort((left, right) => right.priority - left.priority || right.index - left.index);
+    const hasMeasurements = measuredItems.some((item) => item.width > 0);
+    for (const item of candidates) {
+        if (remaining <= available + 1 && hasMeasurements) break;
+        next.add(item.index);
+        remaining -= item.width;
+    }
+    if (next.size === 0 && candidates[0] !== undefined) next.add(candidates[0].index);
+    return next;
 }
 
 const Bar: React.FC<BarProps> = ({
@@ -129,7 +142,7 @@ const Bar: React.FC<BarProps> = ({
         const itemElements = Array.from(mainElement.querySelectorAll<HTMLElement>(':scope > [data-bar-item]'));
         const measured = itemElements.map((element, index) => {
             const item = mainItems[index];
-            const key = isValidElement(item) ? String(item.key) : `bar-item-${index}`;
+            const key = String(item.key);
             const width = element.getBoundingClientRect().width;
             const previous = measuredItemsRef.current.find((candidate) => candidate.key === key);
             return {
@@ -155,7 +168,8 @@ const Bar: React.FC<BarProps> = ({
             return;
         }
 
-        const viewportWidth = typeof window === 'undefined' ? 0 : window.innerWidth;
+        const browserWindow = globalThis.window;
+        const viewportWidth = browserWindow === undefined ? 0 : browserWindow.innerWidth;
         const breakpointReached =
             overflowBreakpoint !== undefined && viewportWidth > 0 && viewportWidth <= overflowBreakpoint;
         const barWidth = bar.clientWidth || bar.getBoundingClientRect().width;
@@ -175,33 +189,7 @@ const Bar: React.FC<BarProps> = ({
         }
 
         const available = Math.max(0, mainWidth - (triggerRef.current?.getBoundingClientRect().width ?? 0) - 1);
-        const items =
-            measuredItems.length === mainItems.length
-                ? measuredItems
-                : mainItems.map((_, index) => ({
-                      index,
-                      never: false,
-                      priority: 0,
-                      width: 0,
-                  }));
-        let remaining = items.reduce((total, item) => total + item.width, 0);
-        const next = new Set<number>();
-        const candidates = items
-            .filter((item) => !item.never)
-            .sort((left, right) => right.priority - left.priority || right.index - left.index);
-
-        for (const item of candidates) {
-            if (remaining <= available + 1 && measuredItems.some((candidate) => candidate.width > 0)) {
-                break;
-            }
-            next.add(item.index);
-            remaining -= item.width;
-        }
-
-        if (next.size === 0 && items.some((item) => !item.never)) {
-            const first = candidates[0];
-            if (first !== undefined) next.add(first.index);
-        }
+        const next = selectOverflowItems(measuredItems, mainItems.length, available);
 
         if (next.size === 0) setOverflowOpen(false);
         setOverflowIndexes((current) => (sameIndexes(current, next) ? current : next));
@@ -217,39 +205,27 @@ const Bar: React.FC<BarProps> = ({
         if (bar === null || mainElement === null) return (): void => undefined;
 
         const onResize = (): void => measure();
-        window.addEventListener('resize', onResize);
-        window.addEventListener('scroll', onResize, true);
+        globalThis.addEventListener('resize', onResize);
+        globalThis.addEventListener('scroll', onResize, true);
         const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(onResize);
         observer?.observe(bar);
         observer?.observe(mainElement);
         return (): void => {
-            window.removeEventListener('resize', onResize);
-            window.removeEventListener('scroll', onResize, true);
+            globalThis.removeEventListener('resize', onResize);
+            globalThis.removeEventListener('scroll', onResize, true);
             observer?.disconnect();
         };
     }, [measure]);
 
     const overflowItems = mainItems.filter((_, index) => overflowIndexes.has(index));
-    const popupItems = overflowItems.length > 0 ? overflowItems : overflowOpen ? mainItems : [];
-    const visibleItems = mainItems.map((item, index) => {
+    let popupItems = overflowItems;
+    if (overflowItems.length === 0 && overflowOpen) popupItems = mainItems;
+    const visibleItems = Children.map(mainItems, (item, index) => {
         const hidden = overflowIndexes.has(index) || (overflowOpen && isMenuOverflow && overflowIndexes.size === 0);
-        if (isValidElement(item)) {
-            return cloneElement(item as ReactElement<Record<string, unknown>>, {
-                'aria-hidden': hidden ? true : undefined,
-                hidden,
-                key: `visible-${index}`,
-            });
-        }
-        return (
-            <span
-                aria-hidden={hidden ? true : undefined}
-                className={styles.itemSlot}
-                hidden={hidden}
-                key={`visible-${index}`}
-            >
-                {item}
-            </span>
-        );
+        return cloneElement(item as ReactElement<Record<string, unknown>>, {
+            'aria-hidden': hidden ? true : undefined,
+            hidden,
+        });
     });
 
     return (

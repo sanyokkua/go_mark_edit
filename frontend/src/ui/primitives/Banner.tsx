@@ -20,12 +20,13 @@ function toneFor(notification: NotificationNotice | LegacyNotification): Notific
 const NotificationBanner: React.FC<NotificationBannerProps> = ({ notification }): React.JSX.Element => {
     const tone = toneFor(notification);
     const count = notification.count ?? 1;
+    const Surface = tone === 'error' ? 'section' : 'output';
     return (
-        <section
+        <Surface
             aria-label={notification.title}
             className={styles.banner}
             data-severity={tone}
-            role={tone === 'error' ? 'alert' : 'status'}
+            role={tone === 'error' ? 'alert' : undefined}
         >
             <strong>
                 {notification.title}
@@ -36,7 +37,7 @@ const NotificationBanner: React.FC<NotificationBannerProps> = ({ notification })
                     : ''}
             </strong>
             <span>{notification.message}</span>
-        </section>
+        </Surface>
     );
 };
 

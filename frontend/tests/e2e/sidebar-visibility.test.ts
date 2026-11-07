@@ -58,7 +58,35 @@ test('opening a folder shows the tree, and Ctrl+Backslash with no folder explain
 
     await app.openWorkspace(root);
     await expectSidebar(page, true);
+    const sidebarId = await page.getByRole('complementary', { name: 'Sidebar' }).getAttribute('id');
+    if (sidebarId === null) throw new Error('Sidebar pane has no identity');
+    await expect(page.getByRole('separator', { name: 'Resize sidebar' })).toHaveAttribute('aria-controls', sidebarId);
     await expect(page.getByRole('treeitem', { name: 'shown-note.md', exact: true })).toBeVisible();
+    for (const [width, workspaceWidth] of [
+        [769, 260],
+        [768, 46],
+        [377, 46],
+        [376, 0],
+        [375, 0],
+    ] as const) {
+        await page.setViewportSize({ width, height: 720 });
+        const tracks = await page.locator(SHELL).evaluate((element) => {
+            const columns = getComputedStyle(element).gridTemplateColumns.split(' ').map(parseFloat);
+            const document = element.querySelector<HTMLElement>('main');
+            if (document === null) throw new Error('document area missing');
+            const shell = element.getBoundingClientRect();
+            const area = document.getBoundingClientRect();
+            return { columns, shellWidth: shell.width, documentRight: area.right, shellRight: shell.right };
+        });
+        if (width === 769) expect(tracks.columns[0]).toBeGreaterThan(46);
+        else expect(tracks.columns[0]).toBe(workspaceWidth);
+        expect(tracks.columns[2]).toBe(0);
+        expect(tracks.documentRight).toBeCloseTo(tracks.shellRight, 0);
+        expect(tracks.columns.reduce((sum, track) => sum + track, 0)).toBeCloseTo(tracks.shellWidth, 0);
+        if (width <= 376) await expect(page.getByRole('complementary', { name: 'Sidebar' })).toHaveCount(0);
+        else await expect(page.getByRole('complementary', { name: 'Sidebar' })).toBeVisible();
+    }
+    app.expectNoForeignRequests();
 });
 
 test('a hidden sidebar is shown again by replacing the folder or re-opening the same folder', async ({ app }) => {
@@ -119,11 +147,16 @@ test('closing the last tab keeps the folder sidebar, and Close Folder hides it',
     const root = await folderWithNote(app, 'tabs');
     await app.launch();
     const { page } = app;
+    await expect(page.getByRole('tablist')).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'New File', exact: true })).toBeVisible();
     await app.openWorkspace(root);
     await page.getByRole('treeitem', { name: 'tabs-note.md', exact: true }).click();
     await expect(page.getByRole('tab', { name: 'tabs-note.md' })).toBeVisible();
+    await expect(page.getByRole('tablist')).toBeVisible();
     await page.getByRole('tab', { name: 'tabs-note.md' }).press('ControlOrMeta+W');
     await expect(page.getByRole('tab')).toHaveCount(0);
+    await expect(page.getByRole('tablist')).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'New File', exact: true })).toBeVisible();
     await expect(page.getByTestId('document-launcher')).toBeVisible();
     await expectSidebar(page, true);
 

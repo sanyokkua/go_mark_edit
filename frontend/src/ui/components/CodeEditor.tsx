@@ -61,6 +61,8 @@ export interface CodeEditorProps {
     initialValue: string;
     /** Fresh identity for each activation; omitted only by isolated legacy callers. */
     activationId?: string;
+    externalEpoch?: number;
+    openDocumentIds?: readonly string[];
     lineNumbers?: 'on' | 'off';
     wordWrap?: 'on' | 'off';
     fontSize?: 13 | 14 | 16;
@@ -143,11 +145,11 @@ function isBeforeOrEqual(first: EditorPosition, second: EditorPosition): boolean
 function plainLintHover(message: string): IMarkdownString {
     return {
         value: message
-            .replace(/&/gu, '&amp;')
-            .replace(/</gu, '&lt;')
-            .replace(/>/gu, '&gt;')
-            .replace(/([\\`*_{}[\]()#+\-.!|~])/gu, '\\$1')
-            .replace(/\n/gu, '  \n'),
+            .replaceAll('&', '&amp;')
+            .replaceAll('<', '&lt;')
+            .replaceAll('>', '&gt;')
+            .replace(/([\\`*_{}[\]()#+\-.!|~])/gu, String.raw`\$1`)
+            .replaceAll('\n', '  \n'),
         isTrusted: false,
         supportHtml: false,
     };
@@ -163,15 +165,26 @@ function toMonacoRange(range: EditorRange): IRange {
 }
 
 function getEditorFontSize(): number {
-    const value = window.getComputedStyle(document.documentElement).getPropertyValue('--editor-font-size');
+    const value = globalThis.getComputedStyle(document.documentElement).getPropertyValue('--editor-font-size');
     const fontSize = Number.parseFloat(value);
 
     return Number.isFinite(fontSize) && fontSize > 0 ? fontSize : 14;
 }
 
-function modelPath(documentId: string, activationId?: string): string {
-    const activationSuffix = activationId === undefined ? '' : `/${encodeURIComponent(activationId)}`;
-    return `inmemory://gomarkedit/${encodeURIComponent(documentId)}${activationSuffix}.md`;
+const retainedModels = new Map<string, { documentId: string; model: editor.ITextModel }>();
+
+export function reconcileEditorModels(openDocumentIds: readonly string[]): void {
+    const open = new Set(openDocumentIds);
+    for (const [path, entry] of retainedModels) {
+        if (!open.has(entry.documentId)) {
+            entry.model.dispose();
+            retainedModels.delete(path);
+        }
+    }
+}
+
+function modelPath(documentId: string, epoch: number): string {
+    return `inmemory://gomarkedit/${encodeURIComponent(documentId)}/${epoch}.md`;
 }
 
 function applyEdit(
@@ -179,7 +192,7 @@ function applyEdit(
     edits: Array<{ range: IRange; text: string }>,
     selection?: EditorSelection,
 ): boolean {
-    if (editorInstance === null || editorInstance.getModel() === null) {
+    if (!editorInstance?.getModel()) {
         return false;
     }
 
@@ -199,7 +212,7 @@ function applyEdit(
 function lineStarts(text: string): number[] {
     const starts = [0];
     for (let index = 0; index < text.length; index += 1) {
-        if (text.charCodeAt(index) === 10) starts.push(index + 1);
+        if (text.codePointAt(index) === 10) starts.push(index + 1);
     }
     return starts;
 }
@@ -282,7 +295,7 @@ function createEditorScrollPort(
         onScroll: (listener: (scrollTop: number) => void): (() => void) =>
             subscribe(() => [
                 editorInstance.onDidScrollChange((event): void => {
-                    if (event.scrollTopChanged) {
+                    if (isMounted() && event.scrollTopChanged) {
                         // Read at delivery, so a listener always hears where the pane is now.
                         listener(editorInstance.getScrollTop());
                     }
@@ -292,7 +305,7 @@ function createEditorScrollPort(
             const report =
                 (change: ScrollGeometryChange): (() => void) =>
                 (): void => {
-                    listener(change);
+                    if (isMounted()) listener(change);
                 };
 
             return subscribe(() => [
@@ -311,6 +324,8 @@ const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(function CodeEd
         documentId,
         initialValue,
         activationId,
+        externalEpoch = 0,
+        openDocumentIds,
         lineNumbers = 'on',
         wordWrap = 'off',
         fontSize,
@@ -331,6 +346,26 @@ const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(function CodeEd
     }: CodeEditorProps,
     ref,
 ): React.JSX.Element {
+    const path = modelPath(documentId, externalEpoch);
+    const preparationKey = `${path}:${activationId ?? 'legacy'}:${readOnly}`;
+    const [preparedPath, setPreparedPath] = useState<string | null>(null);
+    const initialValueRef = useRef(initialValue);
+    initialValueRef.current = initialValue;
+    useLayoutEffect(() => {
+        for (const [key, entry] of retainedModels) {
+            if (
+                entry.documentId === documentId &&
+                (key !== path || readOnly || entry.model.getValue() !== initialValueRef.current)
+            ) {
+                entry.model.dispose();
+                retainedModels.delete(key);
+            }
+        }
+        setPreparedPath(preparationKey);
+    }, [documentId, path, preparationKey, readOnly]);
+    useEffect(() => {
+        if (openDocumentIds !== undefined) reconcileEditorModels(openDocumentIds);
+    }, [openDocumentIds]);
     const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
     const monacoRef = useRef<typeof import('monaco-editor') | null>(null);
     const lintDecorationsRef = useRef<editor.IEditorDecorationsCollection | null>(null);
@@ -348,6 +383,7 @@ const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(function CodeEd
     const onScrollPortReadyRef = useRef(onScrollPortReady);
     /** The Monaco editor that owns the scroll port currently published through `onScrollPortReady`. */
     const scrollPortEditorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
+    const scrollPortTokenRef = useRef<object | null>(null);
     const restoreViewStateFrameRef = useRef<number | undefined>(undefined);
     const viewStateRef = useRef<editor.ICodeEditorViewState | null>(null);
     const wasVisibleRef = useRef(visible);
@@ -411,10 +447,12 @@ const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(function CodeEd
             lintDecorationsRef.current = null;
             if (scrollPortEditorRef.current !== null) {
                 scrollPortEditorRef.current = null;
+                scrollPortTokenRef.current = null;
                 onScrollPortReadyRef.current?.(null);
             }
             const model = editorRef.current?.getModel();
-            if (typeof model?.dispose === 'function') {
+            if (model !== null && model !== undefined) monacoRef.current?.editor.setModelMarkers(model, 'gme-lint', []);
+            if (readOnly && typeof model?.dispose === 'function') {
                 model.dispose();
             }
             if (typeof editorRef.current?.dispose === 'function') {
@@ -422,7 +460,7 @@ const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(function CodeEd
             }
             editorRef.current = null;
         };
-    }, [activationId, documentId]);
+    }, [activationId, documentId, readOnly]);
 
     useEffect(() => {
         const wasVisible = wasVisibleRef.current;
@@ -433,7 +471,7 @@ const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(function CodeEd
             const viewState = viewStateRef.current;
 
             if (viewState !== null) {
-                restoreViewStateFrameRef.current = window.requestAnimationFrame((): void => {
+                restoreViewStateFrameRef.current = globalThis.requestAnimationFrame((): void => {
                     editorRef.current?.restoreViewState?.(viewState);
                     viewStateRef.current = null;
                     restoreViewStateFrameRef.current = undefined;
@@ -443,7 +481,7 @@ const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(function CodeEd
 
         return (): void => {
             if (restoreViewStateFrameRef.current !== undefined) {
-                window.cancelAnimationFrame(restoreViewStateFrameRef.current);
+                globalThis.cancelAnimationFrame(restoreViewStateFrameRef.current);
                 restoreViewStateFrameRef.current = undefined;
             }
         };
@@ -467,8 +505,7 @@ const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(function CodeEd
             },
             showFind(): boolean {
                 const instance = editorRef.current;
-                if (instance === null || instance.getModel() === null || instance.getAction('actions.find') === null)
-                    return false;
+                if (!instance?.getModel() || instance.getAction('actions.find') === null) return false;
                 instance.trigger('gomarkedit', 'actions.find', null);
                 return true;
             },
@@ -476,8 +513,7 @@ const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(function CodeEd
                 const instance = editorRef.current;
                 if (
                     readOnlyRef.current ||
-                    instance === null ||
-                    instance.getModel() === null ||
+                    !instance?.getModel() ||
                     instance.getAction('editor.action.startFindReplaceAction') === null
                 )
                     return false;
@@ -551,7 +587,7 @@ const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(function CodeEd
                 if (editorRef.current?.getModel() === null || editorRef.current === null || monacoRef.current === null)
                     return false;
                 if (restoreViewStateFrameRef.current !== undefined) {
-                    window.cancelAnimationFrame(restoreViewStateFrameRef.current);
+                    globalThis.cancelAnimationFrame(restoreViewStateFrameRef.current);
                     restoreViewStateFrameRef.current = undefined;
                 }
                 viewStateRef.current = null;
@@ -668,10 +704,13 @@ const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(function CodeEd
         }
         if (scrollPortEditorRef.current !== editorInstance) {
             scrollPortEditorRef.current = editorInstance;
+            const token = {};
+            scrollPortTokenRef.current = token;
             onScrollPortReadyRef.current?.(
-                createEditorScrollPort(editorInstance, (): boolean => editorRef.current === editorInstance),
+                createEditorScrollPort(editorInstance, (): boolean => scrollPortTokenRef.current === token),
             );
         }
+        if (!readOnly && model !== null) retainedModels.set(path, { documentId, model });
         onEditorMountedRef.current?.(editorInstance);
         void import('./monacoSetup').then(({ applyMonacoThemeFromRoot }): void => {
             if (model === null || editorRef.current !== editorInstance || editorInstance.getModel() !== model) return;
@@ -681,7 +720,7 @@ const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(function CodeEd
 
     return (
         <div className={styles.editor} data-editor-surface>
-            {overflowWidgetsHost === null ? (
+            {overflowWidgetsHost === null || preparedPath !== preparationKey ? (
                 <div aria-busy="true" className={styles.loading} />
             ) : (
                 <Suspense fallback={<div aria-busy="true" className={styles.loading} />}>
@@ -689,7 +728,15 @@ const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(function CodeEd
                         key={`${documentId}:${activationId ?? 'legacy'}`}
                         defaultValue={initialValue}
                         language="markdown"
-                        path={modelPath(documentId, activationId)}
+                        path={path}
+                        keepCurrentModel
+                        beforeMount={(monaco): void => {
+                            const model = monaco.editor.getModel(monaco.Uri.parse(path));
+                            if (model !== null && (readOnly || model.getValue() !== initialValueRef.current)) {
+                                model.dispose();
+                                retainedModels.delete(path);
+                            }
+                        }}
                         className={styles.editor}
                         options={{
                             lineNumbers,

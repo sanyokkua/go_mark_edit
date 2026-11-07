@@ -18,6 +18,18 @@ log() {
     printf '[gomarkedit] %s\n' "$*"
 }
 
+# Restore timestamps after a generator rewrites an identical regular-file tree.
+# A changed tree must retain its new timestamps for E2E freshness checks.
+restore_unchanged_tree_times() {
+    local before="$1" after="$2" path
+    [[ -d "$before" && -d "$after" ]] || return 0
+    [[ -z "$(find "$before" "$after" ! -type f ! -type d -print -quit)" ]] || return 0
+    diff -qr "$before" "$after" >/dev/null || return 0
+    while IFS= read -r -d '' path; do
+        touch -r "$before${path#"$after"}" "$path"
+    done < <(find "$after" -depth -print0)
+}
+
 usage_error() {
     printf 'error: %s\n' "$*" >&2
     exit 2
@@ -217,14 +229,33 @@ baseline_name() {
     printf '%s\n' "${branch//\//-}"
 }
 
-restore_tracked_modes() {
-    local mode path
-    while IFS=$'\t' read -r mode path; do
-        [[ -z "$path" ]] && continue
-        case "$mode" in
-            100755) chmod 755 "$REPO_ROOT/$path" ;;
-            100644) chmod 644 "$REPO_ROOT/$path" ;;
-            *) printf 'warning: unsupported tracked mode %s for %s\n' "$mode" "$path" >&2 ;;
-        esac
-    done < <(git -C "$REPO_ROOT" ls-files -s -- frontend/wailsjs/ | awk '{print $1 "\t" $4}')
+# Wails rewrites its generated tree with executable permissions. Keep the
+# working tree's original modes while leaving any content changes visible.
+generated_binding_modes() {
+    node --input-type=module - "$@" <<'NODE'
+import { chmodSync, lstatSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
+import { join, relative } from 'node:path';
+
+const [operation, directory, manifest] = process.argv.slice(2);
+const files = lstatSync(directory, { throwIfNoEntry: false })?.isDirectory()
+    ? readdirSync(directory, { recursive: true, withFileTypes: true }).filter((entry) => entry.isFile())
+    : [];
+
+if (operation === 'capture') {
+    const modes = files.map((entry) => {
+        const path = join(entry.parentPath, entry.name);
+        return [relative(directory, path), lstatSync(path).mode & 0o7777];
+    });
+    writeFileSync(manifest, JSON.stringify(modes));
+} else {
+    const modes = new Map(JSON.parse(readFileSync(manifest, 'utf8')));
+    for (const entry of files) {
+        const path = join(entry.parentPath, entry.name);
+        const mode = modes.get(relative(directory, path));
+        if (mode === undefined) continue;
+        const current = lstatSync(path, { throwIfNoEntry: false });
+        if (current?.isFile() && mode !== (current.mode & 0o7777)) chmodSync(path, mode);
+    }
+}
+NODE
 }

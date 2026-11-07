@@ -21,132 +21,190 @@ import (
 func TestProfileSeederCreatesControlledProfileState(t *testing.T) {
 	seeder := buildSeeder(t)
 
-	t.Run("seeds ten recent file items", func(t *testing.T) {
-		profileDir := t.TempDir()
-		paths := []string{
-			"/tmp/one.md",
-			"/tmp/two.md",
-			"/tmp/three.md",
-			"/tmp/four.md",
-			"/tmp/five.md",
-			"/tmp/six.md",
-			"/tmp/seven.md",
-			"/tmp/eight.md",
-			"/tmp/nine.md",
-			"/tmp/ten.md",
-			"/tmp/eleven.md",
-		}
-		runSeeder(t, seeder, profileDir, append([]string{"seed-recents"}, paths...)...)
+	t.Run("seeds ten recent file items", func(t *testing.T) { testSeederRecentFiles(t, seeder) })
+	t.Run("isolates appearance failures from other namespaces", func(t *testing.T) { testSeederAppearanceTriggers(t, seeder) })
+	t.Run("holds the write lock until timeout", func(t *testing.T) { testSeederLockTimeout(t, seeder) })
+	t.Run("rolls back the write lock on SIGTERM", func(t *testing.T) { testSeederLockSignal(t, seeder) })
+}
 
-		database, err := db.Open(context.Background(), filepath.Join(profileDir, "settings.db"))
-		if err != nil {
-			t.Fatalf("open seeded database: %v", err)
-		}
-		t.Cleanup(func() { _ = database.Close() })
-		entry, found, err := kv.New(database.DB).Get(context.Background(), "recent.files")
-		if err != nil || !found {
-			t.Fatalf("read recent files = %+v, found=%t, error=%v", entry, found, err)
-		}
-		var value struct {
-			Version int `json:"version"`
-			Entries []struct {
-				Path string `json:"path"`
-				Kind string `json:"kind"`
-			} `json:"entries"`
-		}
-		valid, err := kv.DecodeVersionedJSON(entry.Value, 2, &value)
-		if err != nil || !valid {
-			t.Fatalf("decode recent files = valid %t, error %v", valid, err)
-		}
-		if entry.Type != "recent.files.v2" || value.Version != 2 {
-			t.Fatalf("recent files entry = %+v, want versioned recent files", entry)
-		}
-		if len(value.Entries) != 10 {
-			t.Fatalf("recent items entries = %d, want ten", len(value.Entries))
-		}
-		for index, item := range value.Entries {
-			if item.Path != paths[index] || item.Kind != "file" {
-				t.Fatalf("recent item %d = %+v, want file %q", index, item, paths[index])
-			}
-		}
-	})
+func testSeederRecentFiles(t *testing.T, seeder string) {
+	profileDir := t.TempDir()
+	paths := []string{
+		"/tmp/one.md",
+		"/tmp/two.md",
+		"/tmp/three.md",
+		"/tmp/four.md",
+		"/tmp/five.md",
+		"/tmp/six.md",
+		"/tmp/seven.md",
+		"/tmp/eight.md",
+		"/tmp/nine.md",
+		"/tmp/ten.md",
+		"/tmp/eleven.md",
+	}
+	runSeeder(t, seeder, profileDir, append([]string{"seed-recents"}, paths...)...)
 
-	t.Run("isolates appearance failures from other namespaces", func(t *testing.T) {
-		profileDir := t.TempDir()
-		seedDatabase(t, profileDir)
-		database, err := db.Open(context.Background(), filepath.Join(profileDir, "settings.db"))
-		if err != nil {
-			t.Fatalf("open profile database: %v", err)
+	database, err := db.Open(context.Background(), filepath.Join(profileDir, "settings.db"))
+	if err != nil {
+		t.Fatalf("open seeded database: %v", err)
+	}
+	t.Cleanup(func() { _ = database.Close() })
+	entry, found, err := kv.New(database.DB).Get(context.Background(), "recent.files")
+	if err != nil || !found {
+		t.Fatalf("read recent files = %+v, found=%t, error=%v", entry, found, err)
+	}
+	var value struct {
+		Version int `json:"version"`
+		Entries []struct {
+			Path string `json:"path"`
+			Kind string `json:"kind"`
+		} `json:"entries"`
+	}
+	valid, err := kv.DecodeVersionedJSON(entry.Value, 2, &value)
+	if err != nil || !valid {
+		t.Fatalf("decode recent files = valid %t, error %v", valid, err)
+	}
+	if entry.Type != "recent.files.v2" || value.Version != 2 {
+		t.Fatalf("recent files entry = %+v, want versioned recent files", entry)
+	}
+	if len(value.Entries) != 10 {
+		t.Fatalf("recent items entries = %d, want ten", len(value.Entries))
+	}
+	for index, item := range value.Entries {
+		if item.Path != paths[index] || item.Kind != "file" {
+			t.Fatalf("recent item %d = %+v, want file %q", index, item, paths[index])
 		}
-		store := kv.New(database.DB)
-		if err := store.Upsert(context.Background(), kv.KVEntry{
-			Key: "appearance.theme", Value: "minimal", Type: "string",
-		}); err != nil {
-			_ = database.Close()
-			t.Fatalf("seed appearance row: %v", err)
-		}
-		if err := database.Close(); err != nil {
-			t.Fatalf("close profile database: %v", err)
-		}
+	}
+}
 
-		runSeeder(t, seeder, profileDir, "add-trigger", "appearance")
-		database, err = db.Open(context.Background(), filepath.Join(profileDir, "settings.db"))
-		if err != nil {
-			t.Fatalf("reopen profile database: %v", err)
+func testSeederAppearanceTriggers(t *testing.T, seeder string) {
+	profileDir := t.TempDir()
+	seedDatabase(t, profileDir)
+	database, err := db.Open(context.Background(), filepath.Join(profileDir, "settings.db"))
+	if err != nil {
+		t.Fatalf("open profile database: %v", err)
+	}
+	store := kv.New(database.DB)
+	if err := store.Upsert(context.Background(), kv.KVEntry{
+		Key: "appearance.theme", Value: "minimal", Type: "string",
+	}); err != nil {
+		_ = database.Close()
+		t.Fatalf("seed appearance row: %v", err)
+	}
+	if err := database.Close(); err != nil {
+		t.Fatalf("close profile database: %v", err)
+	}
+
+	runSeeder(t, seeder, profileDir, "add-trigger", "appearance")
+	database, err = db.Open(context.Background(), filepath.Join(profileDir, "settings.db"))
+	if err != nil {
+		t.Fatalf("reopen profile database: %v", err)
+	}
+	t.Cleanup(func() { _ = database.Close() })
+	store = kv.New(database.DB)
+	for _, key := range []string{"layout.test", "recent.test", "document.view.test"} {
+		if err := store.Upsert(context.Background(), kv.KVEntry{Key: key, Value: "one", Type: "string"}); err != nil {
+			t.Fatalf("insert unaffected %q: %v", key, err)
 		}
-		t.Cleanup(func() { _ = database.Close() })
-		store = kv.New(database.DB)
-		for _, key := range []string{"layout.test", "recent.test", "document.view.test"} {
-			if err := store.Upsert(context.Background(), kv.KVEntry{Key: key, Value: "one", Type: "string"}); err != nil {
-				t.Fatalf("insert unaffected %q: %v", key, err)
-			}
-			if err := store.Upsert(context.Background(), kv.KVEntry{Key: key, Value: "two", Type: "string"}); err != nil {
-				t.Fatalf("update unaffected %q: %v", key, err)
-			}
+		if err := store.Upsert(context.Background(), kv.KVEntry{Key: key, Value: "two", Type: "string"}); err != nil {
+			t.Fatalf("update unaffected %q: %v", key, err)
 		}
-		if err := store.Upsert(context.Background(), kv.KVEntry{Key: "appearance.mode", Value: "dark", Type: "string"}); err == nil {
-			t.Fatal("appearance insert succeeded despite trigger")
-		}
-		if err := store.Upsert(context.Background(), kv.KVEntry{Key: "appearance.theme", Value: "glass", Type: "string"}); err == nil {
-			t.Fatal("appearance update succeeded despite trigger")
-		}
-		var triggerCount int
-		if err := database.DB.QueryRowContext(context.Background(), `
+	}
+	if err := store.Upsert(context.Background(), kv.KVEntry{Key: "appearance.mode", Value: "dark", Type: "string"}); err == nil {
+		t.Fatal("appearance insert succeeded despite trigger")
+	}
+	if err := store.Upsert(context.Background(), kv.KVEntry{Key: "appearance.theme", Value: "glass", Type: "string"}); err == nil {
+		t.Fatal("appearance update succeeded despite trigger")
+	}
+	var triggerCount int
+	if err := database.DB.QueryRowContext(context.Background(), `
 			SELECT COUNT(*) FROM sqlite_master
 			WHERE type = 'trigger' AND name LIKE 'e2e_reject%'`).Scan(&triggerCount); err != nil {
-			t.Fatalf("count appearance triggers: %v", err)
-		}
-		if triggerCount != 2 {
-			t.Fatalf("appearance trigger count = %d, want two", triggerCount)
-		}
-	})
+		t.Fatalf("count appearance triggers: %v", err)
+	}
+	if triggerCount != 2 {
+		t.Fatalf("appearance trigger count = %d, want two", triggerCount)
+	}
+}
 
-	t.Run("holds the write lock until timeout", func(t *testing.T) {
-		profileDir := t.TempDir()
-		seedDatabase(t, profileDir)
-		process := startLock(t, seeder, profileDir, "1")
-		waitForLock(t, process.ready)
-		started := time.Now()
-		if err := process.cmd.Wait(); err != nil {
-			t.Fatalf("hold lock timeout: %v\n%s", err, process.stderr.String())
-		}
-		if elapsed := time.Since(started); elapsed < 500*time.Millisecond {
-			t.Fatalf("hold lock released after %v, want approximately one second", elapsed)
-		}
-	})
+func testSeederLockTimeout(t *testing.T, seeder string) {
+	profileDir := t.TempDir()
+	seedDatabase(t, profileDir)
+	process := startLock(t, seeder, profileDir, "1")
+	waitForLock(t, process.ready)
+	started := time.Now()
+	if err := process.cmd.Wait(); err != nil {
+		t.Fatalf("hold lock timeout: %v\n%s", err, process.stderr.String())
+	}
+	if elapsed := time.Since(started); elapsed < 500*time.Millisecond {
+		t.Fatalf("hold lock released after %v, want approximately one second", elapsed)
+	}
+}
 
-	t.Run("rolls back the write lock on SIGTERM", func(t *testing.T) {
-		profileDir := t.TempDir()
-		seedDatabase(t, profileDir)
-		process := startLock(t, seeder, profileDir, "30")
-		waitForLock(t, process.ready)
-		if err := process.cmd.Process.Signal(syscall.SIGTERM); err != nil {
-			t.Fatalf("signal hold lock: %v", err)
-		}
-		if err := process.cmd.Wait(); err != nil {
-			t.Fatalf("hold lock after SIGTERM: %v\n%s", err, process.stderr.String())
-		}
-	})
+func testSeederLockSignal(t *testing.T, seeder string) {
+	profileDir := t.TempDir()
+	seedDatabase(t, profileDir)
+	process := startLock(t, seeder, profileDir, "30")
+	waitForLock(t, process.ready)
+	if err := process.cmd.Process.Signal(syscall.SIGTERM); err != nil {
+		t.Fatalf("signal hold lock: %v", err)
+	}
+	if err := process.cmd.Wait(); err != nil {
+		t.Fatalf("hold lock after SIGTERM: %v\n%s", err, process.stderr.String())
+	}
+}
+
+func TestProfileSeederStoresTypedRecentItems(t *testing.T) {
+	seeder := buildSeeder(t)
+	profileDir := t.TempDir()
+	runSeeder(t, seeder, profileDir, "seed-recents", "--typed", "folder", "/tmp/docs", "file", "/tmp/docs/a.md")
+	database, err := db.Open(context.Background(), filepath.Join(profileDir, "settings.db"))
+	if err != nil {
+		t.Fatalf("open seeded database: %v", err)
+	}
+	t.Cleanup(func() { _ = database.Close() })
+	entry, found, err := kv.New(database.DB).Get(context.Background(), "recent.files")
+	if err != nil || !found {
+		t.Fatalf("read recent files: found=%t, error=%v", found, err)
+	}
+	var value struct {
+		Entries []struct {
+			Path string `json:"path"`
+			Kind string `json:"kind"`
+		} `json:"entries"`
+	}
+	valid, err := kv.DecodeVersionedJSON(entry.Value, 2, &value)
+	if err != nil || !valid {
+		t.Fatalf("decode recent files: valid=%t, error=%v", valid, err)
+	}
+	if len(value.Entries) != 2 || value.Entries[0].Kind != "folder" || value.Entries[0].Path != "/tmp/docs" || value.Entries[1].Kind != "file" || value.Entries[1].Path != "/tmp/docs/a.md" {
+		t.Fatalf("typed recent items = %+v", value.Entries)
+	}
+}
+
+func TestProfileSeederRejectsInvalidArguments(t *testing.T) {
+	seeder := buildSeeder(t)
+	for _, tc := range []struct {
+		args []string
+		want string
+	}{
+		{nil, "usage: go run"},
+		{[]string{" ", "seed-recents", "a"}, "profile directory is required"},
+		{[]string{"profile", "seed-recents"}, "seed-recents requires at least one item"},
+		{[]string{"profile", "seed-recents", "--typed", "file"}, "seed-recents --typed requires kind/path pairs"},
+		{[]string{"profile", "seed-recents", "--typed", "invalid", "a"}, "invalid recent item kind"},
+		{[]string{"profile", "add-trigger", "other"}, "add-trigger requires the appearance target"},
+		{[]string{"profile", "hold-lock", "-1"}, "hold-lock seconds must be a non-negative integer"},
+		{[]string{"profile", "unknown"}, "unknown command"},
+	} {
+		t.Run(tc.want, func(t *testing.T) {
+			command := exec.Command(seeder, tc.args...)
+			output, err := command.CombinedOutput()
+			if err == nil || !strings.Contains(string(output), tc.want) {
+				t.Fatalf("arguments %q: error = %v, output = %q; want failure containing %q", tc.args, err, output, tc.want)
+			}
+		})
+	}
 }
 
 type lockProcess struct {

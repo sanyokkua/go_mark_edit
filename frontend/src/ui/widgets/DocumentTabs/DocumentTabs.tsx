@@ -16,15 +16,12 @@ import {
     type ProjectedActionState,
 } from '../../../logic/actions/actionRegistry';
 import { currentPlatform, shortcutForKeyEvent } from '../../../logic/actions/shortcutRegistry';
+import { isEditorTextInput } from '../../../logic/actions/editorTextInput';
 import { t } from '../../../i18n';
 import LiveRegion from '../../primitives/LiveRegion';
 import type { PopupAnchor } from '../../components/Popup';
 import TabBar, { type TabBarProps } from '../../components/TabBar';
-import TabContextMenu, {
-    type TabContextAction,
-    type TabContextAdapter,
-    type TabContextCloseOptions,
-} from '../TabContextMenu';
+import TabContextMenu, { type TabContextAction, type TabContextCloseOptions } from '../TabContextMenu';
 import { EDITOR_TABPANEL_ID, tabElementId } from '../editorTabPanel';
 import { TabRemediationContext } from '../tabRemediation';
 import { whenApplicationRegainsForegroundFocus } from '../foregroundFocus';
@@ -32,7 +29,7 @@ import { flushOutgoingDocument, outgoingFlushRefusal } from '../outgoingFlush';
 import { tabLabelsFor, truncatedTabLabelParts, type TabLabel } from '../tabLabel';
 
 export interface DocumentTabsProps {
-    revealRequest?: TabBarProps['revealRequest'];
+    revealRequest?: Exclude<TabBarProps['revealRequest'], undefined>;
     adapter?: Pick<
         AppModelAdapter,
         | 'activateDocument'
@@ -169,8 +166,8 @@ const DocumentTabs: React.FC<DocumentTabsProps> = ({
 
     const announce = useCallback((message: string): void => {
         setAnnouncement('');
-        window.setTimeout((): void => setAnnouncement(message), 0);
-        window.setTimeout((): void => setAnnouncement(''), 3000);
+        globalThis.setTimeout((): void => setAnnouncement(message), 0);
+        globalThis.setTimeout((): void => setAnnouncement(''), 3000);
     }, []);
 
     const handleTabReorder = useCallback(
@@ -312,9 +309,10 @@ const DocumentTabs: React.FC<DocumentTabsProps> = ({
             if (result?.error !== undefined) {
                 reportClassifiedError(dispatch, result.error, 'The document could not be closed.');
             }
+            if (result?.conflict !== undefined) onExternalConflict?.(result.conflict);
             return result;
         },
-        [adapter, dispatch, onCloseDocument],
+        [adapter, dispatch, onCloseDocument, onExternalConflict],
     );
 
     /*
@@ -478,6 +476,30 @@ const DocumentTabs: React.FC<DocumentTabsProps> = ({
      * requires and still produces the `editor.tab.moved` announcement.
      */
     useEffect((): (() => void) => {
+        const moveFromShortcut = (
+            event: KeyboardEvent,
+            actionId: 'move-tab-left' | 'move-tab-right',
+            documentId: string,
+            current: number,
+        ): void => {
+            const active = orderedDocuments[current];
+            if (active === undefined) return;
+            const targetIndex = current + (actionId === 'move-tab-left' ? -1 : 1);
+            // Keep the raw target so an edge move returns before consuming the
+            // key or issuing a reorder for the tab's current position.
+            if (
+                getActionAvailability(actionId, {
+                    documentId,
+                    projectedState: actionProjection,
+                    targetIndex,
+                }).kind !== 'available'
+            ) {
+                return;
+            }
+            event.preventDefault();
+            if (isEditorTextInput(event.target)) event.stopPropagation();
+            void handleTabAction(actionId, active, targetIndex);
+        };
         const navigate = (event: KeyboardEvent): void => {
             if (modalOpen) return;
             const binding = shortcutForKeyEvent(event, currentPlatform());
@@ -503,29 +525,7 @@ const DocumentTabs: React.FC<DocumentTabsProps> = ({
             const current = orderedDocuments.findIndex((document) => document.documentId === activeDocumentId);
             if (current < 0) return;
             if (moving) {
-                const active = orderedDocuments[current];
-                if (active === undefined) return;
-                const targetIndex = current + (action.id === 'move-tab-left' ? -1 : 1);
-                /*
-                 * Moving past an edge succeeds as a no-op without
-                 * incrementing the tab-set revision." Clamping the index instead —
-                 * `Math.max(0, current - 1)` — would issue a reorder to the position
-                 * the tab already occupies, and the backend would answer it with a
-                 * new tab-set revision. Succeeding here means consuming the key and
-                 * issuing nothing: no command, no revision, no announcement, and no
-                 * error either, because this is not a refusal.
-                 */
-                if (
-                    getActionAvailability(action.id, {
-                        documentId: activeDocumentId,
-                        projectedState: actionProjection,
-                        targetIndex,
-                    }).kind !== 'available'
-                ) {
-                    return;
-                }
-                event.preventDefault();
-                void handleTabAction(action.id, active, targetIndex);
+                moveFromShortcut(event, action.id, activeDocumentId, current);
                 return;
             }
             if (
@@ -537,15 +537,21 @@ const DocumentTabs: React.FC<DocumentTabsProps> = ({
                 return;
             }
             event.preventDefault();
+            if (isEditorTextInput(event.target)) event.stopPropagation();
             const offset = action.id === 'next-tab' ? 1 : -1;
             const target = orderedDocuments[(current + offset + orderedDocuments.length) % orderedDocuments.length];
             if (target !== undefined) void activateDocument(target.documentId);
         };
-        window.addEventListener('keydown', navigate);
-        return (): void => window.removeEventListener('keydown', navigate);
+        const captureEditor = (event: KeyboardEvent): void => {
+            if (isEditorTextInput(event.target)) navigate(event);
+        };
+        globalThis.addEventListener('keydown', captureEditor, true);
+        globalThis.addEventListener('keydown', navigate);
+        return (): void => {
+            globalThis.removeEventListener('keydown', captureEditor, true);
+            globalThis.removeEventListener('keydown', navigate);
+        };
     }, [activateDocument, activeDocumentId, actionProjection, handleTabAction, modalOpen, orderedDocuments]);
-
-    const contextAdapter: TabContextAdapter = adapter;
 
     return (
         <>
@@ -593,6 +599,7 @@ const DocumentTabs: React.FC<DocumentTabsProps> = ({
                         labelParts: truncatedTabLabelParts(label, 42),
                         modifiedLabel: t('editor.tab.modified'),
                         readOnly: document.capability !== undefined && document.capability !== 'writable',
+                        readOnlyLabel: t('status.readOnlyWarning'),
                         tabId: tabElementId(document.documentId),
                         title: document.path || undefined,
                         writeInFlight: document.writeInFlight,
@@ -601,7 +608,6 @@ const DocumentTabs: React.FC<DocumentTabsProps> = ({
             />
             {contextDocument !== undefined && contextIndex >= 0 ? (
                 <TabContextMenu
-                    adapter={contextAdapter}
                     anchor={contextAnchor ?? { point: { x: 0, y: 0 } }}
                     document={contextDocument}
                     index={contextIndex}

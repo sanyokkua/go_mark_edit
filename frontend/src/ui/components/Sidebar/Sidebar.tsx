@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useId, useRef } from 'react';
 import type { CSSProperties, ReactNode } from 'react';
 
 import styles from './Sidebar.module.css';
@@ -33,6 +33,7 @@ const Sidebar: React.FC<SidebarProps> = ({
     side,
     width,
 }: SidebarProps): React.JSX.Element => {
+    const paneId = useId();
     const latestWidthRef = useRef(width);
 
     useEffect((): void => {
@@ -78,12 +79,14 @@ const Sidebar: React.FC<SidebarProps> = ({
                 className={styles.sidebar}
                 data-sidebar-side={side}
                 hidden={collapsed}
+                id={paneId}
                 style={sidebarStyle}
             >
                 {children}
             </aside>
             {collapsed ? null : (
                 <div
+                    aria-controls={paneId}
                     aria-label={resizeAriaLabel ?? `Resize ${resolvedAriaLabel}`}
                     aria-orientation="vertical"
                     aria-valuemin={minWidth}

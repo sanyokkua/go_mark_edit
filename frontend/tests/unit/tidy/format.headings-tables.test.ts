@@ -1,4 +1,4 @@
-import { applyEdits } from '../../../src/logic/tidy/edits';
+import { applyEdits, headingReplacement } from '../../../src/logic/tidy/edits';
 import { runOnText } from '../../../src/logic/tidy/engine';
 import { parseFull } from '../../../src/logic/tidy/parser';
 import type { TidyPreferences } from '../../../src/logic/tidy/prefs';
@@ -168,3 +168,42 @@ test.each(['*A*', '__B__', '_*nested*_', '`a  b`', 'x\\|y', '[*link*](</target> 
         expect(result.endsWith('\n\n_outside_\n')).toBe(true);
     },
 );
+
+test.each([
+    ['# Title ###\n', 'Title\n=====\n'],
+    ['# Title#\n', 'Title#\n======\n'],
+    ['# Title ###x\n', 'Title ###x\n==========\n'],
+    ['# Title # ##\n', 'Title #\n=======\n'],
+])('Setext conversion preserves literal hashes in %s', (source, expected) => {
+    expect(format(source, { ...defaults, heading: 'setext' })).toBe(expected);
+});
+
+test('heading conversion handles long whitespace before malformed closing markers', () => {
+    const source = '# title' + ' '.repeat(40_000) + '#x\n';
+    const tree = parseFull(source);
+    const heading = tree.children[0];
+    if (heading.type !== 'heading') throw new Error('Expected heading');
+    const start = performance.now();
+    const result = headingReplacement(source, heading, source.slice(0, -1), 'setext');
+    const elapsed = performance.now() - start;
+    const content = 'title' + ' '.repeat(40_000) + '#x';
+    expect(result).toBe(content + '\n' + '='.repeat(content.length));
+    expect(elapsed).toBeLessThan(1200);
+});
+
+test.each(['\r', '\u2028', '\u2029'])('heading conversion rejects embedded %s', (terminator) => {
+    const source = '# title\n';
+    const heading = parseFull(source).children[0];
+    if (heading.type !== 'heading') throw new Error('Expected heading');
+    expect(headingReplacement(source, heading, `# title${terminator}tail`, 'setext')).toBeNull();
+});
+
+test('heading conversion rejects a long whitespace prefix followed by a line separator', () => {
+    const source = '# title\n';
+    const heading = parseFull(source).children[0];
+    if (heading.type !== 'heading') throw new Error('Expected heading');
+    const start = performance.now();
+    const result = headingReplacement(source, heading, '#' + ' '.repeat(40_000) + 'x\u2028', 'setext');
+    expect(result).toBeNull();
+    expect(performance.now() - start).toBeLessThan(1200);
+});

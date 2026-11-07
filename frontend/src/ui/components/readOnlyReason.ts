@@ -10,6 +10,7 @@ import { t } from '../../i18n';
  *
  *   large-read-only   — the file is over MaxWritableDocumentBytes (10 MiB)
  *   unsafe-read-only  — invalid UTF-8, a NUL byte, or a lone CR
+ *   write-protected-read-only — the file has no owner-write bit
  *
  * `sizeClass` carries the same large/small split (`file_lifecycle.go:344-348`)
  * but says nothing about the unsafe case, so `capability` is the finer signal
@@ -22,6 +23,8 @@ import { t } from '../../i18n';
  */
 export function readOnlyReasonKey(capability: string | undefined): string | undefined {
     switch (capability) {
+        case 'write-protected-read-only':
+            return 'status.readOnlyReason.writeProtected';
         case 'large-read-only':
             return 'status.readOnlyReason.large';
         case 'unsafe-read-only':

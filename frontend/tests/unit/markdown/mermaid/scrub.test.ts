@@ -35,6 +35,28 @@ it('removes executable and externally loading SVG content while retaining local 
     expect(diagram.querySelector('stop')?.getAttribute('stop-color')).toBe('rgb(1, 2, 3)');
 });
 
+it('removes consecutive hostile attributes without skipping later attributes', () => {
+    const source = `<svg xmlns="http://www.w3.org/2000/svg"><rect onclick="a()" onload="b()" fill="url(https://example.org/a)" stroke="url(https://example.org/b)" width="10"/></svg>`;
+    const rect = svg(scrubMermaidSvg(source)).querySelector('rect');
+    expect(rect?.getAttributeNames()).toEqual(['width']);
+    expect(rect?.getAttribute('width')).toBe('10');
+});
+
+it('preserves completed CSS while discarding an unterminated quoted declaration', () => {
+    const source = `<svg xmlns="http://www.w3.org/2000/svg"><style>rect{fill:red} .x{font-family:'open</style><rect style="fill:red;font-family:'open"/></svg>`;
+    const diagram = svg(scrubMermaidSvg(source));
+    expect(diagram.querySelector('style')?.textContent).toBe('rect{fill:red;} .x{');
+    expect(diagram.querySelector('rect')?.getAttribute('style')).toBe('fill:red;');
+});
+
+it.each(['', 'invalid', '--custom:red', 'color:unknown(1)'])(
+    'preserves completed inline declarations when the final segment %j adds no safe declaration',
+    (tail) => {
+        const source = `<svg xmlns="http://www.w3.org/2000/svg"><rect style="fill:red;${tail}"/></svg>`;
+        expect(svg(scrubMermaidSvg(source)).querySelector('rect')?.getAttribute('style')).toBe('fill:red;');
+    },
+);
+
 it('rewrites every local ID reference for each diagram instance', () => {
     const source = `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
       <style>#node { fill: url('#paint'); }</style>
@@ -121,4 +143,98 @@ it('drops CSS declarations with newlines inside quoted strings before browser CS
     expect(inline).not.toMatch(/example\.org|filter:/iu);
     expect(css).toBe('');
     expect(inline).toBe('');
+});
+
+it('preserves URL matching and selector boundaries while namespacing', () => {
+    const source = `<svg xmlns="http://www.w3.org/2000/svg"><style>@media x {#paint, #p {fill:#paint;stroke:URL( '#paint' )}} #paint-x{fill:red}</style><defs><linearGradient id="paint"/><linearGradient id="p"/></defs><rect data-value="noturl(#paint) url(&quot;a)b&quot;) url(&quot;x)y&quot; z) url(#unknown)"/></svg>`;
+    const diagram = svg(namespaceMermaidSvg(source, 'd'));
+    expect(diagram.querySelector('style')?.textContent).toBe(
+        '@media x {#d-paint, #d-p {fill:#paint;stroke:url(#d-paint)}} #paint-x{fill:red}',
+    );
+    expect(diagram.querySelector('rect')?.getAttribute('data-value')).toBe(
+        'noturl(#d-paint) url("a)b") url("x)y" z) url(#unknown)',
+    );
+});
+
+it('uses the quoted URL branch across a closing parenthesis and preserves bare fallback', () => {
+    const source = `<svg xmlns="http://www.w3.org/2000/svg"><g id="a)b"/><rect data-value="url(&quot;#a)b&quot;) url(&quot;#a)b&quot; extra)"/></svg>`;
+    expect(svg(namespaceMermaidSvg(source, 'd')).querySelector('rect')?.getAttribute('data-value')).toBe(
+        'url(#d-a)b) url("#a)b" extra)',
+    );
+});
+
+it.each([
+    ['LF', '&#10;', '\n'],
+    ['CR', '&#13;', '\r'],
+    ['line separator', '&#8232;', '\u2028'],
+    ['paragraph separator', '&#8233;', '\u2029'],
+])('preserves bare URL fallback after a quoted %s', (_name, entity, separator) => {
+    const source = `<svg xmlns="http://www.w3.org/2000/svg"><g id="a${entity})b"/><g id="paint"/><rect data-value="url(&quot;#a${entity})b&quot;) URL(&#160;'#paint'&#160;)"/></svg>`;
+    expect(svg(namespaceMermaidSvg(source, 'd')).querySelector('rect')?.getAttribute('data-value')).toBe(
+        `url("#a${separator})b") url(#d-paint)`,
+    );
+});
+
+it('removes closed comments even inside quoted CSS and retains unterminated comments', () => {
+    const source = `<svg xmlns="http://www.w3.org/2000/svg"><rect style="font-family:'a/*one*/b/*two*/c/*open';fill:red"/></svg>`;
+    expect(svg(scrubMermaidSvg(source)).querySelector('rect')?.getAttribute('style')).toBe(
+        "font-family:'abc/*open';fill:red",
+    );
+});
+
+it('handles long malformed URL text in safe quoted CSS without quadratic work', () => {
+    const value = 'url('.repeat(20000);
+    const source = `<svg xmlns="http://www.w3.org/2000/svg"><rect style="font-family:'${value}';fill:red"/></svg>`;
+    const start = performance.now();
+    const result = svg(scrubMermaidSvg(source)).querySelector('rect')?.getAttribute('style');
+    const elapsed = performance.now() - start;
+    expect(result).toBe(`font-family:'${value}';fill:red`);
+    expect(elapsed).toBeLessThan(1200);
+});
+
+it('handles a long malformed stylesheet selector without quadratic work', () => {
+    const value = 'x'.repeat(40000);
+    const source = `<svg xmlns="http://www.w3.org/2000/svg"><style>${value}</style><g id="x"/><rect fill="url(#x)"/></svg>`;
+    const start = performance.now();
+    const result = svg(namespaceMermaidSvg(source, 'd'));
+    const elapsed = performance.now() - start;
+    expect(result.querySelector('style')?.textContent).toBe(value);
+    expect(result.querySelector('rect')?.getAttribute('fill')).toBe('url(#d-x)');
+    expect(elapsed).toBeLessThan(1200);
+});
+
+it('handles long unterminated CSS comments without quadratic work', () => {
+    const value = '/*a'.repeat(60000);
+    const source = `<svg xmlns="http://www.w3.org/2000/svg"><rect style="font-family:'${value}';fill:red"/></svg>`;
+    const start = performance.now();
+    const result = svg(scrubMermaidSvg(source)).querySelector('rect')?.getAttribute('style');
+    const elapsed = performance.now() - start;
+    expect(result).toBe(`font-family:'${value}';fill:red`);
+    expect(elapsed).toBeLessThan(1200);
+});
+
+it('keeps balanced safe CSS functions and rejects malformed or external function values', () => {
+    const source = `<svg xmlns="http://www.w3.org/2000/svg"><rect style="fill:rgb(1,calc(2 + 3),4);stroke:url('#paint');filter:unknown(red);opacity:calc(1));color:blue"/></svg>`;
+    expect(svg(scrubMermaidSvg(source)).querySelector('rect')?.getAttribute('style')).toBe(
+        'fill:rgb(1,calc(2 + 3),4);stroke:url(#paint);',
+    );
+});
+
+it.each([
+    ['blur(1)', 'blur(1)'],
+    ["'(literal)'", "'(literal)'"],
+    [')blur(1)', null],
+    ['blur(1', null],
+    ['unknown(1)', null],
+    ["'open(", null],
+])('validates the presentation attribute value %s before preserving it', (value, expected) => {
+    const source = `<svg xmlns="http://www.w3.org/2000/svg"><rect filter="${value}"/></svg>`;
+    expect(svg(scrubMermaidSvg(source)).querySelector('rect')?.getAttribute('filter')).toBe(expected);
+});
+
+it('retains allowed nested stylesheet rules and discards disallowed at-rule contents', () => {
+    const source = `<svg xmlns="http://www.w3.org/2000/svg"><style>@media screen {.a{fill:red}@font-face{src:url(#x)} .b{stroke:url(#x)}} @supports (display:grid) {.c{opacity:.5}}</style></svg>`;
+    expect(svg(scrubMermaidSvg(source)).querySelector('style')?.textContent).toBe(
+        '@media screen {.a{fill:red;} .b{stroke:url(#x);}} @supports (display:grid) {.c{opacity:.5;}}',
+    );
 });

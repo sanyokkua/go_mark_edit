@@ -7,7 +7,10 @@ interface HiddenFoldersToggleProps {
     onChange: (show: boolean) => unknown;
 }
 
-export default function HiddenFoldersToggle({ pressed, onChange }: HiddenFoldersToggleProps): React.JSX.Element {
+export default function HiddenFoldersToggle({
+    pressed,
+    onChange,
+}: Readonly<HiddenFoldersToggleProps>): React.JSX.Element {
     return (
         <ToolButton
             className={styles.hiddenToggle}

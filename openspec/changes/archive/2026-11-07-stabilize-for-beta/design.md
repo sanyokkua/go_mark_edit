@@ -1,0 +1,523 @@
+# Design
+
+## Context
+
+See proposal.md for motivation. Every defect below was traced at `7580ea1`; file references are where the owner
+lives today. Constraints that shape the approach:
+
+- The backend document model (`internal/appmodel`) is authoritative (ADR-0014, ADR-0017). The frontend mirrors the
+  visible buffer in `useSyncedBuffer` and pushes it with `UpdateBuffer`. The planned design left `UpdateBuffer`
+  without a revision; it now carries the base revision of the editor session (§1).
+- One decision token travels through Save, Save As and the close plan; normalization and keep-mine tokens are
+  single-use and bound to a content revision (ADR-0024).
+- Wails v2 binds each call on its own goroutine, so bound methods run concurrently.
+- Production code must not grow test-only branches (`openspec/config.yaml`), with one existing precedent:
+  `application.E2EHeadlessEnabled()` keeps the window hidden in end-to-end runs (`main.go:37`,
+  `internal/application/native_window.go:49`).
+
+## Goals / Non-Goals
+
+**Goals:**
+
+- Fix each defect inside its existing owner, with a regression test that fails before the fix.
+- Keep the Wails wire contract unchanged unless a defect cannot be fixed otherwise. The change adds a read-capability
+  value for write-protected files (§5), a typed committed-save warning value (§6), two additive native lifecycle
+  methods and pending-close ownership (§8). One existing bound method changes: `UpdateBuffer` gains the editor
+  session's base revision and returns `BufferUpdateResult` (§1). No other bound method signature changes.
+- Make a full local `scripts/verify` faster and free of desktop side effects except app focus.
+
+**Non-Goals:**
+
+- New abstraction layers, a second state owner, or a rewrite of the conflict or save pipeline.
+- Changing what the user sees for behaviour the specs already describe correctly.
+
+## Decisions
+
+### 1. Reload: adopt the editor mirror per activation, not per document
+
+`useSyncedBuffer.adoptDocument` (`frontend/src/logic/hooks/useSyncedBuffer.ts:119-130`) returns early when the
+document id is unchanged, so a Reload (same id, new `externalEpoch`, new activation token) keeps the pre-reload text in
+`contentRef`, and the next flush sends it. Track the adopted activation token instead of the document id and reset
+the content, cursor, selection, scroll and view refs whenever the token changes.
+
+Second guard, added after the plan (`93d6d06`, `36ef39f`): adoption per activation does not stop an update that was
+already sent, or queued in the adapter, when the reload landed. Ending an editor session for an external replacement
+therefore drops its unsent buffer update (`useSyncedBuffer`; the architecture note on the editor epoch), and
+`UpdateBuffer(documentId, content, baseRevision)` carries the document revision the editor session was installed from
+(`ActiveBuffer.documentRevision`, passed down to `useSyncedBuffer` from `EditorStage`). The frontend never needs to
+learn the revisions of its own edits: the base is fixed for the life of the session. The document record keeps the
+content revision its latest reload produced (`reloadedRevision`, set in `applyReload`); an update whose base is older
+changes neither buffer nor revision, schedules no autosave and is answered with
+`BufferUpdateResult{status: "superseded"}`, which is not an error. The adapter settles that generation without an
+accepted-buffer or sync-error notification. Backend callers that already hold the current buffer use the unguarded
+service `UpdateBuffer`; the bound handler calls `UpdateBufferFrom`. Recorded as ADR-0042.
+
+- Rejected: a new bound method for guarded updates. Changing `UpdateBuffer` is one signature and the generated
+  bindings; the revision is not a second concept for the frontend, only a field of the session it already holds.
+
+### 2. Undo across tabs: one Monaco model per open writable document
+
+Today `CodeEditor` keys the editor and model path by activation id and disposes the model on every activation change
+(`frontend/src/ui/components/CodeEditor.tsx:172-175` path, `:406-425` cleanup that calls `model.dispose()`,
+`:689-692` key/path). Facts that shape the change:
+
+- `externalEpoch` is one global counter in `useDocumentSession` (`frontend/src/app/useDocumentSession.ts:14-19`), so
+  reloading B would also change A's path. It becomes a per-document map (`Record<documentId, number>`) owned by the
+  same hook; `useSyncedBuffer`'s activation token stays keyed on `[documentId, externalEpoch]` with the document's own
+  epoch.
+- `@monaco-editor/react` (4.7) reuses an existing model at a path and ignores `defaultValue`. So the component itself
+  owns model lifetime: the editor gets `keepCurrentModel`, the explicit `model.dispose()` in the cleanup is removed,
+  and a module-local registry (a `Map<path, ITextModel>` in `CodeEditor`'s folder) decides disposal.
+- Path = document id + that document's epoch. The registry disposes a model when its id leaves `openDocumentIds` (a
+  new prop: `EditorView` (`frontend/src/ui/widgets/EditorView.tsx:250`, which already uses `useAppSelector`) selects
+  `state.documents.orderedIds` and passes it through `EditorStage` to `CodeEditor`), or when a newer epoch for the same id appears.
+- Before mount, if a cached model's text differs from `initialValue` (the backend buffer, which only changes on
+  install), the cached model is disposed first so the editor creates a fresh one (undo starts empty). The backend
+  stays authoritative and a hidden tab can never carry a stale mirror into the backend.
+- Per-activation state is rebound on every activation to the current model: link provider registration, lint
+  decorations, the scroll port, and `attachEditor` with the new activation token. These stay activation-scoped; only
+  the model (text plus undo stack) outlives the activation.
+- Read-only documents are not cached: they have no undo history and can be up to 50 MiB.
+- Test support: the `@monaco-editor/react` mock in `frontend/tests/unit/components/CodeEditor.test.tsx:252-289`
+  shares one model; it gains a path-to-model map so reuse and disposal are observable.
+
+This refines ADR-0014 ("Monaco is only the visible document's working copy"). A hidden model keeps its text and its
+undo stack, but its text is never trusted: it is reused on activation only while it equals the backend buffer
+(`initialValue`) and is discarded and recreated otherwise, so the only thing that outlives the activation is the undo
+history of an unchanged text; the backend content wins on every activation. Recorded as ADR-0040 in
+`docs/architecture.md`.
+
+- Rejected: amending the spec to per-activation undo (user decision: keep undo).
+
+### 3. Keep mine with normalization: bind acceptance to the keep-mine record (backend only)
+
+Each Save, Save As and close-plan decision carries one `decisionToken`. On a mixed-ending file with a conflict, that
+one string must be both the normalization token (checked at `internal/appmodel/save.go:77-83` for Save,
+`:120-126` for Save As, `internal/appmodel/close_plan.go:190` and `validNormalizationTokenLocked` at `:742` for the
+close plan) and the keep-mine key (consumed in `inspectDocument`, `internal/appmodel/conflict.go:252-334`, keep-mine
+branch `:273-298`). A keep-mine token fails the normalization check, and a normalization token misses the keep-mine
+map, so the user loops. Today the normalization token is a single slot (`document.normalization`,
+`save.go:23-28`), consumed only in `snapshotForWrite` (`save.go:267-296`); the keep-mine record
+(`keepMineAuthorization`, `conflict.go:27-35`) is consumed in `inspectDocument`, which runs before
+`snapshotForWrite`. Both are bound to `ContentRevision`; any edit clears both (`document.go:72-75`).
+
+Changes, all inside `internal/appmodel`:
+
+- `normalizationAuthorization` gains `accepted`. `inspectDocument` already receives the decision token
+  (`conflict.go:252`); when the token is the current normalization token for the current revision and a conflict is then registered,
+  sets `accepted`.
+- `AuthorizeKeepMine` (`conflict.go:150-201`) copies an accepted normalization for the same revision onto the
+  keep-mine record.
+- `normalizationAuthorizationForLocked` (`lifecycle.go:118-123`) also accepts a keep-mine token whose record carries
+  an accepted normalization. All four checks above call it, so the close plan's overwrite of
+  `target.normalizationToken` (`close_plan.go:163`) with the keep-mine token is covered.
+  `validNormalizationTokenLocked` gains the `proposedEnding` check the Save gate already does, so the close plan never
+  accepts a token that Save then rejects.
+- Keep mine takes effect when its write commits, not before (`373d90c`). While a write is prepared the keep-mine
+  record is matched, never consumed: `inspectDocument` (`matchKeepMine`) returns an authorized inspection when the
+  record's disk version and byte fingerprint are still on disk, and `snapshotForWrite` uses the record's version and
+  fingerprint as the write's expected disk state. The document's baseline, the conflict and the record change only
+  when the write commits (the committed baseline replaces the disk baseline and `removeConflictLocked` clears the
+  conflict and every keep-mine record). A cancelled Save As, an encoding refusal, a failed replacement or a
+  cancelled close plan therefore leaves the external version undecided: a later Save or autosave without the token
+  still stops at the comparison, while a retry with the same token still writes. Because
+  `normalizationAuthorizationForLocked` also accepts the keep-mine token whose record carries the accepted
+  normalization, a retried write does not ask for normalization again. A file that became read-only after the
+  authorization is refused with a read-only comparison, and Keep mine cannot be granted again for it. The earlier
+  plan re-keyed `document.normalization` to the keep-mine token at consumption; that is gone.
+- `registerConflict` (`conflict.go:446-459`) drops the document's keep-mine records whose disk `version` differs from
+  the newly registered one, so a Keep mine from an earlier conflict is never honoured. Records for the same version
+  survive: focus and tab-activation checks call `inspectDocument(..., "")` (`conflict.go:68`) and re-register the
+  same conflict between Keep mine and Save, because Keep mine never starts a Save itself
+  (`frontend/src/app/useExternalChanges.ts`).
+- Autosave eligibility (`autosaveEligibleLocked`, `autosave.go:165-174`) excludes documents whose metadata line
+  ending is mixed (`file.LineEndingMixed`, as used at `conflict.go:532`). Both the timer path and
+  `flushAutosaveForClose` go through it (`autosave.go:53, 183`), so neither mints over the pending normalization
+  token.
+
+Consent is preserved: Skip or an edit mints a fresh, unaccepted normalization token.
+
+Known limitation (recorded, not fixed here): Keep mine chosen from a comparison found by a window-focus or
+tab-activation check authorizes in the backend, but `useExternalChanges.decideConflict` discards the returned token
+and starts no write. The backend keeps the unusable record until the conflict clears, and the next Save, which
+carries no token, raises the comparison again, where Keep mine now resumes that Save. The behaviour is pinned by the
+e2e test "dismisses foreground Keep mine after authorizing without writing" and stated in the delta spec's "Choices
+for a writable document". Having the frontend retain the token for a later Save would need an owner for a value bound
+to one content revision and one disk version that any edit invalidates; that is a product decision, not a
+stabilization fix.
+
+- Rejected: a second token through Save, Save As and the close plan. It changes two bound signatures,
+  `ClosePlanDecision`, about twelve frontend files and thirty test call sites for the same outcome.
+- Rejected: making Keep mine imply normalization; that rewrites line endings without consent.
+
+### 4. Post-save baseline from the written bytes
+
+`characteristicsForWrittenSnapshot` (`save.go:639-659`) leaves `LFCount`, `CRLFCount` and `FirstEnding` at zero, but
+`characteristicsEqual` (`conflict.go:545-547`) compares them, so the next disk check after any save differs from a
+fresh read. Save As writes the source's BOM (`encodeWrite`, `save.go:555-558`) yet sets the metadata BOM to absent
+(`save.go:400`), so the next Save drops it. Classify the written bytes with the same function the reader uses:
+extract the byte classification from `classifyDocumentBytes` (`internal/file/document_reader.go:229`) into an
+exported helper in `internal/file` taking the bytes and file mode, use it after every committed write, and delete
+`characteristicsForWrittenSnapshot`. The BOM comes from the encoder's outcome.
+
+The `failedWrite` field and `markFailedWrite` (`save_status.go:43`, no callers) are removed in the same slice, with
+their reads at `save_status.go:34,53`, `document.go:79`, `conflict.go:429` and `lifecycle.go:36,84`. Dirty state is
+the OR of content ≠ baseline, `ContentRevision > committedRevision`, detached, untitled and non-empty, and
+`failedWrite`; the last term is always false, so removing it changes nothing.
+
+### 5. File permissions
+
+- New target: `atomic_replace.go` only copies the mode when the target exists (`:174-178`), so `os.CreateTemp`'s 0600
+  (`:111`) survives. When the target does not exist, chmod the temporary file to `0644 &^ umask` before the rename, so
+  the mode recorded by §4's classifier equals the file on disk and no false permission conflict follows. The umask is
+  read once at process start on Unix (the only portable read sets and restores it, which is safe before any goroutine
+  creates files); Windows has no umask and the mode stays as Go reports it.
+- Write-protected input: the reader decides capability at `document_reader.go:239-255` from `ReadCapability`
+  (`:23-30`). Add `write-protected-read-only`, chosen when the owner-write bit is missing (on Windows the read-only
+  attribute maps to that bit in `os.FileMode`) and the bytes would otherwise be writable. It reuses every existing
+  read-only behaviour; the regenerated binding carries the value, and `frontend/src/ui/components/readOnlyReason.ts`
+  maps it to the catalogue string "The file is write-protected.".
+- Save As is the one command it keeps (actions-shortcuts "Read-only documents"). The availability rule in the action
+  registry allows Save As when the capability is `write-protected-read-only`, and the backend gates that refuse every
+  non-writable capability today (`SaveAs` at `save.go:116-118`, `snapshotForWrite` at `save.go:281-283`) let that
+  capability through for Save As only; Save, autosave and the close plan's Save keep refusing it. After Save As the
+  target is classified afresh by §4's classifier, so the tab becomes writable. If format-on-save is enabled for a
+  protected source, skip formatting with the read-only reason and write the unchanged buffer to the new target.
+- Conflict choices: the comparison preview's `ReadOnly` (`conflict.go:521`) is computed from the open document's
+  capability or the disk read's capability, so a file that became write-protected on disk offers only Reload from disk
+  and Cancel (external-change-conflict "Choices for a read-only document"). Keep mine can therefore never replace a
+  write-protected file. So that unsaved edits are not trapped, `SaveAs` inspects the current source when necessary,
+  including after Cancel has cleared the queued conflict, and permits saving to a distinct target if the stable disk
+  version is write-protected. It refuses the source itself, including aliases, as the target. Save and the close
+  plan's Save still stop at the conflict; other source conflicts keep their existing behavior.
+- Permission changes on disk already raise a conflict (`DiskVersion.Equal` and `characteristicsEqual` compare the
+  mode); the spec now states this, and Reload from disk re-reads, so it re-evaluates the capability.
+
+New targets are created, never replaced (`19e7414`): when the expected disk state says the target does not exist,
+`AtomicReplace` commits with a no-replace move instead of a plain rename, so a file that another program creates
+after the save's disk check survives. The move is `renamex_np` with `RENAME_EXCL` on macOS, `renameat2` with
+`RENAME_NOREPLACE` on Linux and a move without `MOVEFILE_REPLACE_EXISTING` on Windows; where the filesystem or
+platform lacks exclusive rename, creation falls back to `link(2)`, which never replaces a name, and on filesystems
+without hard links to an existence check followed by a rename, the narrowest guard they permit and one that keeps a
+small race. An existing target keeps the replace path. A collision is classified as a conflict, the temporary file is
+removed and nothing is written. `golang.org/x/sys` becomes a direct dependency. `AtomicReplace` also refuses an
+expected existing version that arrives without its raw-byte fingerprint (`aa143dc`): the guard must compare bytes the
+caller saw, and fingerprinting whatever is on disk at that moment would accept bytes it never saw. No production
+caller relied on the old behaviour.
+
+### 5.1 External-change fingerprints, queue ownership and reload activation
+
+The implemented file reader captures a SHA-256 `rawHash` over the physical bytes during a bounded stable read. The
+disk version is checked before and after that read; a changed version rejects the result as unstable. The fingerprint
+travels on the conflict's detected disk version across the Go/TypeScript wire contract and is checked again when a
+decision is authorized. This detects byte changes even when size, timestamp, permissions and file identity are
+preserved. Permission, encoding, BOM and line-ending differences remain detectable through the disk version and
+classified characteristics, while an identical-byte timestamp touch does not create a conflict.
+
+`AtomicReplace` checks the expected disk metadata and raw fingerprint before replacing the target. The replacement
+uses the platform's atomic rename/replace operation, but the fingerprint check and rename are separate filesystem
+operations. Portable Go APIs do not provide a cross-platform compare-and-swap rename that atomically conditions the
+replacement on the old bytes. A concurrent external writer in that narrow check-to-replace interval can therefore
+still race; this mechanism is a best-effort stale-write guard, not an atomic compare-and-swap guarantee. Keep this
+limitation explicit in the product documentation and do not describe the raw hash as closing that race.
+
+Three further save-path rules close races found during review. A target that is the document's own file, under its
+path or a symbolic or hard link to it, is compared with the loaded document (the same inspection a Save runs) instead
+of with the file as it is after the native Save As dialogs closed, so an external edit made while they were open
+yields the comparison and a timestamp-only touch is absorbed (`3cbdf43`). When the replacement of the document's own
+file refuses because the file changed after the save's disk check, the save inspects it again: different bytes return
+the ordinary comparison and block the tab, identical bytes are written once more against the refreshed disk version
+(`900806f`). Each document's write holds a disk claim from replacement until the written baseline is adopted, and every
+disk inspection takes the same claim, so a focus check never pairs the pre-write baseline with the written bytes
+(`e0e395a`).
+
+The frontend retains foreground conflicts by document identity and tab order. Prompt priority is close-owned, then
+write-owned, then foreground. Deferred comparisons are revalidated before presentation, and closed documents are
+dropped. A close execution that activates a changed next tab hands the conflict to the foreground conflict owner.
+Reload commands distinguish the compared document from the active editor: reloading a background tab updates that
+document's backend state without installing its text into the current editor buffer or invalidating an unrelated
+activation generation.
+
+### 6. Reporting save and sync outcomes
+
+- `WriteResult` has one `Error` field (`internal/apperr/results.go:493-503`). In `save.go:427-457` choose one warning
+  by fixed precedence instead of letting the last one win: durability (the post-commit error from
+  `atomic_replace.go:200-206`, today only setting `resyncRequired` at `save.go:445-447`), then Recent Items
+  (`:438-444`), then view state (`:430-435`).
+- `save.go:311-313` maps every encode failure to a retryable I/O error; map the codec sentinels (`codec.go:31-46`) to
+  `unsupported-input` with no remediation. The frontend shows Retry only when the remediations include it
+  (`frontend/src/logic/store/classifiedNotification.ts:179`).
+- The committed branch of `finishWrite` (`frontend/src/app/useDocumentWrites.ts:196-235`) ignores `result.error`;
+  show it with the existing `notifyToast({severity: 'warning'})` pattern (`useDocumentWrites.ts:72-79`) under new
+  notification codes and catalogue strings for Recent Items, view state and durability. Add an optional typed warning
+  value to `WriteResult` (`durability`, `recent-items`, or `view-state`) alongside the selected existing error. The
+  existing error fields cannot distinguish durability from view state without parsing user-facing English; retain their
+  current identities and deduplication keys. Normalize the value through the adapter and regenerate bindings.
+- Close-plan execution and autosave consume committed write results without returning them to `finishWrite`. Emit
+  their selected warnings through the existing `state:error` event with `details.saveWarning` carrying the typed value.
+  The frontend validates that value and uses the same warning presentation as explicit saves while the window remains
+  open. Preserve classified asynchronous errors through the existing classified notification owner, including safe copy and actionable remediation, with legacy fallback. Explicit saves do not emit a duplicate
+  event. A committed-save warning never vetoes a successful Quit: after the requested saves commit, Quit continues
+  immediately, even when durability, Recent Items or view-state persistence failed. The application makes no guarantee
+  that such a warning is acknowledged or becomes visible before process exit. An ordinary save while the window stays
+  open still presents its warning. A warning replaces the ordinary success toast. Preserve a typed post-replacement failure reason for metadata, readback, mismatch or directory sync; localized copy explains the particular check and next step, with a generic fallback for unknown reasons.
+- Buffer sync: `appModelAdapter.ts:575` swallows `sendPendingBuffer` failures; a failed snapshot is already kept as
+  pending (`:551-555`) and is sent with the next edit, flush or save. Add one adapter listener API,
+  `subscribeBufferSyncErrors(listener)` next to `subscribeAsyncErrors` (`:905`), that reports the first failure and
+  stays silent until a send succeeds. Buffer sends use side-effect-free envelope inspection so `unwrapPromise` does
+  not independently notify every failure. `AppWorkflows` subscribes and shows it through `notifyError`.
+- `ApplicationMenubar.tsx:164-168` (`onFullscreen`) gets a rejection handler that reports through `notifyError`, as
+  `ApplicationMenubar.tsx:195` already does.
+
+### 7. Editor-focused shortcuts: capture phase, scoped to the editor text area
+
+Monaco's keybinding service stops propagation for Cmd+K (hover chord), Cmd+E on macOS (find with selection) and
+Ctrl+PageUp/PageDown on macOS (scroll), so the bubble-phase `window` listeners never see them. Register the
+executor's listener (`frontend/src/ui/widgets/useEditorActionExecutor.ts:96-114`, formatting and find commands), the
+tab listener (`frontend/src/ui/widgets/DocumentTabs/DocumentTabs.tsx:484-546`, the only tab handler) and the shell
+listener (`frontend/src/logic/actions/useShellShortcuts.ts`, which owns Mod+S, the File menu and Mod+Enter) in the
+capture phase, acting only when the event target is the editor's
+text area and the key resolves to an available catalogue command; then `preventDefault` and `stopPropagation`.
+Events from the Find/Replace inputs and every other control keep the current bubble path, which preserves "Key
+handled by the Find input".
+
+Tab switching: in `actionRegistry.ts:441-448` and `shortcutRegistry.ts:11-17`, make physical `Ctrl+Tab` /
+`Ctrl+Shift+Tab` the displayed `shortcut` on every platform and keep `Ctrl+PageDown` / `Ctrl+PageUp` as aliases;
+`Mod+Tab` is removed. `shortcutForKeyEvent` already matches physical Ctrl on macOS (`shortcutRegistry.ts:74-76`).
+`formatShortcut` (`:26-38`) upper-cases unknown keys today ("⌘TAB"); teach it the macOS Control symbol (⌃) and the
+key symbols ⇥ (Tab), ⇞/⇟ (PageUp/PageDown) on macOS and "Tab", "PageUp", "PageDown" elsewhere.
+
+- Rejected: registering each catalogue shortcut as a Monaco command. It needs the executor plumbed into
+  `CodeEditor`, a binding converter and a second registration path for the same catalogue.
+
+Text navigation and line editing: `monacoSetup.ts` loads `editor.api`, `coreCommands` and three contributions
+only. `coreCommands` already binds line start/end and document start/end with VS Code's platform defaults (⌘←/→ and
+⌘↑/↓ on macOS, Home/End and Ctrl+Home/End elsewhere), but word move/select/delete lives in the `wordOperations`
+contribution, which is not loaded, so Option+arrows do nothing. Import the `wordOperations` and `linesOperations`
+contributions there. Their overlaps with the catalogue are Mod+Enter (insert line below versus Distraction-free
+reading) and the Mod+K chord (Mod+K Mod+X trim whitespace, beside hover's Mod+K Mod+I); the capture-phase dispatch
+above runs the catalogue command first, so neither chord can start. `monacoLanguages.test.ts` mocks each Monaco
+import, so the two new imports get mocks there. Monaco's Linux Copy Line Down default differs from the specified
+Shift+Alt+Down; register that binding in the same setup owner for editable editor focus, replacing Monaco's Linux
+default. Monaco's read-only mode already refuses the line edits.
+
+- Rejected: importing `editor.all`. It also brings suggest, folding, code actions and more, works against the bundle
+  goal in §12, and adds bindings that would need their own conflict review.
+- Rejected: custom keybindings for word movement. They would re-implement Monaco's word-separator logic.
+
+### 8. Visible startup and render failures
+
+- Startup watchdog: `NativeWindowService.Restore` (`internal/application/native_window.go:53-90`) arms a 12-second
+  timer; if the window is still hidden it calls the existing native show. Headless mode never shows. Today the window
+  is shown only by `showIfReadyLocked` (`:113-124`) once restored and frontend-ready. The clock is injected the same
+  way as `ShutdownClock` (`shutdown.go:68-77`) so the integration test uses a fake. `WindowReady` is not reused
+  because it also marks the frontend ready for shutdown (`shutdown.go:203-210`).
+- Root error boundary: a class component in `frontend/src/app/` wraps the content `AppContents` renders
+  (`EditorSessionProvider` and below, `frontend/src/app/App.tsx:130-143`), not `AppContents` itself. `useDocumentSession`,
+  `useBootstrap` and `useShutdown` stay above the boundary, so the native close-request listener (`useShutdown.ts:92-97`)
+  survives a crash. Its screen reuses the layout and token styles of `frontend/src/ui/widgets/StartupFailure/StartupFailure.tsx`.
+- Before failed editor descendants run passive cleanup, the root boundary synchronously asks the existing
+  app-model adapter to retain pending buffers for this page. `retainPendingBuffers()` stops queued delivery timers
+  but preserves pending and in-flight generations; normal view cleanup remains unchanged. Its companion
+  `getPendingBufferDocumentIds()` exposes only IDs whose delivery generation is not acknowledged. This preserves
+  a newer pending edit behind an older in-flight update without adding another content queue or storage owner.
+- Each Reload interface attempt flushes all open and unacknowledged document IDs through `flushBuffer`, with one
+  aggregate 1,000 ms deadline. It calls `window.location.reload()` only after every delivery is acknowledged.
+  Rejection or timeout keeps the screen, retained text and catalogue retry message; a late completion never reloads
+  automatically. Bootstrap runs again against the same backend documents, and repeated `WindowReady` is harmless.
+- Reload also reconciles the authoritative close request before flushing and immediately before page destruction.
+  It cancels a frontend-owned request by exact ID and awaits acknowledgment; cancellation failure or native
+  ownership keeps the page and text intact. After native Cancel, a later Reload rereads state and may proceed.
+  These checks improve ordering; the backend ownership/removal guards below supply the race barrier.
+- Quit, window close and native quit shortcut share the surviving `useShutdown` request identity. The Quit button
+  uses `requestQuit`; no new JavaScript quit binding is introduced. The recovery handler first calls the additive
+  `AcknowledgeRecoveryClose(request, closeID)`, which atomically moves the matching awaiting request to a recovery
+  decision state and stops its deadline. It then counts the union of backend dirty IDs and unacknowledged adapter
+  IDs, deduplicated. A failed state read cannot declare the app clean. With no unsaved work it uses ordinary
+  authorization; otherwise it shows the specified discard prompt, initially focusing Cancel. Cancel acknowledges
+  the same ID and returns focus to Reload interface, keeping queues and scheduling intact.
+- Confirmed recovery discard uses the additive `DiscardAndAuthorizeQuit(request, closeID)` bound method, exposed
+  through the existing handler/holder/native adapter/shutdown controller. It reuses close-ID validation, classified
+  envelopes, drain failure handling and the one-use native permit. Ordinary quit preparation may flush scheduled autosaves before decisions; recovery discard uses the separate
+  discard authorization path without starting them. No existing method
+  signature changes and no second close-plan owner is introduced.
+- The model's reversible discard fence atomically blocks new document-write admissions and stops timer handles
+  while retaining scheduled autosave intents under `service.mu`. `runAutosave` checks the fence before claiming an
+  entry; `setWriteInFlight(true)` is the final admission boundary. Updates arriving during the fence can replace
+  the retained intent with the latest eligible revision but cannot arm a timer. Cancel/refusal clears the fence and
+  rearms only current retained entries through the existing autosave owner and generation/pointer installation
+  checks; successful exit never rearms them. Discard drain waits already admitted writes and flushes layout without
+  flushing scheduled documents. Layout failure is logged and dropped without blocking close.
+- Every successful write admission increments a per-document count under the model lock; projected `writeInFlight`
+  is derived from count > 0. Every terminal path releases exactly one count, including committed-warning paths.
+  This replaces the current boolean-only admission, which can miss a second accepted operation paused before
+  `coordinator.Commit`. Drain waits for the count and existing coordinator/autosave activity to become idle.
+  Atomic writes admitted before the fence finish safely; timeout or confirmation starts no new document write.
+- A ready frontend that misses the existing ten-second close acknowledgment deadline always enters conservative
+  native confirmation, even when backend metadata is clean: the backend cannot infer that no frontend-only text
+  exists. The timeout and recovery acknowledgment claim ownership under the shutdown-owner mutex. Acknowledgment
+  first leaves the in-app prompt in control; deadline first publishes native ownership before releasing that mutex,
+  applies the reversible fence, waits admitted writes, then asks whether to discard possible undelivered text.
+  Native Cancel/error preserves documents/page and resumes current scheduling; explicit native Quit keeps the fence,
+  finishes non-document drain and grants the permit. A callback that already read status must revalidate ownership
+  before side effects. Normal responsive close and pre-readiness clean exit keep their existing paths.
+- Project required `PendingClose.owner: 'frontend' | 'native'` with its ID, including full bootstrap/hydration.
+  `useShutdown` and `useCloseWorkflow` never start ordinary close handling for native-owned hydration; delayed
+  events do not authorize anything. The native transfer and model structural guards serialize on `service.mu` in
+  the established owner-to-model lock order. Prepare/Resolve/Execute and terminal tab removal refuse native-owned
+  work. A quit close plan captures its current frontend-owned native close ID, executes requested saves, and retains all
+  documents and the completed revision-bound plan. Authorization validates that proof, including effective dirty and detached state, and installs the discard
+  fence and native ownership together under the model lock. The prepared-quit fence also refuses new buffer,
+  reload and tab mutations until drain failure releases it; the native-confirmation fence still retains updates.
+  Native transfer, Cancel or a fresh ID cannot
+  revive a stale plan or remove tabs. Regular tab/window plans retain their origin but cannot remove tabs while
+  native ownership is active. This protects the race after Reload's final frontend check and during bootstrap.
+- Record these public contract and lifecycle changes in `docs/index.md` and a durable decision in
+  `docs/architecture.md`. Reuse the existing adapter, autosave, shutdown and removal owners; add no replay storage,
+  alternate scheduling queue or generic error framework.
+
+Rejected alternatives: unconditional reload after a one-second timeout loses unacknowledged text; flushing only in
+`componentDidCatch` leaves newer pending text exposed behind an older in-flight update; ordinary close-plan discard
+flushes scheduled autosave before asking; recovery acknowledgment alone cannot protect a delayed handshake; a
+frontend-only Reload gate cannot prevent native takeover between the last check and terminal tab removal.
+
+- The preview's existing class component `CommittedPreview` (`frontend/src/ui/components/MarkdownView.tsx:190`)
+  becomes its error boundary and shows the existing inline preview error (`preview.renderError`, `:229`). Today only
+  pipeline exceptions are caught (`:271-290`). While in the error state, `commitSuccessfulRender` (`:198-213`) does
+  not commit the failing candidate, so the retained preview stays the last good one; the error state resets when the
+  candidate content or the document changes, so removing the failing content renders the preview again.
+
+### 9. Preview measurement
+
+`useLivePreview`'s byte count (`frontend/src/logic/hooks/useLivePreview.ts:32-39`, called every render at `:114`) runs
+even while the preview is hidden, because `EditorStage.tsx:307` calls the hook before the `if (!visible)` return at
+`:385`. The hook takes a `visible` input, skips the measurement while hidden, and memoizes it on the content. One
+shared UTF-8 byte-length helper in `frontend/src/logic/` replaces the private counter and the `new Blob([text]).size`
+calls in `frontend/src/app/useTidyCommands.ts:162` and `frontend/src/logic/tidy/chunking.ts:40`.
+
+- Rejected: `useDeferredValue` for the preview source. The Markdown parse runs synchronously in one `useMemo`
+  (`MarkdownView.tsx:274-288`) and React yields only between components, so it would not unblock keystrokes. The
+  existing 2 MiB pause stays the protection for large documents.
+
+### 10. Layout persistence
+
+- `useWindowGeometry` sends `windowMaximized` only when it changes.
+- `persistLayout` increments `service.sequence` under `service.mu` (`internal/appmodel/service.go:600`).
+- `DrainBeforeClose` (`close_drain.go:23-25`) logs a layout flush failure, drops the pending layout and continues;
+  document write failures stay fatal. This refines ADR-0013's "flushed on close" to "flushed on close when possible".
+
+### 11. End-to-end isolation (exception to the no-test-branch rule)
+
+The reveal port and clipboard writer are wired unconditionally in
+`internal/application/application_context_holder.go:90-93`, which then appends `options.AppModelOptions`; a later
+option overrides an earlier one (`internal/appmodel/options.go:109-117`). When `E2EHeadlessEnabled()` is true,
+`main.go` (`:104`) adds `WithRevealPort` and `WithClipboardWriter` options that install recorders with recorders that append each call as one line to a file in the isolated e2e
+configuration folder (the harness already isolates `HOME`/`XDG_CONFIG_HOME`). The real OS commands keep their own
+coverage in `tests/go/integration/file/reveal_unix_test.go` and `clipboard_unix_test.go`. The frontend
+`recordLinkBridge` in `preview-links.test.ts:223-260` passes calls through to the backend, which is how a real Finder
+window opens today; with the recorder installed it reaches the recorder instead. The headless flag's two uses (hidden
+window, recording ports) are recorded together as ADR-0041; the flag stays confined to `main.go` and
+`native_window.go`.
+
+Playwright's `chromium-native` project (`frontend/playwright.config.ts:60-67` macOS subset, `:84-91` normal) runs
+only when `E2E_NATIVE_CLIPBOARD=1` or in the macOS subset. The variable is set in
+`.github/workflows/verification.yml`, the reusable workflow that `push.yml` and `release.yml` call: in the Linux
+`serial` e2e job (projects `chromium-serial,chromium-native`) and in the `macos-e2e` job. The manual container
+verification (`tools/verification-container/run.sh`) sets it as well. `release.yml` runs no end-to-end tests. A shared
+fixture saves the clipboard text before each native-clipboard test and restores it afterwards, replacing the per-test
+restores.
+
+### 12. Build and bundle
+
+Evidence from the 2026-10-10 run reports and the scripts:
+
+- `GOMARKEDIT_E2E_REUSE_DIST` already exists (`frontend/tests/support/prepare.ts:111,130-141`) but only
+  the old release workflow set it. `scripts/verify` (and `scripts/baseline`) set it for the E2E stage when Build passed
+  in the same run, so the frontend and generators are not run twice.
+- `scripts/build` passes `-skipbindings` (bindings are generated just before) and `-trimpath` to `wails build`.
+- The e2e binary drops `-gcflags all=-N -l` (`prepare.ts:243`); no debugger is attached.
+- golangci-lint gets an explicit package list so it no longer loads the Go package inside
+  `frontend/node_modules/flatted` (`scripts/lib/stages.sh:9`).
+- Both Jest stages run with `--maxWorkers=50%` instead of `--runInBand` (`stages.sh:45,53`) after two consecutive green runs prove no
+  ordering dependence; if any test proves order-dependent it is fixed, not re-serialized.
+- The release workflow does not verify against its own build. As delivered, it reuses the newest trusted successful
+  `master` verification of the exact commit, or calls the reusable `verification.yml` when there is none, and then
+  builds each of the five native targets once with `scripts/build --release`. Its build jobs run no tests and the exact
+  distributable is not launched in CI. This replaces the planned build-once-and-verify-against-it design and belongs
+  to the separate change `verification-first-release-ci`, whose nine commits are on this branch.
+- `rehype-highlight` is given the app's 26 grammars (`src/logic/markdown/highlight.ts:31-58,108-116`), but its static
+  `import {common}` (`node_modules/rehype-highlight/lib/index.js`) still bundles lowlight's whole common set. A small
+  rehype plugin on `createLowlight()` with only the registered grammars, reading code text with `hast-util-to-text`
+  (already a direct dependency), replaces it, keeping class names and the unknown-language behaviour. The unused direct `mdast-util-math`
+  dependency is removed.
+- Product metadata: `wails.json` gains an `info` block (company, product, copyright, version). `productVersion` must
+  be numeric `X.Y.Z`, because `build/windows/wails.exe.manifest` renders `{{.Info.ProductVersion}}.0`. The bundle
+  identifier `io.github.sanyokkua.gomarkedit` replaces `com.wails.{{.Name}}` in `build/darwin/Info.plist:11`,
+  `build/darwin/Info.dev.plist:11` and `build/windows/wails.exe.manifest:3`.
+
+Rejected: sharing one app launch across e2e tests. Launches are about 26 % of summed test time and the slowest files
+are dominated by in-test loops, so the gain does not justify cross-test state.
+
+### Verification approach
+
+- Each defect gets a regression test at the lowest level that reaches it with real code: Go integration tests with
+  real temporary files (`tests/go/integration/appmodel`, helpers in `support_test.go`, `writeMixedDocument`), Jest
+  hook/component tests, and Playwright e2e tests for Reload, undo across tabs, editor shortcuts and Copy path
+  recording.
+- `os.Chtimes` drives the touched-file cases; a fake native window and fake clock drive the watchdog; a failing
+  layout repository drives the drain test.
+- Theme generation after the `tokens.css` cleanup must be byte-identical; `plutil -p` checks the built `Info.plist`;
+  `pbpaste` before and after a full local e2e run and the absence of a Finder window check isolation.
+- Real-app checks (computer use) for Reload then tab switch, undo across tabs, Cmd+K/Cmd+E/Ctrl+Tab in the editor on
+  macOS, the watchdog-shown failure screen, and Quit from the "Something went wrong" screen.
+
+### Minimum-window Split repair
+
+The editor specification already requires both Split panes stacked at widths up to 376 CSS pixels. `EditorStage`
+provides the vertical layout and hides its divider at that breakpoint, but `EditorView` currently suppresses preview.
+Use the document visibility flags at every width (and retain Reading mode's preview-only override), so resizing does
+not write an arrangement or ratio. Integration tests cover both minimum widths and a wide–narrow–wide transition;
+real-backend browser checks cover geometry at 375, 376 and 377 px, the divider, persisted ratio and overflow.
+
+## Risks / Trade-offs
+
+- [Cached models raise memory use with many large open documents] → only writable documents (≤ 10 MiB) are cached
+  and models are disposed with their tab; 40 × 10 MiB is the theoretical bound, the same order as the backend copy.
+- [A capture-phase listener could steal keys from inputs] → it acts only for events targeted at the editor text area
+  and only for available catalogue commands; Find/Replace inputs and dialogs keep the bubble path; covered by the
+  existing "Key handled by the Find input" e2e test.
+- [A crash/reload could lose the last 50 ms of typing] → retain pending/in-flight generations before passive
+  cleanup; reload only after acknowledgment within a one-second attempt, otherwise keep text and permit retry.
+- [An external writer can race between the final fingerprint check and rename] → recheck immediately before replace,
+  use the platform's atomic replacement primitive, and document the remaining portable check-to-rename limitation;
+  no compare-and-swap guarantee is made.
+- [A native close deadline could overtake recovery or hydrated close plans] → explicit conservative native
+  confirmation, authoritative close ownership and ID-bound final removal guards; Cancel preserves tabs/text.
+- [Discard could start an autosave or miss an admitted write] → reversible scheduling fence and counted admissions;
+  await existing atomic writes, start no new document write, and resume latest retained intent on Cancel/refusal.
+- [Jest parallelism could expose hidden shared state] → require two consecutive green runs; fix any shared state.
+- [Replacing rehype-highlight could change highlighted output] → existing preview and highlight tests must pass
+  unchanged; compare rendered output for each registered language in a unit test.
+- [Creation falls back to a link or an existence check on filesystems without exclusive rename] → the exclusive move
+  is used wherever the platform offers it; the last-resort existence check keeps a narrow race and is the narrowest
+  guard those filesystems permit.
+- [Foreground Keep mine is not remembered] → known limitation above; the comparison reappears at the next Save, so no
+  work is lost and nothing is overwritten without a decision.
+- [Changing the bundle identifier resets the webview's local storage on macOS] → only the startup theme mirror lives
+  there; it is rewritten on the first settings load.
+
+## Migration Plan
+
+No data migration. Each task lands as its own commit on `feature/stabilize-for-beta`; any task can be reverted on
+its own.
+
+## Open Questions
+
+Whether a Keep mine chosen from a focus check should be remembered for the next Save (known limitation in §3). Decided
+during review: bundle identifier `io.github.sanyokkua.gomarkedit`; Save As stays available for
+write-protected files; Quit from the crash screen confirms before discarding unsaved changes; preview work is limited
+to §9.
+
+### Follow-up: conflict tab layout
+
+Give the visible conflict label its own bounded text layout, keeping the filename and close control distinct at narrow widths. Verify painted geometry in a real browser.

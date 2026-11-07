@@ -21,7 +21,7 @@ export default function CreateEntryPrompt({
     supportedSuffixes,
     onCreate,
     onCancel,
-}: CreateEntryPromptProps): React.JSX.Element | null {
+}: Readonly<CreateEntryPromptProps>): React.JSX.Element | null {
     const inputRef = useRef<HTMLInputElement | null>(null);
     const [name, setName] = useState('');
     const [error, setError] = useState<string | null>(null);

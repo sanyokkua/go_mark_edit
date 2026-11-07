@@ -38,7 +38,12 @@ export function discoverLocaleResources(bundledResources: Readonly<Record<string
 }
 
 export function createTranslator(localeResources: LocaleResources, fallbackLocale = 'en'): Translator {
-    const availableLocales: readonly string[] = Object.freeze(Object.keys(localeResources).sort());
+    const availableLocales: readonly string[] = Object.freeze(
+        Object.keys(localeResources).sort((a, b) => {
+            if (a === b) return 0;
+            return a < b ? -1 : 1;
+        }),
+    );
     let activeLocale =
         localeResources[fallbackLocale] === undefined ? (availableLocales[0] ?? fallbackLocale) : fallbackLocale;
 

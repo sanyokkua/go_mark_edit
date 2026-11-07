@@ -34,7 +34,8 @@ export function buildScrollMap(input: {
     previewMaxScrollTop: number;
 }): ScrollMap | null {
     const { sourceLines, lineCount, lineTop, editorMaxScrollTop, previewMaxScrollTop } = input;
-    if (!(editorMaxScrollTop > 0) || !(previewMaxScrollTop > 0)) return null;
+    if (editorMaxScrollTop <= 0 || Number.isNaN(editorMaxScrollTop)) return null;
+    if (previewMaxScrollTop <= 0 || Number.isNaN(previewMaxScrollTop)) return null;
 
     let lastAnchor: ScrollAnchor = { editor: 0, preview: 0 };
     let lastLine = 0;
@@ -79,5 +80,5 @@ export function mapScrollTop(map: ScrollMap, from: ScrollSyncPane, scrollTop: nu
     const end = anchors[low + 1];
     const ratio = (scrollTop - start[from]) / (end[from] - start[from]);
     const mapped = start[to] + ratio * (end[to] - start[to]);
-    return Math.min(Math.max(mapped, 0), anchors[anchors.length - 1][to]);
+    return Math.min(Math.max(mapped, 0), anchors.at(-1)![to]);
 }

@@ -2,9 +2,11 @@ package appmodel
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -16,11 +18,485 @@ type retentionTimer struct{}
 
 func (retentionTimer) Stop() bool { return true }
 
+type retentionClock struct{ callbacks []func() }
+
+type immediateAutosaveClock struct{}
+
+type observedAutosaveTimer struct{ stopped atomic.Bool }
+
+func (timer *observedAutosaveTimer) Stop() bool { timer.stopped.Store(true); return true }
+
+type delayedAutosaveClock struct {
+	firstStarted chan struct{}
+	releaseFirst chan struct{}
+	first        *observedAutosaveTimer
+	calls        atomic.Int32
+}
+
+func (clock *delayedAutosaveClock) AfterFunc(_ time.Duration, _ func()) AutosaveTimer {
+	timer := &observedAutosaveTimer{}
+	if clock.calls.Add(1) == 1 {
+		clock.first = timer
+		close(clock.firstStarted)
+		<-clock.releaseFirst
+	}
+	return timer
+}
+
+func (immediateAutosaveClock) AfterFunc(_ time.Duration, callback func()) AutosaveTimer {
+	callback()
+	return retentionTimer{}
+}
+
+func (clock *retentionClock) AfterFunc(_ time.Duration, callback func()) AutosaveTimer {
+	clock.callbacks = append(clock.callbacks, callback)
+	return retentionTimer{}
+}
+
+func TestDiscardFenceRetainsLatestAutosaveUntilCancel(t *testing.T) {
+	service := NewAppModelServiceForHost(WithEmitter(&retentionEmitter{}))
+	id := newRetentionDocument(t, service)
+	clock := &retentionClock{}
+	service.mu.Lock()
+	doc := service.state.documents[id]
+	doc.metadata.Path = filepath.Join(t.TempDir(), "file.md")
+	doc.metadata.Capability = string(file.CapabilityWritable)
+	doc.metadata.ContentRevision = 1
+	service.autosaveTimer = clock
+	service.mu.Unlock()
+	service.scheduleAutosave(id, 1)
+	service.BeginShutdownDiscard()
+	service.mu.Lock()
+	doc.metadata.ContentRevision = 2
+	service.mu.Unlock()
+	service.scheduleAutosave(id, 2)
+	service.scheduleAutosave(id, 1)
+	service.mu.Lock()
+	doc.metadata.ContentRevision = 3
+	service.mu.Unlock()
+	service.scheduleAutosave(id, 3)
+	if service.setWriteInFlight(context.Background(), id, true) {
+		t.Fatal("fence admitted a new write")
+	}
+	if len(clock.callbacks) != 1 {
+		t.Fatalf("armed %d timers while fenced", len(clock.callbacks))
+	}
+	clock.callbacks[0]()
+	service.mu.RLock()
+	held := doc.autosave
+	service.mu.RUnlock()
+	if held == nil || held.revision != 3 {
+		t.Fatal("fence lost the latest intent")
+	}
+	service.EndShutdownDrain()
+	if len(clock.callbacks) != 2 {
+		t.Fatalf("cancel armed %d timers, want 2", len(clock.callbacks))
+	}
+}
+
+func TestSynchronousAutosaveTimerDoesNotLeaveFiredHandleInstalled(t *testing.T) {
+	service := NewAppModelServiceForHost(WithEmitter(&retentionEmitter{}), AppModelOption{AutosaveTimer: immediateAutosaveClock{}})
+	path, id := openWarningDocument(t, service, t.TempDir())
+	if err := service.UpdateBuffer(context.Background(), id, "updated\n"); err != nil {
+		t.Fatal(err)
+	}
+	bytes, err := os.ReadFile(path)
+	if err != nil || string(bytes) != "updated\n" {
+		t.Fatalf("disk = %q, %v", bytes, err)
+	}
+	service.mu.RLock()
+	defer service.mu.RUnlock()
+	if doc := service.state.documents[id]; doc.autosave != nil || doc.autosaveInFlight != nil {
+		t.Fatal("fired autosave timer or claim remained installed")
+	}
+}
+
+func TestLateTimerInstallationCannotCrossDiscardFence(t *testing.T) {
+	service := NewAppModelServiceForHost(WithEmitter(&retentionEmitter{}))
+	id := newRetentionDocument(t, service)
+	clock := &delayedAutosaveClock{firstStarted: make(chan struct{}), releaseFirst: make(chan struct{})}
+	service.mu.Lock()
+	doc := service.state.documents[id]
+	doc.metadata.Path = filepath.Join(t.TempDir(), "file.md")
+	doc.metadata.Capability = string(file.CapabilityWritable)
+	doc.metadata.ContentRevision = 1
+	service.autosaveTimer = clock
+	service.mu.Unlock()
+	finished := make(chan struct{})
+	go func() { service.scheduleAutosave(id, 1); close(finished) }()
+	<-clock.firstStarted
+	service.BeginShutdownDiscard()
+	service.EndShutdownDrain()
+	close(clock.releaseFirst)
+	<-finished
+	if !clock.first.stopped.Load() {
+		t.Fatal("timer created before fence was installed after cancellation")
+	}
+	service.mu.RLock()
+	defer service.mu.RUnlock()
+	if doc.autosave == nil || doc.autosave.timer == clock.first {
+		t.Fatal("late timer replaced the rearmed intent")
+	}
+}
+
+func TestCloseFlushWaitsForClaimAndKeepsNewerIntent(t *testing.T) {
+	clock := &retentionClock{}
+	service := NewAppModelServiceForHost(WithEmitter(&retentionEmitter{}), AppModelOption{AutosaveTimer: clock})
+	path, id := openWarningDocument(t, service, t.TempDir())
+	if err := service.UpdateBuffer(context.Background(), id, "latest\n"); err != nil {
+		t.Fatal(err)
+	}
+	claim := make(chan struct{})
+	service.mu.Lock()
+	service.state.documents[id].autosaveInFlight = claim
+	service.mu.Unlock()
+	finished := make(chan struct{})
+	go func() { service.flushAutosaveForClose(id); close(finished) }()
+	select {
+	case <-finished:
+		t.Fatal("close did not wait for active claim")
+	case <-time.After(30 * time.Millisecond):
+	}
+	service.mu.Lock()
+	if service.state.documents[id].autosave == nil {
+		service.mu.Unlock()
+		t.Fatal("close discarded the newer intent")
+	}
+	service.state.documents[id].autosaveInFlight = nil
+	close(claim)
+	service.mu.Unlock()
+	select {
+	case <-finished:
+	case <-time.After(time.Second):
+		t.Fatal("close did not finish after claim")
+	}
+	bytes, err := os.ReadFile(path)
+	if err != nil || string(bytes) != "latest\n" {
+		t.Fatalf("disk = %q, %v", bytes, err)
+	}
+}
+
+func TestAutosaveClaimedBeforeFenceRetainsIntentWhenAdmissionIsRefused(t *testing.T) {
+	clock := &retentionClock{}
+	service := NewAppModelServiceForHost(WithEmitter(&retentionEmitter{}), AppModelOption{AutosaveTimer: clock})
+	path, id := openWarningDocument(t, service, t.TempDir())
+	started := make(chan struct{})
+	release := make(chan struct{})
+	var reads atomic.Int32
+	service.mu.Lock()
+	service.diskVersion = func(path string) (file.DiskVersion, error) {
+		if reads.Add(1) == 1 {
+			close(started)
+			<-release
+		}
+		return file.CurrentDiskVersion(path)
+	}
+	service.mu.Unlock()
+	if err := service.UpdateBuffer(context.Background(), id, "latest\n"); err != nil {
+		t.Fatal(err)
+	}
+	finished := make(chan struct{})
+	go func() { clock.callbacks[0](); close(finished) }()
+	<-started
+	service.BeginShutdownDiscard()
+	close(release)
+	<-finished
+	before, err := os.ReadFile(path)
+	if err != nil || string(before) == "latest\n" {
+		t.Fatalf("write occurred while fenced: %q, %v", before, err)
+	}
+	service.mu.RLock()
+	entry := service.state.documents[id].autosave
+	service.mu.RUnlock()
+	if entry == nil {
+		t.Fatal("refused autosave lost its intent")
+	}
+	service.EndShutdownDrain()
+	deadline := time.After(time.Second)
+	for {
+		bytes, err := os.ReadFile(path)
+		if err == nil && string(bytes) == "latest\n" {
+			break
+		}
+		select {
+		case <-deadline:
+			t.Fatal("cancel did not resume the claimed autosave")
+		default:
+			time.Sleep(time.Millisecond)
+		}
+	}
+}
+
+func TestOverlappingAutosavesPreserveNewestIntentAcrossFenceAndCancel(t *testing.T) {
+	clock := &retentionClock{}
+	service := NewAppModelServiceForHost(WithEmitter(&retentionEmitter{}), AppModelOption{AutosaveTimer: clock})
+	path, id := openWarningDocument(t, service, t.TempDir())
+	started, release := make(chan struct{}), make(chan struct{})
+	var reads atomic.Int32
+	service.mu.Lock()
+	service.diskVersion = func(path string) (file.DiskVersion, error) {
+		if reads.Add(1) == 1 {
+			close(started)
+			<-release
+		}
+		return file.CurrentDiskVersion(path)
+	}
+	service.mu.Unlock()
+	if err := service.UpdateBuffer(context.Background(), id, "first\n"); err != nil {
+		t.Fatal(err)
+	}
+	finished := make(chan struct{})
+	go func() { clock.callbacks[0](); close(finished) }()
+	<-started
+	service.mu.RLock()
+	claim := service.state.documents[id].autosaveInFlight
+	service.mu.RUnlock()
+	if err := service.UpdateBuffer(context.Background(), id, "latest\n"); err != nil {
+		t.Fatal(err)
+	}
+	clock.callbacks[1]()
+	service.mu.RLock()
+	doc := service.state.documents[id]
+	if doc.autosaveInFlight != claim || doc.autosave == nil || !doc.autosave.elapsed {
+		service.mu.RUnlock()
+		t.Fatal("newer callback replaced the active claim or lost its elapsed intent")
+	}
+	service.mu.RUnlock()
+	service.BeginShutdownDiscard()
+	close(release)
+	<-finished
+	select {
+	case <-claim:
+	default:
+		t.Fatal("original claim did not signal completion")
+	}
+	service.mu.RLock()
+	held := service.state.documents[id].autosave
+	service.mu.RUnlock()
+	if held == nil {
+		t.Fatal("discard fence lost newer intent")
+	}
+	service.EndShutdownDrain()
+	deadline := time.After(time.Second)
+	for {
+		bytes, err := os.ReadFile(path)
+		if err == nil && string(bytes) == "latest\n" {
+			break
+		}
+		select {
+		case <-deadline:
+			t.Fatal("cancel did not resume latest intent")
+		default:
+			time.Sleep(time.Millisecond)
+		}
+	}
+}
+
+func TestAutosaveClaimSignalsAfterDocumentRecordDisappears(t *testing.T) {
+	clock := &retentionClock{}
+	service := NewAppModelServiceForHost(WithEmitter(&retentionEmitter{}), AppModelOption{AutosaveTimer: clock})
+	_, id := openWarningDocument(t, service, t.TempDir())
+	started, release := make(chan struct{}), make(chan struct{})
+	service.mu.Lock()
+	service.diskVersion = func(path string) (file.DiskVersion, error) {
+		close(started)
+		<-release
+		return file.CurrentDiskVersion(path)
+	}
+	service.mu.Unlock()
+	if err := service.UpdateBuffer(context.Background(), id, "change\n"); err != nil {
+		t.Fatal(err)
+	}
+	finished := make(chan struct{})
+	go func() { clock.callbacks[0](); close(finished) }()
+	<-started
+	service.mu.Lock()
+	claim := service.state.documents[id].autosaveInFlight
+	delete(service.state.documents, id)
+	service.mu.Unlock()
+	close(release)
+	<-finished
+	select {
+	case <-claim:
+	default:
+		t.Fatal("disposed record left claim waiter blocked")
+	}
+}
+
+func TestCloseFlushPreservesRestoredIntentAfterFenceEnds(t *testing.T) {
+	clock := &retentionClock{}
+	service := NewAppModelServiceForHost(WithEmitter(&retentionEmitter{}), AppModelOption{AutosaveTimer: clock})
+	path, id := openWarningDocument(t, service, t.TempDir())
+	if err := service.UpdateBuffer(context.Background(), id, "latest\n"); err != nil {
+		t.Fatal(err)
+	}
+	started, release := make(chan struct{}), make(chan struct{})
+	var reads atomic.Int32
+	service.mu.Lock()
+	doc := service.state.documents[id]
+	entry := doc.autosave
+	service.diskVersion = func(path string) (file.DiskVersion, error) {
+		if reads.Add(1) == 1 {
+			close(started)
+			<-release
+		}
+		return file.CurrentDiskVersion(path)
+	}
+	service.mu.Unlock()
+	result := make(chan autosaveRunResult, 1)
+	go func() { result <- service.runAutosave(id, entry.revision, entry.generation) }()
+	<-started
+	service.BeginShutdownDiscard()
+	close(release)
+	outcome := <-result
+	if outcome != autosaveClaimed {
+		t.Fatalf("actual autosave result = %v, want claimed", outcome)
+	}
+	// Keep the owner from immediately retrying while cancellation ends the
+	// fence, so cleanup is exercised deterministically at the seam used by
+	// flushAutosaveForClose after its real runAutosave call returns.
+	blockRetry := make(chan struct{})
+	service.mu.Lock()
+	if doc.autosave != entry {
+		service.mu.Unlock()
+		t.Fatal("refused claim did not restore its original entry")
+	}
+	doc.autosaveInFlight = blockRetry
+	service.mu.Unlock()
+	service.EndShutdownDrain()
+	service.mu.Lock()
+	doc.autosaveInFlight = nil
+	close(blockRetry)
+	cancelled := service.cancelUnusableAutosaveLocked(id, doc, entry, outcome)
+	service.mu.Unlock()
+	if cancelled {
+		t.Fatal("close cleanup discarded a restored autosave intent")
+	}
+	service.flushAutosaveForClose(id)
+	bytes, err := os.ReadFile(path)
+	if err != nil || string(bytes) != "latest\n" {
+		t.Fatalf("disk = %q, %v", bytes, err)
+	}
+}
+
 type retentionEmitter struct{}
+
+func TestAutosaveDoesNotReplaceAnActiveClaim(t *testing.T) {
+	service := NewAppModelServiceForHost(WithEmitter(&retentionEmitter{}))
+	id := newRetentionDocument(t, service)
+	path := filepath.Join(t.TempDir(), "file.md")
+	if err := os.WriteFile(path, []byte("disk"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	service.mu.Lock()
+	doc := service.state.documents[id]
+	doc.metadata.Path = path
+	doc.metadata.Capability = string(file.CapabilityWritable)
+	doc.metadata.ContentRevision = 1
+	service.autosaveEnabled = true
+	active := make(chan struct{})
+	doc.autosaveInFlight = active
+	entry := &autosaveTimerEntry{revision: 1, generation: 1}
+	doc.autosave = entry
+	service.mu.Unlock()
+	service.runAutosave(id, 1, 1)
+	service.mu.RLock()
+	defer service.mu.RUnlock()
+	if doc.autosaveInFlight != active || doc.autosave != entry {
+		t.Fatal("newer intent replaced an active autosave claim")
+	}
+}
+
+func TestAutosaveOwnershipSurvivesFailedConcurrentPublication(t *testing.T) {
+	ctx := context.Background()
+	service := NewAppModelServiceForHost(WithEmitter(&retentionEmitter{}))
+	id := newRetentionDocument(t, service)
+	other := newRetentionDocument(t, service)
+	emitter := &failingBlockedEmitter{started: make(chan struct{}), release: make(chan struct{})}
+	service.mu.Lock()
+	doc := service.state.documents[id]
+	doc.metadata.Path = filepath.Join(t.TempDir(), "file.md")
+	doc.metadata.Capability = string(file.CapabilityWritable)
+	doc.metadata.ContentRevision = 1
+	doc.autosave = &autosaveTimerEntry{revision: 1, generation: 1}
+	service.emitter = emitter
+	service.mu.Unlock()
+	finished := make(chan error, 1)
+	go func() { finished <- service.UpdateBuffer(ctx, other, "change") }()
+	<-emitter.started
+	entry := &autosaveTimerEntry{revision: 1, generation: 2, elapsed: true}
+	claim := make(chan struct{})
+	service.mu.Lock()
+	doc.autosave = entry
+	doc.autosaveGeneration = 2
+	doc.autosaveInFlight = claim
+	service.mu.Unlock()
+	close(emitter.release)
+	if err := <-finished; err == nil {
+		t.Fatal("publication unexpectedly succeeded")
+	}
+	service.mu.RLock()
+	current := service.state.documents[id]
+	defer service.mu.RUnlock()
+	if current.autosave != entry || current.autosaveInFlight != claim || current.autosaveGeneration != 2 {
+		t.Fatal("rollback restored stale autosave ownership")
+	}
+}
+
+func TestElapsedAutosaveResumesAfterNewerPublicationRollsBack(t *testing.T) {
+	ctx := context.Background()
+	clock := &retentionClock{}
+	service := NewAppModelServiceForHost(WithEmitter(&retentionEmitter{}), AppModelOption{AutosaveTimer: clock})
+	path, id := openWarningDocument(t, service, t.TempDir())
+	if err := service.UpdateBuffer(ctx, id, "first\n"); err != nil {
+		t.Fatal(err)
+	}
+	emitter := &failingBlockedEmitter{started: make(chan struct{}), release: make(chan struct{})}
+	service.mu.Lock()
+	service.emitter = emitter
+	service.mu.Unlock()
+	finished := make(chan error, 1)
+	go func() { finished <- service.UpdateBuffer(ctx, id, "second\n") }()
+	<-emitter.started
+	clock.callbacks[0]()
+	service.mu.Lock()
+	service.emitter = &retentionEmitter{}
+	service.mu.Unlock()
+	close(emitter.release)
+	if err := <-finished; err == nil {
+		t.Fatal("publication unexpectedly succeeded")
+	}
+	deadline := time.After(time.Second)
+	for {
+		bytes, err := os.ReadFile(path)
+		if err == nil && string(bytes) == "first\n" {
+			break
+		}
+		select {
+		case <-deadline:
+			t.Fatal("eligible elapsed autosave did not resume after rollback")
+		default:
+			time.Sleep(time.Millisecond)
+		}
+	}
+}
 
 func (retentionEmitter) EmitStatePatch(context.Context, apperr.AppStatePatch) error { return nil }
 
 func (retentionEmitter) EmitAsyncError(context.Context, apperr.WireError) error { return nil }
+
+type failingBlockedEmitter struct {
+	started chan struct{}
+	release chan struct{}
+}
+
+func (emitter *failingBlockedEmitter) EmitStatePatch(context.Context, apperr.AppStatePatch) error {
+	close(emitter.started)
+	<-emitter.release
+	return errors.New("blocked publication failed")
+}
+
+func (*failingBlockedEmitter) EmitAsyncError(context.Context, apperr.WireError) error { return nil }
 
 // newRetentionDocument creates the document a new service no longer starts with.
 func newRetentionDocument(t *testing.T, service *AppModelService) string {
@@ -180,13 +656,13 @@ func TestClosingDocumentRejectsAWriteThatHasNotStarted(t *testing.T) {
 func TestCloseDocumentsSealsTheRecordBeforeWaitingForWrites(t *testing.T) {
 	service := NewAppModelServiceForHost(WithEmitter(&retentionEmitter{}))
 	documentID := newRetentionDocument(t, service)
-	service.mu.Lock()
-	service.state.documents[documentID].writeInFlight = true
-	service.mu.Unlock()
+	if !service.setWriteInFlight(context.Background(), documentID, true) {
+		t.Fatal("write was not admitted")
+	}
 
 	closed := make(chan apperr.TabTransitionResult, 1)
 	go func() {
-		closed <- service.closeDocuments(context.Background(), []string{documentID}, nil)
+		closed <- service.closeDocuments(context.Background(), []string{documentID}, nil, "")
 	}()
 
 	deadline := time.NewTimer(time.Second)
@@ -213,9 +689,7 @@ func TestCloseDocumentsSealsTheRecordBeforeWaitingForWrites(t *testing.T) {
 		t.Fatal("a new write was accepted after the close barrier")
 	}
 
-	service.mu.Lock()
-	service.state.documents[documentID].writeInFlight = false
-	service.mu.Unlock()
+	service.setWriteInFlight(context.Background(), documentID, false)
 
 	select {
 	case result := <-closed:
@@ -225,4 +699,371 @@ func TestCloseDocumentsSealsTheRecordBeforeWaitingForWrites(t *testing.T) {
 	case <-time.After(time.Second):
 		t.Fatal("closeDocuments did not finish after the accepted write drained")
 	}
+}
+
+func TestPreparedQuitRejectsOwnershipTransfer(t *testing.T) {
+	for _, newOwner := range []string{"native", "cleared", "new"} {
+		t.Run(newOwner, func(t *testing.T) {
+			service := NewAppModelServiceForHost(WithEmitter(&retentionEmitter{}))
+			first := newRetentionDocument(t, service)
+			second := newRetentionDocument(t, service)
+			service.SetPendingClose(apperr.PendingClose{ID: "a", Owner: apperr.PendingCloseOwnerFrontend})
+			state, _ := service.GetState(context.Background())
+			plan := service.PrepareClose(context.Background(), apperr.ClosePlanQuit, nil, state.Snapshot.TabSetRevision)
+			if plan.Error != nil || plan.Data == nil {
+				t.Fatalf("prepare = %+v", plan)
+			}
+			if result := service.ExecuteClosePlan(context.Background(), plan.Data.ID); result.Error != nil || result.Status != apperr.TabTransitionNoop {
+				t.Fatalf("execute = %+v", result)
+			}
+			transferRetentionClose(service, newOwner)
+			if refusal := service.ClaimPreparedQuit("a"); refusal == nil {
+				t.Fatal("stale authorization accepted")
+			}
+			assertRetentionDocumentsOpen(t, service, first, second)
+		})
+	}
+}
+
+func transferRetentionClose(service *AppModelService, newOwner string) {
+	service.SetPendingClose(apperr.PendingClose{ID: "a", Owner: apperr.PendingCloseOwnerNative})
+	if newOwner != "native" {
+		service.ClearPendingClose("a")
+	}
+	if newOwner == "new" {
+		service.SetPendingClose(apperr.PendingClose{ID: "b", Owner: apperr.PendingCloseOwnerFrontend})
+	}
+}
+
+func assertRetentionDocumentsOpen(t *testing.T, service *AppModelService, ids ...string) {
+	t.Helper()
+	service.mu.RLock()
+	defer service.mu.RUnlock()
+	for _, id := range ids {
+		if doc := service.state.documents[id]; doc == nil || doc.closing {
+			t.Errorf("document %s removed or sealed", id)
+		}
+	}
+}
+
+func TestCloseDocumentsClearsPriorSealsWhenLaterTargetIsMissing(t *testing.T) {
+	service := NewAppModelServiceForHost(WithEmitter(&retentionEmitter{}))
+	first := newRetentionDocument(t, service)
+	result := service.closeDocuments(context.Background(), []string{first, "missing"}, nil, "")
+	if result.Error == nil {
+		t.Fatalf("close unexpectedly succeeded: %+v", result)
+	}
+	service.mu.RLock()
+	defer service.mu.RUnlock()
+	if doc := service.state.documents[first]; doc == nil || doc.closing {
+		t.Fatal("first document remained sealed after refusal")
+	}
+}
+
+func TestCloseWaitsForEveryAdmittedWrite(t *testing.T) {
+	service := NewAppModelServiceForHost(WithEmitter(&retentionEmitter{}))
+	documentID := newRetentionDocument(t, service)
+	ctx := context.Background()
+	if !service.setWriteInFlight(ctx, documentID, true) {
+		t.Fatal("first write should be admitted")
+	}
+	if !service.setWriteInFlight(ctx, documentID, true) {
+		t.Fatal("second write should be admitted")
+	}
+	service.setWriteInFlight(ctx, documentID, false)
+	service.mu.RLock()
+	writing := service.state.documents[documentID].effectiveMetadata().WriteInFlight
+	service.mu.RUnlock()
+	if !writing {
+		t.Fatal("document stopped reporting a write while the second admitted write is pending")
+	}
+	drained := make(chan struct{})
+	go func() { service.waitForDocumentIdle(documentID); close(drained) }()
+	select {
+	case <-drained:
+		t.Fatal("drain returned before the second admitted write completed")
+	case <-time.After(30 * time.Millisecond):
+	}
+	service.setWriteInFlight(ctx, documentID, false)
+	select {
+	case <-drained:
+	case <-time.After(time.Second):
+		t.Fatal("drain did not return after both writes completed")
+	}
+}
+
+func TestCloseWaitsForQueuedExecutorWrite(t *testing.T) {
+	ctx := context.Background()
+	firstStarted, secondStarted := make(chan struct{}), make(chan struct{})
+	finishFirst, finishSecond := make(chan struct{}), make(chan struct{})
+	var calls atomic.Int32
+	executor := func(snapshot WriteSnapshot) (file.DiskVersion, error) {
+		if calls.Add(1) == 1 {
+			close(firstStarted)
+			<-finishFirst
+		} else {
+			close(secondStarted)
+			<-finishSecond
+		}
+		return file.DiskVersion{Exists: true, Size: int64(len(snapshot.EncodedData))}, nil
+	}
+	service := NewAppModelServiceForHost(WithEmitter(&retentionEmitter{}), AppModelOption{WriteExecutor: executor})
+	_, documentID := openWarningDocument(t, service, t.TempDir())
+	service.mu.RLock()
+	document := service.state.documents[documentID]
+	first := writeSnapshot{documentID: documentID, contentRevision: 1, content: "first\n", path: document.metadata.Path, identity: document.identity, metadata: document.metadata, expectedVersion: document.baselineVersion}
+	service.mu.RUnlock()
+	second := first
+	second.contentRevision = 2
+	second.content = "second\n"
+	results := make(chan apperr.WriteResult, 2)
+	go func() { results <- service.executeWrite(ctx, first, SaveOriginExplicitSave) }()
+	select {
+	case <-firstStarted:
+	case <-time.After(time.Second):
+		t.Fatal("first executor did not start")
+	}
+	go func() { results <- service.executeWrite(ctx, second, SaveOriginExplicitSave) }()
+	deadline := time.After(time.Second)
+	for {
+		service.mu.RLock()
+		count := service.state.documents[documentID].admittedWrites
+		service.mu.RUnlock()
+		if count == 2 {
+			break
+		}
+		select {
+		case <-deadline:
+			t.Fatal("second write was not admitted")
+		default:
+			time.Sleep(time.Millisecond)
+		}
+	}
+	close(finishFirst)
+	select {
+	case <-secondStarted:
+	case <-time.After(time.Second):
+		t.Fatal("second executor did not start")
+	}
+	if result := <-results; result.Status != apperr.WriteStatusCommitted {
+		t.Fatalf("first result = %+v", result)
+	}
+	drained := make(chan struct{})
+	go func() { service.waitForDocumentIdle(documentID); close(drained) }()
+	select {
+	case <-drained:
+		t.Fatal("drain completed while the queued write was executing")
+	case <-time.After(30 * time.Millisecond):
+	}
+	close(finishSecond)
+	if result := <-results; result.Status != apperr.WriteStatusCommitted {
+		t.Fatalf("second result = %+v", result)
+	}
+	select {
+	case <-drained:
+	case <-time.After(time.Second):
+		t.Fatal("drain did not complete after queued write")
+	}
+}
+
+func TestWriteCompletionReleasesOnlyItsAdmission(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		executor WriteExecutor
+		want     apperr.WriteStatus
+	}{
+		{"failure", func(WriteSnapshot) (file.DiskVersion, error) { return file.DiskVersion{}, errors.New("write failed") }, apperr.WriteStatusRefused},
+		{"committed warning", func(WriteSnapshot) (file.DiskVersion, error) {
+			version := file.DiskVersion{Exists: true}
+			return version, &committedWriteError{version: version, err: errors.New("sync failed")}
+		}, apperr.WriteStatusCommitted},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := context.Background()
+			service := NewAppModelServiceForHost(WithEmitter(&retentionEmitter{}), AppModelOption{WriteExecutor: tc.executor})
+			_, id := openWarningDocument(t, service, t.TempDir())
+			service.mu.RLock()
+			document := service.state.documents[id]
+			snapshot := writeSnapshot{documentID: id, contentRevision: 1, content: "changed\n", path: document.metadata.Path, identity: document.identity, metadata: document.metadata, expectedVersion: document.baselineVersion}
+			service.mu.RUnlock()
+			if !service.setWriteInFlight(ctx, id, true) {
+				t.Fatal("first write was not admitted")
+			}
+			if result := service.executeWrite(ctx, snapshot, SaveOriginExplicitSave); result.Status != tc.want {
+				t.Fatalf("executeWrite = %+v, want %s", result, tc.want)
+			}
+			service.mu.RLock()
+			count := service.state.documents[id].admittedWrites
+			writing := service.state.documents[id].effectiveMetadata().WriteInFlight
+			service.mu.RUnlock()
+			if count != 1 || !writing {
+				t.Fatalf("remaining admissions = %d, writing = %t; want 1 and true", count, writing)
+			}
+			service.setWriteInFlight(ctx, id, false)
+		})
+	}
+}
+
+type failedPublicationAdmissionCase struct {
+	name    string
+	initial int
+	admit   bool
+	want    uint64
+	other   bool
+}
+
+func TestWriteAdmissionsSurviveFailedConcurrentPublication(t *testing.T) {
+	for _, tc := range []failedPublicationAdmissionCase{
+		{"admission", 1, true, 2, false},
+		{"completion", 2, false, 1, false},
+		{"other document admission", 1, true, 2, true},
+		{"other document completion", 2, false, 1, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) { runFailedPublicationAdmission(t, tc) })
+	}
+}
+
+func runFailedPublicationAdmission(t *testing.T, tc failedPublicationAdmissionCase) {
+	t.Helper()
+	ctx := context.Background()
+	service := NewAppModelServiceForHost(WithEmitter(&retentionEmitter{}))
+	id := newRetentionDocument(t, service)
+	publicationID := id
+	if tc.other {
+		publicationID = newRetentionDocument(t, service)
+	}
+	for i := 0; i < tc.initial; i++ {
+		if !service.setWriteInFlight(ctx, id, true) {
+			t.Fatal("initial write admission failed")
+		}
+	}
+	emitter := &failingBlockedEmitter{started: make(chan struct{}), release: make(chan struct{})}
+	service.mu.Lock()
+	service.emitter = emitter
+	service.mu.Unlock()
+	finished := make(chan error, 1)
+	go func() { finished <- service.UpdateBuffer(ctx, publicationID, "changed") }()
+	select {
+	case <-emitter.started:
+	case <-time.After(time.Second):
+		t.Fatal("publication did not start")
+	}
+	if !service.setWriteInFlight(ctx, id, tc.admit) {
+		t.Fatal("count-only write transition failed")
+	}
+	close(emitter.release)
+	if err := <-finished; err == nil {
+		t.Fatal("publication unexpectedly succeeded")
+	}
+	service.mu.RLock()
+	count := service.state.documents[id].admittedWrites
+	content := service.state.documents[publicationID].content
+	service.mu.RUnlock()
+	if count != tc.want {
+		t.Fatalf("admissions after failed publication = %d, want %d", count, tc.want)
+	}
+	if content != "" {
+		t.Fatalf("failed buffer publication retained content %q", content)
+	}
+}
+
+type fixedSaveDialog string
+
+func (dialog fixedSaveDialog) ChooseSaveFile(context.Context, SaveDialogRequest) (string, error) {
+	return string(dialog), nil
+}
+
+func (fixedSaveDialog) ConfirmOverwrite(context.Context, string) (bool, error) { return true, nil }
+
+const mixedFixture = "a\nb\nc\r\n"
+
+// openMixedDocumentWithStaleNormalization returns an edited mixed-ending
+// document and an LF normalization token, after which the document's proposed
+// ending becomes CRLF. No public command changes the proposed ending while an
+// authorization is outstanding, so the record is changed directly; the tests
+// show that an authorization for another ending never writes.
+func openMixedDocumentWithStaleNormalization(t *testing.T, service *AppModelService) (string, string, uint64, string) {
+	t.Helper()
+	ctx := context.Background()
+	path := filepath.Join(t.TempDir(), "mixed.md")
+	if err := os.WriteFile(path, []byte(mixedFixture), 0o644); err != nil {
+		t.Fatalf("write document: %v", err)
+	}
+	opened := service.OpenPath(ctx, path, 0)
+	if opened.Status != OpenStatusOpened {
+		t.Fatalf("OpenPath = %+v", opened)
+	}
+	if err := service.UpdateBuffer(ctx, opened.DocumentID, "a\nb\nc\nd\n"); err != nil {
+		t.Fatalf("UpdateBuffer: %v", err)
+	}
+	state, err := service.GetState(ctx)
+	if err != nil {
+		t.Fatalf("GetState: %v", err)
+	}
+	revision := state.Snapshot.Documents[opened.DocumentID].ContentRevision
+	requested := service.RequestNormalization(opened.DocumentID, revision)
+	if requested.Status != apperr.WriteStatusNeedsNormalization || requested.ProposedEnding != string(file.LineEndingLF) {
+		t.Fatalf("RequestNormalization = %+v, want an LF proposal", requested)
+	}
+	service.mu.Lock()
+	service.state.documents[opened.DocumentID].normalizationEnding = string(file.LineEndingCRLF)
+	service.mu.Unlock()
+	return path, opened.DocumentID, revision, requested.DecisionToken
+}
+
+func assertMixedFileUnchanged(t *testing.T, path string) {
+	t.Helper()
+	disk, err := os.ReadFile(path)
+	if err != nil || string(disk) != mixedFixture {
+		t.Fatalf("disk = %q, %v; want the mixed file unchanged", disk, err)
+	}
+}
+
+func TestSaveRefusesANormalizationAuthorizedForAnotherLineEnding(t *testing.T) {
+	service := NewAppModelServiceForHost(WithEmitter(&retentionEmitter{}))
+	path, id, revision, token := openMixedDocumentWithStaleNormalization(t, service)
+
+	result := service.Save(context.Background(), id, revision, token)
+
+	if result.Status != apperr.WriteStatusNeedsNormalization || result.DecisionToken == token || result.ProposedEnding != string(file.LineEndingCRLF) {
+		t.Fatalf("Save = %+v, want a fresh CRLF normalization request", result)
+	}
+	assertMixedFileUnchanged(t, path)
+}
+
+func TestSaveAsRefusesANormalizationAuthorizedForAnotherLineEnding(t *testing.T) {
+	target := filepath.Join(t.TempDir(), "copy.md")
+	service := NewAppModelServiceForHost(WithEmitter(&retentionEmitter{}), WithDialogs(nil, fixedSaveDialog(target)))
+	path, id, revision, token := openMixedDocumentWithStaleNormalization(t, service)
+
+	result := service.SaveAs(context.Background(), id, revision, token)
+
+	if result.Status != apperr.WriteStatusNeedsNormalization || result.DecisionToken == token || result.ProposedEnding != string(file.LineEndingCRLF) {
+		t.Fatalf("SaveAs = %+v, want a fresh CRLF normalization request", result)
+	}
+	assertMixedFileUnchanged(t, path)
+	if _, err := os.Stat(target); !os.IsNotExist(err) {
+		t.Fatalf("Save As target stat error = %v, want no file", err)
+	}
+}
+
+func TestClosePlanRefusesANormalizationAuthorizedForAnotherLineEnding(t *testing.T) {
+	ctx := context.Background()
+	service := NewAppModelServiceForHost(WithEmitter(&retentionEmitter{}))
+	path, id, _, token := openMixedDocumentWithStaleNormalization(t, service)
+	state, err := service.GetState(ctx)
+	if err != nil {
+		t.Fatalf("GetState: %v", err)
+	}
+	plan := service.PrepareClose(ctx, apperr.ClosePlanSingle, []string{id}, state.Snapshot.TabSetRevision)
+	if plan.Error != nil || plan.Data == nil {
+		t.Fatalf("PrepareClose = %+v", plan)
+	}
+
+	resolved := service.ResolveClosePlan(ctx, plan.Data.ID, []apperr.ClosePlanDecision{{DocumentID: id, Choice: apperr.CloseChoiceSave, DecisionToken: token}})
+
+	if resolved.Data == nil || resolved.Data.Status == apperr.ClosePlanReady || resolved.Data.Targets[0].NormalizationToken == token || resolved.Data.Targets[0].ProposedEnding != string(file.LineEndingCRLF) {
+		t.Fatalf("ResolveClosePlan = %+v, want a fresh CRLF normalization request instead of a ready plan", resolved)
+	}
+	assertMixedFileUnchanged(t, path)
 }

@@ -1,5 +1,18 @@
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, readFileSync, readdirSync, rmSync, utimesSync, writeFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import {
+    copyFileSync,
+    mkdtempSync,
+    mkdirSync,
+    readFileSync,
+    readdirSync,
+    rmSync,
+    statSync,
+    chmodSync,
+    utimesSync,
+    writeFileSync,
+    lstatSync,
+} from 'node:fs';
 import test from 'node:test';
 import { join, resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -7,6 +20,376 @@ import { spawnSync } from 'node:child_process';
 const repoRoot = resolve(import.meta.dirname, '../..');
 const resultsScript = join(repoRoot, 'tools/verify/results.mjs');
 const commonScript = join(repoRoot, 'scripts/lib/common.sh');
+
+void test('only restores generated tree timestamps when its complete contents are unchanged', () => {
+    const root = fixtureDirectory();
+    try {
+        const before = join(root, 'before');
+        const after = join(root, 'after');
+        const old = new Date('2020-01-01T00:00:00Z');
+        const newer = new Date('2022-01-01T00:00:00Z');
+        const reset = () => {
+            rmSync(before, { recursive: true, force: true });
+            rmSync(after, { recursive: true, force: true });
+            for (const path of [before, after]) {
+                mkdirSync(join(path, 'runtime'), { recursive: true });
+                writeFileSync(join(path, 'runtime', 'runtime.js'), 'same');
+                for (const entry of [join(path, 'runtime', 'runtime.js'), join(path, 'runtime'), path]) {
+                    const time = path === before ? old : newer;
+                    utimesSync(entry, time, time);
+                }
+            }
+        };
+        const restore = () => {
+            const result = spawnSync(
+                'bash',
+                [
+                    '-c',
+                    `source ${shellQuote(commonScript)}; restore_unchanged_tree_times ${shellQuote(before)} ${shellQuote(after)}`,
+                ],
+                { encoding: 'utf8' },
+            );
+            assert.equal(result.status, 0, result.stderr);
+        };
+        reset();
+        restore();
+        for (const name of ['', 'runtime', 'runtime/runtime.js']) {
+            assert.equal(statSync(join(after, name)).mtimeMs, old.getTime());
+        }
+        for (const change of ['changed', 'added', 'deleted']) {
+            reset();
+            if (change === 'changed') writeFileSync(join(after, 'runtime', 'runtime.js'), 'different');
+            if (change === 'added') writeFileSync(join(after, 'runtime', 'extra.js'), 'new');
+            if (change === 'deleted') rmSync(join(after, 'runtime', 'runtime.js'));
+            utimesSync(after, newer, newer);
+            restore();
+            assert.equal(statSync(after).mtimeMs, newer.getTime(), change);
+        }
+    } finally {
+        rmSync(root, { recursive: true, force: true });
+    }
+});
+
+void test('verification and baseline pass fresh build reuse only to the same-run E2E stage', () => {
+    const root = fixtureDirectory();
+    try {
+        mkdirSync(join(root, 'scripts/lib'), { recursive: true });
+        mkdirSync(join(root, 'bin'), { recursive: true });
+        for (const name of ['verify', 'baseline'])
+            copyFileSync(join(repoRoot, 'scripts', name), join(root, 'scripts', name));
+        writeFileSync(
+            join(root, 'scripts/lib/common.sh'),
+            `REPO_ROOT=${shellQuote(root)}\nnew_run_dir() { RUN_DIR="$REPO_ROOT/run"; mkdir -p "$RUN_DIR"; }\nbaseline_name() { printf fixture; }\nwrite_skipped_stage() { :; }\nusage_error() { exit 2; }\ncapture_stage() { local name="$1"; shift 2; "$@"; }\n`,
+        );
+        writeFileSync(
+            join(root, 'scripts/lib/stages.sh'),
+            `record() { printf '%s:%s\\n' "$1" "\${GOMARKEDIT_E2E_REUSE_DIST:-unset}" >> "$REPO_ROOT/calls"; [[ "$1" != "\${FAIL_STAGE:-}" ]]; }\nrun_lint_stage() { record lint; }\nrun_format_stage() { record format; }\nrun_build_stage() { record build; }\nrun_unit_stage() { record unit; }\nrun_integration_stage() { record integration; }\nrun_e2e_stage() { record e2e; }\n`,
+        );
+        for (const binary of ['node', 'git'])
+            writeFileSync(join(root, 'bin', binary), '#!/bin/sh\nexit 0\n', { mode: 0o755 });
+        const run = (entry, args = [], fail = '') => {
+            rmSync(join(root, 'calls'), { force: true });
+            const env = { ...process.env, PATH: `${join(root, 'bin')}:${process.env.PATH}`, FAIL_STAGE: fail };
+            delete env.GOMARKEDIT_E2E_REUSE_DIST;
+            const result = spawnSync('bash', [join(root, 'scripts', entry), ...args], {
+                cwd: root,
+                env,
+                encoding: 'utf8',
+            });
+            return { result, calls: readFileSync(join(root, 'calls'), 'utf8').trim().split('\n') };
+        };
+        assert.deepEqual(run('verify').calls, [
+            'lint:unset',
+            'format:unset',
+            'build:unset',
+            'unit:unset',
+            'integration:unset',
+            'e2e:1',
+        ]);
+        assert.deepEqual(run('verify', ['e2e']).calls, ['e2e:unset']);
+        assert.ok(!run('verify', ['--skip', 'e2e']).calls.some((line) => line.startsWith('e2e:')));
+        assert.ok(!run('verify', [], 'build').calls.some((line) => line.startsWith('e2e:')));
+        assert.equal(run('baseline', ['--compare']).calls.at(-1), 'e2e:1');
+        assert.equal(run('baseline', ['--compare'], 'build').calls.at(-1), 'e2e:unset');
+    } finally {
+        rmSync(root, { recursive: true, force: true });
+    }
+});
+
+void test('verify forwards a validated version only to its single build stage', () => {
+    const root = fixtureDirectory();
+    try {
+        mkdirSync(join(root, 'scripts/lib'), { recursive: true });
+        mkdirSync(join(root, 'bin'), { recursive: true });
+        copyFileSync(join(repoRoot, 'scripts/verify'), join(root, 'scripts/verify'));
+        copyFileSync(join(repoRoot, 'scripts/lib/release_version.sh'), join(root, 'scripts/lib/release_version.sh'));
+        writeFileSync(
+            join(root, 'scripts/lib/common.sh'),
+            `REPO_ROOT=${shellQuote(root)}\nnew_run_dir() { RUN_DIR="$REPO_ROOT/run"; mkdir -p "$RUN_DIR"; }\nwrite_skipped_stage() { :; }\nusage_error() { exit 2; }\ncapture_stage() { shift 2; "$@"; }\n`,
+        );
+        writeFileSync(
+            join(root, 'scripts/lib/stages.sh'),
+            `record() { printf '%s:%s:%s\\n' "$1" "\${2:-}" "\${GOMARKEDIT_E2E_REUSE_DIST:-unset}" >> "$REPO_ROOT/calls"; [[ "$1" != "\${FAIL_STAGE:-}" ]]; }\nrun_lint_stage() { record lint "$*"; }\nrun_format_stage() { record format "$*"; }\nrun_build_stage() { record build "$*"; }\nrun_unit_stage() { record unit "$*"; }\nrun_integration_stage() { record integration "$*"; }\nrun_e2e_stage() { record e2e "$*"; }\n`,
+        );
+        writeFileSync(join(root, 'bin/node'), '#!/bin/sh\nexit 0\n', { mode: 0o755 });
+        const run = (args, fail = '') => {
+            rmSync(join(root, 'calls'), { force: true });
+            const result = spawnSync('bash', [join(root, 'scripts/verify'), ...args], {
+                cwd: root,
+                env: { ...process.env, PATH: `${join(root, 'bin')}:${process.env.PATH}`, FAIL_STAGE: fail },
+                encoding: 'utf8',
+            });
+            let calls = [];
+            try {
+                calls = readFileSync(join(root, 'calls'), 'utf8').trim().split('\n');
+            } catch {
+                /* no stages */
+            }
+            return { result, calls };
+        };
+        const full = run(['--version', '1.2.3-beta.2']);
+        assert.equal(full.result.status, 0);
+        assert.deepEqual(full.calls, [
+            'lint::unset',
+            'format::unset',
+            'build:--version 1.2.3-beta.2:unset',
+            'unit::unset',
+            'integration::unset',
+            'e2e::1',
+        ]);
+        assert.deepEqual(run(['build', '--version', '1.2.3']).calls, ['build:--version 1.2.3:unset']);
+        assert.ok(!run(['--version', '1.2.3'], 'build').calls.some((call) => call.startsWith('e2e:')));
+        for (const args of [
+            ['--version'],
+            ['--version', 'bad'],
+            ['--version', '1.2.3', '--version', '1.2.4'],
+            ['e2e', '--version', '1.2.3'],
+        ]) {
+            const invalid = run(args);
+            assert.notEqual(invalid.result.status, 0);
+            assert.deepEqual(invalid.calls, []);
+        }
+    } finally {
+        rmSync(root, { recursive: true, force: true });
+    }
+});
+
+void test('build stage forwards its version arguments to scripts/build', () => {
+    const root = fixtureDirectory();
+    try {
+        mkdirSync(join(root, 'scripts'), { recursive: true });
+        writeFileSync(join(root, 'scripts/build'), '#!/bin/sh\nprintf "%s\\n" "$@" > "$REPO_ROOT/arguments"\n', {
+            mode: 0o755,
+        });
+        const result = spawnSync(
+            'bash',
+            [
+                '-c',
+                `export REPO_ROOT=${shellQuote(root)}; source ${shellQuote(join(repoRoot, 'scripts/lib/stages.sh'))}; run_build_stage --version 1.2.3-beta.2`,
+            ],
+            { encoding: 'utf8' },
+        );
+        assert.equal(result.status, 0, result.stderr);
+        assert.equal(readFileSync(join(root, 'arguments'), 'utf8'), '--version\n1.2.3-beta.2\n');
+    } finally {
+        rmSync(root, { recursive: true, force: true });
+    }
+});
+
+void test(
+    'build restores mixed generated binding modes even on failure and reports generated drift',
+    { skip: process.platform === 'win32' },
+    () => {
+        const root = fixtureDirectory();
+        try {
+            for (const path of [
+                'scripts/lib',
+                'bin',
+                'build/bin',
+                'build/linux',
+                'frontend/scripts',
+                'frontend/wailsjs/runtime',
+            ]) {
+                mkdirSync(join(root, path), { recursive: true });
+            }
+            for (const path of ['scripts/build', 'scripts/lib/common.sh', 'scripts/lib/release_version.sh']) {
+                copyFileSync(join(repoRoot, path), join(root, path));
+            }
+            writeFileSync(join(root, '.gitignore'), '/build/bin/\n');
+            for (const path of [
+                'build/linux/install.sh',
+                'build/appicon.png',
+                'frontend/scripts/generate-editor-themes.mjs',
+            ]) {
+                writeFileSync(join(root, path), '');
+            }
+            for (const command of ['go', 'npm', 'pkg-config']) {
+                writeFileSync(join(root, 'bin', command), '#!/bin/sh\nexit 0\n', { mode: 0o755 });
+            }
+            writeFileSync(
+                join(root, 'bin/wails'),
+                `#!/usr/bin/env bash
+set -eu
+runtime=frontend/wailsjs/runtime
+chmod 755 "$runtime/"*
+case "$1:$FIXTURE_BUILD_SCENARIO" in
+    generate:generate-failure) exit 23 ;;
+    build:build-failure) exit 24 ;;
+    build:content-drift) printf 'changed bytes' > "$runtime/package.json" ;;
+    build:symlink-drift)
+        rm "$runtime/runtime.js"
+        ln -s ../../../outside "$runtime/runtime.js"
+        ;;
+esac
+`,
+                { mode: 0o755 },
+            );
+            const files = ['package.json', 'runtime.d.ts', 'runtime.js'].map((name) =>
+                join(root, 'frontend/wailsjs/runtime', name),
+            );
+            for (const file of [...files, join(root, 'outside')]) {
+                writeFileSync(file, 'original bytes', { mode: 0o644 });
+            }
+            const git = (...args) => {
+                const result = spawnSync('git', args, { cwd: root, encoding: 'utf8' });
+                assert.equal(result.status, 0, result.stderr);
+            };
+            git('init', '--quiet');
+            git('config', 'core.filemode', 'true');
+            git('add', '.');
+            git(
+                '-c',
+                'user.name=Fixture',
+                '-c',
+                'user.email=fixture@example.invalid',
+                '-c',
+                'commit.gpgsign=false',
+                '-c',
+                'core.hooksPath=/dev/null',
+                'commit',
+                '--quiet',
+                '-m',
+                'Fixture',
+            );
+            chmodSync(join(root, 'outside'), 0o600);
+
+            const modes = [0o755, 0o640, 0o644];
+            for (const [scenario, status] of [
+                ['success', 0],
+                ['generate-failure', 23],
+                ['build-failure', 24],
+                ['content-drift', 1],
+                ['symlink-drift', 1],
+            ]) {
+                for (const [index, file] of files.entries()) chmodSync(file, modes[index]);
+                const result = spawnSync('bash', ['scripts/build'], {
+                    cwd: root,
+                    encoding: 'utf8',
+                    env: {
+                        ...process.env,
+                        PATH: `${join(root, 'bin')}:${process.env.PATH}`,
+                        FIXTURE_BUILD_SCENARIO: scenario,
+                    },
+                });
+                assert.equal(result.status, status, `${scenario}: ${result.stdout}\n${result.stderr}`);
+                if (status === 1) assert.match(result.stderr, /build changed the working tree/);
+                const regularFiles = scenario === 'symlink-drift' ? files.slice(0, 2) : files;
+                assert.deepEqual(
+                    regularFiles.map((file) => statSync(file).mode & 0o777),
+                    modes.slice(0, regularFiles.length),
+                    scenario,
+                );
+                if (scenario === 'symlink-drift') assert.ok(lstatSync(files[2]).isSymbolicLink());
+                assert.equal(statSync(join(root, 'outside')).mode & 0o777, 0o600);
+                if (scenario === 'content-drift') {
+                    assert.equal(readFileSync(files[0], 'utf8'), 'changed bytes');
+                    writeFileSync(files[0], 'original bytes');
+                }
+            }
+        } finally {
+            rmSync(root, { recursive: true, force: true });
+        }
+    },
+);
+
+void test(
+    'E2E shell cleanup restores generated binding modes after Playwright failure, kill, or interrupt',
+    { skip: process.platform === 'win32' },
+    () => {
+        const root = fixtureDirectory();
+        try {
+            for (const path of [
+                'scripts/lib',
+                'frontend/dist',
+                'frontend/node_modules/.bin',
+                'frontend/wailsjs/runtime',
+            ]) {
+                mkdirSync(join(root, path), { recursive: true });
+            }
+            for (const path of ['scripts/lib/common.sh', 'scripts/lib/stages.sh']) {
+                copyFileSync(join(repoRoot, path), join(root, path));
+            }
+            const placeholder = join(root, 'frontend/dist/.gitkeep');
+            writeFileSync(placeholder, 'original placeholder');
+            writeFileSync(
+                join(root, 'frontend/node_modules/.bin/playwright'),
+                `#!/bin/sh
+set -eu
+rm dist/.gitkeep
+case "$FIXTURE_E2E_SCENARIO" in
+    failure) exit 23 ;;
+    kill)
+        chmod 755 wailsjs/runtime/*
+        kill -KILL "$$"
+        ;;
+    interrupt)
+        chmod 755 wailsjs/runtime/*
+        kill -INT "$PPID"
+        kill -INT "$$"
+        ;;
+esac
+`,
+                {
+                    mode: 0o755,
+                },
+            );
+            const files = ['runtime.js', 'runtime.d.ts'].map((name) => join(root, 'frontend/wailsjs/runtime', name));
+            for (const file of files) writeFileSync(file, 'original bytes', { mode: 0o644 });
+            for (const args of [
+                ['init', '--quiet'],
+                ['add', 'frontend/wailsjs'],
+            ]) {
+                const result = spawnSync('git', args, { cwd: root, encoding: 'utf8' });
+                assert.equal(result.status, 0, result.stderr);
+            }
+            chmodSync(files[0], 0o755);
+            chmodSync(files[1], 0o640);
+            for (const [scenario, status] of [
+                ['failure', 23],
+                ['kill', 137],
+                ['interrupt', 130],
+            ]) {
+                const result = spawnSync(
+                    'bash',
+                    [
+                        '-c',
+                        'set -euo pipefail; source scripts/lib/common.sh; source scripts/lib/stages.sh; RUN_DIR="$PWD/run"; run_e2e_stage',
+                    ],
+                    { cwd: root, encoding: 'utf8', env: { ...process.env, FIXTURE_E2E_SCENARIO: scenario } },
+                );
+                assert.equal(result.status, status, `${scenario}: ${result.stderr}`);
+                assert.deepEqual(
+                    files.map((file) => statSync(file).mode & 0o777),
+                    [0o755, 0o640],
+                    scenario,
+                );
+                assert.equal(readFileSync(placeholder, 'utf8'), 'original placeholder', scenario);
+            }
+        } finally {
+            rmSync(root, { recursive: true, force: true });
+        }
+    },
+);
 
 function fixtureDirectory() {
     const directory = join(repoRoot, '.local_tmp_files');
@@ -24,6 +407,105 @@ function runResults(...arguments_) {
 function shellQuote(value) {
     return `'${value.replaceAll("'", "'\\''")}'`;
 }
+
+void test('baseline records supplied snapshot metadata and rejects missing or invalid inputs', () => {
+    const root = fixtureDirectory();
+    try {
+        for (const name of ['lint', 'format', 'build', 'unit', 'integration', 'e2e']) {
+            writeFileSync(join(root, `${name}.json`), JSON.stringify({ name, verdict: 'clean' }));
+        }
+        const diff = join(root, 'diff');
+        const status = join(root, 'status');
+        const output = join(root, 'baseline.json');
+        writeFileSync(diff, 'hello');
+        writeFileSync(status, '?? new file.md\0 M tracked.md\0');
+        const commit = '1234567890abcdef1234567890abcdef12345678';
+        const args = ['baseline', '--feature', 'fixture', '--run-dir', root, '--output', output];
+        const snapshot = ['--commit', commit, '--diff-file', diff, '--status-file', status];
+        const result = spawnSync(process.execPath, [resultsScript, ...args, ...snapshot], {
+            cwd: root,
+            env: { ...process.env, PATH: '' },
+            encoding: 'utf8',
+        });
+        assert.equal(result.status, 0, result.stderr);
+        const record = JSON.parse(readFileSync(output, 'utf8'));
+        assert.equal(record.commit, commit);
+        assert.equal(record.dirtyDiffSha256, '2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824');
+        assert.deepEqual(record.untrackedPaths, ['new file.md']);
+        for (const invalid of [
+            ['--diff-file', diff, '--status-file', status],
+            ['--commit', commit, '--status-file', status],
+            ['--commit', commit, '--diff-file', diff],
+            ['--commit', '1234', '--diff-file', diff, '--status-file', status],
+        ]) {
+            const rejected = runResults(...args, ...invalid);
+            assert.notEqual(rejected.status, 0);
+        }
+    } finally {
+        rmSync(root, { recursive: true, force: true });
+    }
+});
+
+void test('baseline captures the script repository when invoked from a different Git checkout', () => {
+    const root = fixtureDirectory();
+    try {
+        const workspace = join(root, 'workspace');
+        const caller = join(root, 'caller');
+        mkdirSync(join(workspace, 'scripts/lib'), { recursive: true });
+        mkdirSync(join(workspace, 'tools/verify'), { recursive: true });
+        mkdirSync(caller);
+        copyFileSync(join(repoRoot, 'scripts/baseline'), join(workspace, 'scripts/baseline'));
+        copyFileSync(commonScript, join(workspace, 'scripts/lib/common.sh'));
+        copyFileSync(resultsScript, join(workspace, 'tools/verify/results.mjs'));
+        // Supply successful stage records without running all six verification stages in the fixture.
+        writeFileSync(
+            join(workspace, 'scripts/lib/stages.sh'),
+            `capture_stage() { printf '{"name":"%s","verdict":"clean","exitCode":0,"durationMs":0,"findings":[]}\\n' "$1" > "$RUN_DIR/$1.json"; }\n`,
+        );
+        const env = { ...process.env, GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1' };
+        function git(cwd, ...args) {
+            const result = spawnSync(
+                'git',
+                ['-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.test', ...args],
+                {
+                    cwd,
+                    env,
+                    encoding: 'utf8',
+                },
+            );
+            assert.equal(result.status, 0, result.stderr);
+            return result.stdout;
+        }
+        git(workspace, 'init', '--initial-branch=fixture');
+        git(caller, 'init', '--initial-branch=caller');
+        writeFileSync(join(workspace, '.gitignore'), '.local_tmp_files/\n');
+        const tracked = join(workspace, 'tracked.md');
+        writeFileSync(tracked, 'initial\n');
+        git(workspace, 'add', '.');
+        git(workspace, 'commit', '-m', 'workspace snapshot');
+        git(caller, 'commit', '--allow-empty', '-m', 'unrelated checkout');
+        writeFileSync(tracked, 'changed\n');
+        writeFileSync(join(workspace, 'workspace draft.md'), 'draft\n');
+        writeFileSync(join(caller, 'unrelated.md'), 'unrelated\n');
+        const run = (...args) =>
+            spawnSync('bash', [join(workspace, 'scripts/baseline'), ...args], { cwd: caller, env, encoding: 'utf8' });
+        const created = run();
+        assert.equal(created.status, 0, created.stderr);
+        const record = JSON.parse(readFileSync(join(workspace, '.local_tmp_files/baseline/fixture.json'), 'utf8'));
+        assert.equal(record.commit, git(workspace, 'rev-parse', 'HEAD').trim());
+        assert.deepEqual(record.untrackedPaths, ['workspace draft.md']);
+        assert.equal(
+            record.dirtyDiffSha256,
+            createHash('sha256')
+                .update(git(workspace, 'diff', '--binary', 'HEAD'))
+                .digest('hex'),
+        );
+        const compared = run('--compare');
+        assert.equal(compared.status, 0, compared.stderr);
+    } finally {
+        rmSync(root, { recursive: true, force: true });
+    }
+});
 
 void test('reports backend and frontend test counts as separate groups', () => {
     const runDirectory = fixtureDirectory();
@@ -914,7 +1396,7 @@ void test('does not require a migration baseline and allowlists CI diagnostics',
     const archlintSource = readFileSync(join(repoRoot, 'tools/archlint/main.go'), 'utf8');
     assert.doesNotMatch(archlintSource, /checkMigrations|app_version_1_codebase/);
 
-    for (const workflowPath of ['.github/workflows/push.yml', '.github/workflows/release.yml']) {
+    for (const workflowPath of ['.github/workflows/verification.yml']) {
         const workflow = readFileSync(join(repoRoot, workflowPath), 'utf8');
         const artifactPath = workflow.match(
             /name: verification-runs-[\s\S]*?path:\s*\|([\s\S]*?)if-no-files-found:/,
@@ -1002,5 +1484,38 @@ void test('pruning without a runs folder succeeds', () => {
         assert.equal(result.status, 0, result.stderr);
     } finally {
         rmSync(root, { recursive: true, force: true });
+    }
+});
+
+void test('extracts diagnostic paths without stalling on long slash tokens', () => {
+    const runDirectory = fixtureDirectory();
+    try {
+        const log = join(runDirectory, 'lint.log');
+        const output = join(runDirectory, 'lint.json');
+        writeFileSync(
+            log,
+            [
+                'error src/foo.tsx:12:3 failure',
+                'error a/file.go.more.js:8 failure',
+                'error no recognized path',
+                `error ${'a/'.repeat(30000)}missing`,
+            ].join('\n'),
+        );
+        const result = spawnSync(
+            process.execPath,
+            [resultsScript, 'stage', '--name', 'lint', '--exit-code', '1', '--log', log, '--output', output],
+            {
+                cwd: repoRoot,
+                encoding: 'utf8',
+                timeout: 2000,
+            },
+        );
+        assert.equal(result.status, 1, result.error?.message || result.stderr);
+        const outputText = readFileSync(output, 'utf8');
+        for (const location of ['src/foo.tsx', 'a/file.go.more.js', 'lint']) {
+            assert.ok(outputText.includes(`"location": "${location}"`));
+        }
+    } finally {
+        rmSync(runDirectory, { recursive: true, force: true });
     }
 });

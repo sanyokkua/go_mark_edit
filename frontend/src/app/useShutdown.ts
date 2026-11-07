@@ -2,164 +2,117 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { appModelAdapter, nativeLifecycleAdapter, type NativeLifecycleAdapter } from '../logic/adapter';
 import type { AppModelAdapter } from '../logic/adapter/appModelAdapter';
-import type { AppModelState, ClassifiedError } from '../logic/store/appModelTypes';
+import type { AppModelState, ClassifiedError, PendingClose } from '../logic/store/appModelTypes';
 
 export type ShutdownBootstrapStatus = 'loading' | 'ready' | 'failed';
-
 export interface ShutdownDependencies {
     appModel?: Pick<AppModelAdapter, 'getState'>;
     native?: NativeLifecycleAdapter;
 }
-
 export interface UseShutdownOptions {
     bootstrapStatus: ShutdownBootstrapStatus;
-    /**
-     * The value read by the projection bootstrap's GetState call. Supplying the
-     * value avoids a second hydration read while still making pending-close
-     * discovery part of the same authoritative snapshot.
-     */
-    hydratedPendingCloseId?: string | null;
+    hydratedPendingClose?: PendingClose | null;
     hydratedState?: Pick<AppModelState, 'snapshot'>;
     dependencies?: ShutdownDependencies;
 }
-
 export interface ShutdownController {
-    pendingClose: string | null;
+    pendingClose: PendingClose | null;
     authorizeQuit: (closeID?: string) => Promise<ClassifiedError | undefined>;
+    acknowledgeRecoveryClose: (closeID?: string) => Promise<ClassifiedError | undefined>;
+    discardAndAuthorizeQuit: (closeID?: string) => Promise<ClassifiedError | undefined>;
     cancelQuit: (closeID?: string) => Promise<void>;
     clearPendingClose: (closeID?: string) => void;
     requestQuit: () => void;
 }
 
-const legacyCloseID = 'legacy-close-request';
-
-function closeIDFromPayload(payload: unknown): string | undefined {
-    if (typeof payload === 'string' && payload.length > 0) return payload;
-    if (
-        typeof payload === 'object' &&
-        payload !== null &&
-        'id' in payload &&
-        typeof payload.id === 'string' &&
-        payload.id.length > 0
-    ) {
-        return payload.id;
-    }
-    return undefined;
-}
-
 export function useShutdown(options: UseShutdownOptions): ShutdownController {
     const native = options.dependencies?.native ?? nativeLifecycleAdapter;
     const model = options.dependencies?.appModel ?? appModelAdapter;
-    const [pendingClose, setPendingClose] = useState<string | null>(null);
-    const pendingCloseRef = useRef<string | null>(null);
-    const bufferedCloseRef = useRef<string | undefined>(undefined);
-    // Completed IDs remain handled: a delayed event must not recreate a cancelled close.
-    const handledCloseIDsRef = useRef(new Set<string>());
-    const readyRef = useRef(options.bootstrapStatus === 'ready');
-    const acceptCloseRef = useRef<(closeID: string) => void>(() => undefined);
-    const eventHandlerRef = useRef<(payload: unknown) => void>(() => undefined);
-
-    const setPending = useCallback((closeID: string | null): void => {
-        pendingCloseRef.current = closeID;
-        setPendingClose(closeID);
+    const [pendingClose, setPendingClose] = useState<PendingClose | null>(null);
+    const pendingRef = useRef<PendingClose | null>(null);
+    const generation = useRef(0);
+    const buffered = useRef(false);
+    const ready = useRef(options.bootstrapStatus === 'ready');
+    const settled = useRef(new Set<string>());
+    const setPending = useCallback((value: PendingClose | null): void => {
+        if (value !== null && settled.current.has(value.id)) return;
+        const previous = pendingRef.current;
+        if (previous?.id === value?.id && previous?.owner === value?.owner) return;
+        pendingRef.current = value;
+        setPendingClose(value);
     }, []);
-
-    const acceptClose = useCallback(
-        (closeID: string): void => {
-            if (handledCloseIDsRef.current.has(closeID)) return;
-            handledCloseIDsRef.current.add(closeID);
-            setPending(closeID);
-        },
-        [setPending],
-    );
-    useEffect((): void => {
-        readyRef.current = options.bootstrapStatus === 'ready';
-        acceptCloseRef.current = acceptClose;
-        eventHandlerRef.current = (payload: unknown): void => {
-            const closeID = closeIDFromPayload(payload) ?? legacyCloseID;
-            if (!readyRef.current) {
-                bufferedCloseRef.current = closeID;
-                return;
-            }
-            acceptCloseRef.current(closeID);
-        };
-    }, [acceptClose, options.bootstrapStatus]);
-
-    /*
-     * This effect is deliberately mount-only. It is scheduled before App's
-     * hydration completion, so early close requests remain buffered until readiness.
-     */
-    useEffect((): (() => void) => {
-        const dispose = native.onCloseRequested((closeID?: string): void => {
-            eventHandlerRef.current(closeID);
-        });
-        return dispose;
-    }, [native]);
-
-    useEffect((): (() => void) | undefined => {
-        if (options.bootstrapStatus !== 'ready') return undefined;
-
-        let disposed = false;
-        const explicitPendingClose =
-            options.hydratedPendingCloseId !== undefined || options.hydratedState !== undefined;
-        const hydratedCloseID = options.hydratedPendingCloseId ?? options.hydratedState?.snapshot.pendingClose?.id;
-
-        const handleDiscoveredClose = (closeID: string | undefined): void => {
-            if (disposed || closeID === undefined || closeID.length === 0) return;
-            acceptCloseRef.current(closeID);
-        };
-
-        const bufferedCloseID = bufferedCloseRef.current;
-        bufferedCloseRef.current = undefined;
-        handleDiscoveredClose(bufferedCloseID);
-        if (explicitPendingClose) {
-            handleDiscoveredClose(hydratedCloseID);
-            return (): void => {
-                disposed = true;
-            };
-        }
-
-        void model
-            .getState()
+    const discover = useCallback((): void => {
+        const current = ++generation.current;
+        void Promise.resolve()
+            .then(() => model.getState())
             .then((state): void => {
-                handleDiscoveredClose(state.snapshot.pendingClose?.id);
+                if (current === generation.current) setPending(state.snapshot.pendingClose ?? null);
             })
             .catch((): void => undefined);
-        return (): void => {
-            disposed = true;
-        };
-    }, [model, options.bootstrapStatus, options.hydratedPendingCloseId, options.hydratedState]);
-
-    const cancelQuit = useCallback(
-        async (closeID = pendingCloseRef.current ?? ''): Promise<void> => {
-            if (closeID.length === 0) return;
-            await native.cancelQuit(closeID);
-            if (pendingCloseRef.current === closeID) {
-                setPending(null);
+    }, [model, setPending]);
+    const event = useRef((): void => undefined);
+    useEffect(() => {
+        event.current = (): void => {
+            if (!ready.current) {
+                buffered.current = true;
+                return;
             }
+            discover();
+        };
+    }, [discover]);
+    useEffect(() => native.onCloseRequested(() => event.current()), [native]);
+    useEffect(() => {
+        ready.current = options.bootstrapStatus === 'ready';
+        if (!ready.current) return;
+        if (buffered.current) {
+            buffered.current = false;
+            discover();
+            return;
+        }
+        if (options.hydratedPendingClose !== undefined) setPending(options.hydratedPendingClose);
+        else if (options.hydratedState !== undefined) setPending(options.hydratedState.snapshot.pendingClose ?? null);
+        else discover();
+        return () => {
+            generation.current++;
+        };
+    }, [discover, options.bootstrapStatus, options.hydratedPendingClose, options.hydratedState, setPending]);
+    const cancelQuit = useCallback(
+        async (id = pendingRef.current?.id ?? ''): Promise<void> => {
+            if (id.length === 0) return;
+            const cancelGeneration = generation.current;
+            await native.cancelQuit(id);
+            settled.current.add(id);
+            if (generation.current === cancelGeneration) generation.current++;
+            if (pendingRef.current?.id === id) setPending(null);
         },
         [native, setPending],
     );
-
     const authorizeQuit = useCallback(
-        async (closeID = pendingCloseRef.current ?? ''): Promise<ClassifiedError | undefined> => {
-            if (closeID.length === 0) return undefined;
-            return native.authorizeQuit(closeID);
-        },
+        async (id = pendingRef.current?.id ?? '') => (id.length === 0 ? undefined : native.authorizeQuit(id)),
         [native],
     );
-
+    const acknowledgeRecoveryClose = useCallback(
+        async (id = pendingRef.current?.id ?? '') =>
+            id.length === 0 ? undefined : native.acknowledgeRecoveryClose(id),
+        [native],
+    );
+    const discardAndAuthorizeQuit = useCallback(
+        async (id = pendingRef.current?.id ?? '') => (id.length === 0 ? undefined : native.discardAndAuthorizeQuit(id)),
+        [native],
+    );
     const clearPendingClose = useCallback(
-        (closeID = pendingCloseRef.current ?? ''): void => {
-            if (closeID.length === 0 || pendingCloseRef.current !== closeID) return;
+        (id = pendingRef.current?.id ?? ''): void => {
+            if (id.length === 0 || pendingRef.current?.id !== id) return;
+            settled.current.add(id);
             setPending(null);
         },
         [setPending],
     );
-
     return {
         pendingClose,
         authorizeQuit,
+        acknowledgeRecoveryClose,
+        discardAndAuthorizeQuit,
         cancelQuit,
         clearPendingClose,
         requestQuit: native.requestQuit,

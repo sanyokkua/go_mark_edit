@@ -61,6 +61,7 @@ function appState(revision: number): AppModelState {
         activeBuffer: {
             documentId: documentMetadata.documentId,
             content: '# Canonical content stays outside Redux',
+            documentRevision: 0,
         },
     };
 }
@@ -76,17 +77,21 @@ function createAdapter(getState: () => Promise<AppModelState>): AppModelAdapter 
     return {
         getState,
         updateBuffer: jest.fn<Promise<void>, [string, string]>(),
+        retainPendingBuffers: jest.fn(),
+        getPendingBufferDocumentIds: jest.fn(() => []),
         flushBuffer: jest.fn<Promise<void>, [string]>(),
         subscribeAcceptedBuffers: jest.fn<
             () => void,
             [(buffer: import('../../../src/logic/adapter/appModelAdapter').AcceptedBuffer) => void]
         >(),
+        subscribeSupersededBuffers: jest.fn(),
         setDocView: jest.fn(),
         updateDocView: jest.fn(),
         updateLocalDocView: jest.fn(),
         flushDocView: jest.fn<Promise<void>, [string]>(),
         setUILayout: jest.fn(),
         reconcileCommittedWrite: jest.fn(),
+        subscribeBufferSyncErrors: jest.fn(() => jest.fn()),
         subscribeAsyncErrors(callback): () => void {
             errorListeners.push(callback);
             return jest.fn();
@@ -144,6 +149,16 @@ it('strips content while hydrating projection metadata', async () => {
     expect(projection).not.toHaveProperty('documents.byId.document-1.content');
     expect(JSON.stringify(projection)).not.toContain('Canonical content');
     expect(localStorage).toHaveLength(0);
+});
+
+it('retains native close ownership in the bootstrap result', async () => {
+    const state = appState(3);
+    state.snapshot.pendingClose = { id: 'close-1', owner: 'native' };
+    await expect(bootstrapAppModelProjection(createAdapter(async () => state))).resolves.toMatchObject({
+        status: 'ready',
+        pendingClose: { id: 'close-1', owner: 'native' },
+        activeBuffer: state.activeBuffer,
+    });
 });
 
 it('dev bridge dirty state follows disk baseline', async (): Promise<void> => {
@@ -735,4 +750,60 @@ it('When disposal precedes a recovery failure, the old attempt cannot notify a n
     await Promise.resolve();
     expect(store.getState().documents.revision).toBe(2);
     expect(store.getState().notifications.items).toHaveLength(0);
+});
+
+it.each(['durability', 'recent-items', 'view-state'] as const)(
+    'shows an async committed %s warning with the save warning copy',
+    async (warning) => {
+        const adapter = createAdapter(() => Promise.resolve(appState(3)));
+        await bootstrapAppModelProjection(adapter);
+        adapter.emitError({
+            code: 'io',
+            title: 'saved',
+            message: 'warning',
+            retryable: false,
+            details: { saveWarning: warning },
+        });
+        expect(store.getState().notifications.items).toEqual([
+            expect.objectContaining({ code: `save-warning-${warning}`, severity: 'warning' }),
+        ]);
+    },
+);
+
+it('keeps unknown async save warning kinds as ordinary errors', async () => {
+    const adapter = createAdapter(() => Promise.resolve(appState(3)));
+    await bootstrapAppModelProjection(adapter);
+    adapter.emitError({
+        code: 'io',
+        title: 'error',
+        message: 'error',
+        retryable: false,
+        details: { saveWarning: 'unknown' },
+    });
+    expect(store.getState().notifications.items).toEqual([expect.objectContaining({ code: 'io', severity: 'error' })]);
+});
+
+it.each([
+    ['metadata-stat', /metadata.*check/i],
+    ['readback', /read back.*check/i],
+    ['content-mismatch', /changed.*compare/i],
+    ['directory-sync', /folder.*power loss/i],
+    ['unknown', /durability could not be confirmed/i],
+] as const)('shows an actionable async committed warning for %s', async (reason, message) => {
+    const adapter = createAdapter(() => Promise.resolve(appState(3)));
+    await bootstrapAppModelProjection(adapter);
+    adapter.emitError({
+        code: 'io',
+        title: 'saved',
+        message: 'private filesystem diagnostic',
+        retryable: false,
+        details: { saveWarning: 'durability', saveWarningReason: reason },
+    });
+    expect(store.getState().notifications.items).toEqual([
+        expect.objectContaining({
+            code: 'save-warning-durability',
+            severity: 'warning',
+        }),
+    ]);
+    expect(store.getState().notifications.items[0]?.message).toMatch(message);
 });

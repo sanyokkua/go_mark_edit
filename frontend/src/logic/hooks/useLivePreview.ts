@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { appModelAdapter } from '../adapter';
 import type { AcceptedBuffer } from '../adapter/appModelAdapter';
 import type { ActiveBuffer, OpenResult } from '../store/appModelTypes';
+import { utf8ByteLength } from '../utils/utf8ByteLength';
 
 export interface LivePreviewAdapter {
     subscribeAcceptedBuffers: (listener: (buffer: AcceptedBuffer) => void) => () => void;
@@ -29,21 +30,14 @@ export interface LivePreviewSnapshot {
     revision: number;
 }
 
-function byteLength(content: string): number {
-    let size = 0;
-    for (const character of content) {
-        const codePoint = character.codePointAt(0) ?? 0;
-        size += codePoint <= 0x7f ? 1 : codePoint <= 0x7ff ? 2 : codePoint <= 0xffff ? 3 : 4;
-    }
-    return size;
-}
-
 export function useLivePreviewSnapshot(
     activeBuffer: ActiveBuffer,
+    visible: boolean,
     adapter: LivePreviewAdapter = appModelAdapter,
 ): LivePreviewSnapshot {
-    const sourceRevision = activeBuffer.documentRevision ?? 0;
+    const sourceRevision = activeBuffer.documentRevision;
     const acceptedGenerationRef = useRef(0);
+    const [measurement, setMeasurement] = useState<{ content: string; byteLength: number } | null>(null);
     const [previewState, setPreviewState] = useState<PreviewState>(() => {
         const source = {
             documentId: activeBuffer.documentId,
@@ -109,12 +103,22 @@ export function useLivePreviewSnapshot(
               revision: sourceRevision,
           };
 
+    let size = measurement?.content === current.content ? measurement.byteLength : 0;
+    if (visible && measurement?.content !== current.content) {
+        size = utf8ByteLength(current.content);
+        setMeasurement({ content: current.content, byteLength: size });
+    }
+
     return {
         ...current,
-        byteLength: byteLength(current.content),
+        byteLength: size,
     };
 }
 
-export function useLivePreview(activeBuffer: ActiveBuffer, adapter: LivePreviewAdapter = appModelAdapter): string {
-    return useLivePreviewSnapshot(activeBuffer, adapter).content;
+export function useLivePreview(
+    activeBuffer: ActiveBuffer,
+    visible: boolean,
+    adapter: LivePreviewAdapter = appModelAdapter,
+): string {
+    return useLivePreviewSnapshot(activeBuffer, visible, adapter).content;
 }

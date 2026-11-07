@@ -66,7 +66,7 @@ const noopNoticeOwner: CommandNoticeOwner = {
 
 function mintUUID(): string {
     if (typeof globalThis.crypto?.randomUUID !== 'function') {
-        throw new Error('crypto.randomUUID() is unavailable.');
+        throw new TypeError('crypto.randomUUID() is unavailable.');
     }
     return globalThis.crypto.randomUUID();
 }

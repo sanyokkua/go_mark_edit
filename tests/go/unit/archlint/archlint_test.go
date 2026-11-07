@@ -81,6 +81,16 @@ func UnusedExport() {}
 	if !strings.Contains(string(output), "archlint L6") {
 		t.Fatalf("archlint output = %q, want an L6 callerless-export violation", output)
 	}
+	for _, expected := range []string{
+		"Handler.Invalid: must use one named result",
+		"Handler.Invalid: must return an apperr.*Result",
+		"Handler.Invalid: first statement must be defer bridge.Guard(&result)",
+		"UnusedExport has no production caller",
+	} {
+		if !strings.Contains(string(output), expected) {
+			t.Errorf("archlint output = %q, want %q", output, expected)
+		}
+	}
 }
 
 func testRepositoryRoot(t *testing.T) string {

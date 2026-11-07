@@ -64,6 +64,8 @@ import {
     WindowReady,
     AuthorizeQuit,
     CancelQuit,
+    AcknowledgeRecoveryClose,
+    DiscardAndAuthorizeQuit,
     OpenNewWindow,
     TakeLaunchTarget,
     PrintWindow,
@@ -95,11 +97,13 @@ import type {
     DocumentMetadata,
     LineEndingOutcome,
     OpenResult,
+    PendingClose,
     PathCommandResult,
     TabTransitionResult,
     WriteResult,
 } from '../store/appModelTypes';
 import { store } from '../store';
+import { parseSaveWarning, parseSaveWarningReason } from '../store/saveWarning';
 import { dismissStuckCommand, notifyStuckCommand } from '../store/notificationsSlice';
 import { createCommandInvoker, getBootstrapStatus, type CommandBindOptions } from './command';
 import { EVENTS } from './events';
@@ -148,7 +152,7 @@ const commandArities: Readonly<Record<string, number>> = {
     'AppModelHandler.CloseDocument': 2,
     'AppModelHandler.CopyPath': 1,
     'AppModelHandler.RevealInFileManager': 1,
-    'AppModelHandler.UpdateBuffer': 2,
+    'AppModelHandler.UpdateBuffer': 3,
     'AppModelHandler.SetDocView': 2,
     'AppModelHandler.SetUILayout': 1,
     'AppModelHandler.PrepareClose': 3,
@@ -169,6 +173,8 @@ const commandArities: Readonly<Record<string, number>> = {
     'ApplicationHandler.PrintWindow': 0,
     'ApplicationHandler.AuthorizeQuit': 1,
     'ApplicationHandler.CancelQuit': 1,
+    'ApplicationHandler.AcknowledgeRecoveryClose': 1,
+    'ApplicationHandler.DiscardAndAuthorizeQuit': 1,
 };
 
 function command<TArgs extends unknown[], TResult>(
@@ -227,8 +233,7 @@ function normalizeConflictPreview(preview: apperr.ConflictPreview | undefined): 
     return {
         contentRevision: preview.contentRevision,
         detectedDiskVersion: {
-            exists: preview.detectedDiskVersion.exists,
-            size: preview.detectedDiskVersion.size,
+            ...preview.detectedDiskVersion,
             modifiedUnixNano: String(preview.detectedDiskVersion.modifiedUnixNano),
             mode: preview.detectedDiskVersion.mode,
             fileIdentity: preview.detectedDiskVersion.fileIdentity,
@@ -318,6 +323,8 @@ function normalizePathCommandResult(result: apperr.PathCommandResult): PathComma
 function normalizeWriteResult(result: apperr.WriteResult): WriteResult {
     return {
         status: result.status as WriteResult['status'],
+        warning: parseSaveWarning(result.warning),
+        warningReason: parseSaveWarningReason(result.warningReason),
         data:
             result.data === undefined
                 ? undefined
@@ -411,6 +418,14 @@ const commandInvokerTakeLaunchTarget = command('ApplicationHandler.TakeLaunchTar
 const commandInvokerPrintWindow = command('ApplicationHandler.PrintWindow', PrintWindow);
 const commandInvokerAuthorizeQuit = command('ApplicationHandler.AuthorizeQuit', AuthorizeQuit);
 const commandInvokerCancelQuit = command('ApplicationHandler.CancelQuit', CancelQuit);
+const commandInvokerAcknowledgeRecoveryClose = command(
+    'ApplicationHandler.AcknowledgeRecoveryClose',
+    AcknowledgeRecoveryClose,
+);
+const commandInvokerDiscardAndAuthorizeQuit = command(
+    'ApplicationHandler.DiscardAndAuthorizeQuit',
+    DiscardAndAuthorizeQuit,
+);
 
 export const documentWriteAdapter = createDocumentWriteAdapter({
     save: async (documentId, contentRevision, decisionToken) =>
@@ -453,6 +468,15 @@ const generatedAppModelBindings: AppModelBindings = {
         if (result.data === undefined) {
             return { error: result.error };
         }
+        const pendingClose = result.data.snapshot.pendingClose;
+        let normalizedPending: PendingClose | undefined;
+        if (pendingClose !== undefined) {
+            const owner = pendingClose.owner;
+            if (owner !== 'frontend' && owner !== 'native') {
+                throw new Error('Invalid native close ownership');
+            }
+            normalizedPending = { id: pendingClose.id, owner };
+        }
         return {
             error: result.error,
             data: {
@@ -470,10 +494,7 @@ const generatedAppModelBindings: AppModelBindings = {
                             },
                         ]),
                     ),
-                    pendingClose:
-                        result.data.snapshot.pendingClose === undefined
-                            ? undefined
-                            : { id: result.data.snapshot.pendingClose.id },
+                    pendingClose: normalizedPending,
                 },
                 activeBuffer: result.data.activeBuffer ?? null,
             },
@@ -603,6 +624,8 @@ export interface NativeLifecycleAdapter {
      * dead bridge, not a classified outcome.
      */
     authorizeQuit: (closeID: string) => Promise<ClassifiedError | undefined>;
+    acknowledgeRecoveryClose: (closeID: string) => Promise<ClassifiedError | undefined>;
+    discardAndAuthorizeQuit: (closeID: string) => Promise<ClassifiedError | undefined>;
     cancelQuit: (closeID: string) => Promise<void>;
 }
 
@@ -618,6 +641,10 @@ export const nativeLifecycleAdapter: NativeLifecycleAdapter = {
         EventsOn(EVENTS.applicationCloseRequested, (payload: unknown) => listener(closeRequestID(payload))),
     requestQuit: () => Quit(),
     authorizeQuit: async (closeID) => normalizeClassifiedError((await commandInvokerAuthorizeQuit(closeID)).error),
+    acknowledgeRecoveryClose: async (closeID) =>
+        normalizeClassifiedError((await commandInvokerAcknowledgeRecoveryClose(closeID)).error),
+    discardAndAuthorizeQuit: async (closeID) =>
+        normalizeClassifiedError((await commandInvokerDiscardAndAuthorizeQuit(closeID)).error),
     cancelQuit: async (closeID) => {
         const result = await commandInvokerCancelQuit(closeID);
         if (result.error !== undefined) throw result.error;
@@ -652,6 +679,7 @@ export {
     type DocViewArrangementIntent,
     type DocViewIntent,
     type AppModelRuntime,
+    type SupersededBuffer,
 } from './appModelAdapter';
 export {
     createSettingsAdapter,

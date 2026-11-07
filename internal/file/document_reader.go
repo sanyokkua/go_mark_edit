@@ -23,10 +23,11 @@ const (
 type ReadCapability string
 
 const (
-	CapabilityWritable       ReadCapability = "writable"
-	CapabilityUnsafeReadOnly ReadCapability = "unsafe-read-only"
-	CapabilityLargeReadOnly  ReadCapability = "large-read-only"
-	CapabilityRefused        ReadCapability = "refused"
+	CapabilityWritable               ReadCapability = "writable"
+	CapabilityWriteProtectedReadOnly ReadCapability = "write-protected-read-only"
+	CapabilityUnsafeReadOnly         ReadCapability = "unsafe-read-only"
+	CapabilityLargeReadOnly          ReadCapability = "large-read-only"
+	CapabilityRefused                ReadCapability = "refused"
 )
 
 type readOutcome string
@@ -110,6 +111,10 @@ type ClassifiedRead struct {
 // the raw-byte hash. A result is usable only when both versions are equal.
 // The read itself remains bounded by readClassified's configured limit.
 func ReadClassifiedStable(path string, maxBytes int64) (StableClassifiedRead, error) {
+	return readClassifiedStableWithReader(path, maxBytes, readClassifiedWithRaw)
+}
+
+func readClassifiedStableWithReader(path string, maxBytes int64, reader func(string, int64) (ClassifiedRead, []byte, error)) (StableClassifiedRead, error) {
 	maxBytes = normalizedReadLimit(maxBytes)
 	before, err := CurrentDiskVersion(path)
 	if err != nil {
@@ -118,44 +123,19 @@ func ReadClassifiedStable(path string, maxBytes int64) (StableClassifiedRead, er
 	if !before.Exists {
 		return StableClassifiedRead{Version: before}, nil
 	}
-	read, err := readClassified(path, maxBytes)
+	read, raw, err := reader(path, maxBytes)
 	if err != nil {
 		return StableClassifiedRead{Read: read, Version: before}, err
 	}
-	return verifyStableClassifiedRead(path, before, read, maxBytes)
-}
-
-// verifyStableClassifiedRead completes a classified read that already captured
-// its starting disk version. Keeping this step explicit lets the in-package
-// bounded-read test exercise the otherwise unreachable change-between-read-and-
-// hash race without adding a production callback or test setter.
-func verifyStableClassifiedRead(path string, before DiskVersion, read ClassifiedRead, maxBytes int64) (StableClassifiedRead, error) {
-	maxBytes = normalizedReadLimit(maxBytes)
-	if read.Error != nil {
-		after, err := CurrentDiskVersion(path)
-		if err != nil {
-			return StableClassifiedRead{Read: read, Version: before}, err
-		}
-		result := StableClassifiedRead{
-			Read:    read,
-			Version: after,
-			Stable:  before.Equal(after),
-		}
-		if !result.Stable {
-			return result, ErrUnstableRead
-		}
-		return result, nil
-	}
-	raw, err := readRawBytesBounded(path, maxBytes)
-	if err != nil {
-		return StableClassifiedRead{Read: read, Version: before}, err
-	}
-	digest := sha256.Sum256(raw)
 	after, err := CurrentDiskVersion(path)
 	if err != nil {
-		return StableClassifiedRead{Read: read, Version: before, RawHash: hex.EncodeToString(digest[:])}, err
+		return StableClassifiedRead{Read: read, Version: before}, err
 	}
-	result := StableClassifiedRead{Read: read, Version: after, RawHash: hex.EncodeToString(digest[:]), Stable: before.Equal(after)}
+	result := StableClassifiedRead{Read: read, Version: after, Stable: before.Equal(after)}
+	if read.Error == nil {
+		digest := sha256.Sum256(raw)
+		result.RawHash = hex.EncodeToString(digest[:])
+	}
 	if !result.Stable {
 		return result, ErrUnstableRead
 	}
@@ -165,10 +145,15 @@ func verifyStableClassifiedRead(path string, before DiskVersion, read Classified
 // readClassified reads no more than the configured cap and refuses an over-limit file before
 // allocating or inserting any document state.
 func readClassified(path string, maxBytes int64) (ClassifiedRead, error) {
+	read, _, err := readClassifiedWithRaw(path, maxBytes)
+	return read, err
+}
+
+func readClassifiedWithRaw(path string, maxBytes int64) (ClassifiedRead, []byte, error) {
 	maxBytes = normalizedReadLimit(maxBytes)
 	canonical, err := CanonicalizeDocumentPath(path)
 	if err != nil {
-		return ClassifiedRead{Outcome: readOutcomeRefused, Capability: CapabilityRefused, Error: bridge.Classified(path, apperr.ClassifiedNotFound, "The document could not be found.", apperr.RemediationNone)}, nil
+		return ClassifiedRead{Outcome: readOutcomeRefused, Capability: CapabilityRefused, Error: bridge.Classified(path, apperr.ClassifiedNotFound, "The document could not be found.", apperr.RemediationNone)}, nil, nil
 	}
 	if !IsSupportedDocumentSuffix(canonical.Path) {
 		return ClassifiedRead{
@@ -176,11 +161,11 @@ func readClassified(path string, maxBytes int64) (ClassifiedRead, error) {
 			Outcome:       readOutcomeRefused,
 			Capability:    CapabilityRefused,
 			Error:         bridge.Classified(canonical.DisplayName, apperr.ClassifiedUnsupportedInput, "The selected file type is not supported.", apperr.RemediationNone),
-		}, nil
+		}, nil, nil
 	}
 	info, err := os.Stat(canonical.Path)
 	if err != nil {
-		return ClassifiedRead{CanonicalPath: canonical, Outcome: readOutcomeRefused, Capability: CapabilityRefused, Error: bridge.Classified(canonical.DisplayName, apperr.ClassifiedNotFound, "The document could not be found.", apperr.RemediationNone)}, nil
+		return ClassifiedRead{CanonicalPath: canonical, Outcome: readOutcomeRefused, Capability: CapabilityRefused, Error: bridge.Classified(canonical.DisplayName, apperr.ClassifiedNotFound, "The document could not be found.", apperr.RemediationNone)}, nil, nil
 	}
 	if info.Size() > maxBytes || info.Size() > MaxSupportedDocumentBytes {
 		return ClassifiedRead{
@@ -189,21 +174,21 @@ func readClassified(path string, maxBytes int64) (ClassifiedRead, error) {
 			Outcome:         readOutcomeRefused,
 			Capability:      CapabilityRefused,
 			Error:           bridge.Classified(canonical.DisplayName, apperr.ClassifiedCapacityLimit, "The document exceeds the 50 MiB limit.", apperr.RemediationNone),
-		}, nil
+		}, nil, nil
 	}
 
 	file, err := os.Open(canonical.Path)
 	if err != nil {
-		return ClassifiedRead{CanonicalPath: canonical, Outcome: readOutcomeRefused, Capability: CapabilityRefused, Error: bridge.Classified(canonical.DisplayName, apperr.ClassifiedIOFailure, "The document could not be read.", apperr.RemediationRetry)}, err
+		return ClassifiedRead{CanonicalPath: canonical, Outcome: readOutcomeRefused, Capability: CapabilityRefused, Error: bridge.Classified(canonical.DisplayName, apperr.ClassifiedIOFailure, "The document could not be read.", apperr.RemediationRetry)}, nil, err
 	}
 	defer func() { _ = file.Close() }()
 	data, err := readBounded(file, maxBytes)
 	if err != nil {
-		return ClassifiedRead{CanonicalPath: canonical, Outcome: readOutcomeRefused, Capability: CapabilityRefused, BytesRead: int64(len(data)), Error: bridge.Classified(canonical.DisplayName, apperr.ClassifiedIOFailure, "The document could not be read.", apperr.RemediationRetry)}, err
+		return ClassifiedRead{CanonicalPath: canonical, Outcome: readOutcomeRefused, Capability: CapabilityRefused, BytesRead: int64(len(data)), Error: bridge.Classified(canonical.DisplayName, apperr.ClassifiedIOFailure, "The document could not be read.", apperr.RemediationRetry)}, nil, err
 	}
 	classified := classifyDocumentBytes(canonical, info, data)
 	classified.BytesRead = int64(len(data))
-	return classified, nil
+	return classified, data, nil
 }
 
 func normalizedReadLimit(maxBytes int64) int64 {
@@ -213,20 +198,19 @@ func normalizedReadLimit(maxBytes int64) int64 {
 	return maxBytes
 }
 
-func readRawBytesBounded(path string, maxBytes int64) ([]byte, error) {
-	file, err := os.Open(path)
-	if err != nil {
-		return nil, err
-	}
-	defer func() { _ = file.Close() }()
-	return readBounded(file, maxBytes)
-}
-
 func readBounded(reader io.Reader, maxBytes int64) ([]byte, error) {
 	return io.ReadAll(io.LimitReader(reader, normalizedReadLimit(maxBytes)))
 }
 
 func classifyDocumentBytes(canonical CanonicalDocumentPath, info os.FileInfo, raw []byte) ClassifiedRead {
+	read := ClassifyDocumentBytes(raw, info.Mode())
+	read.CanonicalPath = canonical
+	read.Characteristics.RawSizeBytes = info.Size()
+	return read
+}
+
+// ClassifyDocumentBytes describes the supplied bytes and mode using the reader's rules.
+func ClassifyDocumentBytes(raw []byte, mode os.FileMode) ClassifiedRead {
 	payload := raw
 	bom := BOMAbsent
 	if bytes.HasPrefix(payload, []byte{0xef, 0xbb, 0xbf}) {
@@ -249,52 +233,26 @@ func classifyDocumentBytes(canonical CanonicalDocumentPath, info os.FileInfo, ra
 	} else if loneCR {
 		capability = CapabilityUnsafeReadOnly
 		warning = WarningLoneCR
-	} else if info.Size() > MaxWritableDocumentBytes {
+	} else if int64(len(raw)) > MaxWritableDocumentBytes {
 		capability = CapabilityLargeReadOnly
 		warning = WarningLargeFile
+	} else if mode.Perm()&0o200 == 0 {
+		capability = CapabilityWriteProtectedReadOnly
 	}
-
 	content := tolerantDisplay(payload)
-	if capability == CapabilityWritable || capability == CapabilityLargeReadOnly {
+	if capability == CapabilityWritable || capability == CapabilityLargeReadOnly || capability == CapabilityWriteProtectedReadOnly {
 		content = normalizeCRLF(content)
 	}
 	return ClassifiedRead{
-		CanonicalPath: canonical,
-		Content:       content,
-		Characteristics: FileCharacteristics{
-			Encoding: encoding, BOM: bom, LineEnding: lineEnding,
-			LFCount: lfCount, CRLFCount: crlfCount, FirstEnding: firstEnding,
-			RawSizeBytes: info.Size(), Capability: capability, Warning: warning, Mode: info.Mode(),
-		},
-		Capability: capability,
-		Outcome:    readOutcomeOpened,
-		Warning:    warning,
+		Content:         content,
+		Characteristics: FileCharacteristics{Encoding: encoding, BOM: bom, LineEnding: lineEnding, LFCount: lfCount, CRLFCount: crlfCount, FirstEnding: firstEnding, RawSizeBytes: int64(len(raw)), Capability: capability, Warning: warning, Mode: mode},
+		Capability:      capability, Outcome: readOutcomeOpened, Warning: warning,
 	}
 }
 
 func classifyLineEndings(data []byte) (LineEnding, int, int, LineEnding, bool) {
-	lfCount, crlfCount := 0, 0
-	var first LineEnding
-	loneCR := false
-	for index := 0; index < len(data); index++ {
-		switch data[index] {
-		case '\r':
-			if index+1 < len(data) && data[index+1] == '\n' {
-				crlfCount++
-				if first == "" {
-					first = LineEndingCRLF
-				}
-				index++
-				continue
-			}
-			loneCR = true
-		case '\n':
-			lfCount++
-			if first == "" {
-				first = LineEndingLF
-			}
-		}
-	}
+	lfCount, crlfCount, first, loneCR := countLineEndings(data)
+
 	lineEnding := LineEndingNone
 	switch {
 	case lfCount > 0 && crlfCount == 0:
@@ -305,6 +263,32 @@ func classifyLineEndings(data []byte) (LineEnding, int, int, LineEnding, bool) {
 		lineEnding = LineEndingMixed
 	}
 	return lineEnding, lfCount, crlfCount, first, loneCR
+}
+
+func countLineEndings(data []byte) (int, int, LineEnding, bool) {
+	lfCount, crlfCount := 0, 0
+	var first LineEnding
+	loneCR := false
+	for index := 0; index < len(data); index++ {
+		if data[index] == '\r' {
+			if index+1 >= len(data) || data[index+1] != '\n' {
+				loneCR = true
+				continue
+			}
+			crlfCount++
+			index++
+			if first == "" {
+				first = LineEndingCRLF
+			}
+		} else if data[index] == '\n' {
+			lfCount++
+			if first == "" {
+				first = LineEndingLF
+			}
+		}
+	}
+
+	return lfCount, crlfCount, first, loneCR
 }
 
 func normalizeCRLF(content string) string {

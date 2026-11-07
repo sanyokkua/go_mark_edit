@@ -1,6 +1,8 @@
 package file_test
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"os"
 	"path/filepath"
 	"testing"
@@ -35,10 +37,12 @@ func TestAtomicReplaceReplacesExistingTarget(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read initial target version: %v", err)
 	}
+	digest := sha256.Sum256([]byte("before\n"))
 	result, err := AtomicReplace(AtomicReplaceRequest{
 		TargetPath:      target,
 		Data:            []byte("after\n"),
 		ExpectedVersion: &baseline,
+		ExpectedRawHash: hex.EncodeToString(digest[:]),
 	})
 	if err != nil {
 		t.Fatalf("AtomicReplace existing target: %v", err)
@@ -52,5 +56,26 @@ func TestAtomicReplaceReplacesExistingTarget(t *testing.T) {
 	}
 	if string(data) != "after\n" {
 		t.Fatalf("replaced target = %q, want %q", data, "after\n")
+	}
+}
+
+func TestAtomicReplaceRefusesAnExistingBaselineWithoutItsByteFingerprint(t *testing.T) {
+	target := filepath.Join(t.TempDir(), "existing.md")
+	if err := os.WriteFile(target, []byte("before\n"), 0o600); err != nil {
+		t.Fatalf("write initial target: %v", err)
+	}
+	baseline, err := CurrentDiskVersion(target)
+	if err != nil {
+		t.Fatalf("read initial target version: %v", err)
+	}
+
+	result, err := AtomicReplace(AtomicReplaceRequest{TargetPath: target, Data: []byte("after\n"), ExpectedVersion: &baseline})
+
+	if err == nil || result.Committed {
+		t.Fatalf("AtomicReplace = %+v, %v; want a refusal", result, err)
+	}
+	data, readErr := os.ReadFile(target)
+	if readErr != nil || string(data) != "before\n" {
+		t.Fatalf("target = %q, %v; want it unchanged", data, readErr)
 	}
 }

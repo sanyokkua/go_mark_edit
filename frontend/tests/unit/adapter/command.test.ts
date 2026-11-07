@@ -28,6 +28,70 @@ afterEach((): void => {
     jest.useRealTimers();
 });
 
+it('throws a TypeError before invoking a binding when request IDs cannot be generated', () => {
+    const crypto = globalThis.crypto;
+    const original = Object.getOwnPropertyDescriptor(crypto, 'randomUUID');
+    Object.defineProperty(crypto, 'randomUUID', { configurable: true, value: undefined });
+    try {
+        const bound = jest.fn(async (): Promise<void> => undefined);
+        const noticeOwner = notices();
+        const invoker = createCommandInvoker({ isReady: () => true, noticeOwner });
+        const command = invoker.bind('GetState', bound, { expectedArity: 0 });
+        let failure: unknown;
+        try {
+            void command();
+        } catch (error) {
+            failure = error;
+        }
+        expect(failure).toBeInstanceOf(TypeError);
+        expect(failure).toHaveProperty('message', 'crypto.randomUUID() is unavailable.');
+        expect(bound).not.toHaveBeenCalled();
+        expect(noticeOwner.show).not.toHaveBeenCalled();
+    } finally {
+        if (original === undefined) Reflect.deleteProperty(crypto, 'randomUUID');
+        else Object.defineProperty(crypto, 'randomUUID', original);
+    }
+});
+
+it('rejects synchronous command throws and removes the pending command', async () => {
+    jest.useFakeTimers();
+    const noticeOwner = notices();
+    const failure = new Error('synchronous failure');
+    const invoker = createCommandInvoker({ isReady: () => true, noticeOwner, uuid: () => 'sync-failure' });
+    const command = invoker.bind(
+        'GetState',
+        (): Promise<never> => {
+            throw failure;
+        },
+        { expectedArity: 0 },
+    );
+
+    await expect(command()).rejects.toBe(failure);
+    expect(invoker.retry('sync-failure')).toBe(false);
+    jest.advanceTimersByTime(10_000);
+    expect(noticeOwner.show).not.toHaveBeenCalled();
+});
+
+it('rejects asynchronous command failures and withdraws their notice', async () => {
+    jest.useFakeTimers();
+    const noticeOwner = notices();
+    const failure = new Error('asynchronous failure');
+    let rejectCommand: (error: Error) => void = () => undefined;
+    const pending = new Promise<never>((_resolve, reject) => {
+        rejectCommand = reject;
+    });
+    const invoker = createCommandInvoker({ isReady: () => true, noticeOwner, uuid: () => 'async-failure' });
+    const command = invoker.bind('GetState', () => pending, { expectedArity: 0 });
+
+    const result = command();
+    jest.advanceTimersByTime(10_000);
+    expect(noticeOwner.show).toHaveBeenCalledTimes(1);
+    rejectCommand(failure);
+    await expect(result).rejects.toBe(failure);
+    expect(noticeOwner.withdraw).toHaveBeenCalledWith('async-failure');
+    expect(invoker.retry('async-failure')).toBe(false);
+});
+
 it('attaches a fresh bridge request id to every command call', () => {
     const recorder = createCommandRecorder();
     const invoker = createCommandInvoker({
@@ -36,22 +100,22 @@ it('attaches a fresh bridge request id to every command call', () => {
     });
     const updateBuffer = invoker.bind(
         'AppModelHandler.UpdateBuffer',
-        recorder.binding('AppModelHandler.UpdateBuffer', 2),
+        recorder.binding('AppModelHandler.UpdateBuffer', 3),
     );
 
-    void updateBuffer('document-1', 'first');
-    void updateBuffer('document-1', 'second');
+    void updateBuffer('document-1', 'first', 0);
+    void updateBuffer('document-1', 'second', 0);
 
     expect(recorder.calls).toEqual([
         {
             name: 'AppModelHandler.UpdateBuffer',
             requestId: 'request-1',
-            args: ['document-1', 'first'],
+            args: ['document-1', 'first', 0],
         },
         {
             name: 'AppModelHandler.UpdateBuffer',
             requestId: 'request-2',
-            args: ['document-1', 'second'],
+            args: ['document-1', 'second', 0],
         },
     ]);
 });

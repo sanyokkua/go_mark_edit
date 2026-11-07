@@ -182,27 +182,27 @@ func failureFromArgs(args ...any) (apperr.Failure, string) {
 			message = strings[0]
 			subject = "Untitled"
 		}
-	case 4:
-		if len(strings) == 2 {
-			subject = strings[0]
-			message = strings[1]
-			if _, firstIsCategory := args[0].(apperr.ClassifiedErrorCategory); firstIsCategory {
-				documentID = subject
-			}
-		}
-	case 5:
-		if len(strings) == 3 {
-			if _, firstIsCategory := args[0].(apperr.ClassifiedErrorCategory); firstIsCategory {
-				documentID = strings[0]
-				subject = strings[1]
-				message = strings[2]
-			} else {
-				subject = strings[0]
-				documentID = strings[1]
-				message = strings[2]
-			}
-		}
+	case 4, 5:
+		subject, message, documentID = extendedFailureArgs(args, strings, subject, message)
 	}
 
 	return Fail(category, subject, message, remediation), documentID
+}
+
+// extendedFailureArgs interprets the two supported extended call shapes.
+func extendedFailureArgs(args []any, values []string, subject, message string) (string, string, string) {
+	_, firstIsCategory := args[0].(apperr.ClassifiedErrorCategory)
+	if len(args) == 4 && len(values) == 2 {
+		if firstIsCategory {
+			return values[0], values[1], values[0]
+		}
+		return values[0], values[1], ""
+	}
+	if len(args) == 5 && len(values) == 3 {
+		if firstIsCategory {
+			return values[1], values[2], values[0]
+		}
+		return values[0], values[2], values[1]
+	}
+	return subject, message, ""
 }

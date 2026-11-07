@@ -42,7 +42,7 @@ export function escapeUnsafeText(value: string): string {
     for (const character of value) {
         const codePoint = character.codePointAt(0) ?? 0;
         if (codePoint <= 0x1f || codePoint === 0x7f || BIDI_CONTROLS.has(codePoint)) {
-            escaped += `\\u${codePoint.toString(16).padStart(4, '0').toUpperCase()}`;
+            escaped += String.raw`\u${codePoint.toString(16).padStart(4, '0').toUpperCase()}`;
         } else {
             escaped += character;
         }
@@ -90,7 +90,7 @@ function shortestUniqueSuffix(document: DocumentMetadata, matching: readonly Doc
     if (matching.length < 2) return undefined;
     const parents = matching.map(rawParentParts);
     const ownIndex = matching.findIndex((candidate) => candidate.documentId === document.documentId);
-    const own = parents[ownIndex < 0 ? 0 : ownIndex] ?? [];
+    const own = parents[Math.max(0, ownIndex)] ?? [];
     const maxDepth = Math.max(...parents.map((parts) => parts.length), 1);
     for (let depth = 1; depth <= maxDepth; depth += 1) {
         const candidate = own.slice(-depth).join('/');

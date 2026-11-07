@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import { appModelAdapter } from '../adapter';
+import { appModelAdapter, type SupersededBuffer } from '../adapter';
 import { createLifecycleBarrier, type LifecycleCapture } from './useLifecycleBarrier';
 import type { DocViewInput, DocumentView, SelectionRange } from '../store/appModelTypes';
 import type { EditorPosition, EditorSelection } from '../../ui/components/CodeEditor';
@@ -14,10 +14,11 @@ export interface EditorSynchronizationAdapter {
     }) => () => void;
     flushBuffer: (documentId: string) => Promise<void>;
     flushDocView: (documentId: string) => Promise<void>;
-    updateBuffer: (documentId: string, content: string) => Promise<void>;
+    updateBuffer: (documentId: string, content: string, baseRevision: number) => Promise<void>;
     updateDocView: (documentId: string, view: DocViewInput) => Promise<void>;
     updateLocalDocView?: (documentId: string, view: DocViewInput) => Promise<void>;
     cancelPendingSession?: (documentId: string) => void;
+    subscribeSupersededBuffers?: (listener: (buffer: SupersededBuffer) => void) => () => void;
 }
 
 export interface SyncedBufferCallbacks {
@@ -87,10 +88,16 @@ export function useSyncedBuffer(
      * undo history and cursor position.
      */
     externalEpoch = 0,
+    /*
+     * The document revision this session's `initialContent` was installed at.
+     * Every buffer update carries it so the backend can refuse an edit typed
+     * against text that a reload has since replaced, even when that edit was
+     * already on its way when the reload landed.
+     */
+    baseRevision: number,
 ): SyncedBufferCallbacks {
     const viewRef = useRef(view);
     const cursorRef = useRef(toEditorPosition(view.cursor.line, view.cursor.column));
-    const currentDocumentRef = useRef(documentId);
     const activation = useMemo(
         () => ({
             documentId,
@@ -101,55 +108,94 @@ export function useSyncedBuffer(
         }),
         [documentId, externalEpoch],
     );
+    const currentActivationRef = useRef(activation.token);
     const contentRef = useRef(initialContent);
     const selectionRef = useRef(view.selection);
     const scrollRef = useRef(view.scroll);
     const sessionActiveRef = useRef(true);
+    const [rebase, setRebase] = useState<{ token: symbol; from: number; to: number } | null>(null);
     const [liveCursor, setLiveCursor] = useState<EditorPosition>(() =>
         toEditorPosition(view.cursor.line, view.cursor.column),
     );
 
     /*
-     * The session refs belong to one document. The editor surface outlives a
+     * The session refs belong to one activation. The editor surface outlives a
      * document switch, and the outgoing Monaco instance can report a blur while
      * React commits the incoming document, before any passive effect runs. Every
      * callback therefore adopts its own render's document first, so it never
      * captures the outgoing document's text or caret under the incoming identity.
      */
     const adoptDocument = useCallback((): void => {
-        if (currentDocumentRef.current === documentId) return;
+        if (currentActivationRef.current === activation.token) return;
         const cursor = toEditorPosition(view.cursor.line, view.cursor.column);
-        currentDocumentRef.current = documentId;
+        currentActivationRef.current = activation.token;
         viewRef.current = view;
         contentRef.current = initialContent;
         cursorRef.current = cursor;
         selectionRef.current = view.selection;
         scrollRef.current = view.scroll;
         setLiveCursor(cursor);
-    }, [documentId, initialContent, view]);
+    }, [activation.token, initialContent, view]);
 
     useEffect((): void => {
         viewRef.current = view;
         adoptDocument();
     }, [adoptDocument, view]);
 
+    /*
+     * Ending a session drops its unsent edits. That includes a session ended by
+     * an external replacement: an edit typed before a reload describes the text
+     * the reload discarded, and sending it afterwards would undo the reload.
+     */
     useEffect((): (() => void) => {
         sessionActiveRef.current = true;
         return (): void => {
             sessionActiveRef.current = false;
             adapter.cancelPendingSession?.(documentId);
         };
-    }, [adapter, documentId]);
+    }, [adapter, documentId, externalEpoch]);
+
+    /*
+     * The base this session's updates carry: the installed revision, or the
+     * revision the backend named when it refused an update of this session as
+     * superseded.
+     */
+    const currentBase =
+        rebase !== null && rebase.token === activation.token && rebase.from === baseRevision ? rebase.to : baseRevision;
+
+    /*
+     * A superseded update of the live session means its base is stale while the
+     * editor still shows the user's text. The session keeps that text, adopts
+     * the current revision and resends it, so the editor and the backend agree.
+     * A session already ended by the reload ignores the report: the reloaded
+     * text replaced it.
+     */
+    useEffect(
+        (): (() => void) | undefined =>
+            adapter.subscribeSupersededBuffers?.((buffer): void => {
+                if (
+                    buffer.documentId !== documentId ||
+                    !sessionActiveRef.current ||
+                    currentActivationRef.current !== activation.token ||
+                    buffer.baseRevision !== currentBase
+                )
+                    return;
+                setRebase({ token: activation.token, from: baseRevision, to: buffer.currentRevision });
+                void adapter.updateBuffer(documentId, contentRef.current, buffer.currentRevision);
+            }),
+        [activation.token, adapter, baseRevision, currentBase, documentId],
+    );
 
     const lifecycleBarrier = useMemo(
         () =>
             createLifecycleBarrier<string, DocViewInput, symbol>({
                 flushBuffer: adapter.flushBuffer,
                 flushDocView: adapter.flushDocView,
-                queueBuffer: adapter.updateBuffer,
+                queueBuffer: (documentId: string, content: string): Promise<void> =>
+                    adapter.updateBuffer(documentId, content, currentBase),
                 queueDocView: adapter.updateDocView,
             }),
-        [adapter],
+        [adapter, currentBase],
     );
 
     const flushActiveSession = useCallback(
@@ -193,9 +239,9 @@ export function useSyncedBuffer(
             if (!sessionActiveRef.current) return;
             adoptDocument();
             contentRef.current = content;
-            void adapter.updateBuffer(documentId, content);
+            void adapter.updateBuffer(documentId, content, currentBase);
         },
-        [adapter, adoptDocument, documentId],
+        [adapter, adoptDocument, currentBase, documentId],
     );
 
     const onCursorPositionChange = useCallback(

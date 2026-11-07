@@ -13,6 +13,7 @@ import {
     type AppModelRuntime,
 } from '../../src/logic/adapter/appModelAdapter';
 import type { WireError } from '../../src/logic/utils/parseError';
+import * as utf8 from '../../src/logic/utils/utf8ByteLength';
 import { WorkspaceTreeTestProvider } from '../support/WorkspaceTreeTestProvider';
 
 const mockSetDocView = jest.fn(async (): Promise<void> => undefined);
@@ -56,6 +57,8 @@ interface MockMonacoRuntime {
     cursorSelectionListener: ((event: editor.ICursorSelectionChangedEvent) => void) | undefined;
     editor: editor.IStandaloneCodeEditor;
     model: {
+        dispose: jest.Mock<void, []>;
+        getValue: jest.Mock<string, []>;
         getFullModelRange: jest.Mock<IRange, []>;
         getLineCount: jest.Mock<number, []>;
         setValue: jest.Mock<void, [string]>;
@@ -66,6 +69,20 @@ interface MockMonacoRuntime {
 }
 
 const mockRuntime = {} as MockMonacoRuntime;
+let mockPreviewDrawFailure = false;
+
+jest.mock('../../src/ui/components/AlertBox', () => {
+    const actual = jest.requireActual<typeof import('../../src/ui/components/AlertBox')>(
+        '../../src/ui/components/AlertBox',
+    );
+    return {
+        __esModule: true,
+        default: (props: React.ComponentProps<typeof actual.default>): React.JSX.Element => {
+            if (mockPreviewDrawFailure) throw new Error('preview drawing failure');
+            return <actual.default {...props} />;
+        },
+    };
+});
 
 function resetMockMonaco(): void {
     mockRuntime.deferMount = false;
@@ -80,6 +97,8 @@ function resetMockMonaco(): void {
         positionColumn: 1,
     } as ISelection;
     mockRuntime.model = {
+        dispose: jest.fn(),
+        getValue: jest.fn(() => mockRuntime.content),
         getFullModelRange: jest.fn<IRange, []>(() => ({
             startLineNumber: 1,
             startColumn: 1,
@@ -166,7 +185,7 @@ jest.mock('@monaco-editor/react', () => {
             mockRuntime.props = props;
             const finishMount = (): void =>
                 props.onMount?.(editorInstance, {
-                    editor: { ScrollType: { Immediate: 1 } },
+                    editor: { ScrollType: { Immediate: 1 }, setModelMarkers: jest.fn() },
                     KeyCode: { Enter: 3 },
                 } as unknown as Parameters<NonNullable<EditorProps['onMount']>>[1]);
             if (mockRuntime.deferMount) mockRuntime.finishMount = finishMount;
@@ -211,6 +230,7 @@ import AppearanceControls from '../../src/ui/widgets/AppearanceControls';
 import { useAppearanceSettings } from '../../src/ui/widgets/appearanceSettingsContext';
 import EditorView, { type EditorViewAdapter } from '../../src/ui/widgets/EditorView';
 import SettingsMenu from '../../src/ui/widgets/Menubar/SettingsMenu';
+import Menubar from '../../src/ui/widgets/Menubar/Menubar';
 
 type VoidResult = { error?: WireError };
 
@@ -273,9 +293,105 @@ const AppearanceSettingsMenu: React.FC = (): React.JSX.Element => {
 };
 
 beforeEach((): void => {
+    mockPreviewDrawFailure = false;
     store.dispatch(hydrateSettings(loadedMarkdownSettings));
     jest.useFakeTimers();
     resetMockMonaco();
+});
+
+it('keeps editor, tabs and menus usable after a preview drawing failure and recovers', async () => {
+    const errors = jest.spyOn(console, 'error').mockImplementation(() => {});
+    try {
+        let accepted: ((buffer: AcceptedBuffer) => void) | undefined;
+        const first = statusDocument({ documentId: 'document-1', title: 'First' });
+        const second = statusDocument({ documentId: 'document-2', title: 'Second' });
+        store.dispatch(
+            hydrateProjection({
+                revision: 1,
+                orderedDocumentIds: [first.documentId, second.documentId],
+                documents: { [first.documentId]: first, [second.documentId]: second },
+                activeDocumentId: first.documentId,
+                ui: {},
+            }),
+        );
+        const adapter: EditorViewAdapter = {
+            ...createRenderedEditorAdapter(),
+            subscribeAcceptedBuffers: (listener): (() => void) => {
+                accepted = listener;
+                return (): void => {
+                    accepted = undefined;
+                };
+            },
+        };
+        const activate = jest.fn(() => Promise.resolve({}));
+        const newWindow = jest.fn(() => Promise.resolve());
+        render(
+            <Provider store={store}>
+                <EditorSessionContext.Provider
+                    value={{ documentId: first.documentId, content: '# Before', documentRevision: 0 }}
+                >
+                    <Menubar
+                        modalOpen={false}
+                        onAbout={jest.fn()}
+                        onNewWindow={newWindow}
+                        toggleFullscreen={jest.fn()}
+                        settingsMenuProps={{
+                            mode: 'auto',
+                            theme: 'material',
+                            onModeChange: jest.fn(),
+                            onOpenAppearance: jest.fn(),
+                            onThemeChange: jest.fn(),
+                        }}
+                    />
+                    <EditorView adapter={adapter} onActivateDocument={activate} />
+                </EditorSessionContext.Provider>
+            </Provider>,
+        );
+        expect(await screen.findByRole('heading', { name: 'Before' })).toBeInTheDocument();
+        mockPreviewDrawFailure = true;
+        act(() => accepted?.({ documentId: first.documentId, content: '> [!NOTE]\n> broken', generation: 1 }));
+        expect(await screen.findByRole('alert')).toHaveTextContent('Preview could not be rendered');
+        expect(screen.getByRole('heading', { name: 'Before' })).toBeInTheDocument();
+        const editor = screen.getByRole('textbox', { name: 'Markdown source' });
+        fireEvent.change(editor, { target: { value: '# Recovered' } });
+        act(() => accepted?.({ documentId: first.documentId, content: '# Recovered', generation: 2 }));
+        expect(await screen.findByRole('heading', { name: 'Recovered' })).toBeInTheDocument();
+        expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+        fireEvent.click(screen.getByRole('tab', { name: /Second/ }));
+        await waitFor(() => expect(activate).toHaveBeenCalled());
+        fireEvent.click(screen.getByRole('button', { name: 'File' }));
+        fireEvent.click(screen.getByRole('menuitem', { name: 'New Window' }));
+        await waitFor(() => expect(newWindow).toHaveBeenCalled());
+    } finally {
+        errors.mockRestore();
+    }
+});
+
+it('recovers the preview after removing content that fails on its first draw', async () => {
+    const errors = jest.spyOn(console, 'error').mockImplementation(() => {});
+    try {
+        let accepted: ((buffer: AcceptedBuffer) => void) | undefined;
+        const adapter: EditorViewAdapter = {
+            ...createRenderedEditorAdapter(),
+            subscribeAcceptedBuffers: (listener): (() => void) => {
+                accepted = listener;
+                return (): void => {
+                    accepted = undefined;
+                };
+            },
+        };
+        mockPreviewDrawFailure = true;
+        renderLivePreviewEditor('> [!NOTE]\n> broken', adapter);
+        expect(await screen.findByRole('alert')).toHaveTextContent('Preview could not be rendered');
+        fireEvent.change(screen.getByRole('textbox', { name: 'Markdown source' }), {
+            target: { value: '# Fixed' },
+        });
+        act(() => accepted?.({ documentId: 'document-1', content: '# Fixed', generation: 1 }));
+        expect(await screen.findByRole('heading', { name: 'Fixed' })).toBeInTheDocument();
+        expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    } finally {
+        errors.mockRestore();
+    }
 });
 
 afterEach((): void => {
@@ -297,7 +413,7 @@ it('focuses a newly created file when Monaco mounts after the focus request', as
     );
     render(
         <Provider store={store}>
-            <EditorSessionProvider activeBuffer={{ documentId: document.documentId, content: '' }}>
+            <EditorSessionProvider activeBuffer={{ documentId: document.documentId, content: '', documentRevision: 0 }}>
                 <EditorView editorFocusRequest={{ documentId: document.documentId, sequence: 1 }} />
             </EditorSessionProvider>
         </Provider>,
@@ -346,7 +462,7 @@ async function renderStatusEditor(document: DocumentMetadata, content: string): 
             activeDocumentId: document.documentId,
             ui: {},
         },
-        activeBuffer: { documentId: document.documentId, content },
+        activeBuffer: { documentId: document.documentId, content, documentRevision: 0 },
     };
     const mockedAdapter = appModelAdapter as jest.Mocked<typeof appModelAdapter>;
 
@@ -413,7 +529,7 @@ function renderLivePreviewEditor(
 
     return render(
         <Provider store={store}>
-            <EditorSessionContext.Provider value={{ documentId: document.documentId, content }}>
+            <EditorSessionContext.Provider value={{ documentId: document.documentId, content, documentRevision: 0 }}>
                 <EditorView adapter={adapter} />
             </EditorSessionContext.Provider>
         </Provider>,
@@ -430,6 +546,46 @@ function createRenderedEditorAdapter(): EditorViewAdapter {
     };
 }
 
+it('measures the latest accepted text only when the preview becomes visible', async () => {
+    let accepted: ((buffer: AcceptedBuffer) => void) | undefined;
+    const adapter: EditorViewAdapter = {
+        ...createRenderedEditorAdapter(),
+        subscribeAcceptedBuffers(listener) {
+            accepted = listener;
+            return () => undefined;
+        },
+    };
+    const measure = jest.spyOn(utf8, 'utf8ByteLength');
+    const initial = statusDocument();
+    const hidden = {
+        ...initial,
+        view: { ...initial.view, arrangement: 'editor' as const, editorVisible: true, previewVisible: false },
+    };
+    const content = 'é'.repeat(1_048_577);
+    try {
+        renderLivePreviewEditor('initial', adapter, hidden);
+        act(() => accepted?.({ documentId: 'document-1', content, generation: 1 }));
+        expect(measure).not.toHaveBeenCalled();
+
+        act(() => {
+            store.dispatch(
+                hydrateProjection({
+                    revision: 2,
+                    documents: { 'document-1': initial },
+                    activeDocumentId: 'document-1',
+                    ui: {},
+                }),
+            );
+        });
+        expect(await screen.findByText(/live preview is paused/i)).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Refresh preview' })).toBeEnabled();
+        expect(measure).toHaveBeenCalledTimes(1);
+        expect(measure).toHaveBeenCalledWith(content);
+    } finally {
+        measure.mockRestore();
+    }
+});
+
 const CommittedWriteHarness: React.FC<{
     adapter: EditorViewAdapter;
 }> = ({ adapter }): React.JSX.Element => {
@@ -440,7 +596,7 @@ const CommittedWriteHarness: React.FC<{
             <button type="button" onClick={(): void => setContent('# After the committed write')}>
                 Apply committed-write patch
             </button>
-            <EditorSessionProvider activeBuffer={{ documentId: 'document-1', content }}>
+            <EditorSessionProvider activeBuffer={{ documentId: 'document-1', content, documentRevision: 0 }}>
                 <EditorView adapter={adapter} />
             </EditorSessionProvider>
         </>
@@ -578,7 +734,7 @@ it('preserves replacement undo and UpdateBuffer routing', async () => {
             scroll: { editor: 0, preview: 0 },
         },
     });
-    const updateBuffer = jest.fn<Promise<void>, [string, string]>(async (): Promise<void> => undefined);
+    const updateBuffer = jest.fn<Promise<void>, [string, string, number]>(async (): Promise<void> => undefined);
     const adapter: EditorViewAdapter = {
         flushBuffer: async (): Promise<void> => undefined,
         flushDocView: async (): Promise<void> => undefined,
@@ -628,6 +784,7 @@ it('preserves replacement undo and UpdateBuffer routing', async () => {
                 activeBuffer={{
                     documentId: document.documentId,
                     content: mockRuntime.content,
+                    documentRevision: 0,
                 }}
             >
                 <SessionCommandControls />
@@ -648,8 +805,8 @@ it('preserves replacement undo and UpdateBuffer routing', async () => {
         expect.objectContaining({ text: 'whole\nreplacement' }),
     ]);
     expect(mockRuntime.editor.pushUndoStop).toHaveBeenCalledTimes(4);
-    expect(updateBuffer).toHaveBeenNthCalledWith(1, 'document-1', 'alpha delta\ngamma');
-    expect(updateBuffer).toHaveBeenNthCalledWith(2, 'document-1', 'whole\nreplacement');
+    expect(updateBuffer).toHaveBeenNthCalledWith(1, 'document-1', 'alpha delta\ngamma', 0);
+    expect(updateBuffer).toHaveBeenNthCalledWith(2, 'document-1', 'whole\nreplacement', 0);
 });
 
 it('displays live one-based cursor position without Redux truth', async () => {
@@ -841,8 +998,9 @@ it('keeps the editor region in binding content order without an extra wrapper', 
 
 it('renders accepted GFM within the debounce target', async () => {
     const acknowledgement = deferred<VoidResult>();
-    const updateBuffer = jest.fn<Promise<VoidResult>, [string, string]>(
-        (documentId: string, content: string): Promise<VoidResult> => {
+    const updateBuffer = jest.fn<Promise<VoidResult>, [string, string, number]>(
+        (documentId: string, content: string, baseRevision: number): Promise<VoidResult> => {
+            void baseRevision;
             void documentId;
             void content;
             return acknowledgement.promise;
@@ -862,7 +1020,7 @@ it('renders accepted GFM within the debounce target', async () => {
                         activeDocumentId: '',
                         ui: {},
                     },
-                    activeBuffer: { documentId: '', content: '' },
+                    activeBuffer: { documentId: '', content: '', documentRevision: 0 },
                 },
             }),
             updateBuffer,
@@ -887,7 +1045,7 @@ it('renders accepted GFM within the debounce target', async () => {
     await act(async (): Promise<void> => {
         await jest.advanceTimersByTimeAsync(1);
     });
-    expect(updateBuffer).toHaveBeenCalledWith('document-1', gfmTable);
+    expect(updateBuffer).toHaveBeenCalledWith('document-1', gfmTable, 0);
     expect(screen.queryByRole('table')).not.toBeInTheDocument();
     expect(Date.now() - typingStoppedAt).toBe(BUFFER_SYNC_MS);
 
@@ -933,7 +1091,9 @@ it('(EC-DOCS-12) keeps focused hidden-editor patches content-free', async () => 
 
     render(
         <Provider store={store}>
-            <EditorSessionContext.Provider value={{ documentId: 'document-1', content: '# Local working copy' }}>
+            <EditorSessionContext.Provider
+                value={{ documentId: 'document-1', content: '# Local working copy', documentRevision: 0 }}
+            >
                 <EditorView />
             </EditorSessionContext.Provider>
         </Provider>,
@@ -996,6 +1156,7 @@ it('flushes session state before hiding the editor and does not hide after a flu
         activeBuffer: {
             documentId: initialDocument.documentId,
             content: '# Draft',
+            documentRevision: 0,
         },
     };
     const bufferFlush = deferred<void>();
@@ -1223,6 +1384,7 @@ it('isolates pending view intent across document switch', async () => {
                 value={{
                     documentId: first.documentId,
                     content: '# First working copy',
+                    documentRevision: 0,
                 }}
             >
                 <EditorView />
@@ -1248,6 +1410,7 @@ it('isolates pending view intent across document switch', async () => {
                 value={{
                     documentId: second.documentId,
                     content: '# Second working copy',
+                    documentRevision: 0,
                 }}
             >
                 <EditorView />
@@ -1482,6 +1645,7 @@ it('round trips view mode through the backend patch', async () => {
         activeBuffer: {
             documentId: initialDocument.documentId,
             content: '# Backend-owned preview',
+            documentRevision: 0,
         },
     };
     const mockedAdapter = appModelAdapter as jest.Mocked<typeof appModelAdapter>;
@@ -1579,6 +1743,7 @@ it('keeps keyboard selection and focus backend-controlled', async () => {
         activeBuffer: {
             documentId: initialDocument.documentId,
             content: '# Backend-owned preview',
+            documentRevision: 0,
         },
     };
     const mockedAdapter = appModelAdapter as jest.Mocked<typeof appModelAdapter>;
@@ -1733,7 +1898,9 @@ it('keeps each document its own dirty state and arrangement across a switch', as
     );
     const rendered = render(
         <Provider store={store}>
-            <EditorSessionContext.Provider value={{ documentId: first.documentId, content: '# First' }}>
+            <EditorSessionContext.Provider
+                value={{ documentId: first.documentId, content: '# First', documentRevision: 0 }}
+            >
                 <EditorView />
             </EditorSessionContext.Provider>
         </Provider>,
@@ -1766,7 +1933,9 @@ it('keeps each document its own dirty state and arrangement across a switch', as
         });
         rendered.rerender(
             <Provider store={store}>
-                <EditorSessionContext.Provider value={{ documentId: document.documentId, content }}>
+                <EditorSessionContext.Provider
+                    value={{ documentId: document.documentId, content, documentRevision: 0 }}
+                >
                     <EditorView />
                 </EditorSessionContext.Provider>
             </Provider>,
@@ -1938,7 +2107,9 @@ it('does not re-apply the saved preview scroll when the content changes', async 
     contentOf().scrollTop = 10;
     rerender(
         <Provider store={store}>
-            <EditorSessionContext.Provider value={{ documentId: 'document-1', content: '# body edited' }}>
+            <EditorSessionContext.Provider
+                value={{ documentId: 'document-1', content: '# body edited', documentRevision: 0 }}
+            >
                 <EditorView adapter={createRenderedEditorAdapter()} />
             </EditorSessionContext.Provider>
         </Provider>,
@@ -1951,28 +2122,6 @@ it('does not re-apply the saved preview scroll when the content changes', async 
     expect(contentOf().scrollTop).toBe(10);
 });
 
-/*
- * — 's scale clause: "Across **repeated switches among 40
- * distinct documents**, 100% of named cases restore the correct content
- * identity, caret, selection, scroll, and arrangement".
- *
- * The restoration tests used **two** documents and one round trip. Every other
- * 40 in the tree is the *cap* rather than a switch population —
- * `file_lifecycle_test.go:110`'s forty-first refusal, the e2e equivalent,
- * `DocumentTabs.test.tsx:895` — and the `[parity states] 40/40` line printed by
- * `just e2e-test` counts visual-parity states and is an unrelated 40. A reader
- * who takes any of them for this clause is wrong.
- *
- * Level: jsdom, deliberately. What it proves is that the application resolves
- * **each document's own** view and hands it to the editor across a switch
- * storm, and that no document inherits a neighbour's. What it cannot prove is
- * that Monaco itself paints that caret and selection, because the editor is
- * mocked here — that half belongs to real-browser coverage and is not claimed.
- *
- * Preview scroll is deliberately excluded: restores it once per
- * activation, and asserting it here would duplicate that test rather than
- * extend it.
- */
 // arrangement, caret, selection and editor scroll as the application resolves
 // them. Monaco's own painting of caret and selection is NOT proved here — the
 // editor is mocked. Preview scroll is 's.)
@@ -2008,7 +2157,9 @@ it('restores each of forty documents its own view across repeated switches', asy
     let revision = 1;
     const rendered = render(
         <Provider store={store}>
-            <EditorSessionContext.Provider value={{ documentId: ids[0] as string, content: '# 0' }}>
+            <EditorSessionContext.Provider
+                value={{ documentId: ids[0] as string, content: '# 0', documentRevision: 0 }}
+            >
                 <EditorView />
             </EditorSessionContext.Provider>
         </Provider>,
@@ -2027,7 +2178,7 @@ it('restores each of forty documents its own view across repeated switches', asy
         });
         rendered.rerender(
             <Provider store={store}>
-                <EditorSessionContext.Provider value={{ documentId, content: `# ${documentId}` }}>
+                <EditorSessionContext.Provider value={{ documentId, content: `# ${documentId}`, documentRevision: 0 }}>
                     <EditorView />
                 </EditorSessionContext.Provider>
             </Provider>,
@@ -2068,4 +2219,39 @@ it('restores each of forty documents its own view across repeated switches', asy
     for (const index of [0, 39, 1, 38, 7, 21, 7, 0, 21]) {
         await expectRestored(index);
     }
+});
+
+it('releases the last cached model when the final tab closes', async () => {
+    const document = statusDocument({ documentId: 'last-model' });
+    store.dispatch(
+        hydrateProjection({
+            revision: 1,
+            orderedDocumentIds: [document.documentId],
+            documents: { [document.documentId]: document },
+            activeDocumentId: document.documentId,
+            ui: {},
+        }),
+    );
+    const { rerender } = render(
+        <Provider store={store}>
+            <EditorSessionProvider activeBuffer={{ documentId: document.documentId, content: '', documentRevision: 0 }}>
+                <EditorView />
+            </EditorSessionProvider>
+        </Provider>,
+    );
+    await screen.findByRole('textbox', { name: 'Markdown source' });
+    const model = mockRuntime.model;
+    act(() => {
+        store.dispatch(
+            hydrateProjection({ revision: 2, orderedDocumentIds: [], documents: {}, activeDocumentId: null, ui: {} }),
+        );
+    });
+    rerender(
+        <Provider store={store}>
+            <EditorSessionProvider activeBuffer={null}>
+                <EditorView />
+            </EditorSessionProvider>
+        </Provider>,
+    );
+    expect(model.dispose).toHaveBeenCalledTimes(1);
 });

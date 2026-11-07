@@ -237,3 +237,49 @@ describe('Export to PDF shortcut', () => {
         expect(fireEvent.keyDown(window, { key: 's', code: 'KeyS', ctrlKey: true })).toBe(true);
     });
 });
+
+it('captures an available shell shortcut from the Monaco text input before editor handlers', () => {
+    render(<Harness modalOpen={false} />);
+    const surface = document.createElement('div');
+    surface.dataset.editorSurface = '';
+    surface.innerHTML = '<div class="monaco-editor"><textarea class="inputarea"></textarea></div>';
+    document.body.append(surface);
+    const input = surface.querySelector('textarea')!;
+    const editorHandler = jest.fn((event: Event) => event.stopPropagation());
+    input.addEventListener('keydown', editorHandler);
+    fireEvent.keyDown(input, { key: 'F11' });
+    expect(toggleFullscreen).toHaveBeenCalledTimes(1);
+    expect(editorHandler).not.toHaveBeenCalled();
+    surface.remove();
+});
+
+it('leaves unavailable editor shortcuts and Find inputs to their own handlers', () => {
+    render(<Harness modalOpen />);
+    const surface = document.createElement('div');
+    surface.dataset.editorSurface = '';
+    surface.innerHTML =
+        '<div class="monaco-editor"><textarea class="inputarea"></textarea><textarea class="find-input"></textarea></div>';
+    document.body.append(surface);
+    const inputs = surface.querySelectorAll('textarea');
+    const handler = jest.fn((event: Event) => event.stopPropagation());
+    inputs.forEach((input) => input.addEventListener('keydown', handler));
+    inputs.forEach((input) => fireEvent.keyDown(input, { key: 'F11' }));
+    expect(handler).toHaveBeenCalledTimes(2);
+    expect(toggleFullscreen).not.toHaveBeenCalled();
+    surface.remove();
+});
+
+it('leaves Find inputs on the bubble path even when the shortcut is available', () => {
+    render(<Harness modalOpen={false} />);
+    const surface = document.createElement('div');
+    surface.dataset.editorSurface = '';
+    surface.innerHTML = '<div class="monaco-editor"><textarea class="find-input"></textarea></div>';
+    document.body.append(surface);
+    const input = surface.querySelector('textarea')!;
+    const handler = jest.fn((event: Event) => event.stopPropagation());
+    input.addEventListener('keydown', handler);
+    fireEvent.keyDown(input, { key: 'F11' });
+    expect(handler).toHaveBeenCalledTimes(1);
+    expect(toggleFullscreen).not.toHaveBeenCalled();
+    surface.remove();
+});

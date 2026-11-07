@@ -2,17 +2,26 @@ import { useCallback, useContext, useEffect, useRef, useState } from 'react';
 
 import { t } from '../i18n';
 import { appModelAdapter, documentConflictAdapter, documentWriteAdapter } from '../logic/adapter';
+import { isBufferSyncError } from '../logic/utils/bufferSyncError';
 import { useAppDispatch, useAppSelector } from '../logic/store';
 import { hydrateProjection } from '../logic/store/appModelProjectionActions';
 import { reportClassifiedError } from '../logic/store/classifiedNotification';
-import type { ClassifiedError, DocumentMetadata, RecoverySurface, WriteResult } from '../logic/store/appModelTypes';
+import type {
+    ActiveBuffer,
+    ClassifiedError,
+    ConflictResult,
+    DocumentMetadata,
+    RecoverySurface,
+    WriteResult,
+} from '../logic/store/appModelTypes';
 import { notifyCondition, notifyToast, type NotificationRemediationIntent } from '../logic/store/notificationsSlice';
+import { saveWarningNotification } from '../logic/store/saveWarning';
 import type { ExternalChangeDecision } from '../ui/widgets/dialogs/ExternalChangePrompt';
 import { TidyCommandsContext, type TidyCommandOutcome } from '../ui/widgets/tidyCommandsContext';
 import type { DocumentSession } from './useDocumentSession';
 import type { ConflictCommands } from './useConflictCommands';
 import { isConflictCurrent, type ConflictPresentation } from './conflictPresentation';
-import { promptAfterWrite, type WritePrompt } from './writeWorkflow';
+import { promptAfterWrite, type WriteIntent, type WritePrompt } from './writeWorkflow';
 
 function safeFilename(document: DocumentMetadata | undefined, targetPath?: string): string {
     const source = targetPath ?? document?.displayName ?? document?.path ?? document?.title;
@@ -37,15 +46,49 @@ export type CloseSaveOutcome =
     | { status: 'reloaded'; contentRevision: number }
     | { status: 'cancelled' | 'refused' | 'recovery' | 'disappeared' | 'unmounted' };
 
+function writeConflictOutcome(decision: ExternalChangeDecision, result: ConflictResult) {
+    const { error, preview, status, decisionToken, documentRevision } = result;
+    if (error !== undefined && preview === undefined) return { kind: 'refuse' } as const;
+    if ((error !== undefined || status === 'detected') && preview !== undefined) {
+        return { kind: 'refresh', preview } as const;
+    }
+    if (decision === 'keep-mine' && status === 'authorized' && decisionToken !== undefined) {
+        return { kind: 'keep-mine', decisionToken } as const;
+    }
+    const outcome: CloseSaveOutcome =
+        decision === 'reload' && status === 'reloaded' && documentRevision !== undefined
+            ? { status: 'reloaded', contentRevision: documentRevision }
+            : { status: 'refused' };
+    return { kind: 'settle', outcome } as const;
+}
+
+function writeTargetAccess(
+    kind: WriteIntent['kind'],
+    target: DocumentMetadata,
+): 'protected-copy' | 'read-only' | 'writable' {
+    if (kind === 'save-as' && target.capability === 'write-protected-read-only') return 'protected-copy';
+    if (target.status === 'read-only' || (target.capability !== undefined && target.capability !== 'writable')) {
+        return 'read-only';
+    }
+    return 'writable';
+}
+
+function activeWriteRevision(documentId: string, document: DocumentMetadata, buffer: ActiveBuffer | null) {
+    const stillActive = buffer?.documentId === documentId;
+    const revision = (stillActive ? buffer.documentRevision : undefined) ?? document.contentRevision ?? 0;
+    return { revision, stillActive };
+}
+
 export function useDocumentWrites(session: DocumentSession, conflicts: ConflictCommands) {
     const { activeBuffer, activeDocument, documentsById } = session;
     const dispatch = useAppDispatch();
     const tidy = useContext(TidyCommandsContext);
     const markdownSettings = useAppSelector((state) => state.settings.markdown);
-    const [prompt, updatePrompt] = useState<WritePrompt>({ phase: 'idle' });
+    const formatOnSave = markdownSettings?.formatOnSave;
+    const [promptState, setPromptState] = useState<WritePrompt>({ phase: 'idle' });
     const [closeSavePending, setCloseSavePending] = useState(false);
     const [validationFailed, setValidationFailed] = useState(false);
-    const promptRef = useRef<WritePrompt>(prompt);
+    const promptRef = useRef<WritePrompt>(promptState);
     const operationRef = useRef(0);
     const inFlight = useRef(false);
     const mounted = useRef(false);
@@ -60,7 +103,7 @@ export function useDocumentWrites(session: DocumentSession, conflicts: ConflictC
         suspendedWrite.current = null;
         if (mounted.current && suspended !== null) {
             promptRef.current = suspended.prompt;
-            updatePrompt(suspended.prompt);
+            setPromptState(suspended.prompt);
             setValidationFailed(suspended.validationFailed);
         }
         pending.resolve(outcome);
@@ -82,13 +125,13 @@ export function useDocumentWrites(session: DocumentSession, conflicts: ConflictC
     );
     const notifyInactiveFormatSkipped = useCallback(
         (documentId: string): void => {
-            if (markdownSettings?.formatOnSave) showFormatSkip(documentId, 'notActive');
+            if (formatOnSave) showFormatSkip(documentId, 'notActive');
         },
-        [markdownSettings?.formatOnSave, showFormatSkip],
+        [formatOnSave, showFormatSkip],
     );
     const formatBeforeSave = useCallback(
         async (documentId: string, isActive: boolean): Promise<void> => {
-            if (!markdownSettings?.formatOnSave) return;
+            if (!formatOnSave) return;
             if (!isActive) {
                 notifyInactiveFormatSkipped(documentId);
                 return;
@@ -102,7 +145,7 @@ export function useDocumentWrites(session: DocumentSession, conflicts: ConflictC
             if (outcome.kind === 'edits') return;
             showFormatSkip(documentId, outcome.kind === 'stale' ? 'changed' : outcome.kind);
         },
-        [markdownSettings?.formatOnSave, notifyInactiveFormatSkipped, showFormatSkip, tidy],
+        [formatOnSave, notifyInactiveFormatSkipped, showFormatSkip, tidy],
     );
     const lintAfterSave = useCallback(
         async (documentId: string): Promise<void> => {
@@ -117,7 +160,7 @@ export function useDocumentWrites(session: DocumentSession, conflicts: ConflictC
     );
     const setPrompt = useCallback((next: WritePrompt): void => {
         promptRef.current = next;
-        updatePrompt(next);
+        setPromptState(next);
     }, []);
     useEffect(() => {
         mounted.current = true;
@@ -155,7 +198,7 @@ export function useDocumentWrites(session: DocumentSession, conflicts: ConflictC
                 .cancelNormalization(current.request.documentId, current.request.decisionToken)
                 .catch(() => undefined);
         }
-    }, [documentsById, prompt, setPrompt, settleCloseSave]);
+    }, [documentsById, promptState, setPrompt, settleCloseSave]);
     const reportWriteError = useCallback(
         (error: ClassifiedError | undefined, documentId: string, intent?: NotificationRemediationIntent): void => {
             if (!mounted.current) return;
@@ -193,52 +236,60 @@ export function useDocumentWrites(session: DocumentSession, conflicts: ConflictC
             const nextPrompt = promptAfterWrite(result, { kind, documentId, filename }, contentRevision, decisionToken);
             setPrompt(nextPrompt);
             if (nextPrompt.phase !== 'idle') return result;
-            if (result.status === 'committed' && result.data !== undefined) {
-                const recovered = await appModelAdapter.reconcileCommittedWrite(result.data);
-                if (operation !== operationRef.current || !mounted.current) return result;
-                if ('savedOnDisk' in recovered) {
-                    setRecoverySurface(recovered);
-                    dispatch(
-                        notifyCondition({
-                            code: 'recovery',
-                            message: recovered.message,
-                            severity: 'warning',
-                            subject: documentId,
-                            title: t('recovery.title'),
-                        }),
-                    );
-                    settleCloseSave(documentId, { status: 'recovery' });
-                } else {
-                    setRecoverySurface(null);
-                    dispatch(hydrateProjection(recovered.snapshot));
-                    if (lintActive) await lintAfterSave(documentId);
-                    if (operation !== operationRef.current || !mounted.current) return result;
-                    settleCloseSave(documentId, {
-                        status: 'saved',
-                        writtenContentRevision: result.data.writtenContentRevision,
-                    });
-                }
-                const writtenDocument = documentsById[documentId] ?? activeDocument;
-                const safeName = safeFilename(writtenDocument, result.data.targetPath ?? filename);
-                dispatch(
-                    notifyToast({
-                        code: 'save-success',
-                        message: t('save.success.message', {
-                            encoding: t(`status.encoding.${writtenDocument?.encoding ?? 'utf-8'}`),
-                            filename: safeName,
-                            lineEnding: writeLineEndingLabel(result.data),
-                        }),
-                        severity: 'success',
-                        subject: documentId,
-                        title: t('save.success.title'),
-                    }),
-                );
-            } else if (result.status === 'conflict' || result.status === 'refused') {
+            if (result.status === 'conflict' || result.status === 'refused') {
                 reportWriteError(result.error, documentId, kind);
                 settleCloseSave(documentId, { status: 'refused' });
-            } else if (result.status === 'cancelled') {
-                settleCloseSave(documentId, { status: 'cancelled' });
+                return result;
             }
+            if (result.status === 'cancelled') {
+                settleCloseSave(documentId, { status: 'cancelled' });
+                return result;
+            }
+            if (result.status !== 'committed' || result.data === undefined) return result;
+
+            const recovered = await appModelAdapter.reconcileCommittedWrite(result.data);
+            if (operation !== operationRef.current || !mounted.current) return result;
+            if ('savedOnDisk' in recovered) {
+                setRecoverySurface(recovered);
+                dispatch(
+                    notifyCondition({
+                        code: 'recovery',
+                        message: recovered.message,
+                        severity: 'warning',
+                        subject: documentId,
+                        title: t('recovery.title'),
+                    }),
+                );
+                settleCloseSave(documentId, { status: 'recovery' });
+            } else {
+                setRecoverySurface(null);
+                dispatch(hydrateProjection(recovered.snapshot));
+                if (lintActive) await lintAfterSave(documentId);
+                if (operation !== operationRef.current || !mounted.current) return result;
+                settleCloseSave(documentId, {
+                    status: 'saved',
+                    writtenContentRevision: result.data.writtenContentRevision,
+                });
+            }
+            if (result.warning !== undefined) {
+                dispatch(saveWarningNotification(result.warning, documentId, result.warningReason));
+                return result;
+            }
+            const writtenDocument = documentsById[documentId] ?? activeDocument;
+            const safeName = safeFilename(writtenDocument, result.data.targetPath ?? filename);
+            dispatch(
+                notifyToast({
+                    code: 'save-success',
+                    message: t('save.success.message', {
+                        encoding: t(`status.encoding.${writtenDocument?.encoding ?? 'utf-8'}`),
+                        filename: safeName,
+                        lineEnding: writeLineEndingLabel(result.data),
+                    }),
+                    severity: 'success',
+                    subject: documentId,
+                    title: t('save.success.title'),
+                }),
+            );
             return result;
         },
         [activeDocument, dispatch, documentsById, lintAfterSave, reportWriteError, setPrompt, settleCloseSave],
@@ -256,10 +307,8 @@ export function useDocumentWrites(session: DocumentSession, conflicts: ConflictC
                 if (documentId === undefined) return undefined;
                 const target = documentsById[documentId];
                 if (target === undefined) return undefined;
-                if (
-                    target?.status === 'read-only' ||
-                    (target?.capability !== undefined && target.capability !== 'writable')
-                ) {
+                const access = writeTargetAccess(kind, target);
+                if (access === 'read-only') {
                     reportWriteError(
                         {
                             category: 'permission-denied',
@@ -290,7 +339,11 @@ export function useDocumentWrites(session: DocumentSession, conflicts: ConflictC
                         safeFilename(target),
                     );
                 }
-                await formatBeforeSave(documentId, true);
+                if (access !== 'protected-copy') {
+                    await formatBeforeSave(documentId, true);
+                } else if (formatOnSave) {
+                    showFormatSkip(documentId, 'readOnly');
+                }
                 await appModelAdapter.flushActiveSession?.(documentId);
                 const state = await appModelAdapter.getState();
                 if (!mounted.current || operation !== operationRef.current) return undefined;
@@ -310,24 +363,31 @@ export function useDocumentWrites(session: DocumentSession, conflicts: ConflictC
                     );
                     return undefined;
                 }
-                const stillActive = state.activeBuffer?.documentId === documentId;
-                const revision = stillActive
-                    ? (state.activeBuffer?.documentRevision ?? latestDocument.contentRevision ?? 0)
-                    : (latestDocument.contentRevision ?? 0);
+                const { revision, stillActive } = activeWriteRevision(documentId, latestDocument, state.activeBuffer);
                 return await finishWrite(kind, documentId, revision, '', safeFilename(target), stillActive);
-            } catch {
-                if (mounted.current && operation === operationRef.current)
-                    reportWriteError(
-                        undefined,
-                        targetDocumentId ?? activeDocument?.documentId ?? activeBuffer?.documentId ?? '',
-                        kind,
-                    );
+            } catch (error) {
+                if (isBufferSyncError(error) || !mounted.current || operation !== operationRef.current)
+                    return undefined;
+                reportWriteError(
+                    undefined,
+                    targetDocumentId ?? activeDocument?.documentId ?? activeBuffer?.documentId ?? '',
+                    kind,
+                );
                 return undefined;
             } finally {
                 if (operation === operationRef.current) inFlight.current = false;
             }
         },
-        [activeBuffer, activeDocument, documentsById, finishWrite, formatBeforeSave, reportWriteError],
+        [
+            activeBuffer,
+            activeDocument,
+            documentsById,
+            finishWrite,
+            formatBeforeSave,
+            formatOnSave,
+            reportWriteError,
+            showFormatSkip,
+        ],
     );
 
     const saveForClose = useCallback(
@@ -388,9 +448,9 @@ export function useDocumentWrites(session: DocumentSession, conflicts: ConflictC
                     request.filename,
                     true,
                 );
-            } catch {
+            } catch (error) {
                 if (mounted.current && operation === operationRef.current) {
-                    reportWriteError(undefined, request.documentId, request.kind);
+                    if (!isBufferSyncError(error)) reportWriteError(undefined, request.documentId, request.kind);
                     settleCloseSave(request.documentId, { status: 'refused' });
                 }
             } finally {
@@ -473,37 +533,35 @@ export function useDocumentWrites(session: DocumentSession, conflicts: ConflictC
                 if (!mounted.current || operation !== operationRef.current || promptRef.current !== current) return;
                 if (result.error !== undefined) {
                     reportWriteError(result.error, request.documentId, request.kind);
-                    if (result.preview !== undefined)
-                        setPrompt({ phase: 'conflict', request: { ...request, preview: result.preview } });
-                    else settleCloseSave(request.documentId, { status: 'refused' });
-                    return;
                 }
-                if (decision === 'keep-mine' && result.status === 'authorized' && result.decisionToken !== undefined) {
-                    setPrompt({ phase: 'idle' });
-                    await finishWrite(
-                        request.kind,
-                        request.documentId,
-                        request.preview.contentRevision,
-                        result.decisionToken,
-                        request.filename,
-                        true,
-                    );
-                } else if (result.status === 'detected' && result.preview !== undefined) {
-                    setPrompt({ phase: 'conflict', request: { ...request, preview: result.preview } });
-                } else {
-                    setPrompt({ phase: 'idle' });
-                    settleCloseSave(
-                        request.documentId,
-                        decision === 'reload' && result.status === 'reloaded' && result.documentRevision !== undefined
-                            ? { status: 'reloaded', contentRevision: result.documentRevision }
-                            : { status: 'refused' },
-                    );
+                const next = writeConflictOutcome(decision, result);
+                switch (next.kind) {
+                    case 'refuse':
+                        settleCloseSave(request.documentId, { status: 'refused' });
+                        return;
+                    case 'refresh':
+                        setPrompt({ phase: 'conflict', request: { ...request, preview: next.preview } });
+                        return;
+                    case 'keep-mine':
+                        setPrompt({ phase: 'idle' });
+                        await finishWrite(
+                            request.kind,
+                            request.documentId,
+                            request.preview.contentRevision,
+                            next.decisionToken,
+                            request.filename,
+                            true,
+                        );
+                        return;
+                    case 'settle':
+                        setPrompt({ phase: 'idle' });
+                        settleCloseSave(request.documentId, next.outcome);
+                        return;
                 }
-            } catch {
-                if (mounted.current && operation === operationRef.current) {
-                    reportWriteError(undefined, request.documentId, request.kind);
-                    settleCloseSave(request.documentId, { status: 'refused' });
-                }
+            } catch (error) {
+                if (!mounted.current || operation !== operationRef.current) return;
+                if (!isBufferSyncError(error)) reportWriteError(undefined, request.documentId, request.kind);
+                settleCloseSave(request.documentId, { status: 'refused' });
             } finally {
                 if (operation === operationRef.current) inFlight.current = false;
             }
@@ -547,24 +605,23 @@ export function useDocumentWrites(session: DocumentSession, conflicts: ConflictC
     const retryWrite = useCallback(
         async (kind: 'save' | 'save-as', documentId?: string): Promise<boolean> => {
             const current = promptRef.current;
-            if (current.phase !== 'idle' && validationFailed) {
-                if (inFlight.current) return false;
-                if (current.request.kind === kind && current.request.documentId === documentId) {
-                    inFlight.current = true;
-                    const operation = operationRef.current;
-                    try {
-                        if (activeBuffer?.documentId === documentId)
-                            await appModelAdapter.flushActiveSession?.(documentId);
-                        return await revalidatePrompt();
-                    } catch {
+            const hasFailedPrompt = current.phase !== 'idle' && validationFailed;
+            if (hasFailedPrompt && inFlight.current) return false;
+            if (hasFailedPrompt && current.request.kind === kind && current.request.documentId === documentId) {
+                inFlight.current = true;
+                const operation = operationRef.current;
+                try {
+                    if (activeBuffer?.documentId === documentId) await appModelAdapter.flushActiveSession?.(documentId);
+                    return await revalidatePrompt();
+                } catch (error) {
+                    if (!isBufferSyncError(error))
                         reportWriteError(undefined, current.request.documentId, current.request.kind);
-                        return false;
-                    } finally {
-                        if (operation === operationRef.current) inFlight.current = false;
-                    }
+                    return false;
+                } finally {
+                    if (operation === operationRef.current) inFlight.current = false;
                 }
-                await dismissWriteFailure();
             }
+            if (hasFailedPrompt) await dismissWriteFailure();
             return (await beginWrite(kind, documentId))?.status === 'committed';
         },
         [activeBuffer, beginWrite, dismissWriteFailure, reportWriteError, revalidatePrompt, validationFailed],
@@ -584,23 +641,23 @@ export function useDocumentWrites(session: DocumentSession, conflicts: ConflictC
         [activeDocument?.documentId, activeBuffer?.documentId, beginWrite, retryWrite, validationFailed],
     );
     const conflict: ConflictPresentation | null =
-        prompt.phase === 'conflict' && !validationFailed
+        promptState.phase === 'conflict' && !validationFailed
             ? {
-                  id: `write:${prompt.request.kind}:${prompt.request.documentId}`,
-                  preview: prompt.request.preview,
-                  valid: !validationFailed && isConflictCurrent(prompt.request.preview, documentsById),
+                  id: `write:${promptState.request.kind}:${promptState.request.documentId}`,
+                  preview: promptState.request.preview,
+                  valid: !validationFailed && isConflictCurrent(promptState.request.preview, documentsById),
                   onDecision: decideConflict,
               }
             : null;
     return {
-        active: prompt.phase !== 'idle',
-        prompt,
+        active: promptState.phase !== 'idle',
+        prompt: promptState,
         recoverySurface,
         conflict,
         beginWrite,
         saveForClose,
         notifyInactiveFormatSkipped,
-        closeOwnedPrompt: closeSavePending && prompt.phase !== 'idle',
+        closeOwnedPrompt: closeSavePending && promptState.phase !== 'idle',
         retryWrite,
         dismissWriteFailure,
         validationFailed,

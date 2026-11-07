@@ -13,6 +13,9 @@ func (service *AppModelService) ReorderDocument(ctx context.Context, documentID 
 	service.mu.Lock()
 	defer service.mu.Unlock()
 
+	if service.preparedQuitFenced {
+		return bridge.Refused[apperr.TabTransitionResult](apperr.ClassifiedConflict, documentID, "Shutdown is in progress.", apperr.RemediationRetry)
+	}
 	if service.state.tabSetRevision != expectedTabSetRevision {
 		return bridge.Refused[apperr.TabTransitionResult](apperr.ClassifiedConflict, documentID, "The tab set changed; reorder must be retried.", apperr.RemediationRetry)
 	}

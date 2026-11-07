@@ -32,9 +32,6 @@
     margin: 0;
     padding: 0;
 }
-.children {
-    padding: 0;
-}
 .nodeRow {
     align-items: center;
     display: flex;

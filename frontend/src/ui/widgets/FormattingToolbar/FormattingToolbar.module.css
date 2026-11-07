@@ -18,6 +18,16 @@
     cursor: pointer;
     padding: var(--control-padding);
     white-space: nowrap;
+    background: transparent;
+    border-color: transparent;
+    border-radius: var(--arrangement-option-radius);
+    block-size: var(--toolbar-action-height);
+    font-size: var(--toolbar-icon-label-font-size);
+    max-width: 100%;
+    min-inline-size: var(--toolbar-action-min-width);
+    overflow: hidden;
+    padding-inline: var(--toolbar-action-padding-inline);
+    text-overflow: ellipsis;
 }
 
 .toolbar {
@@ -54,19 +64,11 @@
 
 .group {
     flex: 0 1 auto;
-}
-
-.action {
-    background: transparent;
-    border-color: transparent;
-    border-radius: var(--arrangement-option-radius);
-    block-size: var(--toolbar-action-height);
-    font-size: var(--toolbar-icon-label-font-size);
-    max-width: 100%;
-    min-inline-size: var(--toolbar-action-min-width);
-    overflow: hidden;
-    padding-inline: var(--toolbar-action-padding-inline);
-    text-overflow: ellipsis;
+    backdrop-filter: var(--toolbar-group-backdrop-filter);
+    background: var(--toolbar-group-background);
+    border: 0;
+    border-radius: var(--toolbar-group-radius);
+    padding: var(--toolbar-group-padding);
 }
 
 .action[data-action-id='format'],
@@ -94,14 +96,6 @@
     color: var(--accent-contrast);
 }
 
-.group {
-    backdrop-filter: var(--toolbar-group-backdrop-filter);
-    background: var(--toolbar-group-background);
-    border: 0;
-    border-radius: var(--toolbar-group-radius);
-    padding: var(--toolbar-group-padding);
-}
-
 .utilityGroup,
 .arrangement {
     backdrop-filter: none;
@@ -125,6 +119,9 @@
     border-radius: var(--arrangement-option-radius);
     font-size: 11.5px;
     padding: var(--arrangement-option-padding);
+    border-width: 0;
+    color: var(--muted);
+    font-weight: 400;
 }
 
 .overflow {
@@ -220,11 +217,6 @@
 
 /* The arrangement options are a segmented control: only the selected option
    carries the accent foreground and semibold weight. */
-.arrangement .action {
-    border-width: 0;
-    color: var(--muted);
-    font-weight: 400;
-}
 
 .arrangement .action[aria-checked='true'] {
     background: var(--arrangement-selected-background);

@@ -24,7 +24,8 @@ const FOREGROUND_HANDOVER_GRACE_MS = 1_000;
  * The canceller is safe to call after the restoration has already run.
  */
 export function whenApplicationRegainsForegroundFocus(restore: () => void): () => void {
-    if (typeof window === 'undefined') {
+    const browserWindow = globalThis.window;
+    if (browserWindow === undefined) {
         restore();
         return (): void => undefined;
     }
@@ -36,14 +37,14 @@ export function whenApplicationRegainsForegroundFocus(restore: () => void): () =
     const settle = (run: boolean): void => {
         if (controller.signal.aborted) return;
         controller.abort();
-        if (graceTimer !== undefined) window.clearTimeout(graceTimer);
+        if (graceTimer !== undefined) browserWindow.clearTimeout(graceTimer);
         if (run) restore();
     };
 
-    window.addEventListener('focus', (): void => settle(true), {
+    browserWindow.addEventListener('focus', (): void => settle(true), {
         signal: controller.signal,
     });
-    graceTimer = window.setTimeout((): void => {
+    graceTimer = browserWindow.setTimeout((): void => {
         graceTimer = undefined;
         if (globalThis.document.hasFocus()) settle(true);
     }, FOREGROUND_HANDOVER_GRACE_MS);
@@ -72,12 +73,13 @@ export function whenApplicationRegainsForegroundFocus(restore: () => void): () =
  * the only party that knows whether its work is re-entrant.
  */
 export function onApplicationForeground(enter: () => void): () => void {
-    if (typeof window === 'undefined') {
+    const browserWindow = globalThis.window;
+    if (browserWindow === undefined) {
         return (): void => undefined;
     }
 
     const controller = new AbortController();
-    window.addEventListener('focus', (): void => enter(), {
+    browserWindow.addEventListener('focus', (): void => enter(), {
         signal: controller.signal,
     });
     globalThis.document.addEventListener(

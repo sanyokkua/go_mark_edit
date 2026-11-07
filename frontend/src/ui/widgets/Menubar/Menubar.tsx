@@ -45,27 +45,6 @@ const fileMenuSeparators = new Set<ActionId>(['open-recent', 'save', 'export-pdf
 
 const aboutMenuSeparators = new Set<ActionId>(['open-logs', 'about']);
 
-/*
- * Exactly the ids `fileActionInvoker` can resolve to a handler. Membership here
- * means "this row is only real when its prop was supplied", which is what lets
- * `fileActionDisabled` grey the row instead of letting it render enabled and
- * inert. `open-recent` is absent on purpose: it has no invoker and its own
- * recent-count rule governs it.
- */
-const FILE_ACTIONS_WITH_INVOKERS: ReadonlySet<ActionId> = new Set<ActionId>([
-    'new-file',
-    'new-window',
-    'open-file',
-    'open-folder',
-    'close-folder',
-    'save',
-    'save-as',
-    'export-pdf',
-    'close-tab',
-    'reopen',
-    'exit',
-]);
-
 function shortcutForMenuItem(shortcut: string | undefined): string | undefined {
     return shortcut === undefined ? undefined : formatShortcut(shortcut, currentPlatform());
 }
@@ -82,22 +61,22 @@ function menuDecoration(id: ActionId): React.JSX.Element | null {
 export interface MenubarProps {
     modalOpen: boolean;
     onAbout: () => void;
-    onNewDocument?: () => Promise<unknown> | unknown;
-    onNewWindow?: () => Promise<unknown> | unknown;
-    onOpenDocument?: () => Promise<unknown> | unknown;
-    onOpenFolder?: () => Promise<unknown> | unknown;
-    onCloseFolder?: () => Promise<unknown> | unknown;
+    onNewDocument?: () => unknown;
+    onNewWindow?: () => unknown;
+    onOpenDocument?: () => unknown;
+    onOpenFolder?: () => unknown;
+    onCloseFolder?: () => unknown;
     workspaceOpen?: boolean;
-    onOpenRecentItem?: (item: RecentItem) => Promise<unknown> | unknown;
-    onRefreshRecentItems?: () => Promise<unknown> | unknown;
-    onClearRecentItems?: () => Promise<unknown> | unknown;
-    onReopenLastFile?: () => Promise<unknown> | unknown;
+    onOpenRecentItem?: (item: RecentItem) => unknown;
+    onRefreshRecentItems?: () => unknown;
+    onClearRecentItems?: () => unknown;
+    onReopenLastFile?: () => unknown;
     recentItems?: readonly RecentItem[];
     canReopenLastFile?: boolean;
-    onSave?: () => Promise<unknown> | unknown;
-    onSaveAs?: () => Promise<unknown> | unknown;
-    onExportPdf?: () => Promise<unknown> | unknown;
-    onCloseDocument?: () => Promise<unknown> | unknown;
+    onSave?: () => unknown;
+    onSaveAs?: () => unknown;
+    onExportPdf?: () => unknown;
+    onCloseDocument?: () => unknown;
     onQuit?: () => void;
     activeDocument?: DocumentMetadata;
     documentId?: string;
@@ -193,24 +172,20 @@ const Menubar: React.FC<MenubarProps> = ({
     const viewOpen = activeMenu === 'view';
     const fileOpen = activeMenu === 'file';
     const aboutOpen = activeMenu === 'about';
-    const setSettingsOpen = (open: boolean): void => {
-        setActiveMenu((current): ActiveMenu => (open ? 'settings' : current === 'settings' ? null : current));
+    const setMenuOpen = (menu: Exclude<ActiveMenu, null>, open: boolean): void => {
+        setActiveMenu((current): ActiveMenu => {
+            if (open) return menu;
+            return current === menu ? null : current;
+        });
     };
-    const setMarkdownOpen = (open: boolean): void => {
-        setActiveMenu((current): ActiveMenu => (open ? 'markdown' : current === 'markdown' ? null : current));
-    };
-    const setViewOpen = (open: boolean): void => {
-        setActiveMenu((current): ActiveMenu => (open ? 'view' : current === 'view' ? null : current));
-    };
-    const setFileOpen = (open: boolean): void => {
-        setActiveMenu((current): ActiveMenu => (open ? 'file' : current === 'file' ? null : current));
-    };
+    const setSettingsOpen = (open: boolean): void => setMenuOpen('settings', open);
+    const setMarkdownOpen = (open: boolean): void => setMenuOpen('markdown', open);
+    const setViewOpen = (open: boolean): void => setMenuOpen('view', open);
+    const setFileOpen = (open: boolean): void => setMenuOpen('file', open);
+    const setAboutOpen = (open: boolean): void => setMenuOpen('about', open);
     useEffect((): void => {
         if (fileOpen && !modalOpen) void onRefreshRecentItems?.();
     }, [fileOpen, modalOpen, onRefreshRecentItems]);
-    const setAboutOpen = (open: boolean): void => {
-        setActiveMenu((current): ActiveMenu => (open ? 'about' : current === 'about' ? null : current));
-    };
 
     /*
      * A menu request arriving as a prop is state derived from that prop, so it is
@@ -242,46 +217,36 @@ const Menubar: React.FC<MenubarProps> = ({
      * row, the row's click, and the keystroke. One table serves all three so the
      * read from the action registry while dispatch was read from a hand-written
      * catalogue of shell ids — two lists that drifted apart with every test still
-     * green. Deriving all three from `fileActionInvoker` + `fileActionDisabled`
+     * green. Deriving all three from `fileInvokers` + `fileActionDisabled`
      * makes advertising a shortcut and dispatching it the same act.
      */
-    const fileActionInvoker = useCallback(
-        (id: ActionId): (() => Promise<unknown> | unknown) | undefined =>
-            id === 'new-file'
-                ? onNewDocument
-                : id === 'new-window'
-                  ? onNewWindow
-                  : id === 'open-file'
-                    ? onOpenDocument
-                    : id === 'open-folder'
-                      ? onOpenFolder
-                      : id === 'close-folder'
-                        ? onCloseFolder
-                        : id === 'save'
-                          ? onSave
-                          : id === 'save-as'
-                            ? onSaveAs
-                            : id === 'export-pdf'
-                              ? onExportPdf
-                              : id === 'close-tab'
-                                ? onCloseDocument
-                                : id === 'reopen'
-                                  ? onReopenLastFile
-                                  : id === 'exit'
-                                    ? onQuit
-                                    : undefined,
+    const fileInvokers = useMemo(
+        () =>
+            new Map<ActionId, (() => unknown) | undefined>([
+                ['new-file', onNewDocument],
+                ['new-window', onNewWindow],
+                ['open-file', onOpenDocument],
+                ['open-folder', onOpenFolder],
+                ['close-folder', onCloseFolder],
+                ['save', onSave],
+                ['save-as', onSaveAs],
+                ['export-pdf', onExportPdf],
+                ['close-tab', onCloseDocument],
+                ['reopen', onReopenLastFile],
+                ['exit', onQuit],
+            ]),
         [
-            onCloseDocument,
-            onCloseFolder,
             onNewDocument,
             onNewWindow,
             onOpenDocument,
             onOpenFolder,
-            onQuit,
-            onReopenLastFile,
+            onCloseFolder,
             onSave,
-            onExportPdf,
             onSaveAs,
+            onExportPdf,
+            onCloseDocument,
+            onReopenLastFile,
+            onQuit,
         ],
     );
     const projectedState = useMemo<ProjectedActionState>(
@@ -311,8 +276,8 @@ const Menubar: React.FC<MenubarProps> = ({
      * at the `invoke === undefined` return in `dispatchFileAction`. Observed on
      * the real binary 2026-08-15 with Save and Save As correctly greyed beside it.
      *
-     * The id set is deliberate rather than an unconditional invoker check:
-     * `fileActionInvoker` also returns undefined for `open-recent` and the
+     * Checking the map is deliberate rather than an unconditional invoker check:
+     * `fileInvokers.get` also returns undefined for `open-recent` and the
      * deferred ids, whose own rules are below and must keep governing them.
      *
      * `exit` used to spell this rule for itself (`onQuit === undefined`). It is
@@ -327,8 +292,8 @@ const Menubar: React.FC<MenubarProps> = ({
                 projectedState,
                 writable,
             }).kind !== 'available' ||
-            (FILE_ACTIONS_WITH_INVOKERS.has(id) && fileActionInvoker(id) === undefined),
-        [documentId, fileActionInvoker, modalOpen, projectedState, writable, workspaceOpen],
+            (fileInvokers.has(id) && fileInvokers.get(id) === undefined),
+        [documentId, fileInvokers, modalOpen, projectedState, writable, workspaceOpen],
     );
 
     const actions = useMemo(
@@ -337,17 +302,14 @@ const Menubar: React.FC<MenubarProps> = ({
                 modalOpen,
                 viewAvailable: viewMenuProps !== undefined,
                 openSettings: (): void => {
-                    setViewOpen(false);
-                    setSettingsOpen(false);
+                    setActiveMenu((current) => (current === 'view' || current === 'settings' ? null : current));
                     onOpenAppearance();
                 },
                 openView: (): void => {
-                    setSettingsOpen(false);
-                    setViewOpen(true);
+                    setActiveMenu('view');
                 },
                 openAbout: (): void => {
-                    setSettingsOpen(false);
-                    setViewOpen(false);
+                    setActiveMenu((current) => (current === 'view' || current === 'settings' ? null : current));
                     setOverflowOpen(false);
                     onAbout();
                 },
@@ -380,7 +342,7 @@ const Menubar: React.FC<MenubarProps> = ({
     const fileShortcutActions = useMemo(
         (): readonly ShortcutAction[] =>
             actionsForSurface('file-menu').flatMap((item): readonly ShortcutAction[] => {
-                const invoke = fileActionInvoker(item.id);
+                const invoke = fileInvokers.get(item.id);
                 const { shortcut } = item;
                 if (invoke === undefined || shortcut === undefined) return [];
                 return [
@@ -404,7 +366,7 @@ const Menubar: React.FC<MenubarProps> = ({
         [
             documentId,
             fileActionDisabled,
-            fileActionInvoker,
+            fileInvokers,
             modalOpen,
             onActionResult,
             projectedState,
@@ -468,13 +430,14 @@ const Menubar: React.FC<MenubarProps> = ({
          * dismiss the menu by itself, so returning above the close left the menu
          * open with nothing having happened.
          */
-        const invoke = fileActionInvoker(id);
+        const invoke = fileInvokers.get(id);
         if (invoke === undefined) return;
 
         void dispatchAction(id, {
             applicationFocused: true,
             documentId,
             invoke,
+            projectedState,
             sessionDocumentId,
             writable,
         }).then((result): void => onActionResult?.(result));
@@ -485,7 +448,7 @@ const Menubar: React.FC<MenubarProps> = ({
         setOverflowOpen(false);
         void dispatchAction('open-recent', {
             applicationFocused: true,
-            invoke: async (): Promise<unknown> => onOpenRecentItem(item),
+            invoke: (): unknown => onOpenRecentItem(item),
             modalOpen: false,
             projectedState,
         });
@@ -503,6 +466,85 @@ const Menubar: React.FC<MenubarProps> = ({
         setAboutOpen(false);
         void dispatchShellAction(selected);
     };
+    const renderFileItem = (item: (typeof fileActions)[number]): React.ReactNode => {
+        if (item.id === 'open-recent') {
+            if (noRecentItems) return recentEmptyMessage(styles.subItem);
+            return displayedRecentItems.map((recent) => (
+                <MenuItem
+                    className={styles.subItem}
+                    icon={<Icon aria-hidden="true" className={styles.subItemIcon} name={recent.kind} />}
+                    key={'recent-' + recent.path}
+                    label={<span className={styles.subItemLabel}>{safeRecentLabel(recent.path)}</span>}
+                    title={recent.path}
+                    onSelect={(): void => dispatchRecentItem(recent)}
+                />
+            ));
+        }
+        if (item.id === 'reopen') {
+            return (
+                <MenuItem
+                    aria-label={t(item.labelKey)}
+                    className={styles.subItem}
+                    accelerator={shortcutForMenuItem(item.shortcut)}
+                    disabled={fileActionDisabled(item.id)}
+                    label={<span className={styles.subItemLabel}>{'↺ ' + fileActionLabel(item)}</span>}
+                    onSelect={(): void => dispatchFileAction(item.id)}
+                />
+            );
+        }
+        return (
+            <MenuItem
+                aria-label={t(item.labelKey)}
+                accelerator={shortcutForMenuItem(item.shortcut)}
+                disabled={fileActionDisabled(item.id)}
+                label={fileActionLabel(item)}
+                onSelect={(): void => dispatchFileAction(item.id)}
+            />
+        );
+    };
+    const renderFileMenuItems = (): React.JSX.Element => (
+        <>
+            {fileActions
+                .filter((item) => item.id !== 'clear-recent')
+                .map((item) => (
+                    <Fragment key={item.id}>
+                        {menuDecoration(item.id)}
+                        {renderFileItem(item)}
+                        {item.id === 'open-recent' ? (
+                            <MenuItem
+                                className={styles.subItem}
+                                disabled={noRecentItems || onClearRecentItems === undefined}
+                                label={t('action.clear-recent.label')}
+                                onSelect={(): void => {
+                                    setFileOpen(false);
+                                    setConfirmClearRecent(true);
+                                }}
+                            />
+                        ) : null}
+                    </Fragment>
+                ))}
+        </>
+    );
+    const renderAboutMenuItems = (): React.JSX.Element => (
+        <>
+            {aboutActions.map((item) => (
+                <Fragment key={item.id}>
+                    {aboutMenuSeparators.has(item.id) ? <PopupSeparator /> : null}
+                    <MenuItem
+                        accelerator={shortcutForMenuItem(item.shortcut)}
+                        disabled={
+                            getActionAvailability(item.id, {
+                                modalOpen,
+                                projectedState,
+                            }).kind !== 'available'
+                        }
+                        label={t(item.labelKey)}
+                        onSelect={(): void => selectAboutAction(item.id)}
+                    />
+                </Fragment>
+            ))}
+        </>
+    );
     return (
         <nav ref={menuRowRef} aria-label={t('shell.menuLabel')} className={styles.row}>
             <Bar
@@ -580,71 +622,7 @@ const Menubar: React.FC<MenubarProps> = ({
                                     size="menu"
                                     onOpenChange={setFileOpen}
                                 >
-                                    {fileActions
-                                        .filter((item) => item.id !== 'clear-recent')
-                                        .map((item) => (
-                                            <Fragment key={item.id}>
-                                                {menuDecoration(item.id)}
-                                                {item.id === 'open-recent' ? (
-                                                    noRecentItems ? (
-                                                        recentEmptyMessage(styles.subItem)
-                                                    ) : (
-                                                        displayedRecentItems.map((item) => (
-                                                            <MenuItem
-                                                                className={styles.subItem}
-                                                                icon={
-                                                                    <Icon
-                                                                        aria-hidden="true"
-                                                                        className={styles.subItemIcon}
-                                                                        name={item.kind}
-                                                                    />
-                                                                }
-                                                                key={'recent-' + item.path}
-                                                                label={
-                                                                    <span className={styles.subItemLabel}>
-                                                                        {safeRecentLabel(item.path)}
-                                                                    </span>
-                                                                }
-                                                                title={item.path}
-                                                                onSelect={(): void => dispatchRecentItem(item)}
-                                                            />
-                                                        ))
-                                                    )
-                                                ) : item.id === 'reopen' ? (
-                                                    <MenuItem
-                                                        aria-label={t(item.labelKey)}
-                                                        className={styles.subItem}
-                                                        accelerator={shortcutForMenuItem(item.shortcut)}
-                                                        disabled={fileActionDisabled(item.id)}
-                                                        label={
-                                                            <span className={styles.subItemLabel}>
-                                                                {'↺ ' + fileActionLabel(item)}
-                                                            </span>
-                                                        }
-                                                        onSelect={(): void => dispatchFileAction(item.id)}
-                                                    />
-                                                ) : (
-                                                    <MenuItem
-                                                        aria-label={t(item.labelKey)}
-                                                        accelerator={shortcutForMenuItem(item.shortcut)}
-                                                        disabled={fileActionDisabled(item.id)}
-                                                        label={fileActionLabel(item)}
-                                                        onSelect={(): void => dispatchFileAction(item.id)}
-                                                    />
-                                                )}
-                                                {item.id === 'open-recent' ? (
-                                                    <MenuItem
-                                                        className={styles.subItem}
-                                                        disabled={noRecentItems || onClearRecentItems === undefined}
-                                                        label={t('action.clear-recent.label')}
-                                                        onSelect={(): void => {
-                                                            setFileOpen(false);
-                                                            setConfirmClearRecent(true);
-                                                        }}
-                                                    />
-                                                ) : null}
-                                            </Fragment>
-                                        ))}
+                                    {renderFileMenuItems()}
                                 </Popup>
 
                                 <Popup
@@ -659,22 +637,7 @@ const Menubar: React.FC<MenubarProps> = ({
                                     size="menu"
                                     onOpenChange={setAboutOpen}
                                 >
-                                    {aboutActions.map((item) => (
-                                        <Fragment key={item.id}>
-                                            {aboutMenuSeparators.has(item.id) ? <PopupSeparator /> : null}
-                                            <MenuItem
-                                                accelerator={shortcutForMenuItem(item.shortcut)}
-                                                disabled={
-                                                    getActionAvailability(item.id, {
-                                                        modalOpen,
-                                                        projectedState,
-                                                    }).kind !== 'available'
-                                                }
-                                                label={t(item.labelKey)}
-                                                onSelect={(): void => selectAboutAction(item.id)}
-                                            />
-                                        </Fragment>
-                                    ))}
+                                    {renderAboutMenuItems()}
                                 </Popup>
 
                                 <SettingsMenu
@@ -705,7 +668,6 @@ const Menubar: React.FC<MenubarProps> = ({
                                 {viewMenuProps === undefined ? null : (
                                     <ViewMenu
                                         {...viewMenuProps}
-                                        modal={false}
                                         open={!modalOpen && viewOpen}
                                         onOpenChange={(nextOpen): void => {
                                             if (nextOpen) requestViewOpen(true);
@@ -756,71 +718,7 @@ const Menubar: React.FC<MenubarProps> = ({
                                     size="menu"
                                     onOpenChange={setFileOpen}
                                 >
-                                    {fileActions
-                                        .filter((item) => item.id !== 'clear-recent')
-                                        .map((item) => (
-                                            <Fragment key={item.id}>
-                                                {menuDecoration(item.id)}
-                                                {item.id === 'open-recent' ? (
-                                                    noRecentItems ? (
-                                                        recentEmptyMessage(styles.subItem)
-                                                    ) : (
-                                                        displayedRecentItems.map((item) => (
-                                                            <MenuItem
-                                                                className={styles.subItem}
-                                                                icon={
-                                                                    <Icon
-                                                                        aria-hidden="true"
-                                                                        className={styles.subItemIcon}
-                                                                        name={item.kind}
-                                                                    />
-                                                                }
-                                                                key={'recent-' + item.path}
-                                                                label={
-                                                                    <span className={styles.subItemLabel}>
-                                                                        {safeRecentLabel(item.path)}
-                                                                    </span>
-                                                                }
-                                                                title={item.path}
-                                                                onSelect={(): void => dispatchRecentItem(item)}
-                                                            />
-                                                        ))
-                                                    )
-                                                ) : item.id === 'reopen' ? (
-                                                    <MenuItem
-                                                        aria-label={t(item.labelKey)}
-                                                        className={styles.subItem}
-                                                        accelerator={shortcutForMenuItem(item.shortcut)}
-                                                        disabled={fileActionDisabled(item.id)}
-                                                        label={
-                                                            <span className={styles.subItemLabel}>
-                                                                {'↺ ' + fileActionLabel(item)}
-                                                            </span>
-                                                        }
-                                                        onSelect={(): void => dispatchFileAction(item.id)}
-                                                    />
-                                                ) : (
-                                                    <MenuItem
-                                                        aria-label={t(item.labelKey)}
-                                                        accelerator={shortcutForMenuItem(item.shortcut)}
-                                                        disabled={fileActionDisabled(item.id)}
-                                                        label={fileActionLabel(item)}
-                                                        onSelect={(): void => dispatchFileAction(item.id)}
-                                                    />
-                                                )}
-                                                {item.id === 'open-recent' ? (
-                                                    <MenuItem
-                                                        className={styles.subItem}
-                                                        disabled={noRecentItems || onClearRecentItems === undefined}
-                                                        label={t('action.clear-recent.label')}
-                                                        onSelect={(): void => {
-                                                            setFileOpen(false);
-                                                            setConfirmClearRecent(true);
-                                                        }}
-                                                    />
-                                                ) : null}
-                                            </Fragment>
-                                        ))}
+                                    {renderFileMenuItems()}
                                 </Popup>
 
                                 <MarkdownMenu
@@ -860,7 +758,6 @@ const Menubar: React.FC<MenubarProps> = ({
                                 {viewMenuProps === undefined ? null : (
                                     <ViewMenu
                                         {...viewMenuProps}
-                                        modal={false}
                                         modalOpen={modalOpen}
                                         open={!modalOpen && viewOpen}
                                         onOpenChange={requestViewOpen}
@@ -902,22 +799,7 @@ const Menubar: React.FC<MenubarProps> = ({
                                     size="menu"
                                     onOpenChange={setAboutOpen}
                                 >
-                                    {aboutActions.map((item) => (
-                                        <Fragment key={item.id}>
-                                            {aboutMenuSeparators.has(item.id) ? <PopupSeparator /> : null}
-                                            <MenuItem
-                                                accelerator={shortcutForMenuItem(item.shortcut)}
-                                                disabled={
-                                                    getActionAvailability(item.id, {
-                                                        modalOpen,
-                                                        projectedState,
-                                                    }).kind !== 'available'
-                                                }
-                                                label={t(item.labelKey)}
-                                                onSelect={(): void => selectAboutAction(item.id)}
-                                            />
-                                        </Fragment>
-                                    ))}
+                                    {renderAboutMenuItems()}
                                 </Popup>
                             </div>
                         )}

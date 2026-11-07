@@ -93,3 +93,12 @@ func moveAtomicFile(temporaryPath, targetPath string) error {
 func syncParentDirectory(_ string) error {
 	return nil
 }
+
+func atomicReplacementMode(expected DiskVersion) (fs.FileMode, bool) {
+	return expected.Mode, expected.Exists
+}
+
+// createAtomicFileExclusive is the no-replace move for an absent target.
+func createAtomicFileExclusive(temporaryPath, targetPath string) error {
+	return moveAtomicFile(temporaryPath, targetPath)
+}

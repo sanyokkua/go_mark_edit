@@ -1,13 +1,13 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import type { EditorProps } from '@monaco-editor/react';
 import type { editor, IPosition, IRange, ISelection } from 'monaco-editor';
-import { useCallback, useContext, useState } from 'react';
+import { useCallback, useContext, useEffect, useState } from 'react';
 import { Provider } from 'react-redux';
 
 import type { TidyOutcome } from '../../src/logic/tidy/protocol';
 import { getSnapshot as slotSnapshot } from '../../src/logic/operations/operationSlot';
 import { getSnapshot as problemsSnapshot, clear as clearProblems } from '../../src/logic/operations/problemsSummary';
-import { store } from '../../src/logic/store';
+import { store, useAppSelector } from '../../src/logic/store';
 import { resetProjection, hydrateProjection } from '../../src/logic/store/appModelProjectionActions';
 import { hydrateSettings, resetSettingsProjection } from '../../src/logic/store/settingsSlice';
 import { resetNotifications } from '../../src/logic/store/notificationsSlice';
@@ -15,7 +15,7 @@ import { runOnText } from '../../src/logic/tidy/engine';
 import type { TidyRequest } from '../../src/logic/tidy/protocol';
 import type { ActiveBuffer, DocumentMetadata } from '../../src/logic/store/appModelTypes';
 import { EditorSessionProvider, useEditorSessionAttachment } from '../../src/ui/widgets/editorSession';
-import CodeEditor from '../../src/ui/components/CodeEditor';
+import CodeEditor, { reconcileEditorModels } from '../../src/ui/components/CodeEditor';
 import EditorStage from '../../src/ui/widgets/EditorStage/EditorStage';
 import { TidyCommandsProvider } from '../../src/app/TidyCommandsProvider';
 import { TidyCommandsContext } from '../../src/ui/widgets/tidyCommandsContext';
@@ -48,6 +48,7 @@ interface Runtime {
 }
 
 const runtimes: Runtime[] = [];
+const mockRuntimeByPath = new Map<string, Runtime>();
 const noEvent = (): { dispose: () => void } => ({ dispose: (): void => undefined });
 
 function offset(text: string, line: number, column: number): number {
@@ -60,7 +61,7 @@ function position(text: string, at: number): IPosition {
     return { lineNumber: before.length, column: before.at(-1)!.length + 1 };
 }
 
-function createRuntime(initial: string): Runtime {
+function createRuntime(initial: string, path: string): Runtime {
     const runtime: Runtime = {
         content: initial,
         markers: [],
@@ -83,6 +84,7 @@ function createRuntime(initial: string): Runtime {
             return { startLineNumber: 1, startColumn: 1, endLineNumber: end.lineNumber, endColumn: end.column };
         },
         dispose: (): void => {
+            mockRuntimeByPath.delete(path);
             runtime.disposed = true;
             runtime.markers = [];
             runtime.decorations = [];
@@ -151,7 +153,14 @@ function createRuntime(initial: string): Runtime {
 jest.mock('@monaco-editor/react', () => {
     const React = jest.requireActual<typeof import('react')>('react');
     const MockMonacoEditor = (props: EditorProps): React.JSX.Element => {
-        const runtime = React.useMemo(() => createRuntime(props.defaultValue ?? ''), [props.path]);
+        const runtime = React.useMemo(() => {
+            const path = props.path ?? '';
+            const existing = mockRuntimeByPath.get(path);
+            if (existing !== undefined) return existing;
+            const created = createRuntime(props.defaultValue ?? '', path);
+            mockRuntimeByPath.set(path, created);
+            return created;
+        }, [props.path]);
         runtime.onChange = (text: string): void => props.onChange?.(text, {} as never);
         React.useEffect(() => {
             props.onMount?.(runtime.editor, {
@@ -251,17 +260,31 @@ const Controls = (): React.JSX.Element => {
             >
                 Format on save
             </button>
+            <button
+                onClick={(): void => {
+                    void tidy?.run('format', { documentId: 'other' }).then((value) => setOutcome(value.kind));
+                }}
+            >
+                Format other document
+            </button>
             <button onClick={(): void => tidy?.cancel()}>Cancel</button>
             <output aria-label="Tidy outcome">{outcome}</output>
         </>
     );
 };
 
+function ModelReconciler(): null {
+    const ids = useAppSelector((state) => state.documents.orderedIds);
+    useEffect(() => reconcileEditorModels(ids), [ids]);
+    return null;
+}
+
 function view(buffer: ActiveBuffer | null, externalEpoch = 0): React.JSX.Element {
     return (
         <Provider store={store}>
             <EditorSessionProvider activeBuffer={buffer} externalEpoch={externalEpoch}>
                 <TidyCommandsProvider>
+                    <ModelReconciler />
                     <Controls />
                     {buffer && <HarnessEditor buffer={buffer} />}
                 </TidyCommandsProvider>
@@ -307,7 +330,7 @@ it('keeps imperative Format available while the modal makes the editor surface i
         const request = value as TidyRequest;
         return Promise.resolve(runOnText(request.op, request.text, request.prefs));
     });
-    render(stageView({ documentId: 'first', content: '* item\n' }, 0, true));
+    render(stageView({ documentId: 'first', content: '* item\n', documentRevision: 0 }, 0, true));
     await screen.findByRole('textbox', { name: 'Markdown source' });
     expect(screen.getByRole('tabpanel')).toHaveAttribute('inert');
     fireEvent.click(screen.getByRole('button', { name: 'Format' }));
@@ -331,6 +354,8 @@ async function settle<T>(pending: ReturnType<typeof deferred<T>>, value: T): Pro
 }
 
 beforeEach(() => {
+    reconcileEditorModels([]);
+    mockRuntimeByPath.clear();
     runtimes.length = 0;
     mockRunTidy.mockReset();
     stageUpdateBuffer.mockClear();
@@ -370,6 +395,8 @@ function findingAt(index: number) {
 }
 
 afterEach(() => {
+    reconcileEditorModels([]);
+    mockRuntimeByPath.clear();
     jest.restoreAllMocks();
     store.dispatch(resetProjection());
     store.dispatch(resetSettingsProjection());
@@ -487,7 +514,7 @@ it('applies changed Format text through one editor undo group and leaves an empt
     mockRunTidy
         .mockResolvedValueOnce({ kind: 'edits', edits: [{ from: 0, to: 1, text: '#' }] })
         .mockResolvedValueOnce({ kind: 'edits', edits: [] });
-    render(view({ documentId: 'first', content: 'A title\n' }));
+    render(view({ documentId: 'first', content: 'A title\n', documentRevision: 0 }));
     await screen.findByRole('textbox', { name: 'Markdown source' });
     fireEvent.click(screen.getByRole('button', { name: 'Format' }));
     await waitFor(() => expect(screen.getByRole('status', { name: 'Tidy outcome' })).toHaveTextContent('edits'));
@@ -510,7 +537,7 @@ it('applies changed Format text through one editor undo group and leaves an empt
 it('marks the real editor stage findings stale on typing while retaining underlines', async () => {
     const finding = findingAt(0);
     mockRunTidy.mockResolvedValue({ kind: 'findings', findings: [finding], total: 1 });
-    render(stageView({ documentId: 'first', content: 'line \n' }));
+    render(stageView({ documentId: 'first', content: 'line \n', documentRevision: 0 }));
     await screen.findByRole('textbox', { name: 'Markdown source' });
     fireEvent.click(screen.getByRole('button', { name: 'Lint' }));
     await waitFor(() => expect(problemsSnapshot()?.total).toBe(1));
@@ -519,13 +546,13 @@ it('marks the real editor stage findings stale on typing while retaining underli
     fireEvent.change(screen.getByRole('textbox', { name: 'Markdown source' }), { target: { value: 'line changed\n' } });
     expect(problemsSnapshot()?.stale).toBe(true);
     expect(runtime.markers).toHaveLength(1);
-    expect(stageUpdateBuffer).toHaveBeenCalledWith('first', 'line changed\n');
+    expect(stageUpdateBuffer).toHaveBeenCalledWith('first', 'line changed\n', 0);
 });
 
 it('caps localized editor markers at one thousand while preserving the exact summary total', async () => {
     const findings = Array.from({ length: 1500 }, (_, index) => findingAt(index));
     mockRunTidy.mockResolvedValue({ kind: 'findings', findings, total: 1500 });
-    render(view({ documentId: 'first', content: 'line \n' }));
+    render(view({ documentId: 'first', content: 'line \n', documentRevision: 0 }));
     await screen.findByRole('textbox', { name: 'Markdown source' });
     fireEvent.click(screen.getByRole('button', { name: 'Lint' }));
     await waitFor(() => expect(problemsSnapshot()?.total).toBe(1500));
@@ -542,7 +569,7 @@ it('clears prior underlines and resets staleness when Lint completes with zero f
     mockRunTidy
         .mockResolvedValueOnce({ kind: 'findings', findings: [findingAt(0)], total: 1 })
         .mockResolvedValueOnce({ kind: 'findings', findings: [], total: 0 });
-    render(view({ documentId: 'first', content: 'line \n' }));
+    render(view({ documentId: 'first', content: 'line \n', documentRevision: 0 }));
     const textbox = await screen.findByRole('textbox', { name: 'Markdown source' });
     fireEvent.click(screen.getByRole('button', { name: 'Lint' }));
     await waitFor(() => expect(problemsSnapshot()?.total).toBe(1));
@@ -556,7 +583,7 @@ it('clears prior underlines and resets staleness when Lint completes with zero f
 
 it('keeps the current summary through a same-session projection refresh', async () => {
     mockRunTidy.mockResolvedValue({ kind: 'findings', findings: [findingAt(0)], total: 1 });
-    const rendered = render(view({ documentId: 'first', content: 'line \n' }));
+    const rendered = render(view({ documentId: 'first', content: 'line \n', documentRevision: 0 }));
     await screen.findByRole('textbox', { name: 'Markdown source' });
     fireEvent.click(screen.getByRole('button', { name: 'Lint' }));
     await waitFor(() => expect(problemsSnapshot()?.total).toBe(1));
@@ -571,7 +598,7 @@ it.each(['refused', 'failed', 'cancelled'] as const)(
         mockRunTidy
             .mockResolvedValueOnce({ kind: 'findings', findings: [findingAt(0)], total: 1 })
             .mockResolvedValueOnce(kind === 'refused' ? { kind, reason: 'render-differs' } : { kind });
-        render(view({ documentId: 'first', content: 'line \n' }));
+        render(view({ documentId: 'first', content: 'line \n', documentRevision: 0 }));
         await screen.findByRole('textbox', { name: 'Markdown source' });
         fireEvent.click(screen.getByRole('button', { name: 'Lint' }));
         await waitFor(() => expect(problemsSnapshot()?.total).toBe(1));
@@ -587,7 +614,7 @@ it.each(['refused', 'failed', 'cancelled'] as const)(
 it('reports a busy second run without a notice and releases the first slot on cancellation', async () => {
     const pending = deferred<TidyOutcome>();
     mockRunTidy.mockReturnValue(pending.promise);
-    render(view({ documentId: 'first', content: 'line \n' }));
+    render(view({ documentId: 'first', content: 'line \n', documentRevision: 0 }));
     await screen.findByRole('textbox', { name: 'Markdown source' });
     fireEvent.click(screen.getByRole('button', { name: 'Format' }));
     expect(slotSnapshot().state).toBe('running');
@@ -595,9 +622,18 @@ it('reports a busy second run without a notice and releases the first slot on ca
     await waitFor(() => expect(screen.getByRole('status', { name: 'Tidy outcome' })).toHaveTextContent('busy'));
     expect(mockRunTidy).toHaveBeenCalledTimes(1);
     expect(noticeCodes()).toEqual([]);
-    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
-    await settle(pending, { kind: 'edits', edits: [{ from: 0, to: 1, text: 'X' }] });
+    let slotStateAtNotice: ReturnType<typeof slotSnapshot>['state'] | undefined;
+    const unsubscribe = store.subscribe(() => {
+        if (noticeCodes().includes('tidy-cancelled')) slotStateAtNotice ??= slotSnapshot().state;
+    });
+    try {
+        fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+        await settle(pending, { kind: 'edits', edits: [{ from: 0, to: 1, text: 'X' }] });
+    } finally {
+        unsubscribe();
+    }
     expect(runtimes.at(-1)!.content).toBe('line \n');
+    expect(slotStateAtNotice).toBe('running');
     expect(slotSnapshot()).toEqual({ state: 'idle' });
     expect(noticeCodes()).toContain('tidy-cancelled');
 });
@@ -607,7 +643,7 @@ it('discards a pending result after typing even when the user restores the origi
     mockRunTidy
         .mockResolvedValueOnce({ kind: 'findings', findings: [findingAt(0)], total: 1 })
         .mockReturnValueOnce(pending.promise);
-    render(view({ documentId: 'first', content: 'line \n' }));
+    render(view({ documentId: 'first', content: 'line \n', documentRevision: 0 }));
     const textbox = await screen.findByRole('textbox', { name: 'Markdown source' });
     fireEvent.click(screen.getByRole('button', { name: 'Lint' }));
     await waitFor(() => expect(problemsSnapshot()?.total).toBe(1));
@@ -628,7 +664,7 @@ it('invalidates a run and clears findings after switching away and back or closi
     mockRunTidy
         .mockResolvedValueOnce({ kind: 'findings', findings: [findingAt(0)], total: 1 })
         .mockReturnValueOnce(pending.promise);
-    const buffer = { documentId: 'first', content: 'line \n' };
+    const buffer = { documentId: 'first', content: 'line \n', documentRevision: 0 };
     const rendered = render(view(buffer));
     await screen.findByRole('textbox', { name: 'Markdown source' });
     fireEvent.click(screen.getByRole('button', { name: 'Lint' }));
@@ -647,10 +683,10 @@ it('invalidates a run and clears findings after switching away and back or closi
                 ui: {},
             }),
         );
-        rendered.rerender(view({ documentId: 'second', content: 'other\n' }));
+        rendered.rerender(view({ documentId: 'second', content: 'other\n', documentRevision: 0 }));
     });
     expect(problemsSnapshot()).toBeNull();
-    expect(firstRuntime.disposed).toBe(true);
+    expect(firstRuntime.disposed).toBe(false);
     expect(firstRuntime.markers).toEqual([]);
     act(() => {
         store.dispatch(
@@ -667,7 +703,7 @@ it('invalidates a run and clears findings after switching away and back or closi
         rendered.rerender(view(buffer));
     });
     await settle(pending, { kind: 'edits', edits: [{ from: 0, to: 1, text: 'X' }] });
-    expect(runtimes.at(-1)!.content).toBe('line \n');
+    expect(firstRuntime.content).toBe('line \n');
     expect(problemsSnapshot()).toBeNull();
     expect(noticeCodes()).toContain('tidy-stale');
     expect(slotSnapshot()).toEqual({ state: 'idle' });
@@ -680,7 +716,7 @@ it('invalidates projected activation away and back before buffer acknowledgement
     mockRunTidy
         .mockResolvedValueOnce({ kind: 'findings', findings: [findingAt(0)], total: 1 })
         .mockReturnValueOnce(pending.promise);
-    render(view({ documentId: 'first', content: 'line \n' }));
+    render(view({ documentId: 'first', content: 'line \n', documentRevision: 0 }));
     await screen.findByRole('textbox', { name: 'Markdown source' });
     fireEvent.click(screen.getByRole('button', { name: 'Lint' }));
     await waitFor(() => expect(problemsSnapshot()?.total).toBe(1));
@@ -718,7 +754,7 @@ it('invalidates an intermediate projected activation hidden by a batched render'
     mockRunTidy
         .mockResolvedValueOnce({ kind: 'findings', findings: [findingAt(0)], total: 1 })
         .mockReturnValueOnce(pending.promise);
-    render(view({ documentId: 'first', content: 'line \n' }));
+    render(view({ documentId: 'first', content: 'line \n', documentRevision: 0 }));
     await screen.findByRole('textbox', { name: 'Markdown source' });
     fireEvent.click(screen.getByRole('button', { name: 'Lint' }));
     await waitFor(() => expect(problemsSnapshot()?.total).toBe(1));
@@ -751,12 +787,15 @@ it('invalidates an intermediate projected activation hidden by a batched render'
 
 it('clears completed lint findings when the active editor closes', async () => {
     mockRunTidy.mockResolvedValue({ kind: 'findings', findings: [findingAt(0)], total: 1 });
-    const rendered = render(view({ documentId: 'first', content: 'line \n' }));
+    const rendered = render(view({ documentId: 'first', content: 'line \n', documentRevision: 0 }));
     await screen.findByRole('textbox', { name: 'Markdown source' });
     fireEvent.click(screen.getByRole('button', { name: 'Lint' }));
     await waitFor(() => expect(problemsSnapshot()?.total).toBe(1));
     const oldRuntime = runtimes.at(-1)!;
-    rendered.rerender(view(null));
+    act(() => {
+        store.dispatch(hydrateProjection({ revision: 2, documents: {}, activeDocumentId: null, ui: {} }));
+        rendered.rerender(view(null));
+    });
     expect(problemsSnapshot()).toBeNull();
     expect(oldRuntime.disposed).toBe(true);
     expect(oldRuntime.markers).toEqual([]);
@@ -765,7 +804,7 @@ it('clears completed lint findings when the active editor closes', async () => {
 it('discards a pending result when the active editor reloads at the same text', async () => {
     const pending = deferred<TidyOutcome>();
     mockRunTidy.mockReturnValue(pending.promise);
-    const buffer = { documentId: 'first', content: 'line \n' };
+    const buffer = { documentId: 'first', content: 'line \n', documentRevision: 0 };
     const rendered = render(stageView(buffer));
     await screen.findByRole('textbox', { name: 'Markdown source' });
     fireEvent.click(screen.getByRole('button', { name: 'Format' }));
@@ -778,7 +817,7 @@ it('discards a pending result when the active editor reloads at the same text', 
 
 it('suppresses tidy notices for on-save origin and returns the failure outcome', async () => {
     mockRunTidy.mockResolvedValue({ kind: 'refused', reason: 'render-differs' });
-    render(view({ documentId: 'first', content: 'line \n' }));
+    render(view({ documentId: 'first', content: 'line \n', documentRevision: 0 }));
     await screen.findByRole('textbox', { name: 'Markdown source' });
     fireEvent.click(screen.getByRole('button', { name: 'Format on save' }));
     await waitFor(() => expect(screen.getByRole('status', { name: 'Tidy outcome' })).toHaveTextContent('refused'));
@@ -789,7 +828,7 @@ it('suppresses tidy notices for on-save origin and returns the failure outcome',
 it('uses UTF-8 bytes to show immediate progress for multibyte text above one MiB', async () => {
     const pending = deferred<TidyOutcome>();
     mockRunTidy.mockReturnValue(pending.promise);
-    render(view({ documentId: 'first', content: 'é'.repeat(524289) }));
+    render(view({ documentId: 'first', content: 'é'.repeat(524289), documentRevision: 0 }));
     await screen.findByRole('textbox', { name: 'Markdown source' });
     fireEvent.click(screen.getByRole('button', { name: 'Lint' }));
     expect(slotSnapshot()).toMatchObject({ state: 'running', progress: { done: 0, total: 0 } });
@@ -800,7 +839,7 @@ it('uses UTF-8 bytes to show immediate progress for multibyte text above one MiB
 it('reveals the latest progress after one second for a small document', async () => {
     const pending = deferred<TidyOutcome>();
     mockRunTidy.mockReturnValue(pending.promise);
-    render(view({ documentId: 'first', content: 'short\n' }));
+    render(view({ documentId: 'first', content: 'short\n', documentRevision: 0 }));
     await screen.findByRole('textbox', { name: 'Markdown source' });
     jest.useFakeTimers();
     fireEvent.click(screen.getByRole('button', { name: 'Lint' }));
@@ -825,6 +864,16 @@ it('returns unavailable without a notice when no editor is attached', async () =
     expect(slotSnapshot()).toEqual({ state: 'idle' });
 });
 
+it('refuses a tidy request for a different document without starting work', async () => {
+    render(view({ documentId: 'first', content: 'line\n', documentRevision: 0 }));
+    await screen.findByRole('textbox', { name: 'Markdown source' });
+    fireEvent.click(screen.getByRole('button', { name: 'Format other document' }));
+    await waitFor(() => expect(screen.getByRole('status', { name: 'Tidy outcome' })).toHaveTextContent('failed'));
+    expect(mockRunTidy).not.toHaveBeenCalled();
+    expect(noticeCodes()).toEqual([]);
+    expect(slotSnapshot()).toEqual({ state: 'idle' });
+});
+
 it('allows Lint for a read-only document while refusing Format without a notice', async () => {
     store.dispatch(
         hydrateProjection({
@@ -837,7 +886,7 @@ it('allows Lint for a read-only document while refusing Format without a notice'
         }),
     );
     mockRunTidy.mockResolvedValue({ kind: 'findings', findings: [], total: 0 });
-    render(view({ documentId: 'first', content: 'line\n' }));
+    render(view({ documentId: 'first', content: 'line\n', documentRevision: 0 }));
     await screen.findByRole('textbox', { name: 'Markdown source' });
     fireEvent.click(screen.getByRole('button', { name: 'Format' }));
     await waitFor(() => expect(screen.getByRole('status', { name: 'Tidy outcome' })).toHaveTextContent('failed'));
@@ -851,7 +900,7 @@ it('allows Lint for a read-only document while refusing Format without a notice'
 it('discards a pending run after the document closes and leaves the slot idle', async () => {
     const pending = deferred<TidyOutcome>();
     mockRunTidy.mockReturnValue(pending.promise);
-    const rendered = render(view({ documentId: 'first', content: 'line \n' }));
+    const rendered = render(view({ documentId: 'first', content: 'line \n', documentRevision: 0 }));
     await screen.findByRole('textbox', { name: 'Markdown source' });
     fireEvent.click(screen.getByRole('button', { name: 'Format' }));
     const oldRuntime = runtimes.at(-1)!;
@@ -869,7 +918,7 @@ it('discards a pending run after the document closes and leaves the slot idle', 
 
 it('turns a thrown worker error into a failed outcome and releases the slot', async () => {
     mockRunTidy.mockRejectedValue(new Error('worker crashed'));
-    render(view({ documentId: 'first', content: 'line \n' }));
+    render(view({ documentId: 'first', content: 'line \n', documentRevision: 0 }));
     await screen.findByRole('textbox', { name: 'Markdown source' });
     fireEvent.click(screen.getByRole('button', { name: 'Format' }));
     await waitFor(() => expect(screen.getByRole('status', { name: 'Tidy outcome' })).toHaveTextContent('failed'));
@@ -881,11 +930,27 @@ it('turns a thrown worker error into a failed outcome and releases the slot', as
 it('turns an editor read error after the worker resolves into a failed outcome', async () => {
     const pending = deferred<TidyOutcome>();
     mockRunTidy.mockReturnValue(pending.promise);
-    render(view({ documentId: 'first', content: 'line \n' }));
+    render(view({ documentId: 'first', content: 'line \n', documentRevision: 0 }));
     await screen.findByRole('textbox', { name: 'Markdown source' });
     fireEvent.click(screen.getByRole('button', { name: 'Format' }));
     const runtime = runtimes.at(-1)!;
     runtime.throwOnRead = true;
+    await settle(pending, { kind: 'edits', edits: [{ from: 0, to: 1, text: 'X' }] });
+    expect(screen.getByRole('status', { name: 'Tidy outcome' })).toHaveTextContent('failed');
+    expect(runtime.content).toBe('line \n');
+    expect(noticeCodes()).toContain('tidy-failed');
+    expect(slotSnapshot()).toEqual({ state: 'idle' });
+});
+
+it('reports a failed outcome when the editor becomes unavailable while applying edits', async () => {
+    const pending = deferred<TidyOutcome>();
+    mockRunTidy.mockReturnValue(pending.promise);
+    render(view({ documentId: 'first', content: 'line \n', documentRevision: 0 }));
+    await screen.findByRole('textbox', { name: 'Markdown source' });
+    fireEvent.click(screen.getByRole('button', { name: 'Format' }));
+    const runtime = runtimes.at(-1)!;
+    const model = runtime.editor.getModel();
+    jest.spyOn(runtime.editor, 'getModel').mockReturnValueOnce(model).mockReturnValueOnce(null);
     await settle(pending, { kind: 'edits', edits: [{ from: 0, to: 1, text: 'X' }] });
     expect(screen.getByRole('status', { name: 'Tidy outcome' })).toHaveTextContent('failed');
     expect(runtime.content).toBe('line \n');
@@ -898,7 +963,7 @@ it('runs the same Markdown lint and formatting for .txt and .md active documents
         const request = value as TidyRequest;
         return Promise.resolve(runOnText(request.op, request.text, request.prefs));
     });
-    const buffer = { documentId: 'first', content: '* item\n' };
+    const buffer = { documentId: 'first', content: '* item\n', documentRevision: 0 };
     const rendered = render(view(buffer));
     await screen.findByRole('textbox', { name: 'Markdown source' });
     fireEvent.click(screen.getByRole('button', { name: 'Lint' }));
@@ -918,7 +983,7 @@ it('runs the same Markdown lint and formatting for .txt and .md active documents
                 ui: {},
             }),
         );
-        rendered.rerender(view({ documentId: 'second', content: '* item\n' }));
+        rendered.rerender(view({ documentId: 'second', content: '* item\n', documentRevision: 0 }));
     });
     await screen.findByRole('textbox', { name: 'Markdown source' });
     fireEvent.click(screen.getByRole('button', { name: 'Lint' }));

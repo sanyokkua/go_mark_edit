@@ -111,8 +111,8 @@ it('exposes the exact canonical file and tab shortcut inventory', () => {
     expect(getAction('reopen').shortcut).toBe('Mod+Shift+Alt+T');
     expect(getAction('move-tab-left').shortcut).toBe('Mod+Shift+PageUp');
     expect(getAction('move-tab-right').shortcut).toBe('Mod+Shift+PageDown');
-    expect(getAction('next-tab').shortcut).toBe('Mod+Tab');
-    expect(getAction('previous-tab').shortcut).toBe('Mod+Shift+Tab');
+    expect(getAction('next-tab').shortcut).toBe('Ctrl+Tab');
+    expect(getAction('previous-tab').shortcut).toBe('Ctrl+Shift+Tab');
     expect(getAction('table').shortcut).toBe('Mod+Shift+T');
     expect(getAction('refresh-preview').shortcut).toBeUndefined();
     expect(actionRegistry.some(({ id }) => /^tab-[0-9]+$/.test(id))).toBe(false);
@@ -528,4 +528,11 @@ describe('editor formatting availability', () => {
     it('states the reason "Show the editor to use formatting."', () => {
         expect(t(actionUnavailableLabelKey('editor-hidden'))).toBe('Show the editor to use formatting.');
     });
+});
+
+it('allows Save As for a write-protected document while Save remains unavailable', () => {
+    const projectedState = { activeDocumentId: 'doc', documents: { doc: { capability: 'write-protected-read-only' } } };
+    const context = { projectedState, writable: false };
+    expect(getActionAvailability('save-as', context)).toEqual({ kind: 'available' });
+    expect(getActionAvailability('save', context)).toEqual({ kind: 'unavailable', reason: 'no-document' });
 });

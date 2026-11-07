@@ -87,7 +87,6 @@ it('dispatches a target move through the typed context action', () => {
     }));
     render(
         <TabContextMenu
-            adapter={{}}
             document={second}
             index={1}
             onAction={onAction}
@@ -107,7 +106,6 @@ it('focuses the first action without scrolling the parity viewport', () => {
 
     render(
         <TabContextMenu
-            adapter={{}}
             document={documentFor('first')}
             index={0}
             onAction={jest.fn(async (): Promise<TabTransitionResult> => ({
@@ -180,7 +178,6 @@ it('disables a menu item the registry calls unavailable, whatever the local indi
 
     render(
         <TabContextMenu
-            adapter={{}}
             document={first}
             index={0}
             onAction={jest.fn(async (): Promise<TabTransitionResult> => ({
@@ -229,7 +226,6 @@ it('matches getActionAvailability for every tab-context action and strip positio
         );
         const view = render(
             <TabContextMenu
-                adapter={{}}
                 document={target}
                 index={index}
                 onAction={jest.fn(async (): Promise<TabTransitionResult> => ({
@@ -297,7 +293,6 @@ it.each([
     const second = documentFor('second');
     render(
         <TabContextMenu
-            adapter={{}}
             document={first}
             index={0}
             onAction={jest.fn(async (): Promise<TabTransitionResult> => ({

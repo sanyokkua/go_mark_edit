@@ -17,17 +17,19 @@ const MINIMUM_WINDOW_QUERY = `(max-width: ${MINIMUM_WINDOW_MAX_WIDTH}px)`;
  * a resize uses `useMinimumWindow`.
  */
 export function isMinimumWindow(): boolean {
-    return typeof window !== 'undefined' && window.innerWidth <= MINIMUM_WINDOW_MAX_WIDTH;
+    const browserWindow = globalThis.window;
+    return browserWindow !== undefined && browserWindow.innerWidth <= MINIMUM_WINDOW_MAX_WIDTH;
 }
 
 function minimumWindowNow(): boolean {
-    if (typeof window === 'undefined') {
+    const browserWindow = globalThis.window;
+    if (browserWindow === undefined) {
         return false;
     }
-    if (typeof window.matchMedia !== 'function') {
+    if (typeof browserWindow.matchMedia !== 'function') {
         return isMinimumWindow();
     }
-    return window.matchMedia(MINIMUM_WINDOW_QUERY).matches;
+    return browserWindow.matchMedia(MINIMUM_WINDOW_QUERY).matches;
 }
 
 /*
@@ -41,21 +43,22 @@ export function useMinimumWindow(): boolean {
     const [minimumWindow, setMinimumWindow] = useState(minimumWindowNow);
 
     useEffect((): (() => void) => {
-        if (typeof window === 'undefined') {
+        const browserWindow = globalThis.window;
+        if (browserWindow === undefined) {
             return (): void => undefined;
         }
         const sync = (): void => setMinimumWindow(minimumWindowNow());
         sync();
-        if (typeof window.matchMedia !== 'function') {
+        if (typeof browserWindow.matchMedia !== 'function') {
             /*
              * No media queries at all here — jsdom is the environment this ships
              * against that has none. `resize` re-reads `window.innerWidth`, which is
              * the same fact by the only route left.
              */
-            window.addEventListener('resize', sync);
-            return (): void => window.removeEventListener('resize', sync);
+            browserWindow.addEventListener('resize', sync);
+            return (): void => browserWindow.removeEventListener('resize', sync);
         }
-        const query = window.matchMedia(MINIMUM_WINDOW_QUERY);
+        const query = browserWindow.matchMedia(MINIMUM_WINDOW_QUERY);
         query.addEventListener('change', sync);
         return (): void => query.removeEventListener('change', sync);
     }, []);

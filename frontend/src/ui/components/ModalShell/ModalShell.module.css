@@ -81,19 +81,6 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
-.side {
-    border: var(--control-border-width) solid var(--border);
-    min-width: 0;
-    padding: var(--control-padding);
-}
-
-.side pre {
-    max-block-size: 14rem;
-    overflow: auto;
-    white-space: pre-wrap;
-    word-break: break-word;
-}
-
 .warning {
     color: var(--warn);
 }

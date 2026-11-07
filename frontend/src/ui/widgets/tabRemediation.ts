@@ -1,4 +1,4 @@
-import { createContext, type MutableRefObject } from 'react';
+import { createContext, type RefObject } from 'react';
 
 import type { NotificationRemediation } from '../../logic/store/notificationsSlice';
 
@@ -39,4 +39,4 @@ export type TabRemediationExecutor = (
  * Null when no strip is mounted — the launcher's zero-document state, where no
  * reorder remediation can exist because no tab does.
  */
-export const TabRemediationContext = createContext<MutableRefObject<TabRemediationExecutor | undefined> | null>(null);
+export const TabRemediationContext = createContext<RefObject<TabRemediationExecutor | undefined> | null>(null);

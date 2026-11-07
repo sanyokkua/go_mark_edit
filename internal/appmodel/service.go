@@ -35,6 +35,7 @@ type AppModelService struct {
 	autosaveEnabled                bool
 	pending                        *pendingLayout
 	pendingFlushDone               chan struct{}
+	layoutCloseDrains              int
 	startupErr                     error
 	pendingClose                   *apperr.PendingClose
 	reservations                   map[string]*openReservation
@@ -45,6 +46,9 @@ type AppModelService struct {
 	runtimeContext                 context.Context
 	conflictQueue                  *conflictQueue
 	shutdownDraining               bool
+	shutdownDiscarding             bool
+	preparedQuitFenced             bool
+	discardEpoch                   uint64
 	metadata                       FileMetadataRepository
 	recentItems                    RecentItemsRepository
 	defaultOpenMode                string
@@ -220,17 +224,56 @@ func (service *AppModelService) BeginShutdownDrain() {
 func (service *AppModelService) EndShutdownDrain() {
 	service.mu.Lock()
 	service.shutdownDraining = false
+	service.shutdownDiscarding = false
+	service.preparedQuitFenced = false
+	var pending []string
+	for id, document := range service.state.documents {
+		if document.autosave != nil {
+			pending = append(pending, id)
+		}
+	}
 	service.mu.Unlock()
+	for _, id := range pending {
+		service.resumeAutosave(id)
+	}
+}
+
+// BeginShutdownDiscard fences document writes while retaining debounced work.
+func (service *AppModelService) BeginShutdownDiscard() {
+	service.mu.Lock()
+	defer service.mu.Unlock()
+	service.beginShutdownDiscardLocked()
+}
+
+func (service *AppModelService) beginShutdownDiscardLocked() {
+	service.shutdownDraining = true
+	service.shutdownDiscarding = true
+	service.discardEpoch++
+	for _, document := range service.state.documents {
+		if entry := document.autosave; entry != nil {
+			entry.arm++
+			entry.armed = false
+			if entry.timer != nil {
+				entry.timer.Stop()
+				entry.timer = nil
+			}
+		}
+	}
 }
 
 // SetPendingClose records a close request for a frontend that hydrates after
 // the native request was emitted.
-func (service *AppModelService) SetPendingClose(id string) {
-	if id == "" {
+func (service *AppModelService) SetPendingClose(pending apperr.PendingClose) {
+	if pending.ID == "" || (pending.Owner != apperr.PendingCloseOwnerFrontend && pending.Owner != apperr.PendingCloseOwnerNative) {
 		return
 	}
 	service.mu.Lock()
-	service.pendingClose = &apperr.PendingClose{ID: id}
+	service.pendingClose = &pending
+	if service.activeClosePlan != "" {
+		if plan := service.closePlans[service.activeClosePlan]; plan != nil && plan.summary.Status != apperr.ClosePlanExecuting && service.validateCloseOwnershipLocked(plan.nativeCloseID) != nil {
+			service.invalidateClosePlanLocked(plan, apperr.ClosePlanFailed)
+		}
+	}
 	service.mu.Unlock()
 }
 
@@ -239,6 +282,9 @@ func (service *AppModelService) ClearPendingClose(id string) {
 	service.mu.Lock()
 	if service.pendingClose != nil && service.pendingClose.ID == id {
 		service.pendingClose = nil
+		if plan := service.closePlans[service.activeClosePlan]; plan != nil && plan.summary.Status != apperr.ClosePlanExecuting && service.validateCloseOwnershipLocked(plan.nativeCloseID) != nil {
+			service.invalidateClosePlanLocked(plan, apperr.ClosePlanFailed)
+		}
 	}
 	service.mu.Unlock()
 }
@@ -350,38 +396,49 @@ func (service *AppModelService) RestoreUILayout(ctx context.Context) error {
 		if !found {
 			continue
 		}
-		switch field {
-		case LayoutWindowWidth:
-			if width, ok := value.Value.(int); ok && width >= 375 {
-				restored.WindowWidth = pointerTo(width)
-			}
-		case LayoutWindowHeight:
-			if height, ok := value.Value.(int); ok && height >= 480 {
-				restored.WindowHeight = pointerTo(height)
-			}
-		case LayoutWindowMaximized:
-			if maximized, ok := value.Value.(bool); ok {
-				restored.WindowMaximized = pointerTo(maximized)
-			}
-		case LayoutWorkspaceWidth:
-			if width, ok := value.Value.(int); ok && width >= 0 {
-				restored.SidebarWidth = pointerTo(width)
-			}
-		case LayoutArrangementBackup:
-			if arrangement, ok := value.Value.(string); ok && validArrangement(arrangement) {
-				restored.ViewArrangement = pointerTo(arrangement)
-			}
-		case LayoutWorkspaceHiddenFolders:
-			if show, ok := value.Value.(bool); ok {
-				restored.ShowHiddenFolders = pointerTo(show)
-			}
-		}
+		restoreLayoutField(&restored, field, value.Value)
 	}
 
 	service.mu.Lock()
 	mergeUILayout(&service.state.ui, restored)
 	service.mu.Unlock()
 	return firstReadErr
+}
+
+func restoreLayoutField(restored *apperr.UILayout, field string, value any) {
+	switch field {
+	case LayoutWindowWidth:
+		if width, ok := value.(int); ok && width >= 375 {
+			restored.WindowWidth = pointerTo(width)
+		}
+	case LayoutWindowHeight:
+		if height, ok := value.(int); ok && height >= 480 {
+			restored.WindowHeight = pointerTo(height)
+		}
+	case LayoutWindowMaximized:
+		if maximized, ok := value.(bool); ok {
+			restored.WindowMaximized = pointerTo(maximized)
+		}
+	default:
+		restoreWorkspaceLayoutField(restored, field, value)
+	}
+}
+
+func restoreWorkspaceLayoutField(restored *apperr.UILayout, field string, value any) {
+	switch field {
+	case LayoutWorkspaceWidth:
+		if width, ok := value.(int); ok && width >= 0 {
+			restored.SidebarWidth = pointerTo(width)
+		}
+	case LayoutArrangementBackup:
+		if arrangement, ok := value.(string); ok && validArrangement(arrangement) {
+			restored.ViewArrangement = pointerTo(arrangement)
+		}
+	case LayoutWorkspaceHiddenFolders:
+		if show, ok := value.(bool); ok {
+			restored.ShowHiddenFolders = pointerTo(show)
+		}
+	}
 }
 
 func validArrangement(arrangement string) bool {
@@ -391,6 +448,11 @@ func validArrangement(arrangement string) bool {
 // UpdateBuffer delegates canonical content mutation through the F3 command seam.
 func (service *AppModelService) UpdateBuffer(ctx context.Context, documentID, content string) error {
 	return service.commands.UpdateBuffer(ctx, documentID, content)
+}
+
+// UpdateBufferFrom delegates an editor update, based on baseRevision, through the F3 command seam.
+func (service *AppModelService) UpdateBufferFrom(ctx context.Context, documentID, content string, baseRevision uint64) error {
+	return service.commands.UpdateBufferFrom(ctx, documentID, content, baseRevision)
 }
 
 // SetDocView stores a document's restorable pane and cursor metadata.
@@ -597,49 +659,58 @@ func (service *AppModelService) persistLayout(ctx context.Context, layout apperr
 		}
 		candidate, exists := values[field.name]
 		if !exists {
+			service.mu.Lock()
 			service.sequence++
 			candidate = VersionedLayoutValue{Version: 1, Value: dereferenceLayoutValue(field.value), ChangedAtUnixNano: time.Now().UnixNano(), WriterID: service.writerID, Sequence: service.sequence}
+			service.mu.Unlock()
 		}
 		result, err := service.layout.Write(ctx, field.name, candidate)
 		if err != nil {
 			return apperr.UILayout{}, classifyLayoutPersistenceError(err)
 		}
 		if !result.Applied {
-			switch field.name {
-			case LayoutWindowWidth:
-				winner, ok := result.Value.Value.(int)
-				if !ok {
-					return apperr.UILayout{}, fmt.Errorf("invalid stored native window width")
-				}
-				acknowledged.WindowWidth = pointerTo(winner)
-			case LayoutWindowHeight:
-				winner, ok := result.Value.Value.(int)
-				if !ok {
-					return apperr.UILayout{}, fmt.Errorf("invalid stored native window height")
-				}
-				acknowledged.WindowHeight = pointerTo(winner)
-			case LayoutWindowMaximized:
-				winner, ok := result.Value.Value.(bool)
-				if !ok {
-					return apperr.UILayout{}, fmt.Errorf("invalid stored native window maximized state")
-				}
-				acknowledged.WindowMaximized = pointerTo(winner)
-			case LayoutWorkspaceWidth:
-				winner, ok := result.Value.Value.(int)
-				if !ok {
-					return apperr.UILayout{}, fmt.Errorf("invalid stored workspace width")
-				}
-				acknowledged.SidebarWidth = pointerTo(winner)
-			case LayoutArrangementBackup:
-				winner, ok := result.Value.Value.(string)
-				if !ok {
-					return apperr.UILayout{}, fmt.Errorf("invalid stored arrangement fallback")
-				}
-				acknowledged.ViewArrangement = pointerTo(winner)
+			if err := acknowledgeLayoutField(&acknowledged, field.name, result.Value.Value); err != nil {
+				return apperr.UILayout{}, err
 			}
 		}
 	}
 	return acknowledged, nil
+}
+
+func acknowledgeLayoutField(acknowledged *apperr.UILayout, field string, value any) error {
+	switch field {
+	case LayoutWindowWidth:
+		winner, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("invalid stored native window width")
+		}
+		acknowledged.WindowWidth = pointerTo(winner)
+	case LayoutWindowHeight:
+		winner, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("invalid stored native window height")
+		}
+		acknowledged.WindowHeight = pointerTo(winner)
+	case LayoutWindowMaximized:
+		winner, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("invalid stored native window maximized state")
+		}
+		acknowledged.WindowMaximized = pointerTo(winner)
+	case LayoutWorkspaceWidth:
+		winner, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("invalid stored workspace width")
+		}
+		acknowledged.SidebarWidth = pointerTo(winner)
+	case LayoutArrangementBackup:
+		winner, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("invalid stored arrangement fallback")
+		}
+		acknowledged.ViewArrangement = pointerTo(winner)
+	}
+	return nil
 }
 
 func classifyLayoutPersistenceError(err error) error {
@@ -716,7 +787,18 @@ func (service *AppModelService) completePendingLayoutFlush(pending *pendingLayou
 	}
 	defer service.finishPendingLayoutFlush(flushDone)
 	if err := service.applyAcknowledgedLayoutWithValues(pending.ctx, pending.layout, pending.values); err != nil {
-		service.restorePendingLayout(pending)
+		service.mu.Lock()
+		closing := service.shutdownDraining || service.layoutCloseDrains > 0
+		if closing {
+			service.pending = nil
+		} else {
+			service.restorePendingLayoutLocked(pending)
+		}
+		service.mu.Unlock()
+		if closing {
+			service.logger.Error().Err(err).Msg("layout persistence failed during close; pending layout discarded")
+			return nil
+		}
 		return err
 	}
 	return nil
@@ -738,12 +820,11 @@ func (service *AppModelService) takePendingLayout(generation uint64) (*pendingLa
 	return pending, flushDone
 }
 
-func (service *AppModelService) restorePendingLayout(pending *pendingLayout) {
+// restorePendingLayoutLocked restores failed work while the caller holds service.mu.
+func (service *AppModelService) restorePendingLayoutLocked(pending *pendingLayout) {
 	if pending == nil {
 		return
 	}
-	service.mu.Lock()
-	defer service.mu.Unlock()
 	if service.pending == nil {
 		service.pending = pending
 		return

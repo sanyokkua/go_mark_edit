@@ -90,10 +90,12 @@ it('resizes the split without replacing the editor and commits only the ratio in
     const setDocView = jest.fn(async () => undefined);
     render(
         <Provider store={store}>
-            <EditorSessionProvider activeBuffer={{ documentId: document.documentId, content: '# Heading' }}>
+            <EditorSessionProvider
+                activeBuffer={{ documentId: document.documentId, content: '# Heading', documentRevision: 0 }}
+            >
                 <EditorStage
                     adapter={{ ...adapter, setDocView }}
-                    activeBuffer={{ documentId: document.documentId, content: '# Heading' }}
+                    activeBuffer={{ documentId: document.documentId, content: '# Heading', documentRevision: 0 }}
                     activeDocument={document}
                     editorVisible
                     previewVisible
@@ -127,10 +129,12 @@ it('restores the acknowledged ratio and reports a refused resize command', async
     });
     render(
         <Provider store={store}>
-            <EditorSessionProvider activeBuffer={{ documentId: document.documentId, content: '# Heading' }}>
+            <EditorSessionProvider
+                activeBuffer={{ documentId: document.documentId, content: '# Heading', documentRevision: 0 }}
+            >
                 <EditorStage
                     adapter={{ ...adapter, setDocView }}
-                    activeBuffer={{ documentId: document.documentId, content: '# Heading' }}
+                    activeBuffer={{ documentId: document.documentId, content: '# Heading', documentRevision: 0 }}
                     activeDocument={document}
                     editorVisible
                     previewVisible
@@ -153,10 +157,10 @@ it('discards an uncommitted drag when switching away from a document and back', 
     const setDocView = jest.fn(async () => undefined);
     const renderStage = (documentId: string, previewVisible = true): React.JSX.Element => (
         <Provider store={store}>
-            <EditorSessionProvider activeBuffer={{ documentId, content: '# Heading' }}>
+            <EditorSessionProvider activeBuffer={{ documentId, content: '# Heading', documentRevision: 0 }}>
                 <EditorStage
                     adapter={{ ...adapter, setDocView }}
-                    activeBuffer={{ documentId, content: '# Heading' }}
+                    activeBuffer={{ documentId, content: '# Heading', documentRevision: 0 }}
                     activeDocument={{ ...first, documentId }}
                     editorVisible
                     previewVisible={previewVisible}
@@ -195,10 +199,10 @@ it('restores each document ratio and hides the divider in single-pane and narrow
     const first = documentFor('split');
     const renderStage = (documentId: string, splitRatio: number, previewVisible = true): React.JSX.Element => (
         <Provider store={store}>
-            <EditorSessionProvider activeBuffer={{ documentId, content: '# Heading' }}>
+            <EditorSessionProvider activeBuffer={{ documentId, content: '# Heading', documentRevision: 0 }}>
                 <EditorStage
                     adapter={adapter}
-                    activeBuffer={{ documentId, content: '# Heading' }}
+                    activeBuffer={{ documentId, content: '# Heading', documentRevision: 0 }}
                     activeDocument={{ ...first, documentId }}
                     editorVisible
                     previewVisible={previewVisible}
@@ -284,7 +288,7 @@ it('retains a committed preview across editor-only mode without parsing the hidd
     });
     const view = (content: string, previewVisible: boolean): React.JSX.Element => {
         const document = documentFor(previewVisible ? 'split' : 'editor');
-        const buffer = { documentId: document.documentId, content };
+        const buffer = { documentId: document.documentId, content, documentRevision: 0 };
         return (
             <Provider store={store}>
                 <EditorSessionProvider activeBuffer={buffer}>
@@ -326,7 +330,7 @@ it('retains a committed preview across a large-document pause and failing manual
     });
     const document = documentFor('split');
     const view = (content: string): React.JSX.Element => {
-        const buffer = { documentId: document.documentId, content };
+        const buffer = { documentId: document.documentId, content, documentRevision: 0 };
         return (
             <Provider store={store}>
                 <EditorSessionProvider activeBuffer={buffer}>
@@ -369,7 +373,7 @@ it('retains a committed preview across a large-document pause and failing manual
 it('pauses after replacing a manually refreshed large source with the same implicit revision', async () => {
     const document = documentFor('split');
     const view = (content: string): React.JSX.Element => {
-        const buffer = { documentId: document.documentId, content };
+        const buffer = { documentId: document.documentId, content, documentRevision: 0 };
         return (
             <Provider store={store}>
                 <EditorSessionProvider activeBuffer={buffer}>
@@ -415,12 +419,15 @@ it('keeps the editor and preview content in explicit panes for split view', asyn
 
     render(
         <Provider store={store}>
-            <EditorSessionProvider activeBuffer={{ documentId: document.documentId, content: '# Preview' }}>
+            <EditorSessionProvider
+                activeBuffer={{ documentId: document.documentId, content: '# Preview', documentRevision: 0 }}
+            >
                 <EditorStage
                     adapter={adapter}
                     activeBuffer={{
                         documentId: document.documentId,
                         content: '# Preview',
+                        documentRevision: 0,
                     }}
                     activeDocument={document}
                     editorVisible
@@ -456,10 +463,12 @@ it('hides the preview header standard and document until Markdown settings hydra
     );
     render(
         <Provider store={store}>
-            <EditorSessionProvider activeBuffer={{ documentId: document.documentId, content: '# Preview' }}>
+            <EditorSessionProvider
+                activeBuffer={{ documentId: document.documentId, content: '# Preview', documentRevision: 0 }}
+            >
                 <EditorStage
                     adapter={adapter}
-                    activeBuffer={{ documentId: document.documentId, content: '# Preview' }}
+                    activeBuffer={{ documentId: document.documentId, content: '# Preview', documentRevision: 0 }}
                     activeDocument={document}
                     editorVisible
                     labelledBy="active-tab"
@@ -497,10 +506,10 @@ it('updates the preview syntax when the stored standard changes without remounti
     );
     render(
         <Provider store={store}>
-            <EditorSessionProvider activeBuffer={{ documentId: document.documentId, content }}>
+            <EditorSessionProvider activeBuffer={{ documentId: document.documentId, content, documentRevision: 0 }}>
                 <EditorStage
                     adapter={adapter}
-                    activeBuffer={{ documentId: document.documentId, content }}
+                    activeBuffer={{ documentId: document.documentId, content, documentRevision: 0 }}
                     activeDocument={document}
                     editorVisible
                     previewVisible
@@ -548,7 +557,7 @@ it('uses current pane owners for retained links and images after hiding and a fa
         warning: typeof firstWarning,
     ): React.JSX.Element => {
         const document = { ...documentFor(visible ? 'split' : 'editor'), path };
-        const buffer = { documentId: document.documentId, content };
+        const buffer = { documentId: document.documentId, content, documentRevision: 0 };
         return (
             <Provider store={store}>
                 <EditorSessionProvider activeBuffer={buffer}>

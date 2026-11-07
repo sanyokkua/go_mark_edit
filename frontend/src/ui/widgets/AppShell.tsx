@@ -20,13 +20,14 @@ import Launcher from './Launcher';
 import WorkspaceLayout, { type WorkspaceLayoutProps } from './WorkspaceLayout';
 import WindowDropTarget from './WindowDropTarget';
 
-export interface AppShellProps {
+export interface AppShellProps
+    extends
+        Pick<EditorViewProps, 'tabRevealRequest' | 'editorFocusRequest' | 'onOpenLink' | 'fragmentRequest'>,
+        Pick<WorkspaceLayoutProps, 'treeRevealRequest'> {
     problemsOpen?: boolean;
     onToggleProblems?: () => void;
     onCloseProblems?: () => void;
     dropEpoch?: number;
-    tabRevealRequest?: EditorViewProps['tabRevealRequest'];
-    editorFocusRequest?: EditorViewProps['editorFocusRequest'];
     onNewDocument?: (expectedTabSetRevision: number) => Promise<unknown>;
     onOpenDocument?: (expectedTabSetRevision: number) => Promise<unknown>;
     onOpenFolder?: () => Promise<unknown>;
@@ -38,9 +39,6 @@ export interface AppShellProps {
         targetDocumentIds?: string[],
     ) => Promise<TabTransitionResult>;
     onExternalConflict?: (preview: ConflictPreview) => void;
-    onOpenLink?: EditorViewProps['onOpenLink'];
-    fragmentRequest?: EditorViewProps['fragmentRequest'];
-    treeRevealRequest?: WorkspaceLayoutProps['treeRevealRequest'];
     onOpenRecentItem?: (item: RecentItem, expectedTabSetRevision: number) => Promise<unknown>;
 }
 
@@ -85,124 +83,129 @@ const AppShell: React.FC<AppShellProps> = ({
     const recentItems = useAppSelector((state) => state.documents.recentItems ?? []);
     const showLauncher = onNewDocument !== undefined || onOpenDocument !== undefined || recentItems.length > 0;
     const tabSetRevision = useAppSelector((state) => state.documents.tabSetRevision);
-    const statusFacts: readonly StatusFact[] =
-        activeDocument === undefined
-            ? []
-            : [
-                  ...(markdownSettings === undefined
-                      ? []
-                      : [
-                            {
-                                id: 'standard-kind',
-                                rowLabel: t('status.markdown', {
-                                    standard: t(`status.markdownStandard.${markdownSettings.standard}`),
-                                }),
-                                detailLabel: t('status.markdown', {
-                                    standard: t(`status.markdownStandard.${markdownSettings.standard}`),
-                                }),
-                                value: '',
-                                dropPriority: 0,
-                                marker: 'accent-dot',
-                            } as StatusFact,
-                        ]),
-                  ...(summary === null
-                      ? []
-                      : [
-                            {
-                                id: 'problems',
-                                rowLabel: (
-                                    <>
-                                        {t('problems.title')} {formatNumber(summary.total)}
-                                        {summary.stale ? <Icon name="warning" /> : null}
-                                    </>
-                                ),
-                                rowAriaLabel: `${t('status.problems.count', { count: formatNumber(summary.total) })}${summary.stale ? ` · ${t('status.problems.stale')}` : ''}`,
-                                detailLabel: t('problems.title'),
-                                value: `${formatNumber(summary.total)}${summary.stale ? ` · ${t('status.problems.stale')}` : ''}`,
-                                dropPriority: 1,
-                                pressed: problemsOpen,
-                                onActivate: (): void => {
-                                    if (onToggleProblems === undefined) return;
-                                    void dispatchAction('toggle-problems', {
-                                        documentId: activeDocument.documentId,
-                                        windowFocused: true,
-                                        invoke: onToggleProblems,
-                                    });
-                                },
-                            } as StatusFact,
-                        ]),
-                  {
-                      id: 'cursor',
-                      rowLabel: t('status.cursor', {
-                          column: liveCursor.column,
-                          line: liveCursor.lineNumber,
-                      }),
-                      detailLabel: t('status.cursor', {
-                          column: liveCursor.column,
-                          line: liveCursor.lineNumber,
-                      }),
-                      value: '',
-                      dropPriority: summary === null ? 1 : 2,
-                  },
-                  {
-                      id: 'count',
-                      rowLabel: t('status.words', {
-                          count: formatNumber(activeDocument.wordCount),
-                      }),
-                      detailLabel: t('status.words', {
-                          count: formatNumber(activeDocument.wordCount),
-                      }),
-                      value: '',
-                      dropPriority: 3,
-                  },
-                  {
-                      id: 'encoding',
-                      rowLabel: t(`status.encoding.${activeDocument.encoding.toLowerCase()}`),
-                      detailLabel: t(`status.encoding.${activeDocument.encoding.toLowerCase()}`),
-                      value: '',
-                      dropPriority: 4,
-                      placement: 'trailing',
-                  },
-                  {
-                      id: 'line-ending',
-                      rowLabel: t(`status.lineEnding.${activeDocument.lineEnding.toLowerCase()}`),
-                      detailLabel: t(`status.lineEnding.${activeDocument.lineEnding.toLowerCase()}`),
-                      value: '',
-                      dropPriority: 5,
-                      placement: 'trailing',
-                  },
-                  {
-                      id: 'autosave',
-                      rowLabel: t(fileSettings.autosave ? 'status.autosave.on' : 'status.autosave.off'),
-                      detailLabel: t(fileSettings.autosave ? 'status.autosave.on' : 'status.autosave.off'),
-                      value: '',
-                      dropPriority: 6,
-                      placement: 'trailing',
-                  },
-              ];
+    const buildStatusFacts = (): readonly StatusFact[] => {
+        if (activeDocument === undefined) return [];
+
+        const facts: StatusFact[] = [];
+        if (markdownSettings !== undefined) {
+            const label = t('status.markdown', {
+                standard: t(`status.markdownStandard.${markdownSettings.standard}`),
+            });
+            facts.push({
+                id: 'standard-kind',
+                rowLabel: label,
+                detailLabel: label,
+                value: '',
+                dropPriority: 0,
+                marker: 'accent-dot',
+            });
+        }
+        if (summary !== null) {
+            const title = t('problems.title');
+            const count = formatNumber(summary.total);
+            const staleSuffix = summary.stale ? ` · ${t('status.problems.stale')}` : '';
+            facts.push({
+                id: 'problems',
+                rowLabel: (
+                    <>
+                        {title} {count}
+                        {summary.stale ? <Icon name="warning" /> : null}
+                    </>
+                ),
+                rowAriaLabel: t('status.problems.count', { count }) + staleSuffix,
+                detailLabel: title,
+                value: count + staleSuffix,
+                dropPriority: 1,
+                pressed: problemsOpen,
+                onActivate: (): void => {
+                    if (onToggleProblems === undefined) return;
+                    void dispatchAction('toggle-problems', {
+                        documentId: activeDocument.documentId,
+                        windowFocused: true,
+                        invoke: onToggleProblems,
+                    });
+                },
+            });
+        }
+        facts.push(
+            {
+                id: 'cursor',
+                rowLabel: t('status.cursor', {
+                    column: liveCursor.column,
+                    line: liveCursor.lineNumber,
+                }),
+                detailLabel: t('status.cursor', {
+                    column: liveCursor.column,
+                    line: liveCursor.lineNumber,
+                }),
+                value: '',
+                dropPriority: summary === null ? 1 : 2,
+            },
+            {
+                id: 'count',
+                rowLabel: t('status.words', {
+                    count: formatNumber(activeDocument.wordCount),
+                }),
+                detailLabel: t('status.words', {
+                    count: formatNumber(activeDocument.wordCount),
+                }),
+                value: '',
+                dropPriority: 3,
+            },
+            {
+                id: 'encoding',
+                rowLabel: t(`status.encoding.${activeDocument.encoding.toLowerCase()}`),
+                detailLabel: t(`status.encoding.${activeDocument.encoding.toLowerCase()}`),
+                value: '',
+                dropPriority: 4,
+                placement: 'trailing',
+            },
+            {
+                id: 'line-ending',
+                rowLabel: t(`status.lineEnding.${activeDocument.lineEnding.toLowerCase()}`),
+                detailLabel: t(`status.lineEnding.${activeDocument.lineEnding.toLowerCase()}`),
+                value: '',
+                dropPriority: 5,
+                placement: 'trailing',
+            },
+            {
+                id: 'autosave',
+                rowLabel: t(fileSettings.autosave ? 'status.autosave.on' : 'status.autosave.off'),
+                detailLabel: t(fileSettings.autosave ? 'status.autosave.on' : 'status.autosave.off'),
+                value: '',
+                dropPriority: 6,
+                placement: 'trailing',
+            },
+        );
+        return facts;
+    };
+    const statusFacts = buildStatusFacts();
+
+    const renderLauncher = (): React.JSX.Element | null => {
+        if (hasActiveDocument || !showLauncher) return null;
+        return (
+            <Launcher
+                recentItems={recentItems}
+                onNewDocument={
+                    onNewDocument === undefined ? undefined : (): Promise<unknown> => onNewDocument(tabSetRevision)
+                }
+                onOpenDocument={
+                    onOpenDocument === undefined ? undefined : (): Promise<unknown> => onOpenDocument(tabSetRevision)
+                }
+                onOpenFolder={onOpenFolder}
+                onOpenRecentItem={
+                    onOpenRecentItem === undefined
+                        ? undefined
+                        : (item): Promise<unknown> => onOpenRecentItem(item, tabSetRevision)
+                }
+            />
+        );
+    };
 
     return (
         <WorkspaceLayout documentState={hasActiveDocument ? 'active' : 'empty'} treeRevealRequest={treeRevealRequest}>
             <WindowDropTarget dropEpoch={dropEpoch} />
-            {!hasActiveDocument && showLauncher ? (
-                <Launcher
-                    recentItems={recentItems}
-                    onNewDocument={
-                        onNewDocument === undefined ? undefined : (): Promise<unknown> => onNewDocument(tabSetRevision)
-                    }
-                    onOpenDocument={
-                        onOpenDocument === undefined
-                            ? undefined
-                            : (): Promise<unknown> => onOpenDocument(tabSetRevision)
-                    }
-                    onOpenFolder={onOpenFolder}
-                    onOpenRecentItem={
-                        onOpenRecentItem === undefined
-                            ? undefined
-                            : (item): Promise<unknown> => onOpenRecentItem(item, tabSetRevision)
-                    }
-                />
-            ) : null}
+            {renderLauncher()}
             <EditorView
                 problemsOpen={problemsOpen}
                 problemsSummary={summary}

@@ -108,12 +108,12 @@ export const AppearanceSettingsProvider: React.FC<AppearanceSettingsProviderProp
     }, [dispatch]);
 
     useEffect((): (() => void) => {
-        if (typeof window.matchMedia !== 'function') {
+        if (typeof globalThis.matchMedia !== 'function') {
             return (): void => undefined;
         }
         return observeSystemAppearance(
             appearance.mode,
-            (query): MediaQueryList => window.matchMedia(query),
+            (query): MediaQueryList => globalThis.matchMedia(query),
             (mode): void => applyThemeToRoot({ mode, theme: appearance.theme }, document),
         );
     }, [appearance.mode, appearance.theme]);
@@ -190,19 +190,22 @@ export const AppearanceSettingsProvider: React.FC<AppearanceSettingsProviderProp
         [setOpen],
     );
 
-    const controller: AppearanceSettingsController = {
-        appearance,
-        onDefaultOpenModeChange: (defaultOpenMode): void => persist({ defaultOpenMode }),
-        onModeChange: (mode): void => persist({ mode }),
-        onOpenAppearance,
-        onOpenChange: setOpen,
-        onPdfAppearanceChange: (pdfAppearance): void => persist({ pdfAppearance }),
-        onReadingWidthChange: (readingWidth): void => persist({ readingWidth }),
-        onReset: reset,
-        open,
-        returnFocusTo: settingsReturnFocus,
-        onThemeChange: (theme): void => persist({ theme }),
-    };
+    const controller = useMemo<AppearanceSettingsController>(
+        () => ({
+            appearance,
+            onDefaultOpenModeChange: (defaultOpenMode): void => persist({ defaultOpenMode }),
+            onModeChange: (mode): void => persist({ mode }),
+            onOpenAppearance,
+            onOpenChange: setOpen,
+            onPdfAppearanceChange: (pdfAppearance): void => persist({ pdfAppearance }),
+            onReadingWidthChange: (readingWidth): void => persist({ readingWidth }),
+            onReset: reset,
+            open,
+            returnFocusTo: settingsReturnFocus,
+            onThemeChange: (theme): void => persist({ theme }),
+        }),
+        [appearance, onOpenAppearance, setOpen, persist, reset, open, settingsReturnFocus],
+    );
 
     return <AppearanceSettingsContext.Provider value={controller}>{children}</AppearanceSettingsContext.Provider>;
 };

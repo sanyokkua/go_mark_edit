@@ -153,16 +153,7 @@ func applyMigrations(ctx context.Context, database *sql.DB, migrations fs.FS) er
 		if err != nil {
 			return fmt.Errorf("create migration provider: %w", err)
 		}
-		currentVersion, targetVersion, err := provider.GetVersions(ctx)
-		if err == nil {
-			if currentVersion > targetVersion {
-				return fmt.Errorf("%w: found %d, maximum %d", ErrUnsupportedSchema, currentVersion, targetVersion)
-			}
-			if currentVersion == targetVersion {
-				return nil
-			}
-			_, err = provider.Up(ctx)
-		}
+		err = migrateProvider(ctx, provider)
 		if err == nil {
 			return nil
 		}
@@ -177,6 +168,21 @@ func applyMigrations(ctx context.Context, database *sql.DB, migrations fs.FS) er
 		}
 	}
 	return fmt.Errorf("concurrent database migration did not reach the expected schema version: %w", conflict)
+}
+
+func migrateProvider(ctx context.Context, provider *goose.Provider) error {
+	currentVersion, targetVersion, err := provider.GetVersions(ctx)
+	if err != nil {
+		return err
+	}
+	if currentVersion > targetVersion {
+		return fmt.Errorf("%w: found %d, maximum %d", ErrUnsupportedSchema, currentVersion, targetVersion)
+	}
+	if currentVersion == targetVersion {
+		return nil
+	}
+	_, err = provider.Up(ctx)
+	return err
 }
 
 func waitForMigrationRetry(ctx context.Context) error {
@@ -274,73 +280,86 @@ func preserveCorruptDatabase(path string, original fs.FileInfo) error {
 	return errors.New("allocate unique corrupt database filenames")
 }
 
-func preserveCorruptFiles(paths []string, suffix string, expectedPrimary fs.FileInfo) error {
-	type corruptFile struct {
-		source      string
-		destination string
-		original    fs.FileInfo
-	}
+type corruptFile struct {
+	source      string
+	destination string
+	original    fs.FileInfo
+}
 
+func preserveCorruptFiles(paths []string, suffix string, expectedPrimary fs.FileInfo) error {
+	files, err := collectCorruptFiles(paths, suffix, expectedPrimary)
+	if err != nil {
+		return err
+	}
+	// Rename makes preservation and removal of the primary one filesystem operation. The identity
+	// check prevents a stale process from claiming a replacement that another opener just created.
+	for index, file := range files {
+		if err := preserveCorruptFile(file, index == 0); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func collectCorruptFiles(paths []string, suffix string, expectedPrimary fs.FileInfo) ([]corruptFile, error) {
 	files := make([]corruptFile, 0, len(paths))
 	for index, source := range paths {
 		original, err := os.Lstat(source)
 		if errors.Is(err, os.ErrNotExist) {
 			if index == 0 {
-				return errCorruptDatabaseMoved
+				return nil, errCorruptDatabaseMoved
 			}
 			continue
 		} else if err != nil {
-			return fmt.Errorf("inspect %s: %w", source, err)
+			return nil, fmt.Errorf("inspect %s: %w", source, err)
 		}
 		if index == 0 {
 			if !os.SameFile(expectedPrimary, original) {
-				return errCorruptDatabaseMoved
+				return nil, errCorruptDatabaseMoved
 			}
 			original = expectedPrimary
 		}
 		files = append(files, corruptFile{source: source, destination: source + corruptFileMarker + suffix, original: original})
 	}
 	if len(files) == 0 || files[0].source != paths[0] {
-		return errCorruptDatabaseMoved
+		return nil, errCorruptDatabaseMoved
 	}
+	return files, nil
+}
 
-	// Rename makes preservation and removal of the primary one filesystem operation. The identity
-	// check prevents a stale process from claiming a replacement that another opener just created.
-	for index, file := range files {
-		if index > 0 {
-			current, err := os.Lstat(file.source)
-			if errors.Is(err, os.ErrNotExist) {
-				continue
-			} else if err != nil {
-				return fmt.Errorf("inspect %s before preservation: %w", file.source, err)
+func preserveCorruptFile(file corruptFile, primary bool) error {
+	if !primary {
+		current, err := os.Lstat(file.source)
+		if errors.Is(err, os.ErrNotExist) {
+			return nil
+		} else if err != nil {
+			return fmt.Errorf("inspect %s before preservation: %w", file.source, err)
+		}
+		if !os.SameFile(file.original, current) {
+			return nil
+		}
+	}
+	if err := os.Rename(file.source, file.destination); err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			if primary {
+				return errCorruptDatabaseMoved
 			}
-			if !os.SameFile(file.original, current) {
-				continue
-			}
+			return nil
 		}
-
-		if err := os.Rename(file.source, file.destination); err != nil {
-			if errors.Is(err, os.ErrNotExist) {
-				if index == 0 {
-					return errCorruptDatabaseMoved
-				}
-				continue
-			}
-			return fmt.Errorf("preserve %s: %w", file.source, err)
-		}
-		moved, err := os.Lstat(file.destination)
-		if err != nil {
-			return fmt.Errorf("inspect preserved %s: %w", file.destination, err)
-		}
-		if os.SameFile(file.original, moved) {
-			continue
-		}
-		if err := restoreMisidentifiedCorruptFile(file.destination, file.source); err != nil {
-			return err
-		}
-		if index == 0 {
-			return errCorruptDatabaseMoved
-		}
+		return fmt.Errorf("preserve %s: %w", file.source, err)
+	}
+	moved, err := os.Lstat(file.destination)
+	if err != nil {
+		return fmt.Errorf("inspect preserved %s: %w", file.destination, err)
+	}
+	if os.SameFile(file.original, moved) {
+		return nil
+	}
+	if err := restoreMisidentifiedCorruptFile(file.destination, file.source); err != nil {
+		return err
+	}
+	if primary {
+		return errCorruptDatabaseMoved
 	}
 	return nil
 }

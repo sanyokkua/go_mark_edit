@@ -16,7 +16,8 @@ export function normalizeAppearance(value: string): AppearanceChoice {
 }
 
 export function resolveAppearance(choice: AppearanceChoice, prefersDark: () => boolean): ResolvedAppearance {
-    return choice === 'auto' ? (prefersDark() ? 'dark' : 'light') : choice;
+    if (choice !== 'auto') return choice;
+    return prefersDark() ? 'dark' : 'light';
 }
 
 interface AppearanceMediaQuery {
@@ -34,10 +35,11 @@ export function observeSystemAppearance(
     const media = matchMedia('(prefers-color-scheme: dark)');
     const listener = (event: { matches: boolean }): void => onChange(event.matches ? 'dark' : 'light');
     media.addEventListener('change', listener);
+    listener(media);
     return (): void => media.removeEventListener('change', listener);
 }
 
 export function applyThemeToRoot(state: ThemeState, documentRef: Document): void {
-    documentRef.documentElement.setAttribute('data-theme', state.theme);
-    documentRef.documentElement.setAttribute('data-mode', state.mode);
+    documentRef.documentElement.dataset.theme = state.theme;
+    documentRef.documentElement.dataset.mode = state.mode;
 }

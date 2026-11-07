@@ -92,31 +92,31 @@ function withTimeout<T>(operation: () => Promise<T>, step: BootstrapStep): Promi
             reject(new StartupStepError(step, 'timeout', true));
         }, STARTUP_TIMEOUT_MS);
 
-        let operationPromise: Promise<T>;
-        try {
-            operationPromise = Promise.resolve(operation());
-        } catch (error) {
-            globalThis.clearTimeout(timer);
-            settled = true;
-            reject(error);
-            return;
-        }
-
-        void operationPromise.then(
-            (value): void => {
-                if (settled) return;
-                settled = true;
-                globalThis.clearTimeout(timer);
-                resolve(value);
-            },
-            (error: unknown): void => {
+        void (async (): Promise<void> => {
+            let value: T;
+            try {
+                value = await operation();
+            } catch (error) {
                 if (settled) return;
                 settled = true;
                 globalThis.clearTimeout(timer);
                 reject(error);
-            },
-        );
+                return;
+            }
+
+            if (settled) return;
+            settled = true;
+            globalThis.clearTimeout(timer);
+            resolve(value);
+        })();
     });
+}
+
+function requireReadyModel(result: AppModelBootstrapResult): Extract<AppModelBootstrapResult, { status: 'ready' }> {
+    if (result.status !== 'ready') {
+        throw new StartupStepError(result.failure?.step ?? 'model', result.failure?.category ?? 'internal');
+    }
+    return result;
 }
 
 export function useBootstrap(options: UseBootstrapOptions = {}): BootstrapController {
@@ -187,17 +187,12 @@ export function useBootstrap(options: UseBootstrapOptions = {}): BootstrapContro
                     const firstStepIndex = retryStep === undefined ? 0 : STARTUP_STEPS.indexOf(retryStep);
                     if (firstStepIndex <= STARTUP_STEPS.indexOf('model') || modelResultRef.current === null) {
                         currentStep = 'model';
-                        const modelResult = await withTimeout(
-                            (): Promise<AppModelBootstrapResult> => bootstrapModel(services.appModelAdapter),
-                            currentStep,
+                        modelResultRef.current = requireReadyModel(
+                            await withTimeout(
+                                (): Promise<AppModelBootstrapResult> => bootstrapModel(services.appModelAdapter),
+                                currentStep,
+                            ),
                         );
-                        if (modelResult.status !== 'ready') {
-                            throw new StartupStepError(
-                                modelResult.failure?.step ?? 'model',
-                                modelResult.failure?.category ?? 'internal',
-                            );
-                        }
-                        modelResultRef.current = modelResult;
                     }
 
                     const modelResult = modelResultRef.current;

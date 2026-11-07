@@ -1,3 +1,6 @@
+import { execFileSync } from 'node:child_process';
+import { resolve } from 'node:path';
+
 import { generateEditorThemes } from '../../../scripts/generate-editor-themes-core.cjs';
 
 interface GeneratedTheme {
@@ -301,4 +304,21 @@ it('maps preview syntax classes to shared palette tokens', () => {
         { className: 'hljs-operator', token: '--hl-punct' },
         { className: 'hljs-punctuation', token: '--hl-punct' },
     ]);
+});
+
+it.each([
+    ['selector without braces', "'x'.repeat(100000)"],
+    ['declaration without a colon', "':root { --' + '-'.repeat(100000) + ' }'"],
+])('handles a long %s without excessive backtracking', (_description, suffix) => {
+    const generator = resolve(process.cwd(), 'scripts/generate-editor-themes-core.cjs');
+    const script = `const { generateEditorThemes } = require(${JSON.stringify(generator)});
+        generateEditorThemes(${JSON.stringify(palette)} + ${suffix});`;
+    expect(() => execFileSync(process.execPath, ['-e', script], { timeout: 3000 })).not.toThrow();
+});
+
+it('keeps parsing declarations across line terminators and malformed prefixes', () => {
+    const css = palette + `\n:root { x--text\r\n:\u2028#123456; --unused: ; --accent: #abcdef; }`;
+    const colors = generate(css).themes['gme-material-light'].colors;
+    expect(colors['editor.foreground']).toBe('#123456');
+    expect(colors.focusBorder).toBe('#abcdef');
 });

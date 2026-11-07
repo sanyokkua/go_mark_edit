@@ -63,7 +63,7 @@ The system SHALL allow at most 40 open documents per window. WHEN a new or opene
 
 ### Requirement: File size and content limits
 
-The system SHALL refuse a file larger than 50 MiB. A file larger than 10 MiB (10,485,760 bytes) up to 50 MiB SHALL open read-only. A file that is not valid UTF-8, contains a NUL byte, or contains a lone carriage return SHALL open read-only with invalid sequences shown as replacement characters. Read-only documents SHALL NOT be saved, autosaved or overwritten.
+The system SHALL refuse a file larger than 50 MiB. A file larger than 10 MiB (10,485,760 bytes) up to 50 MiB SHALL open read-only. A file that is not valid UTF-8, contains a NUL byte, or contains a lone carriage return SHALL open read-only with invalid sequences shown as replacement characters. Read-only documents SHALL NOT be saved, autosaved or overwritten; Save As of a write-protected document to another path is defined in actions-shortcuts "Read-only documents".
 
 #### Scenario: Over the maximum
 
@@ -88,6 +88,11 @@ The system SHALL read and write UTF-8 and SHALL preserve a leading byte-order ma
 
 - **WHEN** the user saves a file with mixed endings
 - **THEN** a "Normalize line endings?" prompt appears before any write
+
+#### Scenario: BOM kept after Save As
+
+- **WHEN** the user opens a file that starts with a BOM, saves it with Save As as "copy.md", edits it and saves again
+- **THEN** "copy.md" still starts with the bytes EF BB BF and the status bar reports a BOM
 
 ### Requirement: Dirty state
 
@@ -137,7 +142,7 @@ IF an open document's file no longer exists on disk, THEN the system SHALL mark 
 
 ### Requirement: Autosave
 
-WHERE the Autosave setting is on, the system SHALL save an existing, writable, non-deleted file one second after the last edit, with the same atomic and disk-change checks as a manual save. Autosave SHALL NOT apply to untitled or read-only documents and SHALL NOT add Recent Items. A pending autosave SHALL be completed when the document is closed.
+WHERE the Autosave setting is on, the system SHALL save an existing, writable, non-deleted file one second after the last edit, with the same atomic and disk-change checks as a manual save. Autosave SHALL NOT apply to untitled or read-only documents, or to documents with mixed line endings, and SHALL NOT add Recent Items. A pending autosave SHALL be completed when the document is closed, except during the recovery discard or unacknowledged ready-interface close decisions defined in app-shell.
 
 #### Scenario: Debounced save
 
@@ -148,6 +153,21 @@ WHERE the Autosave setting is on, the system SHALL save an existing, writable, n
 
 - **WHEN** Autosave is on and the user types in an Untitled document
 - **THEN** nothing is written
+
+#### Scenario: Mixed endings wait for the user
+
+- **WHEN** Autosave is on, the user edits a file with mixed endings, presses Save and leaves the "Normalize line
+  endings?" prompt open for three seconds before confirming
+- **THEN** nothing is written before the confirmation, and confirming writes the file without asking again
+
+### Requirement: Autosave when a document closes
+
+Those decisions SHALL pause or discard scheduled autosaves as specified there; ordinary responsive close retains this completion behavior.
+
+#### Scenario: Pending autosave at ordinary close
+
+- **WHEN** a document with a pending autosave is closed in an ordinary responsive close
+- **THEN** the autosave is completed first
 
 ### Requirement: Recent Items
 
@@ -180,3 +200,131 @@ WHEN the user chooses Copy path on a document with a path, the system SHALL plac
 
 - **WHEN** the active document has no path
 - **THEN** Copy path and Reveal in file manager are unavailable
+
+### Requirement: Write-protected files
+
+The system SHALL open a file whose owner has no write permission read-only, with the reason "The file is
+write-protected." shown wherever the read-only reason appears. Reload from disk SHALL re-check the permission. (Save As
+availability for such a document is defined in actions-shortcuts "Read-only documents".)
+
+#### Scenario: Read-only file mode
+
+- **WHEN** the user opens "locked.md" whose mode is 0444 and types in the editor
+- **THEN** the editor does not accept the edit, Save is unavailable and the file is unchanged after two seconds
+
+#### Scenario: Permission restored
+
+- **WHEN** "locked.md" is open read-only, another program makes it writable, the window regains focus and the user
+  chooses Reload from disk in the external-change dialog
+- **THEN** the document becomes writable and the write-protected reason disappears
+
+### Requirement: Permissions of new files
+
+WHEN a save creates a file that did not exist (Save As to a new path, the first save of an untitled document, or
+Save after the file was deleted), the system SHALL give it read and write permission for the owner and read permission
+for everyone else (0644), reduced by the user's file-creation mask.
+
+#### Scenario: Save As to a new path
+
+- **WHEN** the user saves an Untitled document as "new.md" on macOS or Linux with a file-creation mask of 022
+- **THEN** "new.md" has mode 0644
+
+#### Scenario: Permissive creation mask
+
+- **WHEN** the user saves a new file on macOS or Linux with a file-creation mask of 000
+- **THEN** the file has mode 0644
+
+#### Scenario: Recreated file
+
+- **WHEN** "notes.md" is deleted outside the app and the user saves its tab with a file-creation mask of 022
+- **THEN** the recreated "notes.md" has mode 0644
+
+### Requirement: A file that appears during creation is not replaced
+
+WHEN a save creates a file that did not exist, the system SHALL NOT replace a file that another program creates at that path after the save's last check and before the write completes. The save SHALL write nothing, report a conflict and leave no temporary file beside the target. Exception: on a filesystem with neither an exclusive move nor hard links, the save checks that the path is free just before moving its file there, and a file created after that check is replaced.
+
+#### Scenario: Another program creates the target first
+
+- **WHEN** the user saves an Untitled document as "new.md", and another program creates "new.md" containing "other
+  program" after the save checked that the path was free and before the write completes
+- **THEN** "new.md" still contains "other program", the save reports a conflict and the folder holds no temporary
+  file
+
+#### Scenario: Filesystem without an exclusive move or hard links
+
+- **WHEN** the user saves an Untitled document as "new.md" on a filesystem with neither an exclusive move nor hard
+  links, and "new.md" already exists when the save checks the path
+- **THEN** "new.md" keeps its contents and the save reports a conflict
+
+### Requirement: Save outcome reporting
+
+WHEN a committed save has an accompanying failure, the system SHALL keep the document saved and show one warning while
+the window remains open. The warning SHALL identify the highest-priority failure: durability, Recent Items, then view
+state. A committed-save warning SHALL NOT delay a successful Quit; the system does not guarantee that it is acknowledged
+or visible before exit. Unencodable text SHALL be reported without offering Retry.
+
+#### Scenario: Explicit save with an accompanying failure
+
+- **WHEN** Save or Save As commits with an accompanying failure
+- **THEN** one warning describes the failure and no separate success notification appears for that save
+
+#### Scenario: Post-replacement check fails
+
+- **WHEN** replacement commits but reading metadata, reading back the file, comparing its contents, or synchronizing its directory fails
+- **THEN** the warning identifies the failed check and offers an appropriate next step without exposing raw system errors
+
+#### Scenario: Recent Items cannot be stored
+
+- **WHEN** the user saves "notes.md" and the settings store refuses the Recent Items update
+- **THEN** the file is written, the tab is not marked modified, and a warning says Recent Items could not be updated
+
+#### Scenario: Durability not confirmed
+
+- **WHEN** the user saves "notes.md", the file is replaced, and confirming that the write reached the disk fails
+- **THEN** the tab is not marked modified and a warning says the save could not be confirmed on disk
+
+#### Scenario: Two accompanying failures
+
+- **WHEN** a save is written and both the Recent Items update and the view-state update fail
+- **THEN** one warning is shown, and it names Recent Items
+
+#### Scenario: Durability and Recent Items both fail
+
+- **WHEN** a save is written, confirming it reached the disk fails and the Recent Items update fails
+- **THEN** one warning is shown, and it says the save could not be confirmed on disk
+
+#### Scenario: Close-plan save warning
+
+- **WHEN** a close-plan save commits and its Recent Items update fails
+- **THEN** the close operation continues; while the window remains open, a warning says Recent Items could not be updated
+
+#### Scenario: Quit continues after committed-save warning
+
+- **WHEN** a successful Quit commits a close-plan save but confirming that the write reached the disk fails
+- **THEN** Quit continues immediately without waiting for warning acknowledgement or visibility, and the warning may not be seen before exit
+
+#### Scenario: Autosave durability warning
+
+- **WHEN** an autosave replaces the file but confirming that the write reached the disk fails
+- **THEN** the document is saved and a warning says the save could not be confirmed on disk
+
+#### Scenario: Unencodable text
+
+- **WHEN** the text contains a NUL character and the user saves
+- **THEN** nothing is written and an error explains that the text cannot be saved, with no Retry action
+
+### Requirement: Editor changes that cannot be delivered
+
+IF the editor's text cannot be handed to the application for storing, THEN the system SHALL keep the text in the
+editor, retry at the next edit, focus change or save, and show one error notification until a later delivery
+succeeds.
+
+#### Scenario: Delivery fails
+
+- **WHEN** the application rejects two consecutive editor updates for "notes.md"
+- **THEN** one error notification is shown and the text in the editor is unchanged
+
+#### Scenario: Delivery recovers
+
+- **WHEN** an editor update for "notes.md" was rejected and the user types again and the next update is accepted
+- **THEN** the application holds the editor's full text and a later rejection shows a new error notification

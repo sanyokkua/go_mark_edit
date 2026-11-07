@@ -144,12 +144,8 @@ export function usePreviewPaneState(
         setSourceState({ identity, manualSnapshot: null, refreshError: null });
     }
 
-    const rendered =
-        accepted.byteLength <= PREVIEW_BYTE_LIMIT
-            ? accepted
-            : !sourceChanged && sourceState.manualSnapshot !== null
-              ? sourceState.manualSnapshot
-              : null;
+    const manualSnapshot = sourceChanged ? null : sourceState.manualSnapshot;
+    const rendered = accepted.byteLength <= PREVIEW_BYTE_LIMIT ? accepted : manualSnapshot;
     const currentRefreshError = sourceChanged ? null : sourceState.refreshError;
 
     const refresh = useCallback((): void => {
@@ -300,15 +296,16 @@ export const PreviewPaneContent: React.FC<PreviewPaneContentProps> = ({
         });
     }, []);
 
+    const previewState = controller.isPaused ? 'paused' : 'rendered';
     return (
         <section
             aria-label={ariaLabel ?? undefined}
             data-preview-revision={controller.rendered?.revision}
-            data-preview-state={!settingsLoaded ? 'loading' : controller.isPaused ? 'paused' : 'rendered'}
+            data-preview-state={settingsLoaded ? previewState : 'loading'}
             ref={previewContainerRef}
         >
             {!settingsLoaded || standard === undefined ? (
-                <span role="status">{t('preview.loading')}</span>
+                <output>{t('preview.loading')}</output>
             ) : (
                 <>
                     {controller.isPaused && showPausedStatus ? (
@@ -318,7 +315,7 @@ export const PreviewPaneContent: React.FC<PreviewPaneContentProps> = ({
                             onRefresh={controller.refresh}
                         />
                     ) : null}
-                    <Suspense fallback={<span role="status">{t('preview.loading')}</span>}>
+                    <Suspense fallback={<output>{t('preview.loading')}</output>}>
                         <LazyMarkdownView
                             committedPreview={committedPreview}
                             documentId={documentId}

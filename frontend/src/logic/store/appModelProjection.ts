@@ -1,9 +1,11 @@
 import type { AppModelAdapter } from '../adapter/appModelAdapter';
 import { isWireError, parseError } from '../utils/parseError';
 import { notifyError } from './notificationsSlice';
+import { reportAsyncError } from './asyncNotification';
+import { parseSaveWarning, parseSaveWarningReason, saveWarningNotification } from './saveWarning';
 
 import { applyStatePatch, hydrateProjection, resetProjection } from './appModelProjectionActions';
-import type { ActiveBuffer, AppStatePatch } from './appModelTypes';
+import type { ActiveBuffer, AppStatePatch, PendingClose } from './appModelTypes';
 import { store } from './index';
 import { disposeSettingsProjection } from './settingsProjection';
 
@@ -12,7 +14,7 @@ export type AppModelBootstrapResult =
           status: 'ready';
           activeBuffer: ActiveBuffer | null;
           applicationVersion: string;
-          pendingCloseId?: string;
+          pendingClose?: PendingClose;
       }
     | {
           status: 'failed';
@@ -34,9 +36,7 @@ let bootstrapPromise: Promise<AppModelBootstrapResult> | undefined;
 let activeAttempt: BootstrapAttempt | undefined;
 
 export function bootstrapAppModelProjection(appModelAdapter: AppModelAdapter): Promise<AppModelBootstrapResult> {
-    if (bootstrapPromise === undefined) {
-        bootstrapPromise = initializeProjection(appModelAdapter);
-    }
+    bootstrapPromise ??= initializeProjection(appModelAdapter);
     return bootstrapPromise;
 }
 
@@ -59,7 +59,16 @@ async function initializeProjection(appModelAdapter: AppModelAdapter): Promise<A
             if (activeAttempt !== attempt) {
                 return;
             }
-            store.dispatch(notifyError(error));
+            const warning = parseSaveWarning(error.details?.saveWarning);
+            if (warning === undefined) reportAsyncError(store.dispatch, error);
+            else
+                store.dispatch(
+                    saveWarningNotification(
+                        warning,
+                        error.details?.dedupKey ?? error.details?.subject ?? warning,
+                        parseSaveWarningReason(error.details?.saveWarningReason),
+                    ),
+                );
         });
         attempt.disposeStatePatches = appModelAdapter.subscribeStatePatches((patch: AppStatePatch): void => {
             if (activeAttempt !== attempt) {
@@ -87,7 +96,7 @@ async function initializeProjection(appModelAdapter: AppModelAdapter): Promise<A
             applicationVersion: state.snapshot.applicationVersion,
         };
         if (state.snapshot.pendingClose?.id !== undefined) {
-            result.pendingCloseId = state.snapshot.pendingClose.id;
+            result.pendingClose = state.snapshot.pendingClose;
         }
         return result;
     } catch (error: unknown) {

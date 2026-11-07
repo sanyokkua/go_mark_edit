@@ -42,7 +42,12 @@ const MenuItem = forwardRef<HTMLButtonElement, MenuItemProps>(
         }: MenuItemProps,
         ref,
     ): React.JSX.Element => {
-        const itemRole = role ?? (radio ? 'menuitemradio' : checked === undefined ? 'menuitem' : 'menuitemcheckbox');
+        let defaultRole: MenuItemProps['role'] = 'menuitem';
+        if (radio) defaultRole = 'menuitemradio';
+        else if (checked !== undefined) defaultRole = 'menuitemcheckbox';
+        const itemRole = role ?? defaultRole;
+        let state: 'checked' | 'unchecked' | undefined;
+        if (checked !== undefined) state = checked ? 'checked' : 'unchecked';
         const indicator =
             trailing === undefined && checked !== undefined ? <MenuItemIndicator checked={checked} /> : trailing;
         return (
@@ -52,7 +57,7 @@ const MenuItem = forwardRef<HTMLButtonElement, MenuItemProps>(
                 aria-checked={checked}
                 aria-disabled={disabled}
                 className={`${styles.item} ${className ?? ''}`.trim()}
-                data-state={checked === undefined ? undefined : checked ? 'checked' : 'unchecked'}
+                data-state={state}
                 data-shortcut={accelerator}
                 data-disabled={disabled ? '' : undefined}
                 disabled={disabled}

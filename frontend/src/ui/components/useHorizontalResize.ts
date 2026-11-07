@@ -57,13 +57,13 @@ export function useHorizontalResize(
                 current.current.onCommit(drag.currentValue);
             }
         };
-        window.addEventListener('pointermove', move);
-        window.addEventListener('pointerup', finish);
-        window.addEventListener('pointercancel', finish);
+        globalThis.addEventListener('pointermove', move);
+        globalThis.addEventListener('pointerup', finish);
+        globalThis.addEventListener('pointercancel', finish);
         return (): void => {
-            window.removeEventListener('pointermove', move);
-            window.removeEventListener('pointerup', finish);
-            window.removeEventListener('pointercancel', finish);
+            globalThis.removeEventListener('pointermove', move);
+            globalThis.removeEventListener('pointerup', finish);
+            globalThis.removeEventListener('pointercancel', finish);
             const drag = dragRef.current;
             dragRef.current = null;
             if (drag !== null) release(drag);

@@ -87,7 +87,8 @@ export function expectedEmphasisMarker(
             child.type === 'strong' ? initial === '*' : expectedEmphasisMarker(child, source, preferred) === initial,
         );
     if (!conflicts) return initial;
-    return initial === '_' ? '*' : canUseUnderscore(node, source) ? '_' : '*';
+    if (initial === '_') return '*';
+    return canUseUnderscore(node, source) ? '_' : '*';
 }
 
 export function unorderedMarkerAt(list: List, source: string): BulletMarker | null {
@@ -152,4 +153,11 @@ export function hardBreakRanges(tree: Root): SourceRange[] {
         if (from !== undefined && to !== undefined) ranges.push({ from, to });
     });
     return ranges;
+}
+
+/** Return the beginning of a trailing run of ASCII spaces and tabs. */
+export function trailingHorizontalWhitespaceStart(value: string): number {
+    let index = value.length;
+    while (index > 0 && (value[index - 1] === ' ' || value[index - 1] === '\t')) index--;
+    return index;
 }

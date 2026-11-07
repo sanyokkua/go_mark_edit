@@ -99,7 +99,7 @@ export function createPreviewScrollPort(container: HTMLElement): PreviewScrollPo
             });
         },
         dispose: (): void => {
-            for (const release of [...releases]) release();
+            for (const release of releases) release();
         },
     };
 }
