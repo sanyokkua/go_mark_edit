@@ -84,3 +84,24 @@ void test('requires one successful aggregate job from the latest attempt', () =>
         false,
     );
 });
+
+void test('reuses a run whose local reusable workflow is reported as path@sha, as hosted runs report it', () => {
+    const observed = run({
+        referenced_workflows: [
+            { path: `${repo}/.github/workflows/verification.yml@${sha}`, ref: 'refs/heads/master', sha },
+        ],
+    });
+    assert.deepEqual(assessRun(observed, sha, repo, 42), { mode: 'reuse', id: 42, attempt: 1 });
+});
+
+void test('falls back instead of reusing when referenced workflows are absent, empty or for another file', () => {
+    for (const referenced_workflows of [
+        undefined,
+        [],
+        [{ path: `${repo}/.github/workflows/other.yml@master`, sha }],
+        [{ path: `other/repo/.github/workflows/verification.yml@master`, sha }],
+        [{ path: `${repo}/.github/workflows/verification.yml@master` }],
+    ]) {
+        assert.deepEqual(assessRun(run({ referenced_workflows }), sha, repo, 42), { mode: 'fallback' });
+    }
+});

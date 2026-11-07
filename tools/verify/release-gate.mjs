@@ -67,6 +67,10 @@ export function assessRun(run, sha, repository, selectedId) {
     }
     if (run.status !== 'completed') return { mode: 'fallback' };
     if (run.conclusion !== 'success') return { mode: 'reject' };
+    // A local `uses: ./.github/workflows/verification.yml` is reported as a referenced workflow whose
+    // path ends in `@<ref>` and whose `sha` is the commit it ran at (observed for a manual release run;
+    // not yet observed for a master push, whose run predates the reusable workflow). Anything else,
+    // including an absent or empty list, cannot prove the revision and falls back to fresh verification.
     const reference = run.referenced_workflows?.find((workflow) =>
         workflow.path?.startsWith(`${repository}/.github/workflows/verification.yml@`),
     );
