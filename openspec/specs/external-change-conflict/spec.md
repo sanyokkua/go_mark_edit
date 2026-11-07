@@ -274,7 +274,7 @@ WHEN the user chooses Save As and selects the file the document is already tied 
 
 ### Requirement: Conflict found during replacement
 
-IF the document's file changes after the save's disk check and before the replacement, THEN the system SHALL check the file again before reporting the result. Different bytes SHALL produce the ordinary comparison, mark the tab as blocked by a conflict and write nothing; identical bytes (a timestamp-only change) SHALL be saved without a dialog.
+IF the document's file changes after the save's disk check and before the replacement, THEN the system SHALL check the file again before reporting the result. Bytes that differ from the ones the save expected to replace SHALL produce the ordinary comparison, mark the tab as blocked by a conflict and write nothing; identical bytes (a timestamp-only change) SHALL be saved without a dialog. After Keep mine, the expected bytes are the external version the user chose to overwrite.
 
 #### Scenario: External edit during replacement
 
@@ -286,6 +286,12 @@ IF the document's file changes after the save's disk check and before the replac
 
 - **WHEN** another program only changes the timestamp of "notes.md" at that moment
 - **THEN** the save completes without a dialog and "notes.md" contains the user's text
+
+#### Scenario: Timestamp change during a Keep mine save
+
+- **WHEN** the user chose Keep mine over the external text "external" and another program only changes the
+  timestamp of "notes.md" during that save's replacement
+- **THEN** the save completes once without a dialog and "notes.md" contains the user's text
 
 ### Requirement: The application's own save is not an external change
 

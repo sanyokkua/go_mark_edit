@@ -466,11 +466,17 @@ func (service *AppModelService) requestNormalizationLocked(documentID string, ex
 }
 
 // retryAfterPreCommitConflict handles a file that changed between the save's
-// disk check and the replacement. It inspects the file again: different bytes
-// become the ordinary comparison (returned as a result), while identical bytes
-// (a timestamp-only touch) are written once more against the refreshed disk
-// version.
+// disk check and the replacement. Bytes identical to the ones the write expected
+// to replace (a timestamp-only touch) are written once more against the
+// refreshed disk version. The expected bytes are the loaded baseline or, for a
+// Keep mine write, the authorized external version. Any other bytes get the
+// ordinary inspection, which returns the comparison as a result.
 func (service *AppModelService) retryAfterPreCommitConflict(ctx context.Context, coordinator *DocumentWriteCoordinator, snapshot writeSnapshot, encoded encodedWrite, replaceErr error) (CommittedWriteResult, *apperr.WriteResult, error) {
+	if stable, err := service.readStable(snapshot.path); err == nil && stable.Version.Exists && stable.RawHash == snapshot.expectedRawHash {
+		snapshot.expectedVersion = stable.Version
+		committed, err := coordinator.Commit(snapshot.request(encoded))
+		return committed, nil, err
+	}
 	inspection := service.inspectDocumentClaimed(ctx, snapshot.documentID, snapshot.contentRevision, "")
 	if inspection.classified != nil || inspection.kind != diskUnchanged {
 		result := service.writeResultForInspection(snapshot.documentID, inspection)
