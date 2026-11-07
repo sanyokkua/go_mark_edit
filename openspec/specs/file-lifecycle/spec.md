@@ -239,9 +239,9 @@ for everyone else (0644), reduced by the user's file-creation mask.
 - **WHEN** "notes.md" is deleted outside the app and the user saves its tab with a file-creation mask of 022
 - **THEN** the recreated "notes.md" has mode 0644
 
-### Requirement: A file that appears during creation is never replaced
+### Requirement: A file that appears during creation is not replaced
 
-WHEN a save creates a file that did not exist, the system SHALL NOT replace a file that another program creates at that path after the save's last check and before the write completes. The save SHALL write nothing, report a conflict and leave no temporary file beside the target.
+WHEN a save creates a file that did not exist, the system SHALL NOT replace a file that another program creates at that path after the save's last check and before the write completes. The save SHALL write nothing, report a conflict and leave no temporary file beside the target. Exception: on a filesystem with neither an exclusive move nor hard links, the save checks that the path is free just before moving its file there, and a file created after that check is replaced.
 
 #### Scenario: Another program creates the target first
 
@@ -249,6 +249,12 @@ WHEN a save creates a file that did not exist, the system SHALL NOT replace a fi
   program" after the save checked that the path was free and before the write completes
 - **THEN** "new.md" still contains "other program", the save reports a conflict and the folder holds no temporary
   file
+
+#### Scenario: Filesystem without an exclusive move or hard links
+
+- **WHEN** the user saves an Untitled document as "new.md" on a filesystem with neither an exclusive move nor hard
+  links, and "new.md" already exists when the save checks the path
+- **THEN** "new.md" keeps its contents and the save reports a conflict
 
 ### Requirement: Save outcome reporting
 
