@@ -465,6 +465,26 @@ func (service *AppModelService) requestNormalizationLocked(documentID string, ex
 	return apperr.WriteResult{Status: apperr.WriteStatusNeedsNormalization, DecisionToken: token, ProposedEnding: proposed, DocumentRevision: expectedContentRevision}
 }
 
+// retryAfterPreCommitConflict handles a file that changed between the save's
+// disk check and the replacement. It inspects the file again: different bytes
+// become the ordinary comparison (returned as a result), while identical bytes
+// (a timestamp-only touch) are written once more against the refreshed disk
+// version.
+func (service *AppModelService) retryAfterPreCommitConflict(ctx context.Context, coordinator *DocumentWriteCoordinator, snapshot writeSnapshot, encoded encodedWrite, replaceErr error) (CommittedWriteResult, *apperr.WriteResult, error) {
+	inspection := service.inspectDocumentClaimed(ctx, snapshot.documentID, snapshot.contentRevision, "")
+	if inspection.classified != nil || inspection.kind != diskUnchanged {
+		result := service.writeResultForInspection(snapshot.documentID, inspection)
+		if result.Status == "" {
+			result = writeCommitFailure(snapshot, replaceErr)
+		}
+		return CommittedWriteResult{}, &result, replaceErr
+	}
+	snapshot.expectedVersion = inspection.version
+	snapshot.expectedRawHash = inspection.rawHash
+	committed, err := coordinator.Commit(snapshot.request(encoded))
+	return committed, nil, err
+}
+
 func (service *AppModelService) executeWrite(ctx context.Context, snapshot writeSnapshot, origin SaveOrigin) apperr.WriteResult {
 	ctx = service.runtimeContextOr(ctx)
 	encoded, err := encodeWrite(snapshot, origin, service.normalizationEndingFor(snapshot.documentID))
@@ -483,20 +503,11 @@ func (service *AppModelService) executeWrite(ctx context.Context, snapshot write
 	defer release()
 	committed, replaceErr := coordinator.Commit(snapshot.request(encoded))
 	if committed.Snapshot.DocumentID == "" && snapshot.documentFile && isPreCommitConflict(replaceErr) {
-		// The file changed between the save's disk check and the replacement.
-		// Inspect it again: different bytes become the ordinary comparison,
-		// while identical bytes (a timestamp-only touch) are written once more
-		// against the refreshed disk version.
-		inspection := service.inspectDocumentClaimed(ctx, snapshot.documentID, snapshot.contentRevision, "")
-		if inspection.classified != nil || inspection.kind != diskUnchanged {
-			if result := service.writeResultForInspection(snapshot.documentID, inspection); result.Status != "" {
-				return result
-			}
-			return writeCommitFailure(snapshot, replaceErr)
+		var refused *apperr.WriteResult
+		committed, refused, replaceErr = service.retryAfterPreCommitConflict(ctx, coordinator, snapshot, encoded, replaceErr)
+		if refused != nil {
+			return *refused
 		}
-		snapshot.expectedVersion = inspection.version
-		snapshot.expectedRawHash = inspection.rawHash
-		committed, replaceErr = coordinator.Commit(snapshot.request(encoded))
 	}
 	committedToDisk := committed.Snapshot.DocumentID != ""
 	if committedToDisk {

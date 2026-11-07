@@ -230,15 +230,7 @@ func TestCommittedSaveWarningReasonsSurviveEverySavePath(t *testing.T) {
 			t.Run(reason+"/"+mode, func(t *testing.T) {
 				ctx := context.Background()
 				recorder := &warningEventRecorder{}
-				executor := func(snapshot WriteSnapshot) (file.DiskVersion, error) {
-					replaced, err := file.AtomicReplace(file.AtomicReplaceRequest{TargetPath: snapshot.TargetPath, Data: snapshot.EncodedData, ExpectedVersion: snapshot.ExpectedDiskVersion, ExpectedRawHash: snapshot.ExpectedRawHash})
-					if err != nil {
-						return replaced.Version, err
-					}
-					warning := file.AtomicReplaceError{Committed: true, Reason: apperr.WriteWarningReason(reason), Cause: errors.New("private filesystem diagnostic")}
-					return replaced.Version, &committedWriteError{version: replaced.Version, err: &warning}
-				}
-				service := NewAppModelServiceForHost(WithEmitter(recorder), AppModelOption{WriteExecutor: executor})
+				service := NewAppModelServiceForHost(WithEmitter(recorder), AppModelOption{WriteExecutor: warningReasonExecutor(reason)})
 				if mode != "autosave" {
 					service.SetAutosaveEnabled(false)
 				}
@@ -246,50 +238,78 @@ func TestCommittedSaveWarningReasonsSurviveEverySavePath(t *testing.T) {
 				if err := service.UpdateBuffer(ctx, id, "saved\n"); err != nil {
 					t.Fatal(err)
 				}
-				var wire map[string]any
-				var message string
-				if mode == "manual" {
-					state, _ := service.GetState(ctx)
-					result := service.Save(ctx, id, state.Snapshot.Documents[id].ContentRevision, "")
-					if result.Status != apperr.WriteStatusCommitted || result.Warning != apperr.WriteWarningDurability {
-						t.Fatalf("save = %+v", result)
-					}
-					encoded, _ := json.Marshal(result)
-					if err := json.Unmarshal(encoded, &wire); err != nil {
-						t.Fatal(err)
-					}
-					message = result.Error.Message
-				} else {
-					if mode == "autosave" {
-						service.flushAutosaveForClose(id)
-					} else {
-						kind := apperr.ClosePlanRight
-						if mode == "quit" {
-							kind = apperr.ClosePlanQuit
-						}
-						executeWarningClose(t, service, id, kind)
-					}
-					if len(recorder.events) != 1 {
-						t.Fatalf("events = %+v", recorder.events)
-					}
-					wire = map[string]any{"warningReason": recorder.events[0].Details["saveWarningReason"]}
-					message = recorder.events[0].Message
-				}
-				if reason == "unknown" {
-					if wire["warningReason"] != nil && wire["warningReason"] != "" {
-						t.Fatalf("unknown warning reason leaked: %v", wire["warningReason"])
-					}
-					if !strings.Contains(message, "confirmed on disk") {
-						t.Fatalf("unknown warning did not retain generic copy: %q", message)
-					}
-				} else if wire["warningReason"] != reason {
-					t.Fatalf("warning reason = %v, want %s", wire["warningReason"], reason)
-				}
-				if strings.Contains(message, "private filesystem") {
-					t.Fatalf("unsafe message = %q", message)
-				}
+				wire, message := saveWarningObservation(t, service, recorder, id, mode)
+				assertWarningReason(t, reason, wire, message)
 				assertWarningDisk(t, path)
 			})
 		}
+	}
+}
+
+// warningReasonExecutor commits the write for real and then reports a
+// post-commit durability warning carrying the given reason.
+func warningReasonExecutor(reason string) WriteExecutor {
+	return func(snapshot WriteSnapshot) (file.DiskVersion, error) {
+		replaced, err := file.AtomicReplace(file.AtomicReplaceRequest{TargetPath: snapshot.TargetPath, Data: snapshot.EncodedData, ExpectedVersion: snapshot.ExpectedDiskVersion, ExpectedRawHash: snapshot.ExpectedRawHash})
+		if err != nil {
+			return replaced.Version, err
+		}
+		warning := file.AtomicReplaceError{Committed: true, Reason: apperr.WriteWarningReason(reason), Cause: errors.New("private filesystem diagnostic")}
+		return replaced.Version, &committedWriteError{version: replaced.Version, err: &warning}
+	}
+}
+
+// saveWarningObservation saves the document through the given path and returns
+// the warning reason and message the user would see.
+func saveWarningObservation(t *testing.T, service *AppModelService, recorder *warningEventRecorder, id, mode string) (map[string]any, string) {
+	t.Helper()
+	if mode == "manual" {
+		return manualSaveWarning(t, service, id)
+	}
+	if mode == "autosave" {
+		service.flushAutosaveForClose(id)
+	} else {
+		kind := apperr.ClosePlanRight
+		if mode == "quit" {
+			kind = apperr.ClosePlanQuit
+		}
+		executeWarningClose(t, service, id, kind)
+	}
+	if len(recorder.events) != 1 {
+		t.Fatalf("events = %+v", recorder.events)
+	}
+	return map[string]any{"warningReason": recorder.events[0].Details["saveWarningReason"]}, recorder.events[0].Message
+}
+
+func manualSaveWarning(t *testing.T, service *AppModelService, id string) (map[string]any, string) {
+	t.Helper()
+	ctx := context.Background()
+	state, _ := service.GetState(ctx)
+	result := service.Save(ctx, id, state.Snapshot.Documents[id].ContentRevision, "")
+	if result.Status != apperr.WriteStatusCommitted || result.Warning != apperr.WriteWarningDurability {
+		t.Fatalf("save = %+v", result)
+	}
+	encoded, _ := json.Marshal(result)
+	var wire map[string]any
+	if err := json.Unmarshal(encoded, &wire); err != nil {
+		t.Fatal(err)
+	}
+	return wire, result.Error.Message
+}
+
+func assertWarningReason(t *testing.T, reason string, wire map[string]any, message string) {
+	t.Helper()
+	if reason == "unknown" {
+		if wire["warningReason"] != nil && wire["warningReason"] != "" {
+			t.Fatalf("unknown warning reason leaked: %v", wire["warningReason"])
+		}
+		if !strings.Contains(message, "confirmed on disk") {
+			t.Fatalf("unknown warning did not retain generic copy: %q", message)
+		}
+	} else if wire["warningReason"] != reason {
+		t.Fatalf("warning reason = %v, want %s", wire["warningReason"], reason)
+	}
+	if strings.Contains(message, "private filesystem") {
+		t.Fatalf("unsafe message = %q", message)
 	}
 }

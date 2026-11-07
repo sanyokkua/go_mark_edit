@@ -20,9 +20,7 @@ RUN set -eu; \
     curl -fsSLo /tmp/go.tar.gz "https://go.dev/dl/go${GO_VERSION}.linux-${TARGETARCH}.tar.gz"; \
     printf '%s  %s\n' "$checksum" /tmp/go.tar.gz | sha256sum -c -; \
     tar -C /usr/local -xzf /tmp/go.tar.gz; \
-    rm /tmp/go.tar.gz /tmp/go-downloads.json
-
-RUN set -eu; \
+    rm /tmp/go.tar.gz /tmp/go-downloads.json; \
     case "$TARGETARCH" in amd64) node_arch=x64 ;; arm64) node_arch=arm64 ;; *) exit 1 ;; esac; \
     node_file="node-v${NODE_VERSION}-linux-${node_arch}.tar.xz"; \
     curl -fsSLo "/tmp/$node_file" "https://nodejs.org/dist/v${NODE_VERSION}/$node_file"; \
@@ -36,3 +34,7 @@ ENV PATH=/usr/local/go/bin:/usr/local/bin:$PATH
 RUN npx --yes "playwright@${PLAYWRIGHT_VERSION}" install-deps chromium
 
 WORKDIR /work
+
+# run.sh overrides this with the host uid:gid; the image itself stays non-root.
+RUN useradd --create-home --uid 1000 verifier
+USER verifier

@@ -38,9 +38,9 @@ interface VoidResult {
     error?: import('../utils/parseError').WireError;
 }
 
-/** `superseded`: the update was based on text a reload from disk replaced; it is dropped without an error. */
+/** `status` is `accepted` or `superseded`; superseded means the update was based on text a reload from disk replaced; it is dropped without an error. */
 interface BufferUpdateResult extends VoidResult {
-    status?: 'accepted' | 'superseded' | string;
+    status?: string;
 }
 
 interface StateResult {

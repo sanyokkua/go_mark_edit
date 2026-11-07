@@ -8,7 +8,7 @@ if (!root || !/^\d+\.\d+\.\d+(?:-(?:alpha|beta)\.[1-9]\d*)?$/.test(version ?? ''
 }
 const expected = ['macos-arm64.zip', 'windows-amd64.exe', 'windows-arm64.exe', 'linux-amd64', 'linux-arm64']
     .map((suffix) => `GoMarkEdit-${version}-${suffix}`)
-    .sort();
+    .sort((left, right) => left.localeCompare(right));
 /** @type {string[]} */
 const files = [];
 /** @param {string} dir */

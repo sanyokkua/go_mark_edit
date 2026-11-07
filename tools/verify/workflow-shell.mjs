@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 
 /** @param {string} line */
 function indentation(line) {
-    return line.match(/^ */u)?.[0].length ?? 0;
+    return /^ */u.exec(line)?.[0].length ?? 0;
 }
 
 /**
@@ -47,7 +47,7 @@ export function workflowStepRun(workflowPath, stepName) {
  */
 export function workflowJobField(workflowPath, jobName, field) {
     const lines = readFileSync(workflowPath, 'utf8').split('\n');
-    const jobsIndex = lines.findIndex((line) => line === 'jobs:');
+    const jobsIndex = lines.indexOf('jobs:');
     if (jobsIndex < 0) throw new Error(`missing jobs in ${workflowPath}`);
     const jobIndex = lines.findIndex((line, index) => index > jobsIndex && line === `    ${jobName}:`);
     if (jobIndex < 0) throw new Error(`missing ${jobName} job`);
