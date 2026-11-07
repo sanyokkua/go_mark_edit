@@ -606,8 +606,8 @@ its results explicitly distinguish available, unavailable and document-mismatch 
 (including the empty-string wire representation). An activation generation is captured before each
 activation or reload command. The guard waits for the matching document and projection revision,
 rejects superseded acknowledgements and installs each accepted generation once. Only an accepted
-reload advances the editor epoch; an ordinary Save retains the Monaco model, undo history, selection
-and focus. No separate reload context is needed.
+reload advances the editor epoch, and the editor session it ends drops its unsent buffer update; an
+ordinary Save retains the Monaco model, undo history, selection and focus. No separate reload context is needed.
 
 ### Editing, saves and conflicts
 

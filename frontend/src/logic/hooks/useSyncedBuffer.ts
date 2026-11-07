@@ -133,13 +133,18 @@ export function useSyncedBuffer(
         adoptDocument();
     }, [adoptDocument, view]);
 
+    /*
+     * Ending a session drops its unsent edits. That includes a session ended by
+     * an external replacement: an edit typed before a reload describes the text
+     * the reload discarded, and sending it afterwards would undo the reload.
+     */
     useEffect((): (() => void) => {
         sessionActiveRef.current = true;
         return (): void => {
             sessionActiveRef.current = false;
             adapter.cancelPendingSession?.(documentId);
         };
-    }, [adapter, documentId]);
+    }, [adapter, documentId, externalEpoch]);
 
     const lifecycleBarrier = useMemo(
         () =>
