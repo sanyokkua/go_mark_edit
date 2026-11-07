@@ -622,7 +622,10 @@ operations: the host platform's atomic replace prevents readers from observing a
 file, but portable Go APIs do not provide a compare-and-swap rename conditioned on the old bytes. An
 external writer can still race in the narrow check-to-rename interval, so this is a stale-write guard
 with a documented limitation, not an atomic compare-and-swap guarantee. Before replacement commits,
-failure leaves disk and the old baseline unchanged. After it commits, the model records the exact written
+failure leaves disk and the old baseline unchanged. When the replacement of the document's own file
+refuses because that file changed after the save's disk check, the save inspects it again: different
+bytes return the ordinary comparison and block the tab, and identical bytes (a timestamp-only touch)
+are written once more against the refreshed disk version. After it commits, the model records the exact written
 baseline even if patch delivery fails; the adapter rehydrates before accepting further mutations and
 does not repeat the write. `useDocumentWrites` repairs the Redux projection from the recovered
 snapshot; it does not reinstall editor content or advance activation generations. A committed `WriteResult`

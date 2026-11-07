@@ -355,7 +355,12 @@ func keepMineAuthorizationForLocked(document *DocumentRecord, documentID, decisi
 }
 
 func (service *AppModelService) prepareWriteDisk(ctx context.Context, documentID string, expectedRevision uint64, decisionToken string) apperr.WriteResult {
-	inspection := service.inspectDocument(ctx, documentID, expectedRevision, decisionToken)
+	return service.writeResultForInspection(documentID, service.inspectDocument(ctx, documentID, expectedRevision, decisionToken))
+}
+
+// writeResultForInspection is the write outcome of a disk inspection: empty
+// when the write may proceed, otherwise the refusal or the comparison.
+func (service *AppModelService) writeResultForInspection(documentID string, inspection diskInspection) apperr.WriteResult {
 	if inspection.classified != nil {
 		if inspection.kind == diskUnstable {
 			return bridge.FromClassified[apperr.WriteResult](inspection.classified, apperr.WriteStatusConflict)

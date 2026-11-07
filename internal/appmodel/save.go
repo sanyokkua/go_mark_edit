@@ -45,6 +45,9 @@ type writeSnapshot struct {
 	expectedVersion   file.DiskVersion
 	expectedRawHash   string
 	targetPathAdopted bool
+	// documentFile marks a write to the file the document was loaded from,
+	// whose disk changes are compared with the loaded document.
+	documentFile bool
 }
 
 type encodedWrite struct {
@@ -168,6 +171,7 @@ func (service *AppModelService) SaveAs(ctx context.Context, documentID string, e
 		return result
 	}
 	snapshot.identity = candidate.Identity
+	snapshot.documentFile = documentFile
 	if !documentFile {
 		snapshot.expectedVersion = expectedVersion
 		snapshot.expectedRawHash = expectedHash
@@ -446,6 +450,7 @@ func (service *AppModelService) snapshotForWrite(documentID string, expectedCont
 		documentID: documentID, contentRevision: expectedContentRevision, content: document.content,
 		path: targetPath, identity: document.identity, metadata: document.metadata,
 		expectedVersion: expectedVersion, expectedRawHash: expectedRawHash, targetPathAdopted: targetPathAdopted,
+		documentFile: !targetPathAdopted,
 	}, apperr.WriteResult{}
 }
 
@@ -474,11 +479,23 @@ func (service *AppModelService) executeWrite(ctx context.Context, snapshot write
 	if coordinator == nil {
 		return bridge.Refused[apperr.WriteResult]("document", snapshot.documentID, apperr.ClassifiedNotFound, "The document was closed before the save started.", apperr.RemediationNone)
 	}
-	committed, replaceErr := coordinator.Commit(WriteSnapshot{
-		DocumentID: snapshot.documentID, ContentRevision: snapshot.contentRevision,
-		CanonicalContent: snapshot.content, TargetPath: snapshot.path,
-		ExpectedDiskVersion: &snapshot.expectedVersion, ExpectedRawHash: snapshot.expectedRawHash, EncodedData: encoded.data,
-	})
+	committed, replaceErr := coordinator.Commit(snapshot.request(encoded))
+	if committed.Snapshot.DocumentID == "" && snapshot.documentFile && isPreCommitConflict(replaceErr) {
+		// The file changed between the save's disk check and the replacement.
+		// Inspect it again: different bytes become the ordinary comparison,
+		// while identical bytes (a timestamp-only touch) are written once more
+		// against the refreshed disk version.
+		inspection := service.inspectDocument(ctx, snapshot.documentID, snapshot.contentRevision, "")
+		if inspection.classified != nil || inspection.kind != diskUnchanged {
+			if result := service.writeResultForInspection(snapshot.documentID, inspection); result.Status != "" {
+				return result
+			}
+			return writeCommitFailure(snapshot, replaceErr)
+		}
+		snapshot.expectedVersion = inspection.version
+		snapshot.expectedRawHash = inspection.rawHash
+		committed, replaceErr = coordinator.Commit(snapshot.request(encoded))
+	}
 	committedToDisk := committed.Snapshot.DocumentID != ""
 	if committedToDisk {
 		service.mu.RLock()
@@ -559,6 +576,20 @@ func (service *AppModelService) committedWriteResult(ctx context.Context, outcom
 	}
 	result.Failure = bridge.FailureFromClassified(result.Error)
 	return result
+}
+
+func (snapshot writeSnapshot) request(encoded encodedWrite) WriteSnapshot {
+	expectedVersion := snapshot.expectedVersion
+	return WriteSnapshot{
+		DocumentID: snapshot.documentID, ContentRevision: snapshot.contentRevision,
+		CanonicalContent: snapshot.content, TargetPath: snapshot.path,
+		ExpectedDiskVersion: &expectedVersion, ExpectedRawHash: snapshot.expectedRawHash, EncodedData: encoded.data,
+	}
+}
+
+func isPreCommitConflict(err error) bool {
+	var atomicErr *file.AtomicReplaceError
+	return errors.As(err, &atomicErr) && !atomicErr.Committed && atomicErr.Classified != nil && atomicErr.Classified.Category == apperr.ClassifiedConflict
 }
 
 func writeEncodingFailure(snapshot writeSnapshot, err error) apperr.WriteResult {
