@@ -410,10 +410,14 @@ func (service *AppModelService) snapshotForWrite(documentID string, expectedCont
 		}
 		document.normalization = nil
 	}
+	expectedVersion, expectedRawHash := document.baselineVersion, document.baselineRawHash
+	if authorization := keepMineAuthorizationForLocked(document, documentID, decisionToken, expectedContentRevision, document.metadata.Path); authorization != nil {
+		expectedVersion, expectedRawHash = authorization.version, authorization.rawHash
+	}
 	return writeSnapshot{
 		documentID: documentID, contentRevision: expectedContentRevision, content: document.content,
 		path: targetPath, identity: document.identity, metadata: document.metadata,
-		expectedVersion: document.baselineVersion, expectedRawHash: document.baselineRawHash, targetPathAdopted: targetPathAdopted,
+		expectedVersion: expectedVersion, expectedRawHash: expectedRawHash, targetPathAdopted: targetPathAdopted,
 	}, apperr.WriteResult{}
 }
 

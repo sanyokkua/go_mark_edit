@@ -645,7 +645,10 @@ timestamp-only touch with identical bytes is ignored; permission, encoding, BOM 
 remain part of the disk-version and file-characteristics comparison.
 
 External changes are classified before saving. Editable conflicts offer Reload or one exact-version
-Keep mine authorization. Foreground conflicts retain document identity, are ordered by open tabs, and
+Keep mine authorization. That authorization is the write's expected disk state; the document adopts the
+external version as its baseline, and the authorization is spent, only when the write commits. A
+cancelled, refused or failed write leaves the conflict and the authorization in place, so autosave and
+saves without the token still stop at the comparison. Foreground conflicts retain document identity, are ordered by open tabs, and
 are presented after close-owned and write-owned conflicts. Deferred items are rechecked before display;
 closed documents are dropped. When closing the selected tab activates another tab and its activation
 check finds a conflict, that conflict is handed to the foreground conflict owner. Reloading a background

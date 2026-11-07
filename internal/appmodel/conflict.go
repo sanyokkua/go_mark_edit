@@ -289,7 +289,7 @@ func (service *AppModelService) inspectDocument(ctx context.Context, documentID 
 	}
 
 	if decisionToken != "" {
-		if inspection := service.consumeKeepMine(ctx, documentID, expectedRevision, decisionToken, path, documentSnapshot.metadata); inspection != nil {
+		if inspection := service.matchKeepMine(documentID, expectedRevision, decisionToken, path); inspection != nil {
 			return *inspection
 		}
 	}
@@ -327,37 +327,31 @@ func (service *AppModelService) inspectDocument(ctx context.Context, documentID 
 	return diskInspection{kind: diskConflict, version: stable.Version, rawHash: stable.RawHash, characteristics: stable.Read.Characteristics, preview: &preview}
 }
 
-// consumeKeepMine adopts the authorized baseline only while its disk version remains current.
-func (service *AppModelService) consumeKeepMine(ctx context.Context, documentID string, expectedRevision uint64, decisionToken, path string, metadata apperr.DocumentMetadata) *diskInspection {
+// matchKeepMine reports a Keep mine authorization whose external version is
+// still on disk. It changes no state: the authorized version becomes the
+// write's expected disk state, and the document adopts a new baseline only
+// when that write commits. Every other outcome leaves the conflict and the
+// authorization as they were.
+func (service *AppModelService) matchKeepMine(documentID string, expectedRevision uint64, decisionToken, path string) *diskInspection {
 	stable, versionErr := service.readStable(path)
-	currentVersion := stable.Version
-	service.mu.Lock()
-	defer service.mu.Unlock()
-	currentDocument := service.state.documents[documentID]
-	if currentDocument == nil {
+	service.mu.RLock()
+	defer service.mu.RUnlock()
+	authorization := keepMineAuthorizationForLocked(service.state.documents[documentID], documentID, decisionToken, expectedRevision, path)
+	if authorization == nil || versionErr != nil || !stable.Version.Equal(authorization.version) || stable.RawHash != authorization.rawHash {
 		return nil
-	}
-	authorization := currentDocument.keepMine[decisionToken]
-	if authorization == nil || authorization.documentID != documentID || authorization.contentRevision != expectedRevision || authorization.path != path || versionErr != nil || (!currentVersion.Equal(authorization.version) || stable.RawHash != authorization.rawHash) {
-		return nil
-	}
-	delete(currentDocument.keepMine, decisionToken)
-	if authorization.normalization != nil {
-		normalization := *authorization.normalization
-		normalization.token = decisionToken
-		currentDocument.normalization = &normalization
-	}
-	before := service.snapshotLocked()
-	currentDocument.baselineVersion = authorization.version
-	currentDocument.baselineRawHash = authorization.rawHash
-	currentDocument.baselineCharacteristics = authorization.characteristics
-	currentDocument.detached = false
-	service.removeConflictLocked(documentID)
-	patch := service.documentPatchLocked(documentID)
-	if err := service.publishLocked(ctx, before, patch); err != nil {
-		return &diskInspection{classified: bridge.ClassifiedWithID(apperr.ClassifiedIOFailure, documentLabelFromMetadata(metadata), "The external-change decision could not be published.", apperr.RemediationRetry, documentID)}
 	}
 	return &diskInspection{kind: diskAuthorized, version: authorization.version, rawHash: authorization.rawHash, characteristics: authorization.characteristics}
+}
+
+func keepMineAuthorizationForLocked(document *DocumentRecord, documentID, decisionToken string, revision uint64, path string) *keepMineAuthorization {
+	if document == nil || decisionToken == "" {
+		return nil
+	}
+	authorization := document.keepMine[decisionToken]
+	if authorization == nil || authorization.documentID != documentID || authorization.contentRevision != revision || authorization.path != path {
+		return nil
+	}
+	return authorization
 }
 
 func (service *AppModelService) prepareWriteDisk(ctx context.Context, documentID string, expectedRevision uint64, decisionToken string) apperr.WriteResult {
