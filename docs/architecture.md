@@ -658,7 +658,9 @@ is read-only; it offers Reload and Cancel, and cannot authorize Keep mine. Save 
 write-protected document, but Save As may copy it to a different file. Save As also permits unsaved edits
 to be copied when a writable document's source has become write-protected: it checks the current disk
 state even after Cancel dismisses the conflict. Source identity checks reject the source itself, including
-symlinks and hardlinks, and recheck the target after the native dialogs; the atomic write rechecks its disk
+symlinks and hardlinks, and recheck the target after the native dialogs; a target that is the document's own
+file, under its path or a symlink or hardlink alias, is compared with the loaded document instead, so
+an external edit made while the dialogs were open yields the comparison; the atomic write rechecks its disk
 version and raw-byte fingerprint before replacement, subject to the check-to-rename limitation above.
 Mixed-ending normalization and BOM preservation still
 apply to the copy. Close plans gather all required choices

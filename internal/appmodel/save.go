@@ -152,18 +152,46 @@ func (service *AppModelService) SaveAs(ctx context.Context, documentID string, e
 		return result
 	}
 
+	// A target that is the document's own file, under any alias, is compared
+	// with the loaded document rather than with whatever is on disk after the
+	// dialogs closed, so an external edit made while they were open is offered
+	// as a comparison instead of being overwritten.
+	documentFile := service.isDocumentFile(documentID, candidate)
+	if documentFile {
+		if result := service.prepareWriteDisk(ctx, documentID, expectedContentRevision, decisionToken); result.Status != "" {
+			return result
+		}
+	}
+
 	snapshot, result := service.snapshotForWrite(documentID, expectedContentRevision, decisionToken, candidate.Path, true)
 	if result.Status != "" {
 		return result
 	}
 	snapshot.identity = candidate.Identity
-	snapshot.expectedVersion = expectedVersion
-	snapshot.expectedRawHash = expectedHash
-	if result := service.checkSaveAsTargetUnchanged(documentID, candidate, expectedVersion, expectedHash); result.Status != "" {
-		return result
+	if !documentFile {
+		snapshot.expectedVersion = expectedVersion
+		snapshot.expectedRawHash = expectedHash
+		if result := service.checkSaveAsTargetUnchanged(documentID, candidate, expectedVersion, expectedHash); result.Status != "" {
+			return result
+		}
 	}
 
 	return service.executeWrite(ctx, snapshot, SaveOriginSaveAs)
+}
+
+// isDocumentFile reports whether a Save As target is the file the document
+// was loaded from: its path, or another name for the same file.
+func (service *AppModelService) isDocumentFile(documentID string, candidate file.CanonicalDocumentPath) bool {
+	service.mu.RLock()
+	defer service.mu.RUnlock()
+	document := service.state.documents[documentID]
+	if document == nil || document.metadata.Path == "" {
+		return false
+	}
+	if candidate.Path == document.metadata.Path || candidate.Path == document.canonicalPath {
+		return true
+	}
+	return !document.identity.IsZero() && document.identity.Equal(candidate.Identity)
 }
 
 type saveAsSource struct {
