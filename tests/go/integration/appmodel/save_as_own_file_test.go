@@ -44,7 +44,7 @@ func TestSaveAsOntoTheDocumentsOwnFileComparesAnExternalEditMadeWhileTheDialogWa
 			case "symlink":
 				dialog.path = filepath.Join(filepath.Dir(path), "alias.md")
 				if err := os.Symlink(path, dialog.path); err != nil {
-					t.Fatalf("create symlink: %v", err)
+					t.Skipf("symlinks unavailable: %v", err)
 				}
 			}
 			dialog.whileOpen = func() {
