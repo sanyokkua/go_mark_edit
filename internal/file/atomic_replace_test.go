@@ -443,7 +443,10 @@ func newRecordedCreateOps() *recordedCreateOps {
 			recorded.calls = append(recorded.calls, "link")
 			return platform.link(from, to)
 		},
-		remove: func(path string) error { recorded.calls = append(recorded.calls, "remove"); return platform.remove(path) },
+		remove: func(path string) error {
+			recorded.calls = append(recorded.calls, "remove")
+			return platform.remove(path)
+		},
 		lstat: func(path string) (fs.FileInfo, error) {
 			recorded.calls = append(recorded.calls, "lstat")
 			return platform.lstat(path)
