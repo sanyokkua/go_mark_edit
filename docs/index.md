@@ -5,7 +5,7 @@ domain: Local document editing and authoring
 owner: TODO: confirm
 stack: Go 1.25.7, Wails v2, React 19, TypeScript, Vite, SQLite
 project_type: Native desktop application
-last_updated: 2026-09-28
+last_updated: 2026-11-07
 ---
 
 # GoMarkEdit
