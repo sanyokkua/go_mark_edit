@@ -84,14 +84,11 @@ func (service *AppModelService) save(ctx context.Context, documentID string, exp
 		return bridge.Refused[apperr.WriteResult](service.documentLabel(documentID), documentID, apperr.ClassifiedPermissionDenied, saveDocumentReadOnlyMessage, apperr.RemediationNone)
 	}
 	path := document.metadata.Path
-	// Save refuses before disk access when it has no
-	// matching authorization. prepareWriteDisk below stats the file and can run a
-	// full stable re-read through inspectDocument, so the check has to happen
-	// here — it used to happen inside snapshotForWrite, one disk inspection too
-	// late, which also meant a file that had changed underneath reported the
-	// conflict and never mentioned the line endings. SaveAs has always gated
-	// here; this is the same gate. An untitled document falls through to SaveAs,
-	// which runs it.
+	// A document with mixed line endings needs a matching normalization
+	// authorization before any disk access, so the user is asked about the line
+	// endings before prepareWriteDisk stats or re-reads the file and before any
+	// external change is reported. SaveAs applies the same gate; an untitled
+	// document falls through to SaveAs, which runs it.
 	if path != "" && document.metadata.LineEnding == string(file.LineEndingMixed) {
 		authorization, authorized := normalizationAuthorizationForLocked(document, decisionToken)
 		if !authorized || authorization.documentID != documentID || authorization.contentRevision != expectedContentRevision || authorization.proposedEnding != document.normalizationEnding {
@@ -650,11 +647,10 @@ func writeCommitFailure(snapshot writeSnapshot, replaceErr error) apperr.WriteRe
 	if atomicErr, ok := replaceErr.(*file.AtomicReplaceError); ok && atomicErr.Classified != nil {
 		category = atomicErr.Classified.Category
 		message = atomicErr.Classified.Message
-		// Carry the classification's own remediation rather than re-deciding it
-		// here. This hardcoded Retry for whatever category the atomic replace
-		// produced, which is how a permission-denied write came to offer one.
-		// An atomic-replace classification carries one action by construction
-		// (newAtomicReplaceError names a single row), so the first is the whole set.
+		// The atomic replacement's classification decides the remediation, so a
+		// permission refusal offers no Retry. It carries one action by
+		// construction (newAtomicReplaceError names a single row), so the first
+		// is the whole set.
 		remediation = atomicErr.Classified.Remediation()
 	}
 	if category == apperr.ClassifiedConflict {

@@ -47,8 +47,11 @@ type WriteCommitObserver func(CommittedWriteResult, SaveOrigin)
 // DocumentWriteCoordinator serializes replacement attempts for one document.
 type DocumentWriteCoordinator struct {
 	// disk is held by a write from its replacement until the document has
-	// adopted the written baseline, and by every disk inspection, so an
-	// inspection never pairs the pre-write baseline with the written bytes.
+	// adopted the written baseline, and by each comparison of the file with
+	// the loaded baseline (the save's disk check and the external-change
+	// check), so a comparison never pairs the pre-write baseline with the
+	// written bytes. Reload and Keep mine read the file without it and act
+	// only when the file still has the version and hash the user was shown.
 	disk          sync.Mutex
 	mu            sync.Mutex
 	executor      WriteExecutor
