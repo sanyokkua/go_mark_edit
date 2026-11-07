@@ -34,6 +34,40 @@ The system SHALL treat a file as changed only when its bytes, its encoding, BOM 
 - **WHEN** another program replaces the bytes of "notes.md" but preserves its size, modification time, permissions and file identity, and GoMarkEdit checks the file
 - **THEN** the changed bytes are detected and the comparison dialog appears
 
+### Requirement: Choices for a writable document
+
+For a writable document the dialog SHALL offer Reload from disk, Keep mine and Skip, with Skip focused first; clicking outside or pressing Escape SHALL choose Skip. Reload SHALL replace the editor content with the file's current content, discard unsaved edits, adopt its encoding and mark the document clean. Keep mine, chosen in a comparison that a Save, Save As or close-prompt save is waiting on, SHALL let that write replace the compared version of the file, and only while the file still has that version when the write runs. The compared version SHALL become the document's known disk state only when that write commits: a write that is cancelled, refused or fails SHALL leave the external version undecided, so a later Save or autosave does not overwrite it without a new decision. Keep mine, chosen in a comparison found by a window-focus or tab-activation check, SHALL only dismiss that comparison; it writes nothing and is not remembered, so the next Save compares again. Skip SHALL change neither file nor content, and the same comparison SHALL appear again at the next check or save.
+
+#### Scenario: Reload
+
+- **WHEN** the user chooses Reload from disk
+- **THEN** the tab shows the disk content, is no longer modified, and its conflict label disappears
+
+#### Scenario: Keep mine
+
+- **WHEN** the user edits "notes.md", another program changes the file, the user presses Save and chooses Keep mine
+  in the comparison
+- **THEN** the file on disk contains the user's text and the tab is not marked modified
+
+#### Scenario: Keep mine from a focus check
+
+- **WHEN** another program changes "notes.md" while it is open, the window regains focus, the user chooses Keep mine
+  and then presses Save
+- **THEN** the dialog closes without writing and the file on disk still has the other program's text; after Save the
+  comparison appears again
+
+#### Scenario: Failed write after Keep mine
+
+- **WHEN** the user presses Save, chooses Keep mine, and the replacement fails because the folder is not writable
+- **THEN** the file on disk keeps the other program's text, and the next Save or autosave shows the comparison
+  instead of overwriting it
+
+#### Scenario: Cancelled close after Keep mine
+
+- **WHEN** the user closes a modified tab, chooses Save, chooses Keep mine in the comparison and then cancels the
+  close before anything is written
+- **THEN** the file on disk is unchanged and a later Save shows the comparison again
+
 ### Requirement: Choices for a read-only document
 
 For a read-only document, or when the changed file on disk is write-protected, the dialog SHALL offer only Reload from disk and Cancel, with Cancel focused first and dismissal choosing Cancel. Keep mine and Skip SHALL NOT be offered, because such documents are never written.
@@ -119,8 +153,9 @@ SHALL preserve it.
 #### Scenario: Keep mine on a mixed-ending file
 
 - **WHEN** "mixed.md" contains "a\r\nb\n", another program changes it, the user edits the tab, saves, accepts
-  "Normalize line endings?", chooses Keep mine in the comparison and saves again
-- **THEN** the file on disk contains the user's text with one line-ending style and the tab is not marked modified
+  "Normalize line endings?" and chooses Keep mine in the comparison
+- **THEN** the file on disk contains the user's text with one line-ending style, no second prompt appears and the tab
+  is not marked modified
 
 #### Scenario: Close prompt with Keep mine on a mixed-ending file
 
@@ -137,6 +172,46 @@ SHALL preserve it.
 
 - **WHEN** the user chose Keep mine, the file then changes on disk again and the user saves
 - **THEN** the comparison appears for the new disk content and nothing is written
+
+### Requirement: Save As onto the document's own file
+
+WHEN the user chooses Save As and selects the file the document is already tied to, by its path or by a symbolic or hard link to it, the system SHALL compare that file with the version the document loaded, not with the file as it is after the dialogs close. A file that changed in the meantime SHALL produce the comparison and SHALL NOT be overwritten; a modification time change with identical bytes SHALL NOT raise a conflict.
+
+#### Scenario: External edit while the Save As dialog is open
+
+- **WHEN** "notes.md" has unsaved edits, the user chooses Save As, another program writes "external" to "notes.md"
+  while the dialog is open, and the user selects "notes.md" (or a hard or symbolic link to it)
+- **THEN** the comparison with "external" appears and "notes.md" still contains "external"
+
+#### Scenario: Touched while the Save As dialog is open
+
+- **WHEN** another program only changes the timestamp of "notes.md" while the Save As dialog is open and the user
+  selects "notes.md"
+- **THEN** no dialog appears and "notes.md" contains the user's text
+
+### Requirement: Conflict found during replacement
+
+IF the document's file changes after the save's disk check and before the replacement, THEN the system SHALL check the file again before reporting the result. Different bytes SHALL produce the ordinary comparison, mark the tab as blocked by a conflict and write nothing; identical bytes (a timestamp-only change) SHALL be saved without a dialog.
+
+#### Scenario: External edit during replacement
+
+- **WHEN** another program writes "external" to "notes.md" after the save's disk check and before the replacement
+- **THEN** the comparison of the user's text with "external" appears, the tab is marked as blocked by a conflict
+  and "notes.md" still contains "external"
+
+#### Scenario: Timestamp change during replacement
+
+- **WHEN** another program only changes the timestamp of "notes.md" at that moment
+- **THEN** the save completes without a dialog and "notes.md" contains the user's text
+
+### Requirement: The application's own save is not an external change
+
+A check for external changes that runs while the application is saving the same document SHALL wait for that save to finish and then compare the file with the saved state; it SHALL NOT report the application's own bytes as an external change.
+
+#### Scenario: Focus check during a save
+
+- **WHEN** the window regains focus at the moment "notes.md" is being saved
+- **THEN** no dialog appears and the tab is not marked as blocked by a conflict
 
 ### Requirement: Conflict tab remains legible
 

@@ -3,14 +3,15 @@
 Each group is one vertical slice: production change, its regression tests and its documentation. Run the focused
 tests while working and the relevant `scripts/verify` stages before ticking a box. Group 1 goes first so that later
 end-to-end runs no longer touch the developer's desktop. New durable decisions go in the "Durable decisions" ADR table
-of `docs/architecture.md` (last existing entry ADR-0039).
+of `docs/architecture.md` (the table ended at ADR-0039 before this change; this change adds ADR-0040 to ADR-0043).
+Groups 19 to 22 record work done after the plan above was approved, each with the commit that delivered it.
 
 ## 1. End-to-end runs leave the desktop alone
 
 No spec change (test isolation). Design §11. Owners: `main.go`, `internal/application/application_context_holder.go`
 (port wiring, `:90-93`), `internal/file` (`reveal.go`, `clipboard.go`), `internal/appmodel/options.go`
 (`WithRevealPort`, `WithClipboardWriter`), `frontend/playwright.config.ts`, `frontend/tests/support/`
-(`harness.ts`, `nativeClipboard.ts`), `.github/workflows/push.yml` and `release.yml`.
+(`harness.ts`, `nativeClipboard.ts`), `.github/workflows/verification.yml`.
 
 - [x] 1.1 Add recording implementations of `file.RevealPort` and `file.ClipboardWriter` in `internal/file` that append
       one line per call to a file in the application configuration folder, and add them through
@@ -24,8 +25,10 @@ No spec change (test isolation). Design §11. Owners: `main.go`, `internal/appli
       keeps asserting `recordLinkBridge` (`:223-260`), whose passthrough now reaches the recorder. Verify both files
       pass and no Finder window opens during a local run.
 - [x] 1.3 Run the `chromium-native` Playwright project (`playwright.config.ts:60-67, 84-91`) only when
-      `E2E_NATIVE_CLIPBOARD=1` or in the macOS subset; set the variable in `release.yml` and in the `push.yml` job
-      that selects `chromium-native` via `E2E_PROJECTS` (`:165`). Add one fixture in `nativeClipboard.ts` that saves
+      `E2E_NATIVE_CLIPBOARD=1` or in the macOS subset. The variable is set in `.github/workflows/verification.yml`
+      (the reusable workflow that `push.yml` and `release.yml` call): in the Linux `serial` e2e job, which selects
+      `chromium-serial,chromium-native` through `E2E_PROJECTS`, and in the `macos-e2e` job. `release.yml` itself
+      runs no end-to-end tests. Add one fixture in `nativeClipboard.ts` that saves
       the clipboard text before each native-clipboard test and restores it after; use it in `rich-rendering`
       (replacing the restore at `:914/:1059`), `reading-mode` (replacing `:538/:546` and covering the unrestored
       test at `:517-528`) and `editor-round-trip` (`:141-172`, which restores nothing today). Document
@@ -179,7 +182,11 @@ area"; editor "Text navigation and line editing keys". Design §7. Owners:
       registered. Add an e2e test covering the scenarios of "Text navigation and line editing keys" (word move,
       select and delete, line start/end, document start/end, line operations, read-only document) using the running
       platform's keys; verify they pass, check Option+arrows and Cmd+arrows in the real app on macOS, and record the
-      main-chunk size before and after.
+      main-chunk size before and after. `defb77e` strengthened the unit test (`monacoCommands.test.ts`, "monacoSetup
+      registers the word and line editing commands") so that it fails when the contributions are not loaded; in the
+      same commit the 11.1 test "sends windowMaximized once across N resizes that leave the maximized state
+      unchanged" and the 16.1 test "follows a real resize across the 376 and 377 px boundary without writing an
+      arrangement" were made to fail without their fixes.
 
 ## 9. Startup and rendering failures are visible
 
@@ -258,6 +265,8 @@ No spec change. Owners: `frontend/src/ui/primitives/Toast.module.css`, `frontend
 
 - [x] 12.1 Give the success toast the success stripe (matching `Banner.module.css`) and remove the unreachable `stuck`
       selector; add a component test of the save-success toast's computed border colour; verify it passes.
+      `defb77e` strengthened the test (`Toast.test.tsx`, "gives the success toast the same stripe colour as the
+      success banner") so that it fails without the fix.
 - [x] 12.2 Remove the overridden declarations and merge duplicate selectors in `tokens.css`, and enable stylelint
       `no-duplicate-selectors` for it; verify regenerated `generatedEditorThemes.ts` and `generatedHighlight.css` are
       byte-identical and `scripts/verify lint` passes.
@@ -267,7 +276,8 @@ No spec change. Owners: `frontend/src/ui/primitives/Toast.module.css`, `frontend
 ## 13. Faster build and verification, real product metadata
 
 No spec change. Design §12. Owners: `scripts/build`, `scripts/verify`, `scripts/lib/stages.sh`,
-`frontend/tests/support/prepare.ts`, `.github/workflows/release.yml`, `wails.json`, `build/darwin/`, `build/windows/`.
+`frontend/tests/support/prepare.ts`, `.github/workflows/release.yml` and `verification.yml`, `wails.json`,
+`build/darwin/`, `build/windows/`.
 
 - [x] 13.1 Set `GOMARKEDIT_E2E_REUSE_DIST=1` for the E2E stage in `scripts/verify` when Build passed in the same run,
       pass `-skipbindings` and `-trimpath` to `wails build` (`scripts/build:106-126`), drop `-gcflags all=-N -l` from
@@ -276,10 +286,18 @@ No spec change. Design §12. Owners: `scripts/build`, `scripts/verify`, `scripts
       `scripts/baseline --compare` (the branch baseline is recorded before the change's first edit).
 - [x] 13.2 Run both Jest stages with `--maxWorkers=50%`; verify two consecutive green runs of unit and integration and
       fix any test that depends on order.
-- [x] 13.3 Build the versioned release app once in `release.yml` (today `scripts/verify` at `:135`/`:140` and
-      `scripts/build --version` at `:164-166`) and verify against it; verify with
-      `go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.7 .github/workflows/release.yml` and a read of the job
-      graph.
+- [x] 13.3 Do not repeat verification inside the release build. As delivered, `release.yml` validates the version
+      and source revision, reuses the newest trusted successful `master` verification of the exact commit or, when
+      there is none, calls the reusable `verification.yml`, and then builds each of the five native targets once
+      with `scripts/build --release --platform OS/ARCH --version VERSION`. The release build jobs run no tests and
+      launch no distributable: the exact release binary is not exercised in CI (`docs/index.md` 10.3). This replaces
+      the planned build-once-and-verify-against-it design, and the pipeline is owned by the separate change
+      `verification-first-release-ci`; its nine commits on this branch (`006d110`, `6b1a3c5`, `7dba80c`, `9037a3d`,
+      `ce5b96a`, `bc329bf`, `e119f6e`, `6ece931`, `6c7a0a9`, the ones that touch
+      `openspec/changes/verification-first-release-ci/`) belong to that change and are not part of this one's
+      acceptance. The release-job hardening in `569fd87`, `8edac6e`, `3b65a97`, `fa220e3` and the manual container
+      job in `5560da1` follow the same design. Verified by the evidence recorded in
+      `openspec/changes/verification-first-release-ci/evidence.md` and by its tests under `tools/verify/`.
 - [x] 13.4 Add the `info` block to `wails.json` with a numeric `X.Y.Z` `productVersion`, and set the bundle identifier
       `io.github.sanyokkua.gomarkedit` in `build/darwin/Info.plist:11`, `build/darwin/Info.dev.plist:11` and
       `build/windows/wails.exe.manifest:3`; verify with `plutil -p` on the built `Info.plist`, check the rendered
@@ -334,7 +352,9 @@ Existing spec: appearance-themes "Auto mode follows the system". Owner: `fronten
 
 - [x] 17.1 Reconcile the current system appearance after subscribing in Auto mode so a change between the initial
       application and listener registration cannot leave the palette stale. Cover the missed-event interval and
-      listener cleanup, and exercise appearance changes in the real-backend browser suite.
+      listener cleanup, and exercise appearance changes in the real-backend browser suite. Delivered in `f269484`
+      (`observeSystemAppearance` in `frontend/src/logic/theme/theme.ts` calls the listener once after subscribing;
+      unit test "reconciles a system change between applying Auto and subscribing" in `theme.test.ts`).
 
 ## 18. Save and conflict feedback follow-up
 
@@ -343,3 +363,123 @@ Existing spec: appearance-themes "Auto mode follows the system". Owner: `fronten
 - [x] 18.3 Preserve the post-replacement failure reason across explicit, autosave and close paths and show safe specific localized guidance; cover each failure and unknown fallback using the existing atomic replacement and save identity white-box tests.
 - [x] 18.4 Preserve classified asynchronous error explanations and applicable actions with a safe legacy fallback; cover delivery and deduplication.
 - [x] 18.5 Run six-stage verification, compare the baseline, validate OpenSpec and exercise the real application; review the changes and update public-surface documentation.
+
+## 19. File replacement guards
+
+Spec: file-lifecycle "A file that appears during creation is never replaced". Design §5 (new targets). Owner:
+`internal/file/atomic_replace.go` and its platform files.
+
+- [x] 19.1 Commit a new target (the expected disk state says it does not exist) with a no-replace move:
+      `renamex_np` with `RENAME_EXCL` on macOS and `renameat2` with `RENAME_NOREPLACE` on Linux
+      (`internal/file/atomic_replace_create_darwin.go`, `_linux.go`), `link(2)` and then an existence check where the
+      filesystem lacks exclusive rename (`atomic_replace_create_unix.go`, `atomic_replace_create_other_unix.go`), and a
+      move without `MOVEFILE_REPLACE_EXISTING` on Windows (`atomic_replace_windows.go`); classify a collision as a
+      conflict and remove the temporary file. Delivered in `19e7414`. Proof: the white-box
+      `TestAtomicReplaceNewTargetNeverReplacesFileCreatedBeforeCommit` in `internal/file/atomic_replace_test.go`
+      (kept in-package because it creates the competing file between the check and the commit; it asserts the other
+      program's bytes survive and no temporary file is left). Docs: the atomic replacement paragraph of "Editing,
+      saves and conflicts" in `docs/architecture.md`.
+- [x] 19.2 Make `AtomicReplace` refuse an expected existing version that comes without its raw-byte fingerprint,
+      instead of fingerprinting whatever is on disk. No spec change (internal contract; no production caller relied
+      on it). Delivered in `aa143dc`. Proof: `TestAtomicReplaceRefusesAnExistingBaselineWithoutItsByteFingerprint` in
+      `tests/go/unit/file/atomic_replace_public_test.go`; the test executors in `close_plan_test.go` and
+      `save_identity_test.go` now pass the snapshot's expected hash. Docs: `docs/architecture.md` (same paragraph).
+
+## 20. Conflict decisions and the application's own writes
+
+Spec: external-change-conflict "Choices for a writable document", "Save As onto the document's own file", "Conflict
+found during replacement", "The application's own save is not an external change". Design §3 and §5.1. Owners:
+`internal/appmodel/conflict.go`, `save.go`, `write_coordinator.go`.
+
+- [x] 20.1 Keep mine takes effect only when its write commits: match the keep-mine record without consuming it, use
+      its disk version and fingerprint as the write's expected state, and adopt the baseline and clear the record
+      when the write commits. Delivered in `373d90c`; `dbcab50` added the read-only-target case. Proof in
+      `tests/go/integration/appmodel/keep_mine_commit_test.go`
+      (`TestCancelledSaveAsAfterKeepMineLeavesTheExternalVersionUndecided`,
+      `TestKeepMineSaveThatCannotBeEncodedLeavesTheExternalVersionUndecided`,
+      `TestCancelledClosePlanAfterKeepMineLeavesTheExternalVersionUndecided`) and `keep_mine_commit_unix_test.go`
+      (`TestKeepMineSaveWhoseReplacementFailsLeavesTheExternalVersionUndecided`,
+      `TestKeepMineSaveRetriedAfterAFailedReplacementStillWritesTheBuffer`,
+      `TestKeepMineCannotWriteAFileThatBecameReadOnlyAfterAuthorization`); the stale-ending cases
+      `TestSaveRefusesANormalizationAuthorizedForAnotherLineEnding` (and the Save As and close-plan variants) live in
+      `internal/appmodel/lifecycle_retention_test.go` (`61f4c2a`). Docs: "Editing, saves and conflicts" in
+      `docs/architecture.md`; design §3 states the known limitation that a foreground Keep mine is not remembered.
+- [x] 20.2 Compare a Save As onto the document's own file (same path, symbolic link or hard link) with the loaded
+      version. Delivered in `3cbdf43`. Proof in `tests/go/integration/appmodel/save_as_own_file_test.go`
+      (`TestSaveAsOntoTheDocumentsOwnFileComparesAnExternalEditMadeWhileTheDialogWasOpen` for the three aliases,
+      `TestSaveAsOntoTheDocumentsOwnFileIgnoresATimestampOnlyTouch`,
+      `TestSaveAsOntoTheDocumentsOwnFileAfterKeepMineWritesTheBuffer`). Docs: `docs/architecture.md` (Save As
+      paragraph).
+- [x] 20.3 Turn a conflict found during replacement of the document's own file into the comparison (different bytes)
+      or one more write against the refreshed version (timestamp only). Delivered in `900806f`. Proof in
+      `tests/go/integration/appmodel/save_replace_conflict_test.go`
+      (`TestSaveThatMeetsAnExternalEditDuringReplacementReturnsTheComparison`,
+      `TestSaveThatMeetsATimestampOnlyTouchDuringReplacementCommits`). Docs: `docs/architecture.md`.
+- [x] 20.4 Hold a per-document disk claim from replacement until the written baseline is adopted and take it in every
+      disk inspection. Delivered in `e0e395a`. Proof: `TestExternalChangeCheckDuringTheAppsOwnSaveFindsNoConflict`
+      in `tests/go/integration/appmodel/save_check_race_test.go`. Docs: `docs/architecture.md` (fingerprint
+      paragraph).
+
+## 21. Editor updates carry their base revision
+
+Spec: editor "Edits typed before a reload are discarded". Design §1 (second guard). Owners:
+`frontend/src/logic/hooks/useSyncedBuffer.ts`, `frontend/src/logic/adapter/appModelAdapter.ts`,
+`internal/appmodel/document.go`, `handler.go`, `internal/apperr/results.go`.
+
+- [x] 21.1 Drop an editor session's unsent buffer update when an external reload ends the session. Delivered in
+      `93d6d06`. Proof: `useSyncedBufferExternalReplacement.test.ts` ("drops an unsent edit from the editor session
+      that an external reload replaced", "still sends edits made in the editor session that follows the reload").
+      Docs: the editor-epoch paragraph of "Backend truth and frontend working copy" in `docs/architecture.md`.
+- [x] 21.2 Give `UpdateBuffer` the revision its editor session was installed from and answer an update based before
+      the latest reload with `BufferUpdateResult{status: "superseded"}`, which the adapter settles silently.
+      Delivered in `36ef39f`; the regenerated bindings changed `UpdateBuffer` to take the base revision. Proof:
+      `tests/go/integration/appmodel/buffer_base_test.go`
+      (`TestBufferUpdateBasedBeforeAReloadIsRefusedAndAutosaveKeepsTheReloadedText`,
+      `TestBufferUpdateBasedOnAnEarlierEditOfTheSameSessionIsAccepted`,
+      `TestBoundUpdateBufferReportsASupersededBaseWithoutAnError`), the adapter test "sends the base revision and
+      silently drops an update the backend reports as superseded" and the third case of
+      `useSyncedBufferExternalReplacement.test.ts`. Docs: ADR-0042 and the same architecture paragraph.
+
+## 22. Work added after the plan
+
+No spec change except where named. Each item lists the commit that delivered it.
+
+- [x] 22.1 Fit the status-bar facts within the available width, keeping protected controls and restoring moved labels
+      when they fit again (`8027ec2`), and keep its layout state in a data attribute (`4cfdc17`). Proof:
+      `frontend/tests/unit/statusBar.test.tsx` ("fits facts to the row, preserves protected controls and restores
+      moved labels when they fit") and the e2e tests in `tidy-problems.test.ts` ("keeps Details within the
+      minimum-width status row while saving stale findings", "fits the status to the workspace column and restores
+      facts as it grows").
+- [x] 22.2 Bound the Mermaid style sanitizer's scans (`cc5cc1d`) and simplify them (`9a3fd34`, `scrub.ts`); the same
+      commit gives panes and dividers an accessible relationship (`aria-controls`), stops exposing an empty tab list,
+      and makes a tidy request for a different document start no work; `d083f0f` documents the splitter pane
+      relationships in `docs/architecture.md`. Proof:
+      `frontend/tests/unit/markdown/mermaid/scrub.test.ts` ("handles long malformed URL text in safe quoted CSS
+      without quadratic work" and its siblings), `Sidebar.test.tsx`, `TabBar.test.tsx`,
+      `editorStage.arrangements.test.tsx`, `tidyCommands.test.tsx` ("refuses a tidy request for a different document
+      without starting work").
+- [x] 22.3 Keep Format, Compact and Lint responsive on malformed or whitespace-heavy input (`f71fcb3` for
+      `formatting.ts`, `dc8a838` for `frontend/src/logic/tidy/`). Proof: `frontend/tests/unit/format/formatting.test.ts`
+      ("handles long malformed link labels without blocking formatting") and the tidy unit tests ("Format handles long
+      interior whitespace without repeated suffix scans", "Compact handles long interior whitespace without repeated
+      suffix scans", "Lint handles long interior whitespace without repeated suffix scans", "chunking handles a long
+      malformed math opener without repeated scans").
+- [x] 22.4 Detect changed bytes with preserved metadata through a raw-byte fingerprint, check every tab activation and
+      background document, keep one conflict queue ordered close, write, foreground, and make background Reload leave
+      the active editor alone (`39a5599`). Spec: external-change-conflict "What counts as a change" (scenario "Bytes
+      change while filesystem metadata is preserved"), "Conflict queue" and "Reload is not undone by a later write"
+      (scenario "Reload a background tab"). Proof: `TestExternalChangeWithUnchangedMetadataIsDetected`,
+      `TestConflictDecisionsRejectSameMetadataChangedBytes`, `TestKeepMineWritesWhenExternalBytesRevertWithCommittedMetadata`,
+      `TestClosingActiveTabChecksNewlySelectedFile`, `TestFingerprintRejectsNamedPipeWithoutWaiting`,
+      `frontend/tests/integration/externalChanges.test.tsx` and `external-changes.test.ts`. Docs: design §5.1 and
+      "Editing, saves and conflicts" in `docs/architecture.md`.
+- [x] 22.5 Add the local SonarQube command and configuration (`f89131b`: `scripts/sonar`, `sonar-project.properties`,
+      `tools/verify/sonar.test.mjs`, "Local SonarQube analysis" in `docs/index.md`), and resolve the findings it
+      reported in changed code without suppressing a rule (`477be79`, `e45ae49`, `0a2627f`; `5560da1` formats the
+      script and adds the manual native AMD64 container job). Proof: `tools/verify/sonar.test.mjs`; the refactors keep
+      their existing tests, and `0a2627f` restructured `internal/appmodel/save_identity_test.go` around the changed
+      save helpers.
+- [x] 22.6 Release verification and the five-target release build (nine commits that touch
+      `openspec/changes/verification-first-release-ci/`: `006d110`, `6b1a3c5`, `7dba80c`, `9037a3d`, `ce5b96a`,
+      `bc329bf`, `e119f6e`, `6ece931`, `6c7a0a9`) belong to the change `verification-first-release-ci`, not to this
+      change's acceptance; see 13.3. Docs: "10.3 CI and Release" in `docs/index.md`.

@@ -66,3 +66,19 @@ movement and selection keys SHALL work.
 
 - **WHEN** a read-only document is active and the user presses Option+Up (Alt+Up elsewhere) and then Option+Right
 - **THEN** the text is unchanged and the caret moves by one word
+
+### Requirement: Edits typed before a reload are discarded
+
+WHEN the user reloads a document from disk, text typed in the editor before the reload SHALL NOT be applied afterwards, even if it was still being handed to the application when the reload completed. The discard SHALL NOT show an error. Text typed after the reload SHALL be kept and saved normally.
+
+#### Scenario: Typing in flight during a reload
+
+- **WHEN** Autosave is on, the user types "mine" in "notes.md", another program writes "theirs" to the file, the user
+  chooses Reload from disk before the typed text reaches the application, and two seconds pass
+- **THEN** the editor shows "theirs", the file on disk contains "theirs", the tab is not marked modified and no
+  error is shown
+
+#### Scenario: Typing after the reload
+
+- **WHEN** the user reloads "notes.md" from disk and then types "!" at the end
+- **THEN** the tab is marked modified and Save writes the reloaded text followed by "!"

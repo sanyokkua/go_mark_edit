@@ -14,9 +14,15 @@ application from alpha to beta stability.
 
 Data integrity
 
-- After Reload from disk, no later flush, tab switch, close, Save or autosave writes the pre-reload text.
+- After Reload from disk, no later flush, tab switch, close, Save or autosave writes the pre-reload text, including
+  text that was still being handed to the application when the reload completed.
 - Keep mine on a mixed-line-ending file, after the user accepted normalization, commits with one Save, from Save,
   Save As and the close prompt. A stale Keep-mine decision is dropped when a new conflict is raised.
+- Keep mine takes effect only when the write it authorizes commits; a cancelled, refused or failed write leaves the
+  external version undecided. Save As onto the document's own file compares it with the version the document loaded,
+  a file that changes during the replacement yields the comparison, and the application's own save never raises a
+  conflict.
+- A save that creates a file never replaces one that another program creates in the meantime.
 - A pending "Normalize line endings?" prompt is no longer cancelled by autosave; mixed-ending documents are not
   autosaved (they could never be written without the prompt).
 - A timestamp-only change after a save no longer raises a conflict (the post-save baseline describes the bytes on
@@ -65,9 +71,13 @@ Performance, quality and tooling (no spec-level behaviour change)
 - The success toast uses the success colour; duplicated theme token declarations and duplicated menu markup are
   removed; dead save-status code is deleted.
 - Shipped metadata: real product name, copyright, version and bundle identifier in the macOS and Windows bundles.
-- Build and verification: the frontend and bindings are built once per run, release builds once, Go builds use
-  `-trimpath`, lint stops scanning `node_modules`, Jest runs in parallel, and the preview bundle ships
-  only the highlight grammars the app registers.
+- Build and verification: the frontend and bindings are built once per run, Go builds use `-trimpath`, lint stops
+  scanning `node_modules`, Jest runs in parallel, and the preview bundle ships only the highlight grammars the app
+  registers. Release verification and the five-target release build are delivered by the separate change
+  `verification-first-release-ci`, whose commits are on this branch.
+- Work found after the plan: status-bar facts fit the available width, the Mermaid style sanitizer and the Format,
+  Compact and Lint scans stay bounded on malformed input, and a local SonarQube command exists with the findings it
+  reported in changed code resolved.
 - End-to-end tests no longer open Finder or overwrite the clipboard: in headless test mode Reveal and Copy path are
   recorded instead of executed, and native-clipboard tests run locally only on request (always in CI) and restore
   the clipboard afterwards.
@@ -77,7 +87,6 @@ Performance, quality and tooling (no spec-level behaviour change)
 Out of scope
 
 - A size cap for a buffer that grows past 10 MiB while editing (follow-up change).
-- A revision check on buffer updates as a second guard behind the reload fix.
 - Running local end-to-end tests under a Linux virtual display, and preventing test app instances from showing a
   Dock icon or taking focus on macOS (no supported Wails v2 option).
 - Code signing and notarization.
@@ -90,14 +99,16 @@ None.
 
 ### Modified Capabilities
 
-- `external-change-conflict`: Keep mine combines with an accepted line-ending normalization; Reload is never undone
-  by a later write; the touched-file scenario covers files saved by the application; a permission change is listed
+- `external-change-conflict`: Keep mine combines with an accepted line-ending normalization and takes effect only
+  when its write commits; Save As onto the document's own file, a conflict found during replacement and the
+  application's own save are specified; Reload is never undone by a later write; the touched-file scenario covers files saved by the application; a permission change is listed
   as a change (current behaviour, now specified); a file that became write-protected on disk offers only Reload from
   disk and Cancel.
-- `file-lifecycle`: write-protected files open read-only; new files get normal permissions; BOM kept after Save As;
+- `file-lifecycle`: write-protected files open read-only; new files get normal permissions and never replace a file
+  that appears during creation; BOM kept after Save As;
   autosave skips mixed-ending documents; committed-save warnings and sync failures are reported.
-- `editor`: undo history survives tab switches and is reset by Reload; standard text navigation and line editing
-  keys.
+- `editor`: undo history survives tab switches and is reset by Reload; edits typed before a reload are discarded;
+  standard text navigation and line editing keys.
 - `actions-shortcuts`: tab-switch keys change; editor-focused shortcuts are not swallowed by the editor; Save As
   stays available for a write-protected document.
 - `app-shell`: window shown after a startup watchdog delay; recoverable error screen for rendering errors; quitting
@@ -106,19 +117,21 @@ None.
 
 ## Impact
 
-- Backend: `internal/appmodel` (save, conflict, lifecycle, close plan, autosave, layout drain), `internal/file`
-  (atomic replace, document reader), `internal/application` (native window, `application_context_holder.go` port
+- Backend: `internal/appmodel` (save, conflict, lifecycle, close plan, autosave, layout drain, write coordinator),
+  `internal/file` (atomic replace including exclusive creation, document reader), `internal/application` (native window, `application_context_holder.go` port
   wiring and shutdown ownership), `main.go` (headless test ports and conservative native confirmation).
 - Bridge: a read-capability value for write-protected files, a typed committed-save warning value, two additive
-  native lifecycle methods (`AcknowledgeRecoveryClose` and `DiscardAndAuthorizeQuit`), and a required
-  `PendingClose.owner` value (`frontend` or `native`); generated bindings regenerate. Existing bound method
-  signatures remain unchanged. Bootstrap carries the full pending-close identity and owner.
+  native lifecycle methods (`AcknowledgeRecoveryClose` and `DiscardAndAuthorizeQuit`), a required
+  `PendingClose.owner` value (`frontend` or `native`), and the raw-byte fingerprint on the conflict's disk version;
+  generated bindings regenerate. One existing bound method changes: `UpdateBuffer` takes the document revision the
+  editor session was installed from and returns `BufferUpdateResult` (`accepted` or `superseded`). No other bound
+  method signature changes. Bootstrap carries the full pending-close identity and owner.
 - Frontend: `useSyncedBuffer`, `useDocumentSession`, `CodeEditor`, `EditorStage`, `monacoSetup`,
   `useEditorActionExecutor`, `useShellShortcuts`, shortcut registry, `DocumentTabs`, `readOnlyReason`,
   `useDocumentWrites`, adapter error reporting, the root error boundary in `App`, `MarkdownView`/`useLivePreview`, `useWindowGeometry`, `Menubar`,
   `Toast` styles, `tokens.css`, the markdown highlight plugin, `main.tsx`.
-- Tooling: `scripts/build`, `scripts/verify` stages, Playwright config and harness, CI workflows, `wails.json` and
-  `build/` bundle templates, frontend dependencies (`rehype-highlight` replaced by a plugin on the existing `lowlight`
+- Tooling: `scripts/build`, `scripts/verify` stages, `scripts/sonar` and `sonar-project.properties`, Playwright config
+  and harness, CI workflows, `wails.json` and `build/` bundle templates, frontend dependencies (`rehype-highlight` replaced by a plugin on the existing `lowlight`
   dependency; the unused direct `mdast-util-math` dependency removed).
 - No persisted-data migration: settings, recents and view state live in the application's own SQLite file under the
   user configuration folder, which does not depend on the bundle identifier. Changing the identifier resets only the

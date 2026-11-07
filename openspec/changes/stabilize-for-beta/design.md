@@ -6,7 +6,8 @@ See proposal.md for motivation. Every defect below was traced at `7580ea1`; file
 lives today. Constraints that shape the approach:
 
 - The backend document model (`internal/appmodel`) is authoritative (ADR-0014, ADR-0017). The frontend mirrors the
-  visible buffer in `useSyncedBuffer` and pushes it with `UpdateBuffer`, which takes no revision.
+  visible buffer in `useSyncedBuffer` and pushes it with `UpdateBuffer`. The planned design left `UpdateBuffer`
+  without a revision; it now carries the base revision of the editor session (§1).
 - One decision token travels through Save, Save As and the close plan; normalization and keep-mine tokens are
   single-use and bound to a content revision (ADR-0024).
 - Wails v2 binds each call on its own goroutine, so bound methods run concurrently.
@@ -21,7 +22,8 @@ lives today. Constraints that shape the approach:
 - Fix each defect inside its existing owner, with a regression test that fails before the fix.
 - Keep the Wails wire contract unchanged unless a defect cannot be fixed otherwise. The change adds a read-capability
   value for write-protected files (§5), a typed committed-save warning value (§6), two additive native lifecycle
-  methods and pending-close ownership (§8). Existing bound method signatures remain unchanged.
+  methods and pending-close ownership (§8). One existing bound method changes: `UpdateBuffer` gains the editor
+  session's base revision and returns `BufferUpdateResult` (§1). No other bound method signature changes.
 - Make a full local `scripts/verify` faster and free of desktop side effects except app focus.
 
 **Non-Goals:**
@@ -38,9 +40,20 @@ document id is unchanged, so a Reload (same id, new `externalEpoch`, new activat
 `contentRef`, and the next flush sends it. Track the adopted activation token instead of the document id and reset
 the content, cursor, selection, scroll and view refs whenever the token changes.
 
-- Rejected: a revision argument on `UpdateBuffer` as a backstop. The frontend never learns the revisions of its own
-  edits (`UpdateBuffer` returns `VoidResult`), so it would need a new bound method, a reload revision field and
-  frontend plumbing. Deferred (proposal, Out of scope).
+Second guard, added after the plan (`93d6d06`, `36ef39f`): adoption per activation does not stop an update that was
+already sent, or queued in the adapter, when the reload landed. Ending an editor session for an external replacement
+therefore drops its unsent buffer update (`useSyncedBuffer`; the architecture note on the editor epoch), and
+`UpdateBuffer(documentId, content, baseRevision)` carries the document revision the editor session was installed from
+(`ActiveBuffer.documentRevision`, passed down to `useSyncedBuffer` from `EditorStage`). The frontend never needs to
+learn the revisions of its own edits: the base is fixed for the life of the session. The document record keeps the
+content revision its latest reload produced (`reloadedRevision`, set in `applyReload`); an update whose base is older
+changes neither buffer nor revision, schedules no autosave and is answered with
+`BufferUpdateResult{status: "superseded"}`, which is not an error. The adapter settles that generation without an
+accepted-buffer or sync-error notification. Backend callers that already hold the current buffer use the unguarded
+service `UpdateBuffer`; the bound handler calls `UpdateBufferFrom`. Recorded as ADR-0042.
+
+- Rejected: a new bound method for guarded updates. Changing `UpdateBuffer` is one signature and the generated
+  bindings; the revision is not a second concept for the frontend, only a field of the session it already holds.
 
 ### 2. Undo across tabs: one Monaco model per open writable document
 
@@ -68,8 +81,11 @@ Today `CodeEditor` keys the editor and model path by activation id and disposes 
 - Test support: the `@monaco-editor/react` mock in `frontend/tests/unit/components/CodeEditor.test.tsx:252-289`
   shares one model; it gains a path-to-model map so reuse and disposal are observable.
 
-This refines ADR-0014 ("Monaco is only the visible document's working copy"): hidden models carry undo history only;
-the backend content still wins on every activation. Recorded as ADR-0040 in `docs/architecture.md`.
+This refines ADR-0014 ("Monaco is only the visible document's working copy"). A hidden model keeps its text and its
+undo stack, but its text is never trusted: it is reused on activation only while it equals the backend buffer
+(`initialValue`) and is discarded and recreated otherwise, so the only thing that outlives the activation is the undo
+history of an unchanged text; the backend content wins on every activation. Recorded as ADR-0040 in
+`docs/architecture.md`.
 
 - Rejected: amending the spec to per-activation undo (user decision: keep undo).
 
@@ -97,9 +113,18 @@ Changes, all inside `internal/appmodel`:
   `target.normalizationToken` (`close_plan.go:163`) with the keep-mine token is covered.
   `validNormalizationTokenLocked` gains the `proposedEnding` check the Save gate already does, so the close plan never
   accepts a token that Save then rejects.
-- Consumption order: when `inspectDocument` confirms the disk version still matches and consumes the keep-mine token it re-keys `document.normalization` to that
-  token. If `snapshotForWrite` then refuses, the write fails with its normal error. The adopted baseline and re-keyed
-  normalization remain bound to that authorized disk version and content revision; a subsequent disk change is checked before a write.
+- Keep mine takes effect when its write commits, not before (`373d90c`). While a write is prepared the keep-mine
+  record is matched, never consumed: `inspectDocument` (`matchKeepMine`) returns an authorized inspection when the
+  record's disk version and byte fingerprint are still on disk, and `snapshotForWrite` uses the record's version and
+  fingerprint as the write's expected disk state. The document's baseline, the conflict and the record change only
+  when the write commits (the committed baseline replaces the disk baseline and `removeConflictLocked` clears the
+  conflict and every keep-mine record). A cancelled Save As, an encoding refusal, a failed replacement or a
+  cancelled close plan therefore leaves the external version undecided: a later Save or autosave without the token
+  still stops at the comparison, while a retry with the same token still writes. Because
+  `normalizationAuthorizationForLocked` also accepts the keep-mine token whose record carries the accepted
+  normalization, a retried write does not ask for normalization again. A file that became read-only after the
+  authorization is refused with a read-only comparison, and Keep mine cannot be granted again for it. The earlier
+  plan re-keyed `document.normalization` to the keep-mine token at consumption; that is gone.
 - `registerConflict` (`conflict.go:446-459`) drops the document's keep-mine records whose disk `version` differs from
   the newly registered one, so a Keep mine from an earlier conflict is never honoured. Records for the same version
   survive: focus and tab-activation checks call `inspectDocument(..., "")` (`conflict.go:68`) and re-register the
@@ -111,6 +136,15 @@ Changes, all inside `internal/appmodel`:
   token.
 
 Consent is preserved: Skip or an edit mints a fresh, unaccepted normalization token.
+
+Known limitation (recorded, not fixed here): Keep mine chosen from a comparison found by a window-focus or
+tab-activation check authorizes in the backend, but `useExternalChanges.decideConflict` discards the returned token
+and starts no write. The backend keeps the unusable record until the conflict clears, and the next Save, which
+carries no token, raises the comparison again, where Keep mine now resumes that Save. The behaviour is pinned by the
+e2e test "dismisses foreground Keep mine after authorizing without writing" and stated in the delta spec's "Choices
+for a writable document". Having the frontend retain the token for a later Save would need an owner for a value bound
+to one content revision and one disk version that any edit invalidates; that is a product decision, not a
+stabilization fix.
 
 - Rejected: a second token through Save, Save As and the close plan. It changes two bound signatures,
   `ClosePlanDecision`, about twelve frontend files and thirty test call sites for the same outcome.
@@ -159,6 +193,18 @@ the OR of content ≠ baseline, `ContentRevision > committedRevision`, detached,
 - Permission changes on disk already raise a conflict (`DiskVersion.Equal` and `characteristicsEqual` compare the
   mode); the spec now states this, and Reload from disk re-reads, so it re-evaluates the capability.
 
+New targets are created, never replaced (`19e7414`): when the expected disk state says the target does not exist,
+`AtomicReplace` commits with a no-replace move instead of a plain rename, so a file that another program creates
+after the save's disk check survives. The move is `renamex_np` with `RENAME_EXCL` on macOS, `renameat2` with
+`RENAME_NOREPLACE` on Linux and a move without `MOVEFILE_REPLACE_EXISTING` on Windows; where the filesystem or
+platform lacks exclusive rename, creation falls back to `link(2)`, which never replaces a name, and on filesystems
+without hard links to an existence check followed by a rename, the narrowest guard they permit and one that keeps a
+small race. An existing target keeps the replace path. A collision is classified as a conflict, the temporary file is
+removed and nothing is written. `golang.org/x/sys` becomes a direct dependency. `AtomicReplace` also refuses an
+expected existing version that arrives without its raw-byte fingerprint (`aa143dc`): the guard must compare bytes the
+caller saw, and fingerprinting whatever is on disk at that moment would accept bytes it never saw. No production
+caller relied on the old behaviour.
+
 ### 5.1 External-change fingerprints, queue ownership and reload activation
 
 The implemented file reader captures a SHA-256 `rawHash` over the physical bytes during a bounded stable read. The
@@ -174,6 +220,16 @@ operations. Portable Go APIs do not provide a cross-platform compare-and-swap re
 replacement on the old bytes. A concurrent external writer in that narrow check-to-replace interval can therefore
 still race; this mechanism is a best-effort stale-write guard, not an atomic compare-and-swap guarantee. Keep this
 limitation explicit in the product documentation and do not describe the raw hash as closing that race.
+
+Three further save-path rules close races found during review. A target that is the document's own file, under its
+path or a symbolic or hard link to it, is compared with the loaded document (the same inspection a Save runs) instead
+of with the file as it is after the native Save As dialogs closed, so an external edit made while they were open
+yields the comparison and a timestamp-only touch is absorbed (`3cbdf43`). When the replacement of the document's own
+file refuses because the file changed after the save's disk check, the save inspects it again: different bytes return
+the ordinary comparison and block the tab, identical bytes are written once more against the refreshed disk version
+(`900806f`). Each document's write holds a disk claim from replacement until the written baseline is adopted, and every
+disk inspection takes the same claim, so a focus check never pairs the pre-write baseline with the written bytes
+(`e0e395a`).
 
 The frontend retains foreground conflicts by document identity and tab order. Prompt priority is close-owned, then
 write-owned, then foreground. Deferred comparisons are revalidated before presentation, and closed documents are
@@ -364,24 +420,31 @@ window, recording ports) are recorded together as ADR-0041; the flag stays confi
 `native_window.go`.
 
 Playwright's `chromium-native` project (`frontend/playwright.config.ts:60-67` macOS subset, `:84-91` normal) runs
-only when `E2E_NATIVE_CLIPBOARD=1` or in the macOS subset. The variable is set in `release.yml` and in the `push.yml`
-job that selects `chromium-native` through `E2E_PROJECTS` (`push.yml:165`). A shared fixture saves the
-clipboard text before each native-clipboard test and restores it afterwards, replacing the per-test restores.
+only when `E2E_NATIVE_CLIPBOARD=1` or in the macOS subset. The variable is set in
+`.github/workflows/verification.yml`, the reusable workflow that `push.yml` and `release.yml` call: in the Linux
+`serial` e2e job (projects `chromium-serial,chromium-native`) and in the `macos-e2e` job. The manual container
+verification (`tools/verification-container/run.sh`) sets it as well. `release.yml` runs no end-to-end tests. A shared
+fixture saves the clipboard text before each native-clipboard test and restores it afterwards, replacing the per-test
+restores.
 
 ### 12. Build and bundle
 
 Evidence from the 2026-10-10 run reports and the scripts:
 
 - `GOMARKEDIT_E2E_REUSE_DIST` already exists (`frontend/tests/support/prepare.ts:111,130-141`) but only
-  `release.yml:134` sets it. `scripts/verify` sets it for the E2E stage when Build passed in the same run, so the
-  frontend and generators are not run twice.
+  the old release workflow set it. `scripts/verify` (and `scripts/baseline`) set it for the E2E stage when Build passed
+  in the same run, so the frontend and generators are not run twice.
 - `scripts/build` passes `-skipbindings` (bindings are generated just before) and `-trimpath` to `wails build`.
 - The e2e binary drops `-gcflags all=-N -l` (`prepare.ts:243`); no debugger is attached.
 - golangci-lint gets an explicit package list so it no longer loads the Go package inside
   `frontend/node_modules/flatted` (`scripts/lib/stages.sh:9`).
 - Both Jest stages run with `--maxWorkers=50%` instead of `--runInBand` (`stages.sh:45,53`) after two consecutive green runs prove no
   ordering dependence; if any test proves order-dependent it is fixed, not re-serialized.
-- The release workflow builds the versioned app once and verifies against it.
+- The release workflow does not verify against its own build. As delivered, it reuses the newest trusted successful
+  `master` verification of the exact commit, or calls the reusable `verification.yml` when there is none, and then
+  builds each of the five native targets once with `scripts/build --release`. Its build jobs run no tests and the exact
+  distributable is not launched in CI. This replaces the planned build-once-and-verify-against-it design and belongs
+  to the separate change `verification-first-release-ci`, whose nine commits are on this branch.
 - `rehype-highlight` is given the app's 26 grammars (`src/logic/markdown/highlight.ts:31-58,108-116`), but its static
   `import {common}` (`node_modules/rehype-highlight/lib/index.js`) still bundles lowlight's whole common set. A small
   rehype plugin on `createLowlight()` with only the registered grammars, reading code text with `hast-util-to-text`
@@ -435,6 +498,11 @@ real-backend browser checks cover geometry at 375, 376 and 377 px, the divider, 
 - [Jest parallelism could expose hidden shared state] → require two consecutive green runs; fix any shared state.
 - [Replacing rehype-highlight could change highlighted output] → existing preview and highlight tests must pass
   unchanged; compare rendered output for each registered language in a unit test.
+- [Creation falls back to a link or an existence check on filesystems without exclusive rename] → the exclusive move
+  is used wherever the platform offers it; the last-resort existence check keeps a narrow race and is the narrowest
+  guard those filesystems permit.
+- [Foreground Keep mine is not remembered] → known limitation above; the comparison reappears at the next Save, so no
+  work is lost and nothing is overwritten without a decision.
 - [Changing the bundle identifier resets the webview's local storage on macOS] → only the startup theme mirror lives
   there; it is rewritten on the first settings load.
 
@@ -445,7 +513,8 @@ its own.
 
 ## Open Questions
 
-None. Decided during review: bundle identifier `io.github.sanyokkua.gomarkedit`; Save As stays available for
+Whether a Keep mine chosen from a focus check should be remembered for the next Save (known limitation in §3). Decided
+during review: bundle identifier `io.github.sanyokkua.gomarkedit`; Save As stays available for
 write-protected files; Quit from the crash screen confirms before discarding unsaved changes; preview work is limited
 to §9.
 
