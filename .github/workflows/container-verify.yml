@@ -1,0 +1,31 @@
+name: container-verify
+
+# Manual only. Runs the Ubuntu 24.04 verification container on a native AMD64 runner, where the
+# emulation that crashes the Go compiler on Apple Silicon is not needed. It repeats the full suite
+# and a release-mode build, so it is not part of the required verification.
+on:
+    workflow_dispatch:
+        inputs:
+            version:
+                description: 'Version for the release-mode build (X.Y.Z, X.Y.Z-alpha.N, or X.Y.Z-beta.N)'
+                required: true
+                default: 0.0.0-beta.1
+                type: string
+
+permissions:
+    contents: read
+
+jobs:
+    container:
+        runs-on: ubuntu-24.04
+        timeout-minutes: 120
+        steps:
+            - uses: actions/checkout@v7
+              with:
+                  ref: ${{ github.ref_name }}
+            - name: Verify in the Ubuntu 24.04 container
+              env:
+                  INPUT_VERSION: ${{ inputs.version }}
+              run: |
+                  [[ "$(uname -m)" == x86_64 ]] || { echo 'this job must run on a native AMD64 runner' >&2; exit 1; }
+                  tools/verification-container/run.sh --arch amd64 --version "$INPUT_VERSION"

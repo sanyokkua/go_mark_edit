@@ -5,14 +5,14 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
 if [[ $# -ne 0 ]]; then
-	printf 'Usage: scripts/sonar\n' >&2
-	exit 2
+    printf 'Usage: scripts/sonar\n' >&2
+    exit 2
 fi
 : "${SONAR_HOST_URL:?Set SONAR_HOST_URL to the existing SonarQube server URL}"
 : "${SONAR_TOKEN:?Set SONAR_TOKEN to a SonarQube token}"
 command -v sonar-scanner >/dev/null || {
-	printf 'sonar-scanner is required\n' >&2
-	exit 1
+    printf 'sonar-scanner is required\n' >&2
+    exit 1
 }
 
 coverage_dir="$ROOT/.local_tmp_files/sonar/coverage"
@@ -25,40 +25,40 @@ scripts/build
 scripts/test all
 
 go test -race -coverpkg=./... -coverprofile="$coverage_dir/go.out" \
-	./tests/go/unit/... ./tests/go/integration/... ./internal/...
+    ./tests/go/unit/... ./tests/go/integration/... ./internal/...
 (
-	cd frontend
-	./node_modules/.bin/jest --ci --runInBand --config jest.config.mjs \
-		--selectProjects unit integration --coverage \
-		'--collectCoverageFrom=src/**/*.{js,jsx,ts,tsx}' \
-		'--collectCoverageFrom=!src/**/*.d.ts' \
-		'--collectCoverageFrom=!src/logic/theme/generatedEditorThemes.ts' \
-		--coverageReporters=lcov --coverageDirectory="$coverage_dir/frontend"
+    cd frontend
+    ./node_modules/.bin/jest --ci --runInBand --config jest.config.mjs \
+        --selectProjects unit integration --coverage \
+        '--collectCoverageFrom=src/**/*.{js,jsx,ts,tsx}' \
+        '--collectCoverageFrom=!src/**/*.d.ts' \
+        '--collectCoverageFrom=!src/logic/theme/generatedEditorThemes.ts' \
+        --coverageReporters=lcov --coverageDirectory="$coverage_dir/frontend"
 )
 
 mkdir -p "$coverage_dir/tools"
 node --test --experimental-test-coverage \
-	--test-coverage-include='tools/**/*.mjs' \
-	--test-coverage-exclude='tools/**/*.test.mjs' \
-	--test-reporter=spec --test-reporter=lcov \
-	--test-reporter-destination=stdout --test-reporter-destination="$coverage_dir/tools/lcov.info" \
-	tools/verify/*.test.mjs
+    --test-coverage-include='tools/**/*.mjs' \
+    --test-coverage-exclude='tools/**/*.test.mjs' \
+    --test-reporter=spec --test-reporter=lcov \
+    --test-reporter-destination=stdout --test-reporter-destination="$coverage_dir/tools/lcov.info" \
+    tools/verify/*.test.mjs
 
 # Jest writes paths relative to frontend; the scanner resolves them from the repository root.
 sed 's|^SF:src/|SF:frontend/src/|' "$coverage_dir/frontend/lcov.info" >"$coverage_dir/frontend/lcov.root.info"
 mv "$coverage_dir/frontend/lcov.root.info" "$coverage_dir/frontend/lcov.info"
 
 awk 'NR > 1 && $NF > 0 { found = 1 } END { exit !found }' "$coverage_dir/go.out" || {
-	printf 'Go coverage is empty or has no covered statements; refusing to scan\n' >&2
-	exit 1
+    printf 'Go coverage is empty or has no covered statements; refusing to scan\n' >&2
+    exit 1
 }
 awk -F: '$1 == "LH" && $2 > 0 { found = 1 } END { exit !found }' "$coverage_dir/frontend/lcov.info" || {
-	printf 'Frontend LCOV is empty or has no covered lines; refusing to scan\n' >&2
-	exit 1
+    printf 'Frontend LCOV is empty or has no covered lines; refusing to scan\n' >&2
+    exit 1
 }
 awk -F: '$1 == "LH" && $2 > 0 { found = 1 } END { exit !found }' "$coverage_dir/tools/lcov.info" || {
-	printf 'Tooling LCOV is empty or has no covered lines; refusing to scan\n' >&2
-	exit 1
+    printf 'Tooling LCOV is empty or has no covered lines; refusing to scan\n' >&2
+    exit 1
 }
 
 sonar-scanner -Dsonar.qualitygate.wait=true
