@@ -382,3 +382,29 @@ func TestAtomicCommitWarningsIdentifyFailedCheck(t *testing.T) {
 		})
 	}
 }
+
+func TestAtomicReplaceNewTargetNeverReplacesFileCreatedBeforeCommit(t *testing.T) {
+	target := filepath.Join(t.TempDir(), "new.md")
+	ops := defaultAtomicReplaceOps()
+	realReplace, realCreate := ops.replace, ops.create
+	appear := func() {
+		if err := os.WriteFile(target, []byte("other program"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	ops.replace = func(from, to string) error { appear(); return realReplace(from, to) }
+	ops.create = func(from, to string) error { appear(); return realCreate(from, to) }
+
+	result, err := atomicReplaceWithOps(AtomicReplaceRequest{TargetPath: target, Data: []byte("mine")}, ops)
+	if err == nil || result.Committed {
+		t.Fatalf("replacement = %+v, %v; want conflict", result, err)
+	}
+	data, readErr := os.ReadFile(target)
+	if readErr != nil || string(data) != "other program" {
+		t.Fatalf("disk = %q, %v", data, readErr)
+	}
+	entries, _ := os.ReadDir(filepath.Dir(target))
+	if len(entries) != 1 {
+		t.Fatalf("leftover temporary files: %v", entries)
+	}
+}

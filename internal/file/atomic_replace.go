@@ -89,6 +89,7 @@ type atomicReplaceOps struct {
 	currentVersion func(string) (DiskVersion, error)
 	remove         func(string) error
 	replace        func(string, string) error
+	create         func(string, string) error
 	syncDir        func(string) error
 }
 
@@ -107,6 +108,7 @@ func defaultAtomicReplaceOps() atomicReplaceOps {
 		currentVersion: CurrentDiskVersion,
 		remove:         os.Remove,
 		replace:        replaceAtomicFile,
+		create:         createAtomicFile,
 		syncDir:        syncParentDirectory,
 	}
 }
@@ -178,7 +180,11 @@ func atomicReplaceWithOps(request AtomicReplaceRequest, ops atomicReplaceOps) (A
 		}
 	}
 
-	if err := ops.replace(temporaryPath, target); err != nil {
+	commit := ops.replace
+	if !expected.Exists {
+		commit = ops.create
+	}
+	if err := commit(temporaryPath, target); err != nil {
 		return failBeforeCommit(classifyAtomicReplaceCause(err), err)
 	}
 	temporaryPath = ""
@@ -313,6 +319,9 @@ func withDefaultAtomicReplaceOps(ops atomicReplaceOps) atomicReplaceOps {
 	if ops.replace == nil {
 		ops.replace = defaults.replace
 	}
+	if ops.create == nil {
+		ops.create = defaults.create
+	}
 	if ops.syncDir == nil {
 		ops.syncDir = defaults.syncDir
 	}
@@ -321,6 +330,9 @@ func withDefaultAtomicReplaceOps(ops atomicReplaceOps) atomicReplaceOps {
 
 func classifyAtomicReplaceCause(err error) apperr.ClassifiedErrorCategory {
 	if errors.Is(err, errFingerprintChanged) {
+		return apperr.ClassifiedConflict
+	}
+	if errors.Is(err, fs.ErrExist) {
 		return apperr.ClassifiedConflict
 	}
 	if errors.Is(err, fs.ErrPermission) || os.IsPermission(err) {
