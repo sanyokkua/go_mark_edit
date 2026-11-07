@@ -15,6 +15,12 @@ permissions:
     contents: read
     actions: read
 
+# One release run per tag or branch at a time. A queued run waits for an in-progress publish rather
+# than cancelling it, so a publish is never interrupted midway.
+concurrency:
+    group: release-${{ github.ref }}
+    cancel-in-progress: false
+
 jobs:
     prepare:
         runs-on: ubuntu-24.04
@@ -280,7 +286,21 @@ jobs:
                   fi
                   args=("$RELEASE_TAG" --verify-tag --draft --title "GoMarkEdit $RELEASE_VERSION" --notes-from-tag)
                   if [[ "$RELEASE_PRERELEASE" == true ]]; then args+=(--prerelease); fi
+                  # A draft blocks later attempts for this tag, so any failure after creation removes it
+                  # (the tag is kept); the release becomes visible only in the final edit.
+                  remove_unpublished_draft() {
+                    local status=$?
+                    trap - EXIT
+                    # Never delete a release that was already published.
+                    if [[ "$status" -ne 0 && "$(gh release view "$RELEASE_TAG" --json isDraft --jq .isDraft 2>/dev/null || true)" == true ]]; then
+                      gh release delete "$RELEASE_TAG" --yes || echo "could not remove draft release $RELEASE_TAG" >&2
+                    fi
+                    exit "$status"
+                  }
                   gh release create "${args[@]}"
+                  trap remove_unpublished_draft EXIT
+                  trap 'exit 143' TERM
+                  trap 'exit 130' INT
                   mapfile -d '' assets < <(find release-assets -type f -print0 | sort -z)
                   [[ "${#assets[@]}" -eq 6 ]] || { echo 'release asset count changed after validation' >&2; exit 1; }
                   gh release upload "$RELEASE_TAG" "${assets[@]}"

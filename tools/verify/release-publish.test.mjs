@@ -30,7 +30,7 @@ function bashCompatibility() {
     );
 }
 
-/** @param {'existing' | 'moved' | 'inventory-mismatch' | 'success'} scenario */
+/** @param {'existing' | 'moved' | 'inventory-mismatch' | 'upload-fails' | 'success'} scenario */
 function runPublisher(scenario) {
     const root = mkdtempSync(join(tmpdir(), 'release-publish-'));
     const bin = join(root, 'bin');
@@ -61,6 +61,11 @@ function runPublisher(scenario) {
             `case "$2" in\n` +
             `  view)\n` +
             `    [[ "${'${3:-}'}" == "$RELEASE_TAG" ]] || exit 98\n` +
+            `    if [[ "${'${4:-}'}" == --json && "${'${5:-}'}" == isDraft ]]; then\n` +
+            `      [[ $# -eq 7 && "$6" == --jq && "$7" == .isDraft ]] || exit 102\n` +
+            `      printf 'true\\n'\n` +
+            `      exit 0\n` +
+            `    fi\n` +
             `    if [[ "${'${4:-}'}" == --json ]]; then\n` +
             `      [[ $# -eq 7 && "$5" == assets && "$6" == --jq && "$7" == '.assets[].name' ]] || exit 99\n` +
             `      printf '%s\\n' "$ASSET_INVENTORY"\n` +
@@ -78,6 +83,7 @@ function runPublisher(scenario) {
             `    ;;\n` +
             `  upload)\n` +
             `    [[ "$3" == "$RELEASE_TAG" && $# -eq 9 ]] || exit 92\n` +
+            `    [[ "$SCENARIO" != upload-fails ]] || { printf 'upload\\n' >> "$OP_LOG"; exit 1; }\n` +
             `    shift 3\n` +
             `    for asset in "$@"; do [[ -f "$asset" ]] || exit 95; done\n` +
             `    printf '%s\\n' "${'${@##*/}'}" | sort > "$UPLOAD_LOG"\n` +
@@ -86,6 +92,10 @@ function runPublisher(scenario) {
             `  edit)\n` +
             `    [[ "$3" == "$RELEASE_TAG" && $# -eq 4 && "$4" == --draft=false ]] || exit 93\n` +
             `    printf 'edit\\n' >> "$OP_LOG"\n` +
+            `    ;;\n` +
+            `  delete)\n` +
+            `    [[ "$3" == "$RELEASE_TAG" && $# -eq 4 && "$4" == --yes ]] || exit 101\n` +
+            `    printf 'delete\\n' >> "$OP_LOG"\n` +
             `    ;;\n` +
             `  *) exit 94 ;;\n` +
             `esac\n`,
@@ -133,22 +143,32 @@ void test('an existing release prevents creation, upload, and publication', () =
     }
 });
 
-void test('a tag moved during upload leaves the release draft unpublished', () => {
+void test('a tag moved during upload removes the unpublished draft', () => {
     const outcome = runPublisher('moved');
     try {
         assert.notEqual(outcome.result.status, 0);
-        assert.deepEqual(outcome.operations, ['exists-check', 'create', 'upload', 'inventory']);
+        assert.deepEqual(outcome.operations, ['exists-check', 'create', 'upload', 'inventory', 'delete']);
         assert.equal(outcome.gitCallCount, 2);
     } finally {
         rmSync(outcome.root, { recursive: true, force: true });
     }
 });
 
-void test('a mismatched remote asset inventory prevents draft publication', () => {
+void test('a failed asset upload removes the draft so no partial release remains', () => {
+    const outcome = runPublisher('upload-fails');
+    try {
+        assert.notEqual(outcome.result.status, 0);
+        assert.deepEqual(outcome.operations, ['exists-check', 'create', 'upload', 'delete']);
+    } finally {
+        rmSync(outcome.root, { recursive: true, force: true });
+    }
+});
+
+void test('a mismatched remote asset inventory removes the draft instead of publishing it', () => {
     const outcome = runPublisher('inventory-mismatch');
     try {
         assert.notEqual(outcome.result.status, 0);
-        assert.deepEqual(outcome.operations, ['exists-check', 'create', 'upload', 'inventory']);
+        assert.deepEqual(outcome.operations, ['exists-check', 'create', 'upload', 'inventory', 'delete']);
         assert.equal(outcome.gitCallCount, 1);
         assert.deepEqual(outcome.uploadedAssets, [...assets].sort());
     } finally {

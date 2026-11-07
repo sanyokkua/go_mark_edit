@@ -234,6 +234,7 @@ jobs:
         if: ${{ always() }}
         needs: [cross-platform-go, static, tests, e2e, macos-e2e]
         runs-on: ubuntu-24.04
+        timeout-minutes: 5
         steps:
             - name: Reject incomplete verification
               env:
