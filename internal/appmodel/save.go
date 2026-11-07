@@ -474,7 +474,9 @@ func (service *AppModelService) requestNormalizationLocked(documentID string, ex
 // replace (a timestamp-only touch) is written once more against the refreshed
 // disk version. The expected bytes are the loaded baseline or, for a Keep mine
 // write, the authorized external version. Any other file gets the ordinary
-// inspection, which returns the comparison as a result.
+// inspection: an unchanged file is written against the inspected version, a
+// deleted one is created once more only if no file exists at commit time, and
+// every other outcome is returned as the result.
 func (service *AppModelService) retryAfterPreCommitConflict(ctx context.Context, coordinator *DocumentWriteCoordinator, snapshot writeSnapshot, encoded encodedWrite, replaceErr error) (CommittedWriteResult, *apperr.WriteResult, error) {
 	if stable, err := service.readStable(snapshot.path); err == nil && stable.Version.Exists && stable.Read.Error == nil && stable.Read.Capability == file.CapabilityWritable &&
 		stable.RawHash == snapshot.expectedRawHash && characteristicsEqual(stable.Read.Characteristics, snapshot.expectedCharacteristics) {
@@ -483,7 +485,7 @@ func (service *AppModelService) retryAfterPreCommitConflict(ctx context.Context,
 		return committed, nil, err
 	}
 	inspection := service.inspectDocumentClaimed(ctx, snapshot.documentID, snapshot.contentRevision, "")
-	if inspection.classified != nil || inspection.kind != diskUnchanged {
+	if inspection.classified != nil || (inspection.kind != diskUnchanged && inspection.kind != diskDetached) {
 		result := service.writeResultForInspection(snapshot.documentID, inspection)
 		if result.Status == "" {
 			result = writeCommitFailure(snapshot, replaceErr)

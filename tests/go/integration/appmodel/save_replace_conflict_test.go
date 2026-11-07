@@ -166,3 +166,68 @@ func TestKeepMineSaveThatMeetsAnotherExternalEditDuringReplacementReturnsTheComp
 		t.Fatalf("disk = %q, %v; want the second external edit kept", disk, err)
 	}
 }
+
+func TestSaveThatMeetsADeletionDuringReplacementCreatesTheFile(t *testing.T) {
+	ctx := context.Background()
+	var path string
+	service := NewAppModelServiceForHost(WithEmitter(&recordingEmitter{}), AppModelOption{AutosaveTimer: &fakeAutosaveClock{}, WriteExecutor: replaceAfterExternalChange(func() {
+		if err := os.Remove(path); err != nil {
+			t.Errorf("delete: %v", err)
+		}
+	})})
+	path, id := openAutosaveDocument(t, service, "base\n")
+	if err := service.UpdateBuffer(ctx, id, "mine\n"); err != nil {
+		t.Fatalf("UpdateBuffer: %v", err)
+	}
+
+	result := service.Save(ctx, id, contentRevision(t, service, id), "")
+
+	if result.Status != apperr.WriteStatusCommitted || result.Error != nil {
+		t.Fatalf("Save = %+v, want committed", result)
+	}
+	disk, err := os.ReadFile(path)
+	if err != nil || string(disk) != "mine\n" {
+		t.Fatalf("disk = %q, %v; want the buffer", disk, err)
+	}
+}
+
+func TestSaveThatMeetsADeletionAndARecreationDuringReplacementKeepsTheNewFile(t *testing.T) {
+	ctx := context.Background()
+	var path string
+	attempts := 0
+	service := NewAppModelServiceForHost(WithEmitter(&recordingEmitter{}), AppModelOption{AutosaveTimer: &fakeAutosaveClock{}, WriteExecutor: func(snapshot WriteSnapshot) (file.DiskVersion, error) {
+		attempts++
+		switch attempts {
+		case 1:
+			if err := os.Remove(path); err != nil {
+				t.Errorf("delete: %v", err)
+			}
+		case 2:
+			if err := os.WriteFile(path, []byte("recreated\n"), 0o640); err != nil {
+				t.Errorf("recreate: %v", err)
+			}
+		}
+		replaced, err := file.AtomicReplace(file.AtomicReplaceRequest{
+			TargetPath: snapshot.TargetPath, Data: snapshot.EncodedData,
+			ExpectedVersion: snapshot.ExpectedDiskVersion, ExpectedRawHash: snapshot.ExpectedRawHash,
+		})
+		return replaced.Version, err
+	}})
+	path, id := openAutosaveDocument(t, service, "base\n")
+	if err := service.UpdateBuffer(ctx, id, "mine\n"); err != nil {
+		t.Fatalf("UpdateBuffer: %v", err)
+	}
+
+	result := service.Save(ctx, id, contentRevision(t, service, id), "")
+
+	if result.Status != apperr.WriteStatusConflict {
+		t.Fatalf("Save = %+v, want a conflict", result)
+	}
+	if attempts != 2 {
+		t.Fatalf("replacement attempts = %d, want 2", attempts)
+	}
+	disk, err := os.ReadFile(path)
+	if err != nil || string(disk) != "recreated\n" {
+		t.Fatalf("disk = %q, %v; want the recreated file kept", disk, err)
+	}
+}
