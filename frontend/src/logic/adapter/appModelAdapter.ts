@@ -174,6 +174,8 @@ interface BufferSnapshot {
 
 interface BufferRecord {
     acceptedGeneration: number;
+    /** Generations up to this one belong to an editor session that ended; their refusals are not kept. */
+    cancelledGeneration: number;
     inFlight?: Promise<void>;
     inFlightGeneration?: number;
     nextGeneration: number;
@@ -688,6 +690,7 @@ export function createAppModelAdapter(bindings: AppModelBindings, runtime: AppMo
 
         const record: BufferRecord = {
             acceptedGeneration: 0,
+            cancelledGeneration: 0,
             nextGeneration: 0,
         };
         bufferRecords.set(documentId, record);
@@ -811,6 +814,7 @@ export function createAppModelAdapter(bindings: AppModelBindings, runtime: AppMo
     /*
      * A superseded update is not adopted, so it is not reported as accepted. Its text stays
      * unacknowledged until its editor session resends newer text on the current revision or ends.
+     * A refusal of an update from an ended session is still reported but not kept.
      */
     function reportSuperseded(
         documentId: string,
@@ -821,7 +825,10 @@ export function createAppModelAdapter(bindings: AppModelBindings, runtime: AppMo
         if (currentRevision === undefined) {
             throw new BufferSyncError(supersededBufferError());
         }
-        if (record.superseded === undefined || record.superseded.generation < snapshot.generation) {
+        if (
+            snapshot.generation > record.cancelledGeneration &&
+            (record.superseded === undefined || record.superseded.generation < snapshot.generation)
+        ) {
             record.superseded = snapshot;
         }
         const superseded: SupersededBuffer = {
@@ -1043,6 +1050,7 @@ export function createAppModelAdapter(bindings: AppModelBindings, runtime: AppMo
             if (buffer !== undefined && !retainRecoveryBuffers) {
                 buffer.pending = undefined;
                 buffer.superseded = undefined;
+                buffer.cancelledGeneration = buffer.nextGeneration;
             }
 
             const view = viewRecords.get(documentId);

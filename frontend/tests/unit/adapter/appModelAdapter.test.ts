@@ -348,6 +348,33 @@ it('forgets a superseded update when its editor session ends', async () => {
     await expect(adapter.flushBuffer('document-1')).resolves.toBeUndefined();
 });
 
+it('ignores a superseded response that arrives after its editor session ended', async () => {
+    let resolveUpdate: (result: VoidResult & { status?: string; documentRevision?: number }) => void = () => undefined;
+    const adapter = createAppModelAdapter(
+        {
+            getState: async (): Promise<{ data: AppModelState }> => ({ data: state }),
+            updateBuffer: (documentId: string, content: string, baseRevision: number) =>
+                new Promise((resolve): void => {
+                    void [documentId, content, baseRevision];
+                    resolveUpdate = resolve;
+                }),
+            setDocView: async (): Promise<VoidResult> => ({}),
+            setUILayout: async (): Promise<VoidResult> => ({}),
+        },
+        { eventsOn: (): (() => void) => (): void => undefined },
+    );
+
+    await adapter.updateBuffer('document-1', 'typed before reload', 4);
+    const firstFlush = adapter.flushBuffer('document-1').catch((): void => undefined);
+    await Promise.resolve();
+    adapter.cancelPendingSession?.('document-1');
+    resolveUpdate({ status: 'superseded', documentRevision: 9 });
+    await firstFlush;
+
+    await expect(adapter.flushBuffer('document-1')).resolves.toBeUndefined();
+    expect(adapter.getPendingBufferDocumentIds()).toEqual([]);
+});
+
 it('routes imperative flush through the registered activation session', async () => {
     const flushActiveSession = jest.fn(async (): Promise<void> => undefined);
     const adapter = createAppModelAdapter(
