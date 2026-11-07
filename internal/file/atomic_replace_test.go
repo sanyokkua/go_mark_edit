@@ -433,24 +433,24 @@ type recordedCreateOps struct {
 
 func newRecordedCreateOps() *recordedCreateOps {
 	recorded := &recordedCreateOps{}
-	real := defaultAtomicCreateOps()
+	platform := defaultAtomicCreateOps()
 	recorded.ops = atomicCreateOps{
 		exclusive: func(from, to string) error {
 			recorded.calls = append(recorded.calls, "exclusive")
-			return real.exclusive(from, to)
+			return platform.exclusive(from, to)
 		},
 		link: func(from, to string) error {
 			recorded.calls = append(recorded.calls, "link")
-			return real.link(from, to)
+			return platform.link(from, to)
 		},
-		remove: func(path string) error { recorded.calls = append(recorded.calls, "remove"); return real.remove(path) },
+		remove: func(path string) error { recorded.calls = append(recorded.calls, "remove"); return platform.remove(path) },
 		lstat: func(path string) (fs.FileInfo, error) {
 			recorded.calls = append(recorded.calls, "lstat")
-			return real.lstat(path)
+			return platform.lstat(path)
 		},
 		rename: func(from, to string) error {
 			recorded.calls = append(recorded.calls, "rename")
-			return real.rename(from, to)
+			return platform.rename(from, to)
 		},
 	}
 	return recorded
