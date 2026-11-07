@@ -58,3 +58,26 @@ func TestKeepMineSaveRetriedAfterAFailedReplacementStillWritesTheBuffer(t *testi
 		t.Fatalf("disk = %q, %v; want the buffer", disk, err)
 	}
 }
+
+func TestKeepMineCannotWriteAFileThatBecameReadOnlyAfterAuthorization(t *testing.T) {
+	ctx := context.Background()
+	service := NewAppModelServiceForHost(WithEmitter(&recordingEmitter{}), AppModelOption{AutosaveTimer: &fakeAutosaveClock{}})
+	fixture := authorizeKeepMineFixture(t, service, "mine\n")
+	if err := os.Chmod(fixture.path, 0o444); err != nil {
+		t.Fatalf("make file read-only: %v", err)
+	}
+
+	result := service.Save(ctx, fixture.id, fixture.revision, fixture.token)
+
+	if result.Status == apperr.WriteStatusCommitted || result.Conflict == nil || !result.Conflict.ReadOnly {
+		t.Fatalf("Save with Keep mine = %+v, want a read-only comparison", result)
+	}
+	retried := service.AuthorizeKeepMine(ctx, fixture.id, fixture.revision, result.Conflict.Path, result.Conflict.DetectedDiskVersion)
+	if retried.Status == apperr.ConflictStatusAuthorized {
+		t.Fatalf("AuthorizeKeepMine on the read-only file = %+v, want a refusal", retried)
+	}
+	disk, err := os.ReadFile(fixture.path)
+	if err != nil || string(disk) != "external\n" {
+		t.Fatalf("disk = %q, %v; want the external version kept", disk, err)
+	}
+}
