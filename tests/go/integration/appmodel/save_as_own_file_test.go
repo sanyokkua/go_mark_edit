@@ -122,3 +122,74 @@ func contentRevision(t *testing.T, service *AppModelService, id string) uint64 {
 	}
 	return state.Snapshot.Documents[id].ContentRevision
 }
+
+func TestSaveAsOntoTheDocumentsOwnPathRecreatesAFileDeletedWhileTheDialogWasOpen(t *testing.T) {
+	ctx := context.Background()
+	dialog := &editingSaveDialog{}
+	service := NewAppModelServiceForHost(WithEmitter(&recordingEmitter{}), WithDialogs(nil, dialog), AppModelOption{AutosaveTimer: &fakeAutosaveClock{}})
+	path, id := openAutosaveDocument(t, service, "base\n")
+	dialog.path = path
+	dialog.whileOpen = func() {
+		if err := os.Remove(path); err != nil {
+			t.Errorf("delete: %v", err)
+		}
+	}
+	if err := service.UpdateBuffer(ctx, id, "mine\n"); err != nil {
+		t.Fatalf("UpdateBuffer: %v", err)
+	}
+
+	result := service.SaveAs(ctx, id, contentRevision(t, service, id), "")
+
+	if result.Status != apperr.WriteStatusCommitted || result.Error != nil || result.Conflict != nil {
+		t.Fatalf("SaveAs = %+v, want the file recreated", result)
+	}
+	disk, err := os.ReadFile(path)
+	if err != nil || string(disk) != "mine\n" {
+		t.Fatalf("disk = %q, %v; want the buffer", disk, err)
+	}
+	state, err := service.GetState(ctx)
+	if err != nil {
+		t.Fatalf("GetState: %v", err)
+	}
+	resolved, err := filepath.EvalSymlinks(path)
+	if err != nil {
+		t.Fatalf("resolve path: %v", err)
+	}
+	if metadata := state.Snapshot.Documents[id]; metadata.Dirty || metadata.ConflictBlocked || metadata.Detached || metadata.Path != resolved {
+		t.Fatalf("metadata = %+v, want a clean attached document saved at %q", metadata, resolved)
+	}
+	if check := service.CheckExternalChanges(ctx, id); check.Status != apperr.ConflictStatusUnchanged {
+		t.Fatalf("CheckExternalChanges after recreate = %+v, want unchanged", check)
+	}
+}
+
+func TestSaveAsOntoTheDocumentsDeletedPathComparesAFileAnotherProgramCreatesBeforeTheWrite(t *testing.T) {
+	ctx := context.Background()
+	dialog := &editingSaveDialog{}
+	var path string
+	service := NewAppModelServiceForHost(WithEmitter(&recordingEmitter{}), WithDialogs(nil, dialog), AppModelOption{AutosaveTimer: &fakeAutosaveClock{}, WriteExecutor: replaceAfterExternalChange(func() {
+		if err := os.WriteFile(path, []byte("recreated\n"), 0o640); err != nil {
+			t.Errorf("recreate: %v", err)
+		}
+	})})
+	path, id := openAutosaveDocument(t, service, "base\n")
+	dialog.path = path
+	dialog.whileOpen = func() {
+		if err := os.Remove(path); err != nil {
+			t.Errorf("delete: %v", err)
+		}
+	}
+	if err := service.UpdateBuffer(ctx, id, "mine\n"); err != nil {
+		t.Fatalf("UpdateBuffer: %v", err)
+	}
+
+	result := service.SaveAs(ctx, id, contentRevision(t, service, id), "")
+
+	if result.Status != apperr.WriteStatusConflict || result.Conflict == nil || result.Conflict.OnDisk.Text != "recreated\n" || result.Conflict.Yours.Text != "mine\n" {
+		t.Fatalf("SaveAs = %+v, want a comparison with the recreated file", result)
+	}
+	disk, err := os.ReadFile(path)
+	if err != nil || string(disk) != "recreated\n" {
+		t.Fatalf("disk = %q, %v; want the other program's file kept", disk, err)
+	}
+}

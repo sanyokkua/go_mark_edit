@@ -258,7 +258,7 @@ SHALL preserve it.
 
 ### Requirement: Save As onto the document's own file
 
-WHEN the user chooses Save As and selects the file the document is already tied to, by its path or by a symbolic or hard link to it, the system SHALL compare that file with the version the document loaded, not with the file as it is after the dialogs close. A file that changed in the meantime SHALL produce the comparison and SHALL NOT be overwritten; a modification time change with identical bytes SHALL NOT raise a conflict.
+WHEN the user chooses Save As and selects the file the document is already tied to, by its path or by a symbolic or hard link to it, the system SHALL compare that file with the version the document loaded, not with the file after the dialogs close. A file that changed in the meantime SHALL produce the comparison and SHALL NOT be overwritten; a modification time change with identical bytes SHALL NOT raise a conflict. A file deleted meanwhile SHALL be recreated with the user's text.
 
 #### Scenario: External edit while the Save As dialog is open
 
@@ -271,6 +271,12 @@ WHEN the user chooses Save As and selects the file the document is already tied 
 - **WHEN** another program only changes the timestamp of "notes.md" while the Save As dialog is open and the user
   selects "notes.md"
 - **THEN** no dialog appears and "notes.md" contains the user's text
+
+#### Scenario: Deleted while the Save As dialog is open
+
+- **WHEN** another program deletes "notes.md" while the Save As dialog is open and the user selects "notes.md"
+- **THEN** no dialog appears, "notes.md" is created with the user's text and the tab is clean and tied to it; if
+  another program creates "notes.md" again before the write, the comparison with its text appears instead
 
 ### Requirement: Conflict found during replacement
 
