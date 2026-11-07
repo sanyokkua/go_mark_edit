@@ -107,7 +107,10 @@ void test('macOS prerelease uses numeric bundle versions', () => {
         for (const command of ['go', 'npm', 'wails'])
             writeFileSync(join(root, 'bin', command), '#!/bin/sh\nexit 0\n', { mode: 0o755 });
         writeFileSync(join(root, 'bin/uname'), '#!/bin/sh\necho Darwin\n', { mode: 0o755 });
-        writeFileSync(join(root, 'bin/plutil'), '#!/bin/sh\nprintf "%s\\n" "$*" >> "$TRACE"\n', { mode: 0o755 });
+        writeFileSync(join(root, 'bin/plutil'), '#!/bin/sh\nprintf "plutil %s\\n" "$*" >> "$TRACE"\n', { mode: 0o755 });
+        writeFileSync(join(root, 'bin/codesign'), '#!/bin/sh\nprintf "codesign %s\\n" "$*" >> "$TRACE"\n', {
+            mode: 0o755,
+        });
         spawnSync('git', ['init', '--quiet'], { cwd: root });
         spawnSync('git', ['add', '.'], { cwd: root });
         spawnSync(
@@ -134,6 +137,13 @@ void test('macOS prerelease uses numeric bundle versions', () => {
         const values = readFileSync(trace, 'utf8');
         assert.match(values, /CFBundleShortVersionString -string 1\.2\.3 /);
         assert.match(values, /CFBundleVersion -string 1\.2\.3 /);
+        // Editing Info.plist breaks the ad-hoc seal Wails applied, so the bundle is sealed again afterwards.
+        const lines = values.trim().split('\n');
+        const lastEdit = lines.findLastIndex((line) => line.startsWith('plutil '));
+        const resign = lines.findIndex((line) => /^codesign --force --deep --sign - .*GoMarkEdit\.app$/.test(line));
+        const verify = lines.findIndex((line) => /^codesign --verify --deep --strict .*GoMarkEdit\.app$/.test(line));
+        assert.ok(resign > lastEdit, `re-sign must follow the plist edits: ${values}`);
+        assert.ok(verify > resign, `seal verification must follow the re-sign: ${values}`);
     } finally {
         rmSync(root, { recursive: true, force: true });
     }

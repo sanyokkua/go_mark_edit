@@ -189,6 +189,10 @@ if [[ "$(uname -s)" == 'Darwin' && -n "$version" ]]; then
     bundle_version="${version%%-*}"
     plutil -replace CFBundleShortVersionString -string "$bundle_version" "$bundle"
     plutil -replace CFBundleVersion -string "$bundle_version" "$bundle"
+    # Wails ad-hoc signs the bundle before this edit, which invalidates the seal; seal it again.
+    app_bundle="${bundle%/Contents/Info.plist}"
+    codesign --force --deep --sign - "$app_bundle"
+    codesign --verify --deep --strict "$app_bundle"
 fi
 
 if [[ "$release" == false && -x "$REPO_ROOT/tools/lint/bundle-scan.mjs" ]]; then
