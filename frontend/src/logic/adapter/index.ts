@@ -35,6 +35,7 @@ import {
     RevealInFileManager,
     ResolveClosePlan,
     SetDocView,
+    SetReadingActive,
     SetUILayout,
     UpdateBuffer,
     Save,
@@ -154,6 +155,7 @@ const commandArities: Readonly<Record<string, number>> = {
     'AppModelHandler.RevealInFileManager': 1,
     'AppModelHandler.UpdateBuffer': 3,
     'AppModelHandler.SetDocView': 2,
+    'AppModelHandler.SetReadingActive': 1,
     'AppModelHandler.SetUILayout': 1,
     'AppModelHandler.PrepareClose': 3,
     'AppModelHandler.ResolveClosePlan': 2,
@@ -405,6 +407,7 @@ const commandInvokerCopyPath = command('AppModelHandler.CopyPath', CopyPath);
 const commandInvokerRevealInFileManager = command('AppModelHandler.RevealInFileManager', RevealInFileManager);
 const commandInvokerUpdateBuffer = command('AppModelHandler.UpdateBuffer', UpdateBuffer);
 const commandInvokerSetDocView = command('AppModelHandler.SetDocView', SetDocView);
+const commandInvokerSetReadingActive = command('AppModelHandler.SetReadingActive', SetReadingActive);
 const commandInvokerSetUILayout = command('AppModelHandler.SetUILayout', SetUILayout);
 const commandInvokerPrepareClose = command('AppModelHandler.PrepareClose', PrepareClose);
 const commandInvokerResolveClosePlan = command('AppModelHandler.ResolveClosePlan', ResolveClosePlan, {
@@ -559,6 +562,7 @@ const generatedAppModelBindings: AppModelBindings = {
         normalizePathCommandResult(await commandInvokerRevealInFileManager(documentId)),
     updateBuffer: commandInvokerUpdateBuffer,
     setDocView: (documentId, view) => commandInvokerSetDocView(documentId, new apperr.DocViewInput(view)),
+    setReadingActive: (active) => commandInvokerSetReadingActive(active),
     setUILayout: (layout) => commandInvokerSetUILayout(new apperr.UILayout(layout)),
 };
 

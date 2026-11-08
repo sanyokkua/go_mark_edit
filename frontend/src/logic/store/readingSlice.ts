@@ -2,9 +2,10 @@ import { createSlice } from '@reduxjs/toolkit';
 
 /**
  * Transient Reading-mode presentation state. It is a frontend-only projection:
- * it is never persisted, never sent to the backend and starts inactive on every
- * launch. `sidebarShown` and `tabsShown` describe the overlays the reader has
- * summoned; entering Reading mode always starts with both hidden.
+ * it is never persisted per document and starts inactive on every launch. Only
+ * the `active` flag is reported to the backend (see `useReadingActiveSync`) so
+ * "Remember last used" can restore Reading mode as the global last mode.
+ * `sidebarShown` and `tabsShown` describe the overlays the reader has summoned; entering Reading mode always starts with both hidden.
  */
 export interface ReadingState {
     active: boolean;

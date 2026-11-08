@@ -22,36 +22,40 @@ var nextDocumentID uint64
 
 // AppModelService is the mutex-guarded owner of live document and layout state.
 type AppModelService struct {
-	mu                             sync.RWMutex
-	state                          applicationState
-	commands                       DocumentCommandAPI
-	content                        DocumentContentAccessor
-	emitter                        StatePatchEmitter
-	layout                         LayoutRepositoryAPI
-	sequence                       uint64
-	writerID                       string
-	timer                          LayoutTimer
-	autosaveTimer                  AutosaveTimerFactory
-	autosaveEnabled                bool
-	pending                        *pendingLayout
-	pendingFlushDone               chan struct{}
-	layoutCloseDrains              int
-	startupErr                     error
-	pendingClose                   *apperr.PendingClose
-	reservations                   map[string]*openReservation
-	closePlans                     map[string]*closePlan
-	activeClosePlan                string
-	writeExecutor                  WriteExecutor
-	writeCommitObserver            WriteCommitObserver
-	runtimeContext                 context.Context
-	conflictQueue                  *conflictQueue
-	shutdownDraining               bool
-	shutdownDiscarding             bool
-	preparedQuitFenced             bool
-	discardEpoch                   uint64
-	metadata                       FileMetadataRepository
-	recentItems                    RecentItemsRepository
-	defaultOpenMode                string
+	mu                  sync.RWMutex
+	state               applicationState
+	commands            DocumentCommandAPI
+	content             DocumentContentAccessor
+	emitter             StatePatchEmitter
+	layout              LayoutRepositoryAPI
+	sequence            uint64
+	writerID            string
+	timer               LayoutTimer
+	autosaveTimer       AutosaveTimerFactory
+	autosaveEnabled     bool
+	pending             *pendingLayout
+	pendingFlushDone    chan struct{}
+	layoutCloseDrains   int
+	startupErr          error
+	pendingClose        *apperr.PendingClose
+	reservations        map[string]*openReservation
+	closePlans          map[string]*closePlan
+	activeClosePlan     string
+	writeExecutor       WriteExecutor
+	writeCommitObserver WriteCommitObserver
+	runtimeContext      context.Context
+	conflictQueue       *conflictQueue
+	shutdownDraining    bool
+	shutdownDiscarding  bool
+	preparedQuitFenced  bool
+	discardEpoch        uint64
+	metadata            FileMetadataRepository
+	recentItems         RecentItemsRepository
+	openMode            string
+	// lastOpenMode is the mode the user last worked in (reading, editor, split or
+	// preview; "" before any), so the Last open mode can restore it.
+	lastOpenMode                   string
+	readingActive                  bool
 	openDialog                     DocumentOpenDialog
 	folderDialog                   WorkspaceFolderDialog
 	saveDialog                     DocumentSaveDialog
@@ -92,7 +96,7 @@ func NewAppModelServiceForHost(options ...AppModelOption) *AppModelService {
 }
 
 func newAppModelService(options ...AppModelOption) *AppModelService {
-	service := &AppModelService{timer: systemLayoutTimer{}, autosaveTimer: systemAutosaveTimerFactory{}, autosaveEnabled: true, writerID: newLayoutWriterID(), reservations: make(map[string]*openReservation), closePlans: make(map[string]*closePlan), conflictQueue: newConflictQueue(), stableRead: file.ReadClassifiedStable, diskVersion: file.CurrentDiskVersion, defaultOpenMode: OpenModeEditor, applicationVersion: "dev", logger: zerolog.Nop(), state: applicationState{
+	service := &AppModelService{timer: systemLayoutTimer{}, autosaveTimer: systemAutosaveTimerFactory{}, autosaveEnabled: true, writerID: newLayoutWriterID(), reservations: make(map[string]*openReservation), closePlans: make(map[string]*closePlan), conflictQueue: newConflictQueue(), stableRead: file.ReadClassifiedStable, diskVersion: file.CurrentDiskVersion, openMode: OpenModeLast, applicationVersion: "dev", logger: zerolog.Nop(), state: applicationState{
 		documents: make(map[string]*openDocument),
 		ui: apperr.UILayout{
 			WindowWidth:    pointerTo(1024),
@@ -125,11 +129,13 @@ func (service *AppModelService) SetRecentItemsRepository(repository RecentItemsR
 
 // SetDefaultOpenMode records the acknowledged setting used before path arrangements.
 func (service *AppModelService) SetDefaultOpenMode(mode string) {
-	if mode != OpenModeEditor && mode != OpenModeViewer {
+	switch mode {
+	case OpenModeReading, OpenModeEditor, OpenModeSplit, OpenModePreview, OpenModeLast:
+	default:
 		return
 	}
 	service.mu.Lock()
-	service.defaultOpenMode = mode
+	service.openMode = mode
 	service.mu.Unlock()
 }
 
@@ -399,8 +405,16 @@ func (service *AppModelService) RestoreUILayout(ctx context.Context) error {
 		restoreLayoutField(&restored, field, value.Value)
 	}
 
+	lastMode, found, err := repository.Read(ctx, LayoutLastOpenMode)
+	if err != nil && firstReadErr == nil {
+		firstReadErr = classifyLayoutReadError(LayoutLastOpenMode, err)
+	}
+
 	service.mu.Lock()
 	mergeUILayout(&service.state.ui, restored)
+	if err == nil && found && validLastOpenMode(lastMode.Value) {
+		service.lastOpenMode = lastMode.Value.(string)
+	}
 	service.mu.Unlock()
 	return firstReadErr
 }
@@ -468,6 +482,8 @@ func (service *AppModelService) SetDocView(ctx context.Context, documentID strin
 		return apperr.NotFound(documentID)
 	}
 	previous := document.metadata.View
+	// A document without a saved view shows the window's arrangement; compare against what the user saw.
+	previousShown := service.effectiveDocumentMetadataLocked(document).View.Arrangement
 	ratio := previous.SplitRatio
 	if input.SplitRatio != nil {
 		ratio = *input.SplitRatio
@@ -482,6 +498,9 @@ func (service *AppModelService) SetDocView(ctx context.Context, documentID strin
 		Scroll:         input.Scroll,
 	}
 	document.hasSavedView = true
+	if !service.readingActive && previousShown != document.metadata.View.Arrangement {
+		service.recordLastOpenModeLocked(ctx, document.metadata.View.Arrangement)
+	}
 	patch := service.documentPatchLocked(documentID)
 	if err := service.publishLocked(ctx, before, patch); err != nil {
 		service.mu.Unlock()
@@ -499,6 +518,42 @@ func (service *AppModelService) SetDocView(ctx context.Context, documentID strin
 	}
 
 	return nil
+}
+
+// SetReadingActive records that the frontend entered or left Reading mode so the
+// Last open mode can restore it. Leaving Reading returns the remembered mode to
+// the active document's arrangement, the one Reading was covering.
+func (service *AppModelService) SetReadingActive(ctx context.Context, active bool) error {
+	service.mu.Lock()
+	defer service.mu.Unlock()
+	service.readingActive = active
+	if active {
+		service.recordLastOpenModeLocked(ctx, OpenModeReading)
+		return nil
+	}
+	// With no document the shell leaves Reading by itself; that must not forget Reading as the last mode.
+	if document := service.state.documents[service.state.activeDocumentID]; document != nil {
+		service.recordLastOpenModeLocked(ctx, service.effectiveDocumentMetadataLocked(document).View.Arrangement)
+	}
+	return nil
+}
+
+// recordLastOpenModeLocked remembers mode as the one the Last open mode restores
+// and persists it beside the window layout. A failed write is logged, not
+// surfaced: the in-memory value still serves this run.
+func (service *AppModelService) recordLastOpenModeLocked(ctx context.Context, mode string) {
+	if service.lastOpenMode == mode {
+		return
+	}
+	service.lastOpenMode = mode
+	if service.layout == nil {
+		return
+	}
+	service.sequence++
+	candidate := VersionedLayoutValue{Version: 1, Value: mode, ChangedAtUnixNano: time.Now().UnixNano(), WriterID: service.writerID, Sequence: service.sequence}
+	if _, err := service.layout.Write(ctx, LayoutLastOpenMode, candidate); err != nil {
+		service.logger.Warn().Err(err).Msg("the last open mode could not be stored")
+	}
 }
 
 func (service *AppModelService) effectiveDocumentMetadataLocked(document *openDocument) apperr.DocumentMetadata {

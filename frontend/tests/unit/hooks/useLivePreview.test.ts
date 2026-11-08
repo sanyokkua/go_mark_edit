@@ -43,6 +43,7 @@ function createBufferAdapter(
             getState: async (): Promise<{ data: AppModelState }> => ({ data: state }),
             updateBuffer,
             setDocView: async (): Promise<VoidResult> => ({}),
+            setReadingActive: async () => ({}),
             setUILayout: async (): Promise<VoidResult> => ({}),
         },
         runtime,

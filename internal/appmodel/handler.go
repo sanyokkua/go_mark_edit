@@ -33,6 +33,7 @@ type AppModelServiceAPI interface {
 	UpdateBufferFrom(ctx context.Context, documentID, content string, baseRevision uint64) error
 	SetDocView(ctx context.Context, documentID string, view apperr.DocViewInput) error
 	SetUILayout(ctx context.Context, layout apperr.UILayout) error
+	SetReadingActive(ctx context.Context, active bool) error
 	Save(ctx context.Context, documentID string, contentRevision uint64, decisionToken string) apperr.WriteResult
 	// CancelNormalization takes no context: it only releases an in-memory
 	// authorization and touches neither disk nor the operating system.
@@ -423,6 +424,18 @@ func (handler *AppModelHandler) SetDocView(request bridge.Request, documentID st
 	defer bridge.Guard(&res)
 	return bridge.Once(handler.outcomes, request, func() apperr.VoidResult {
 		if err := handler.service.SetDocView(handler.context(), documentID, view); err != nil {
+			wire := apperr.ToWire(handler.zlog(), err)
+			return apperr.VoidResult{Error: &wire}
+		}
+		return apperr.VoidResult{}
+	})
+}
+
+// SetReadingActive records that Reading mode was entered or left, so the Last open mode can restore it.
+func (handler *AppModelHandler) SetReadingActive(request bridge.Request, active bool) (res apperr.VoidResult) {
+	defer bridge.Guard(&res)
+	return bridge.Once(handler.outcomes, request, func() apperr.VoidResult {
+		if err := handler.service.SetReadingActive(handler.context(), active); err != nil {
 			wire := apperr.ToWire(handler.zlog(), err)
 			return apperr.VoidResult{Error: &wire}
 		}

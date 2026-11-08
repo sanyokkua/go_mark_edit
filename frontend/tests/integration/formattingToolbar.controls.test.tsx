@@ -298,7 +298,7 @@ it('passes acknowledged marker preferences into toolbar formatting', async () =>
             appearance: {
                 theme: 'material',
                 mode: 'auto',
-                defaultOpenMode: 'editor',
+                openMode: 'editor',
                 readingWidth: 'page',
                 pdfAppearance: 'styled',
             },

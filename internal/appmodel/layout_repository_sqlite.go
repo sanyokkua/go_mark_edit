@@ -143,6 +143,10 @@ func validateVersionedLayoutValue(field string, value VersionedLayoutValue) erro
 		if !validLayoutArrangement(value.Value) {
 			return fmt.Errorf("invalid arrangement fallback")
 		}
+	case LayoutLastOpenMode:
+		if !validLastOpenMode(value.Value) {
+			return fmt.Errorf("invalid last open mode")
+		}
 	default:
 		return fmt.Errorf("unknown layout field")
 	}
@@ -160,6 +164,11 @@ func validateLayoutMinimum(value any, minimum int, message string) error {
 func validLayoutArrangement(value any) bool {
 	arrangement, ok := value.(string)
 	return ok && validArrangement(arrangement)
+}
+
+func validLastOpenMode(value any) bool {
+	mode, ok := value.(string)
+	return ok && (mode == OpenModeReading || validArrangement(mode))
 }
 
 func layoutValueIsNewer(candidate, stored VersionedLayoutValue) bool {

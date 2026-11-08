@@ -91,6 +91,7 @@ it('exposes guarded refresh and clear recent commands', async () => {
             clearRecentItems,
             updateBuffer: async () => ({}),
             setDocView: async () => ({}),
+            setReadingActive: async () => ({}),
             setUILayout: async () => ({}),
         },
         { eventsOn: (): (() => void) => (): void => undefined },
@@ -151,6 +152,7 @@ it('preserves optional tab and path command forwarding, arity, and order', async
         getState: async () => ({ data: state }),
         updateBuffer: async () => ({}),
         setDocView: async () => ({}),
+        setReadingActive: async () => ({}),
         setUILayout: async () => ({}),
     };
     const runtime = { eventsOn: (): (() => void) => (): void => undefined };
@@ -205,6 +207,7 @@ it('exposes guarded New/Open commands without converting classified outcomes', a
                 void _view;
                 return {};
             },
+            setReadingActive: async () => ({}),
             setUILayout: async (_layout): Promise<VoidResult> => {
                 void _layout;
                 return {};
@@ -244,6 +247,7 @@ it('flushes the latest buffer and view queues as one ordered lifecycle drain', a
             getState: async (): Promise<{ data: AppModelState }> => ({ data: state }),
             updateBuffer,
             setDocView,
+            setReadingActive: async () => ({}),
             setUILayout: async (): Promise<VoidResult> => ({}),
         },
         { eventsOn: (): (() => void) => (): void => undefined },
@@ -280,6 +284,7 @@ it('keeps a superseded update unacknowledged, reports it with the current revisi
             getState: async (): Promise<{ data: AppModelState }> => ({ data: state }),
             updateBuffer,
             setDocView: async (): Promise<VoidResult> => ({}),
+            setReadingActive: async () => ({}),
             setUILayout: async (): Promise<VoidResult> => ({}),
         },
         { eventsOn: (): (() => void) => (): void => undefined },
@@ -311,6 +316,7 @@ it('acknowledges the superseded text once it is resent on the current revision',
             getState: async (): Promise<{ data: AppModelState }> => ({ data: state }),
             updateBuffer,
             setDocView: async (): Promise<VoidResult> => ({}),
+            setReadingActive: async () => ({}),
             setUILayout: async (): Promise<VoidResult> => ({}),
         },
         { eventsOn: (): (() => void) => (): void => undefined },
@@ -335,6 +341,7 @@ it('forgets a superseded update when its editor session ends', async () => {
             getState: async (): Promise<{ data: AppModelState }> => ({ data: state }),
             updateBuffer: supersedingBindings('typed before reload', 9),
             setDocView: async (): Promise<VoidResult> => ({}),
+            setReadingActive: async () => ({}),
             setUILayout: async (): Promise<VoidResult> => ({}),
         },
         { eventsOn: (): (() => void) => (): void => undefined },
@@ -359,6 +366,7 @@ it('ignores a superseded response that arrives after its editor session ended', 
                     resolveUpdate = resolve;
                 }),
             setDocView: async (): Promise<VoidResult> => ({}),
+            setReadingActive: async () => ({}),
             setUILayout: async (): Promise<VoidResult> => ({}),
         },
         { eventsOn: (): (() => void) => (): void => undefined },
@@ -391,6 +399,7 @@ it('routes imperative flush through the registered activation session', async ()
                 void _view;
                 return {};
             },
+            setReadingActive: async () => ({}),
             setUILayout: async (_layout): Promise<VoidResult> => {
                 void _layout;
                 return {};
@@ -427,6 +436,7 @@ it('failed outgoing flush keeps the current session installed', async () => {
             getState: async (): Promise<{ data: AppModelState }> => ({ data: state }),
             updateBuffer: async (): Promise<VoidResult> => ({}),
             setDocView: async (): Promise<VoidResult> => ({}),
+            setReadingActive: async () => ({}),
             setUILayout: async (): Promise<VoidResult> => ({}),
         },
         { eventsOn: (): (() => void) => (): void => undefined },
@@ -450,6 +460,7 @@ it('ignores a stale activation flush after a newer document owns the session', a
             getState: async (): Promise<{ data: AppModelState }> => ({ data: state }),
             updateBuffer,
             setDocView: async (): Promise<VoidResult> => ({}),
+            setReadingActive: async () => ({}),
             setUILayout: async (): Promise<VoidResult> => ({}),
         },
         { eventsOn: (): (() => void) => (): void => undefined },
@@ -495,6 +506,7 @@ it('aborts the lifecycle drain before the view queue when content acceptance fai
                 };
             },
             setDocView,
+            setReadingActive: async () => ({}),
             setUILayout: async (): Promise<VoidResult> => ({}),
         },
         { eventsOn: (): (() => void) => (): void => undefined },
@@ -518,6 +530,7 @@ it('committed result rehydrates without duplicate Save', async (): Promise<void>
             getState,
             updateBuffer: async (): Promise<VoidResult> => ({}),
             setDocView: async (): Promise<VoidResult> => ({}),
+            setReadingActive: async () => ({}),
             setUILayout: async (): Promise<VoidResult> => ({}),
         },
         { eventsOn: (): (() => void) => (): void => undefined },
@@ -567,6 +580,7 @@ it('blocks later lifecycle work through bounded recovery and exposes saved-on-di
             copyPath,
             updateBuffer: async (): Promise<VoidResult> => ({}),
             setDocView: async (): Promise<VoidResult> => ({}),
+            setReadingActive: async () => ({}),
             setUILayout: async (): Promise<VoidResult> => ({}),
         },
         { eventsOn: (): (() => void) => (): void => undefined },
@@ -634,6 +648,7 @@ it('coalesces edits in the adapter-owned timer', async () => {
             getState: async (): Promise<{ data: AppModelState }> => ({ data: state }),
             updateBuffer,
             setDocView: async (): Promise<VoidResult> => ({}),
+            setReadingActive: async () => ({}),
             setUILayout: async (): Promise<VoidResult> => ({}),
         },
         { eventsOn: (): (() => void) => (): void => undefined },
@@ -666,6 +681,7 @@ it('keeps a newer view command from being overwritten by stale cursor synchroniz
             getState: async (): Promise<{ data: AppModelState }> => ({ data: state }),
             updateBuffer: async (): Promise<VoidResult> => ({}),
             setDocView,
+            setReadingActive: async () => ({}),
             setUILayout: async (): Promise<VoidResult> => ({}),
         },
         { eventsOn: (): (() => void) => (): void => undefined },
@@ -722,6 +738,7 @@ it('serializes every document view intent while documents remain independent', a
             getState: async (): Promise<{ data: AppModelState }> => ({ data: state }),
             updateBuffer: async (): Promise<VoidResult> => ({}),
             setDocView,
+            setReadingActive: async () => ({}),
             setUILayout: async (): Promise<VoidResult> => ({}),
         },
         { eventsOn: (): (() => void) => (): void => undefined },
@@ -777,6 +794,7 @@ it('serializes both attempted resolver orders around newer explicit intent', asy
                 }),
                 updateBuffer: async (): Promise<VoidResult> => ({}),
                 setDocView,
+                setReadingActive: async () => ({}),
                 setUILayout: async (): Promise<VoidResult> => ({}),
             },
             { eventsOn: (): (() => void) => (): void => undefined },
@@ -818,6 +836,7 @@ it('replaces unsent view intent with the latest immutable snapshot', async () =>
             getState: async (): Promise<{ data: AppModelState }> => ({ data: state }),
             updateBuffer: async (): Promise<VoidResult> => ({}),
             setDocView,
+            setReadingActive: async () => ({}),
             setUILayout: async (): Promise<VoidResult> => ({}),
         },
         { eventsOn: (): (() => void) => (): void => undefined },
@@ -852,6 +871,7 @@ it('flushes the latest document view intent after an in-flight request', async (
             getState: async (): Promise<{ data: AppModelState }> => ({ data: state }),
             updateBuffer: async (): Promise<VoidResult> => ({}),
             setDocView,
+            setReadingActive: async () => ({}),
             setUILayout: async (): Promise<VoidResult> => ({}),
         },
         { eventsOn: (): (() => void) => (): void => undefined },
@@ -902,6 +922,7 @@ it('retains newest unsent intent after failure and reports the existing toast', 
             getState: async (): Promise<{ data: AppModelState }> => ({ data: state }),
             updateBuffer: async (): Promise<VoidResult> => ({}),
             setDocView,
+            setReadingActive: async () => ({}),
             setUILayout: async (): Promise<VoidResult> => ({}),
         },
         { eventsOn: (): (() => void) => (): void => undefined },
@@ -938,6 +959,7 @@ it('preserves adapter signatures and command-to-patch ownership', async () => {
             getState: async (): Promise<{ data: AppModelState }> => ({ data: state }),
             updateBuffer: async (): Promise<VoidResult> => ({}),
             setDocView,
+            setReadingActive: async () => ({}),
             setUILayout: async (): Promise<VoidResult> => ({}),
         },
         { eventsOn: (): (() => void) => (): void => undefined },
@@ -970,6 +992,7 @@ it('merges a partial arrangement with the newest cursor, selection, and editor a
             getState: async (): Promise<{ data: AppModelState }> => ({ data: state }),
             updateBuffer: async (): Promise<VoidResult> => ({}),
             setDocView,
+            setReadingActive: async () => ({}),
             setUILayout: async (): Promise<VoidResult> => ({}),
         },
         { eventsOn: (): (() => void) => (): void => undefined },
@@ -1007,6 +1030,7 @@ it('commits a split ratio with the latest cursor, selection, scroll, and pane vi
             getState: async (): Promise<{ data: AppModelState }> => ({ data: state }),
             updateBuffer: async (): Promise<VoidResult> => ({}),
             setDocView,
+            setReadingActive: async () => ({}),
             setUILayout: async (): Promise<VoidResult> => ({}),
         },
         { eventsOn: (): (() => void) => (): void => undefined },
@@ -1038,6 +1062,7 @@ it('omits a committed split ratio from a later cursor-only view packet', async (
             getState: async (): Promise<{ data: AppModelState }> => ({ data: state }),
             updateBuffer: async (): Promise<VoidResult> => ({}),
             setDocView,
+            setReadingActive: async () => ({}),
             setUILayout: async (): Promise<VoidResult> => ({}),
         },
         { eventsOn: (): (() => void) => (): void => undefined },
@@ -1070,6 +1095,7 @@ it('persists a queued ratio change when a cursor update coalesces behind an in-f
             getState: async (): Promise<{ data: AppModelState }> => ({ data: state }),
             updateBuffer: async (): Promise<VoidResult> => ({}),
             setDocView,
+            setReadingActive: async () => ({}),
             setUILayout: async (): Promise<VoidResult> => ({}),
         },
         { eventsOn: (): (() => void) => (): void => undefined },
@@ -1100,6 +1126,7 @@ it('omits a stale split ratio from a lifecycle view flush after a resize', async
             getState: async (): Promise<{ data: AppModelState }> => ({ data: state }),
             updateBuffer: async (): Promise<VoidResult> => ({}),
             setDocView,
+            setReadingActive: async () => ({}),
             setUILayout: async (): Promise<VoidResult> => ({}),
         },
         { eventsOn: (): (() => void) => (): void => undefined },
@@ -1130,6 +1157,7 @@ it('keeps split ratios independent when views for two documents are queued', asy
             getState: async (): Promise<{ data: AppModelState }> => ({ data: state }),
             updateBuffer: async (): Promise<VoidResult> => ({}),
             setDocView,
+            setReadingActive: async () => ({}),
             setUILayout: async (): Promise<VoidResult> => ({}),
         },
         { eventsOn: (): (() => void) => (): void => undefined },
@@ -1184,6 +1212,7 @@ it('retries the newest failed arrangement intent with current fields while stale
             getState: async (): Promise<{ data: AppModelState }> => ({ data: state }),
             updateBuffer: async (): Promise<VoidResult> => ({}),
             setDocView,
+            setReadingActive: async () => ({}),
             setUILayout: async (): Promise<VoidResult> => ({}),
         },
         { eventsOn: (): (() => void) => (): void => undefined },
@@ -1223,6 +1252,9 @@ it('wraps app-model commands without optimistic state', async () => {
         setDocView(documentId, view) {
             void view;
             calls.push(`view:${documentId}`);
+            return Promise.resolve({ error: undefined });
+        },
+        setReadingActive() {
             return Promise.resolve({ error: undefined });
         },
         setUILayout(layout) {
@@ -1283,6 +1315,7 @@ it('wraps app-model commands without optimistic state', async () => {
     const rejectingAdapter = createAppModelAdapter(
         {
             ...bindings,
+            setReadingActive: async () => ({}),
             setUILayout: async (layout) => {
                 void layout;
                 return { error: wireError };
@@ -1312,6 +1345,7 @@ it('fans out state patches with independent disposal', () => {
         getState: async () => ({ data: state }),
         updateBuffer: async () => ({}),
         setDocView: async () => ({}),
+        setReadingActive: async () => ({}),
         setUILayout: async () => ({}),
     };
     const adapter = createAppModelAdapter(bindings, runtime);
@@ -1361,6 +1395,7 @@ it('drops a null tab order at the bridge so the declared patch shape holds', () 
             getState: async () => ({ data: state }),
             updateBuffer: async () => ({}),
             setDocView: async () => ({}),
+            setReadingActive: async () => ({}),
             setUILayout: async () => ({}),
         },
         runtime,
@@ -1395,6 +1430,7 @@ it('keeps an empty tab order, which is the last document closing', () => {
             getState: async () => ({ data: state }),
             updateBuffer: async () => ({}),
             setDocView: async () => ({}),
+            setReadingActive: async () => ({}),
             setUILayout: async () => ({}),
         },
         runtime,
@@ -1414,6 +1450,7 @@ it('When the backend closes a workspace, the adapter preserves the explicit null
             getState: async () => ({ data: state }),
             updateBuffer: async () => ({}),
             setDocView: async () => ({}),
+            setReadingActive: async () => ({}),
             setUILayout: async () => ({}),
         },
         runtime,
@@ -1458,6 +1495,7 @@ it('When workspace commands receive valid calls, the adapter forwards each comma
             closeWorkspace,
             updateBuffer: async () => ({}),
             setDocView: async () => ({}),
+            setReadingActive: async () => ({}),
             setUILayout: async () => ({}),
         },
         { eventsOn: (): (() => void) => (): void => undefined },
@@ -1524,6 +1562,7 @@ it('returns a canonical chosen folder without opening it, and preserves picker c
             openWorkspace,
             updateBuffer: async () => ({}),
             setDocView: async () => ({}),
+            setReadingActive: async () => ({}),
             setUILayout: async () => ({}),
         },
         { eventsOn: (): (() => void) => (): void => undefined },
@@ -1584,6 +1623,7 @@ it('When workspace refusals omit remediations, the adapter provides an empty lis
             closeWorkspace,
             updateBuffer: async () => ({}),
             setDocView: async () => ({}),
+            setReadingActive: async () => ({}),
             setUILayout: async () => ({}),
         },
         { eventsOn: (): (() => void) => (): void => undefined },
@@ -1626,6 +1666,7 @@ it('reports the first buffer delivery failure until a successful delivery rearms
             getState: () => Promise.resolve({ data: state }),
             updateBuffer,
             setDocView: () => Promise.resolve({}),
+            setReadingActive: async () => ({}),
             setUILayout: () => Promise.resolve({}),
         },
         { eventsOn: () => () => undefined },
@@ -1666,6 +1707,7 @@ it('keeps newer buffer text when an older in-flight delivery fails', async () =>
             getState: () => Promise.resolve({ data: state }),
             updateBuffer,
             setDocView: () => Promise.resolve({}),
+            setReadingActive: async () => ({}),
             setUILayout: () => Promise.resolve({}),
         },
         { eventsOn: () => () => undefined },
@@ -1697,7 +1739,13 @@ it('retains queued content across session cleanup only in interface recovery', a
         return Promise.resolve({});
     });
     const adapter = createAppModelAdapter(
-        { getState: async () => ({ data: state }), updateBuffer, setDocView, setUILayout: async () => ({}) },
+        {
+            getState: async () => ({ data: state }),
+            updateBuffer,
+            setDocView,
+            setReadingActive: async () => ({}),
+            setUILayout: async () => ({}),
+        },
         { eventsOn: () => () => undefined },
     );
 
@@ -1737,6 +1785,7 @@ it('retains newer pending content behind a failed in-flight delivery during reco
             getState: async () => ({ data: state }),
             updateBuffer,
             setDocView: async () => ({}),
+            setReadingActive: async () => ({}),
             setUILayout: async () => ({}),
         },
         { eventsOn: () => () => undefined },
@@ -1754,4 +1803,45 @@ it('retains newer pending content behind a failed in-flight delivery during reco
     await adapter.flushBuffer('one');
     expect(updateBuffer.mock.calls.map(([, content]) => content)).toEqual(['older', 'newer']);
     expect(adapter.getPendingBufferDocumentIds()).toEqual([]);
+});
+
+it('sends the Reading-mode flag to the backend and surfaces a rejection', async () => {
+    const setReadingActive = jest.fn(async (active: boolean): Promise<VoidResult> => {
+        void active;
+        return {};
+    });
+    const adapter = createAppModelAdapter(
+        {
+            getState: async () => ({ data: state }),
+            updateBuffer: async () => ({}),
+            setDocView: async () => ({}),
+            setReadingActive,
+            setUILayout: async () => ({}),
+        },
+        { eventsOn: () => () => undefined },
+    );
+
+    await expect(adapter.setReadingActive(true)).resolves.toBeUndefined();
+    expect(setReadingActive).toHaveBeenCalledWith(true);
+
+    const wireError = {
+        code: 'internal',
+        title: 'Failed',
+        message: 'The backend rejected the mode.',
+        retryable: false,
+    } satisfies WireError;
+    const rejecting = createAppModelAdapter(
+        {
+            getState: async () => ({ data: state }),
+            updateBuffer: async () => ({}),
+            setDocView: async () => ({}),
+            setReadingActive: async (active: boolean): Promise<VoidResult> => {
+                void active;
+                return { error: wireError };
+            },
+            setUILayout: async () => ({}),
+        },
+        { eventsOn: () => () => undefined },
+    );
+    await expect(rejecting.setReadingActive(false)).rejects.toBe(wireError);
 });

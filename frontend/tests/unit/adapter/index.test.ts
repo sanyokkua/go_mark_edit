@@ -12,7 +12,7 @@ const settings = {
     appearance: {
         theme: 'material',
         mode: 'auto',
-        defaultOpenMode: 'edit',
+        openMode: 'edit',
         readingWidth: 'page',
     },
     markdown: {
@@ -75,7 +75,7 @@ it('guards and unwraps every settings call', async () => {
         adapter.updateAppearance({
             theme: 'dark',
             mode: 'dark',
-            defaultOpenMode: 'view',
+            openMode: 'view',
             readingWidth: 'page',
             pdfAppearance: 'styled',
         }),

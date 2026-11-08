@@ -49,52 +49,52 @@ receive commands through props and contexts.
 
 ### Frontend composition and command owners
 
-| Owner                                                | Responsibility                                                                                                                                    |
-| ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `frontend/src/app/App.tsx`                           | Provider, controller and shell composition; no adapter calls or workflow decisions.                                                               |
-| `frontend/src/app/AppFrame.tsx` and `AppDialogs.tsx` | Typed shell and dialog presentation, retaining the application-frame portal root and provider lifetimes.                                          |
-| `frontend/src/app/useBootstrap.ts`                   | Startup attempts, hydration, readiness, failure and fresh Retry.                                                                                  |
-| `frontend/src/app/useDocumentSession.ts`             | Installed active buffer and reload epoch, through guarded activation acknowledgements.                                                            |
-| `frontend/src/app/useCommands.ts`                    | New, Open, by-kind Recent Items, Reopen and activation commands; recent folders and folder-target outcomes use the shared workspace replace flow. |
-| `frontend/src/app/useDropHandler.ts`                 | Classifies window drops and routes file and folder targets through the existing open and workspace replacement commands.                          |
-| `frontend/src/app/useDocumentWrites.ts`              | Save/Save As intent, normalization, write conflicts, committed-write reconciliation and recovery.                                                 |
-| `frontend/src/app/useCloseWorkflow.ts`               | Original tab-close or native-close origin, close plans, prompts, continuations and recovery-discard confirmation.                                 |
-| `frontend/src/app/useShutdown.ts`                    | Sole frontend native pending-close identity, subscriptions, duplicate delivery handling and acknowledgements.                                     |
-| `frontend/src/app/useExternalChanges.ts`             | Foreground checks, single-flight execution, pending comparisons and deferred rechecks.                                                            |
-| `frontend/src/app/useConflictCommands.ts`            | Shared conflict transport and guarded reload installation; callers retain their distinct continuations.                                           |
-| `frontend/src/app/useWorkflowPrompts.ts`             | Close → Save → foreground prompt priority and deferred write revalidation.                                                                        |
-| `frontend/src/app/useNotifications.ts`               | Notice/banner presentation, remediation routing, dismissal and polite Copy path announcements.                                                    |
-| `frontend/src/app/useWindowGeometry.ts`              | Readiness-gated native resize subscription and disposal.                                                                                          |
-| `frontend/src/app/useAppPresentation.ts`             | Local settings, menu, About and Shortcuts presentation state and existing command availability.                                                   |
-| `frontend/src/logic/adapter/`                        | The bridge boundary, request pacing, event subscriptions, service wrappers and the native `ClipboardPort`.                                        |
-| `frontend/src/logic/store/`                          | A disposable Redux projection of backend state; it is not the source of truth.                                                                    |
-| `frontend/src/logic/store/appModelProjection.ts`     | Initial hydration, ordered state-patch delivery and authoritative metadata recovery after revision gaps.                                          |
-| `frontend/src/logic/store/readingSlice.ts`           | Transient, never-persisted Reading mode window state: the active flag and the sidebar and tab-bar overlay flags.                                  |
-| `frontend/src/logic/store/workspaceSlice.ts`         | Disposable projection of the workspace snapshot and local tree-reading state.                                                                     |
-| `frontend/src/logic/actions/actionRegistry.ts`       | The action catalogue and availability decisions used by every command surface, including Markdown hydration, document and tidy-operation state.   |
-| `frontend/src/logic/actions/editorActionExecutor.ts` | The sole editor-action owner for dispatch, clipboard, formatting, selection snapshots and focus restoration.                                      |
-| `frontend/src/logic/format/formatting.ts`            | The inline wrapper-stack resolver and formatting runner called by the editor-action executor.                                                     |
-| `frontend/src/logic/format/listContinuation.ts`      | The pure Enter-key list continuation: next marker, or end of list on an empty item; `null` inside fences or mid-item.                             |
-| `frontend/src/logic/markdown/`                       | Markdown standards, rendering pipeline, sanitization, code highlighting, math, diagrams, headings and shared link classification.                 |
-| `frontend/src/logic/markdown/mermaid/`               | Serialized Mermaid theme/render queue, isolated realm, SVG scrubbing and bounded cache.                                                           |
-| `frontend/src/logic/tidy/`                           | Pure Format, Compact and Lint engine plus its cancellable module worker.                                                                          |
-| `frontend/src/logic/operations/`                     | Per-window tidy operation slot and ephemeral problem summary.                                                                                     |
-| `frontend/src/logic/markdown/linkPolicy.ts`          | Link classification before a preview or editor link action is dispatched.                                                                         |
-| `frontend/src/logic/scrollSync/`                     | The block-level scroll map, the synchronization controller, the scroll-port types and the preview scroll port.                                    |
-| `frontend/src/logic/hooks/useScrollSync.ts`          | Synchronized-scrolling activation and which pane the other aligns to when it starts.                                                              |
-| `frontend/src/ui/widgets/editorSession.ts`           | The document-identity-bound active editor command seam, including Monaco focus restoration.                                                       |
-| `frontend/src/ui/widgets/useEditorActionExecutor.ts` | Binds the central editor-action executor to toolbar, popup and editor-shortcut UI surfaces.                                                       |
-| `frontend/src/ui/widgets/Menubar/`                   | File, Settings, View, About and narrow overflow menu composition.                                                                                 |
-| `frontend/src/ui/widgets/DocumentTabs/`              | The DocumentTabs consumer of TabBar and tab-specific commands.                                                                                    |
-| `frontend/src/ui/widgets/WorkspaceTree/`             | Sidebar tree, header controls, empty and unavailable states, context menu and create-entry prompt.                                                |
-| `frontend/src/ui/widgets/FormattingToolbar/`         | Formatting groups, arrangement control and Bar overflow.                                                                                          |
-| `frontend/src/ui/widgets/EditorStage/`               | Editor/preview panes, arrangement, the `reading` presentation variant, preview accessory state and synchronized scrolling.                        |
-| `frontend/src/ui/widgets/ReadingControls/`           | Reading mode hover- and focus-revealed Exit, sidebar and tab-bar controls and their overlays.                                                     |
-| `frontend/src/ui/widgets/PreviewContextMenu.tsx`     | Preview and Reading mode context menu (Copy, Select all) built from the action registry.                                                          |
-| `frontend/src/ui/widgets/useReadingPresentation.ts`  | Reading mode Escape and focus handling: closes an open overlay first, then leaves Reading mode.                                                   |
-| `frontend/src/ui/widgets/ProblemsPanel/`             | Accessible presentation of active-document lint findings; activation returns through the guarded editor command seam.                             |
-| `frontend/src/ui/widgets/dialogs/`                   | Settings, About, Shortcuts, Insert table, close, conflict and normalization dialogs.                                                              |
-| `frontend/src/ui/widgets/StartupFailure/`            | Per-step startup failure, Retry and Quit.                                                                                                         |
+| Owner                                                | Responsibility                                                                                                                                                     |
+| ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `frontend/src/app/App.tsx`                           | Provider, controller and shell composition; no adapter calls or workflow decisions.                                                                                |
+| `frontend/src/app/AppFrame.tsx` and `AppDialogs.tsx` | Typed shell and dialog presentation, retaining the application-frame portal root and provider lifetimes.                                                           |
+| `frontend/src/app/useBootstrap.ts`                   | Startup attempts, hydration, readiness, failure and fresh Retry.                                                                                                   |
+| `frontend/src/app/useDocumentSession.ts`             | Installed active buffer and reload epoch, through guarded activation acknowledgements.                                                                             |
+| `frontend/src/app/useCommands.ts`                    | New, Open, by-kind Recent Items, Reopen and activation commands; recent folders and folder-target outcomes use the shared workspace replace flow.                  |
+| `frontend/src/app/useDropHandler.ts`                 | Classifies window drops and routes file and folder targets through the existing open and workspace replacement commands.                                           |
+| `frontend/src/app/useDocumentWrites.ts`              | Save/Save As intent, normalization, write conflicts, committed-write reconciliation and recovery.                                                                  |
+| `frontend/src/app/useCloseWorkflow.ts`               | Original tab-close or native-close origin, close plans, prompts, continuations and recovery-discard confirmation.                                                  |
+| `frontend/src/app/useShutdown.ts`                    | Sole frontend native pending-close identity, subscriptions, duplicate delivery handling and acknowledgements.                                                      |
+| `frontend/src/app/useExternalChanges.ts`             | Foreground checks, single-flight execution, pending comparisons and deferred rechecks.                                                                             |
+| `frontend/src/app/useConflictCommands.ts`            | Shared conflict transport and guarded reload installation; callers retain their distinct continuations.                                                            |
+| `frontend/src/app/useWorkflowPrompts.ts`             | Close → Save → foreground prompt priority and deferred write revalidation.                                                                                         |
+| `frontend/src/app/useNotifications.ts`               | Notice/banner presentation, remediation routing, dismissal and polite Copy path announcements.                                                                     |
+| `frontend/src/app/useWindowGeometry.ts`              | Readiness-gated native resize subscription and disposal.                                                                                                           |
+| `frontend/src/app/useAppPresentation.ts`             | Local settings, menu, About and Shortcuts presentation state and existing command availability.                                                                    |
+| `frontend/src/logic/adapter/`                        | The bridge boundary, request pacing, event subscriptions, service wrappers and the native `ClipboardPort`.                                                         |
+| `frontend/src/logic/store/`                          | A disposable Redux projection of backend state; it is not the source of truth.                                                                                     |
+| `frontend/src/logic/store/appModelProjection.ts`     | Initial hydration, ordered state-patch delivery and authoritative metadata recovery after revision gaps.                                                           |
+| `frontend/src/logic/store/readingSlice.ts`           | Transient Reading mode window state (never stored per document; D25 records only the global last mode): the active flag and the sidebar and tab-bar overlay flags. |
+| `frontend/src/logic/store/workspaceSlice.ts`         | Disposable projection of the workspace snapshot and local tree-reading state.                                                                                      |
+| `frontend/src/logic/actions/actionRegistry.ts`       | The action catalogue and availability decisions used by every command surface, including Markdown hydration, document and tidy-operation state.                    |
+| `frontend/src/logic/actions/editorActionExecutor.ts` | The sole editor-action owner for dispatch, clipboard, formatting, selection snapshots and focus restoration.                                                       |
+| `frontend/src/logic/format/formatting.ts`            | The inline wrapper-stack resolver and formatting runner called by the editor-action executor.                                                                      |
+| `frontend/src/logic/format/listContinuation.ts`      | The pure Enter-key list continuation: next marker, or end of list on an empty item; `null` inside fences or mid-item.                                              |
+| `frontend/src/logic/markdown/`                       | Markdown standards, rendering pipeline, sanitization, code highlighting, math, diagrams, headings and shared link classification.                                  |
+| `frontend/src/logic/markdown/mermaid/`               | Serialized Mermaid theme/render queue, isolated realm, SVG scrubbing and bounded cache.                                                                            |
+| `frontend/src/logic/tidy/`                           | Pure Format, Compact and Lint engine plus its cancellable module worker.                                                                                           |
+| `frontend/src/logic/operations/`                     | Per-window tidy operation slot and ephemeral problem summary.                                                                                                      |
+| `frontend/src/logic/markdown/linkPolicy.ts`          | Link classification before a preview or editor link action is dispatched.                                                                                          |
+| `frontend/src/logic/scrollSync/`                     | The block-level scroll map, the synchronization controller, the scroll-port types and the preview scroll port.                                                     |
+| `frontend/src/logic/hooks/useScrollSync.ts`          | Synchronized-scrolling activation and which pane the other aligns to when it starts.                                                                               |
+| `frontend/src/ui/widgets/editorSession.ts`           | The document-identity-bound active editor command seam, including Monaco focus restoration.                                                                        |
+| `frontend/src/ui/widgets/useEditorActionExecutor.ts` | Binds the central editor-action executor to toolbar, popup and editor-shortcut UI surfaces.                                                                        |
+| `frontend/src/ui/widgets/Menubar/`                   | File, Settings, View, About and narrow overflow menu composition.                                                                                                  |
+| `frontend/src/ui/widgets/DocumentTabs/`              | The DocumentTabs consumer of TabBar and tab-specific commands.                                                                                                     |
+| `frontend/src/ui/widgets/WorkspaceTree/`             | Sidebar tree, header controls, empty and unavailable states, context menu and create-entry prompt.                                                                 |
+| `frontend/src/ui/widgets/FormattingToolbar/`         | Formatting groups, arrangement control and Bar overflow.                                                                                                           |
+| `frontend/src/ui/widgets/EditorStage/`               | Editor/preview panes, arrangement, the `reading` presentation variant, preview accessory state and synchronized scrolling.                                         |
+| `frontend/src/ui/widgets/ReadingControls/`           | Reading mode hover- and focus-revealed Exit, sidebar and tab-bar controls and their overlays.                                                                      |
+| `frontend/src/ui/widgets/PreviewContextMenu.tsx`     | Preview and Reading mode context menu (Copy, Select all) built from the action registry.                                                                           |
+| `frontend/src/ui/widgets/useReadingPresentation.ts`  | Reading mode Escape and focus handling: closes an open overlay first, then leaves Reading mode.                                                                    |
+| `frontend/src/ui/widgets/ProblemsPanel/`             | Accessible presentation of active-document lint findings; activation returns through the guarded editor command seam.                                              |
+| `frontend/src/ui/widgets/dialogs/`                   | Settings, About, Shortcuts, Insert table, close, conflict and normalization dialogs.                                                                               |
+| `frontend/src/ui/widgets/StartupFailure/`            | Per-step startup failure, Retry and Quit.                                                                                                                          |
 
 Workspace tree items expose their unreadable, open-in-tab and unsaved states as an accessible
 description in addition to the visible warning and unsaved markers.
@@ -549,9 +549,9 @@ For a feature-specific runtime check:
 
 Every file-entry route uses the application model's open flow. Supported suffixes are `.md`,
 `.markdown`, `.mdown` and `.txt`, case-insensitively. Every open takes the document's persisted view,
-then the last application arrangement, then Split, in both default open modes; a new document always starts
-in Editor mode. With the Reading (Viewer) default the backend sets `readingMode` on an `opened` result (never
-on `focused`, `refused`, `cancelled`, `folder-target` or a new document), and the frontend open commands
+then the last application arrangement, then Split, unless the default open mode (D25) dictates an arrangement;
+a new document always starts in Editor mode. When the open mode resolves to Reading the backend sets `readingMode`
+on an `opened` result (never on `focused`, `refused`, `cancelled`, `folder-target` or a new document), and the frontend open commands
 enter Reading mode when the open is still the current activation. A false flag never leaves Reading mode, and
 the workspace tree's New File ignores the flag and leaves Reading mode.
 
@@ -933,7 +933,7 @@ On an installed `.app` (copy to Applications, `lsregister -f` it, relaunch Finde
 4. With a window showing `a.md`, double-clicking `b.md` opens a new window that shows only `b.md`.
 5. Opening three selected files opens three windows, one file each.
 6. Dropping a folder on the Dock icon opens a new window with that folder as workspace.
-7. With the Viewer default, a double-clicked file starts in Reading mode and a dropped folder does not.
+7. With the Reading default open mode, a double-clicked file starts in Reading mode and a dropped folder does not.
 
 ## Durable decisions
 
@@ -1050,11 +1050,11 @@ The owner decisions that shaped this refactor are recorded here so they are not 
   OpenSpec skills and commands under `.agents/` and `.claude/` are tool output refreshed by
   `openspec update`.
 
-- **D17 — Reading mode is transient frontend window state:** it refines ADR-0014. Whether the window
+- **D17 — Reading mode is transient frontend window state:** it refines ADR-0014 (its "never stored" wording is superseded by D25). Whether the window
   is in Reading mode lives in the frontend-owned
   `frontend/src/logic/store/readingSlice.ts`. The state is never persisted: it is not stored per
   document or across restarts, and it never changes a document's saved arrangement or the
-  sidebar's visibility and width. With the Reading (Viewer) default open mode the backend signals
+  sidebar's visibility and width. With the Reading default open mode (D25) the backend signals
   Reading-on-open to the frontend through `OpenResult.readingMode`, as described in the open-document
   flow above.
   The Reading width (Page or Full width, stored as `view.readingWidth`, `page` by default) is the
@@ -1176,6 +1176,25 @@ The owner decisions that shaped this refactor are recorded here so they are not 
   row while no folder is open.
 
 - **D24 — Verify before producing release assets:** the reusable verification workflow owns the required checks and the release gate accepts only exact-commit trusted evidence or runs that workflow again. Native build jobs produce executable-only assets, and a collector validates all five before publication. Windows release builds report missing WebView2 and require separate installation, preserving the offline network contract. Rejected: reusing an arbitrary earlier successful run, shipping installers, and testing the exact distributable after building it in CI. Hosted Windows and Linux native desktop behavior remains separately unverified until exercised.
+
+- **D25 — The default open mode is a five-way setting and Reading is remembered as the global last mode:** it
+  supersedes D17's "never stored" wording for Reading mode and the earlier two-value `editor`/`viewer` default
+  open mode. The Go settings service owns `view.openMode` (`reading`, `editor`, `split`, `preview` or `last`, `last`
+  by default; `apperr.AppearanceSettings.OpenMode`). No database migration is needed: while `view.openMode` has
+  never been written, `SqliteSettingsRepository.GetAppearance` reads the retired `view.defaultOpenMode` once
+  (`viewer` becomes `reading`, anything else `last`) and leaves it in place; an invalid stored value reads as `last`
+  and an invalid write is refused with a validation error. `AppModelService` resolves the mode on `PrepareOpen`
+  (`resolveOpenMode`): Editor, Split and Preview force that arrangement over the per-file saved one and clear Reading,
+  Reading sets `readingMode` and keeps the existing arrangement fallback, and `last` reuses the remembered mode
+  (Split before any). Reopen Last File keeps the opened document's visibility so the setting wins; New Document
+  and the tree's New File always open in Editor. The remembered mode is the layout field
+  `document.lastOpenMode` (`reading`, `editor`, `split` or `preview`), restored by `RestoreUILayout` and written by
+  `SetDocView` (only when the arrangement actually changes while Reading is inactive) and by the new
+  `SetReadingActive(active)` call that the frontend makes from entering and leaving Reading mode, through
+  `frontend/src/logic/adapter/`; leaving Reading records the active document's arrangement. Reading mode itself
+  stays transient window state in `readingSlice.ts`: it is never stored per document, and only this one global
+  value records it. Rejected: remembering Reading per document and an in-frontend owner of the last mode (a
+  second owner next to the Go layout).
 
 ## Planning decisions retained
 

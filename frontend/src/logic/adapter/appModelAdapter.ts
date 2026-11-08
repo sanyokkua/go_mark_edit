@@ -84,6 +84,7 @@ export interface AppModelBindings {
     updateBuffer: (documentId: string, content: string, baseRevision: number) => Promise<BufferUpdateResult>;
     setDocView: (documentId: string, view: DocViewInput) => Promise<VoidResult>;
     setUILayout: (layout: UILayout) => Promise<VoidResult>;
+    setReadingActive: (active: boolean) => Promise<VoidResult>;
 }
 
 export interface AppModelRuntime {
@@ -160,6 +161,7 @@ export interface AppModelAdapter {
     cancelPendingSession?: (documentId: string) => void;
     flushDocView: (documentId: string) => Promise<void>;
     setUILayout: (layout: UILayout) => Promise<void>;
+    setReadingActive: (active: boolean) => Promise<void>;
     reconcileCommittedWrite: (outcome: CommittedWriteOutcome) => Promise<AppModelState | RecoverySurface>;
     subscribeAsyncErrors?: (onError: (error: WireError) => void) => () => void;
     subscribeBufferSyncErrors: (onError: (error: WireError) => void) => () => void;
@@ -662,6 +664,7 @@ export function createAppModelAdapter(bindings: AppModelBindings, runtime: AppMo
     const updateBuffer = guardArity('AppModelHandler.UpdateBuffer', bindings.updateBuffer);
     const setDocView = guardArity('AppModelHandler.SetDocView', bindings.setDocView);
     const setUILayout = guardArity('AppModelHandler.SetUILayout', bindings.setUILayout);
+    const setReadingActive = guardArity('AppModelHandler.SetReadingActive', bindings.setReadingActive);
     let disposeStatePatches: (() => void) | undefined;
     const statePatchListeners = new Set<(patch: AppStatePatch) => void>();
     const acceptedBufferListeners = new Set<(buffer: AcceptedBuffer) => void>();
@@ -1075,6 +1078,10 @@ export function createAppModelAdapter(bindings: AppModelBindings, runtime: AppMo
         async setUILayout(layout: UILayout): Promise<void> {
             assertCommandsAvailable();
             return unwrapPromise(setUILayout(layout));
+        },
+        async setReadingActive(active: boolean): Promise<void> {
+            assertCommandsAvailable();
+            return unwrapPromise(setReadingActive(active));
         },
         async reconcileCommittedWrite(outcome: CommittedWriteOutcome): Promise<AppModelState | RecoverySurface> {
             if (!outcome.resyncRequired && outcome.committedProjectionRevision <= greatestProjectionRevision) {

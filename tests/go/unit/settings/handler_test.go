@@ -13,7 +13,7 @@ import (
 // Unsupported Appearance and Markdown enum/style members return validation envelopes without writing any part of their group.
 func TestSettingsHandlerRejectsUnsupportedGroupUpdatesWithoutWriting(t *testing.T) {
 	original := apperr.Settings{
-		Appearance: apperr.AppearanceSettings{Theme: ThemeMinimal, Mode: ModeLight, DefaultOpenMode: OpenModeViewer, ReadingWidth: ReadingWidthFull, PdfAppearance: PdfAppearanceClean},
+		Appearance: apperr.AppearanceSettings{Theme: ThemeMinimal, Mode: ModeLight, OpenMode: OpenModeReading, ReadingWidth: ReadingWidthFull, PdfAppearance: PdfAppearanceClean},
 		Markdown: apperr.MarkdownSettings{
 			Standard:       MarkdownMinimal,
 			FormatOnSave:   true,
@@ -86,11 +86,11 @@ func checkRejectedAppearanceEnums(t *testing.T, original apperr.Settings) {
 		name  string
 		input apperr.AppearanceSettings
 	}{
-		{name: "theme", input: apperr.AppearanceSettings{Theme: "vaporwave", Mode: original.Appearance.Mode, DefaultOpenMode: original.Appearance.DefaultOpenMode, ReadingWidth: original.Appearance.ReadingWidth, PdfAppearance: original.Appearance.PdfAppearance}},
-		{name: "mode", input: apperr.AppearanceSettings{Theme: original.Appearance.Theme, Mode: "midnight", DefaultOpenMode: original.Appearance.DefaultOpenMode, ReadingWidth: original.Appearance.ReadingWidth, PdfAppearance: original.Appearance.PdfAppearance}},
-		{name: "default open mode", input: apperr.AppearanceSettings{Theme: original.Appearance.Theme, Mode: original.Appearance.Mode, DefaultOpenMode: "split", ReadingWidth: original.Appearance.ReadingWidth, PdfAppearance: original.Appearance.PdfAppearance}},
-		{name: "reading width", input: apperr.AppearanceSettings{Theme: original.Appearance.Theme, Mode: original.Appearance.Mode, DefaultOpenMode: original.Appearance.DefaultOpenMode, ReadingWidth: "wide", PdfAppearance: original.Appearance.PdfAppearance}},
-		{name: "pdf appearance", input: apperr.AppearanceSettings{Theme: original.Appearance.Theme, Mode: original.Appearance.Mode, DefaultOpenMode: original.Appearance.DefaultOpenMode, ReadingWidth: original.Appearance.ReadingWidth, PdfAppearance: "glossy"}},
+		{name: "theme", input: apperr.AppearanceSettings{Theme: "vaporwave", Mode: original.Appearance.Mode, OpenMode: original.Appearance.OpenMode, ReadingWidth: original.Appearance.ReadingWidth, PdfAppearance: original.Appearance.PdfAppearance}},
+		{name: "mode", input: apperr.AppearanceSettings{Theme: original.Appearance.Theme, Mode: "midnight", OpenMode: original.Appearance.OpenMode, ReadingWidth: original.Appearance.ReadingWidth, PdfAppearance: original.Appearance.PdfAppearance}},
+		{name: "default open mode", input: apperr.AppearanceSettings{Theme: original.Appearance.Theme, Mode: original.Appearance.Mode, OpenMode: "viewer", ReadingWidth: original.Appearance.ReadingWidth, PdfAppearance: original.Appearance.PdfAppearance}},
+		{name: "reading width", input: apperr.AppearanceSettings{Theme: original.Appearance.Theme, Mode: original.Appearance.Mode, OpenMode: original.Appearance.OpenMode, ReadingWidth: "wide", PdfAppearance: original.Appearance.PdfAppearance}},
+		{name: "pdf appearance", input: apperr.AppearanceSettings{Theme: original.Appearance.Theme, Mode: original.Appearance.Mode, OpenMode: original.Appearance.OpenMode, ReadingWidth: original.Appearance.ReadingWidth, PdfAppearance: "glossy"}},
 	}
 	for _, testCase := range testCases {
 		t.Run(testCase.name, func(t *testing.T) {

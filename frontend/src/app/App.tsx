@@ -30,6 +30,7 @@ import { useExternalChanges } from './useExternalChanges';
 import { useNotifications } from './useNotifications';
 import { usePdfExport } from './usePdfExport';
 import { useShutdown } from './useShutdown';
+import { useReadingActiveSync } from './useReadingActiveSync';
 import { useWindowGeometry } from './useWindowGeometry';
 import { useWorkflowPrompts } from './useWorkflowPrompts';
 
@@ -116,6 +117,7 @@ const AppWorkflows = ({
         requestQuit: shutdown.requestQuit,
     });
     useWindowGeometry(bootstrap.status);
+    useReadingActiveSync(bootstrap.status);
 
     return (
         <ModalStateProvider modalOpen={presentation.modalOpen}>

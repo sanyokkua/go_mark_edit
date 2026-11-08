@@ -64,6 +64,7 @@ it('sends only the latest rapid edit within 50 ms of typing stopping', async () 
                 void view;
                 return {};
             },
+            setReadingActive: async () => ({}),
             setUILayout: async (layout): Promise<VoidResult> => {
                 void layout;
                 return {};
@@ -108,6 +109,7 @@ it('flushes the latest buffer with ordered acknowledgement', async () => {
                 void view;
                 return {};
             },
+            setReadingActive: async () => ({}),
             setUILayout: async (layout): Promise<VoidResult> => {
                 void layout;
                 return {};
@@ -161,6 +163,7 @@ it('publishes the identical accepted buffer generation', async () => {
             getState: async (): Promise<{ data: AppModelState }> => ({ data: state }),
             updateBuffer,
             setDocView: async (): Promise<VoidResult> => ({}),
+            setReadingActive: async () => ({}),
             setUILayout: async (): Promise<VoidResult> => ({}),
         },
         runtime,
@@ -218,6 +221,7 @@ it('retains the working copy after synchronization failure', async () => {
             getState: async (): Promise<{ data: AppModelState }> => ({ data: state }),
             updateBuffer,
             setDocView,
+            setReadingActive: async () => ({}),
             setUILayout: async (layout): Promise<VoidResult> => {
                 void layout;
                 return {};

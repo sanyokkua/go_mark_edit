@@ -13,7 +13,7 @@ import SettingsMenu from '../../src/ui/widgets/Menubar/SettingsMenu';
 jest.mock('../../src/logic/adapter', () => ({
     settingsAdapter: {
         getSettings: jest.fn(async () => ({
-            appearance: { defaultOpenMode: 'editor', readingWidth: 'page', mode: 'auto', theme: 'material' },
+            appearance: { openMode: 'last', readingWidth: 'page', mode: 'auto', theme: 'material' },
             contentPrivacy: { remotePolicy: 'ask' },
             markdown: {
                 bulletMarker: '-',
@@ -77,34 +77,64 @@ async function openDialog(): Promise<HTMLElement> {
     return screen.getByRole('dialog', { name: 'Settings' });
 }
 
-it('sends the viewer value when Reading (Viewer) is chosen in the dialog', async () => {
+const choices = [
+    ['Reading', 'reading'],
+    ['Editor', 'editor'],
+    ['Split', 'split'],
+    ['Preview', 'preview'],
+    ['Remember last used', 'last'],
+] as const;
+
+it.each(choices)('persists %s as the default open mode chosen in the dialog', async (label, value) => {
     renderHarness();
     const dialog = await openDialog();
-    const group = within(dialog).getByRole('radiogroup', { name: 'Default open mode' });
-    expect(within(group).getByRole('radio', { name: 'Editor' })).toBeChecked();
+    const select = within(dialog).getByRole('combobox', { name: 'Default open mode' });
+    // Start from a different value so each choice is a real change.
+    fireEvent.change(select, { target: { value: value === 'editor' ? 'split' : 'editor' } });
+    await waitFor(() => expect(updateAppearance).toHaveBeenCalledTimes(1));
+    updateAppearance.mockClear();
 
-    fireEvent.click(within(group).getByRole('radio', { name: 'Reading (Viewer)' }));
+    fireEvent.change(select, { target: { value } });
 
     await waitFor(() =>
         expect(updateAppearance).toHaveBeenCalledWith({
-            defaultOpenMode: 'viewer',
+            openMode: value,
             readingWidth: 'page',
             pdfAppearance: 'styled',
             mode: 'auto',
             theme: 'material',
         }),
     );
-    await waitFor(() => expect(within(group).getByRole('radio', { name: 'Reading (Viewer)' })).toBeChecked());
+    await waitFor(() => expect(within(select).getByRole('option', { name: label, selected: true })).toBeVisible());
 });
 
-it('restores Editor when Reset appearance is activated', async () => {
+it('shows Remember last used initially and restores it when Reset appearance is activated', async () => {
     renderHarness();
     const dialog = await openDialog();
-    const group = within(dialog).getByRole('radiogroup', { name: 'Default open mode' });
-    fireEvent.click(within(group).getByRole('radio', { name: 'Reading (Viewer)' }));
-    await waitFor(() => expect(updateAppearance).toHaveBeenCalledTimes(1));
+    const select = within(dialog).getByRole('combobox', { name: 'Default open mode' });
+    await waitFor(() => expect(select).toHaveValue('last'));
+    fireEvent.change(select, { target: { value: 'reading' } });
+    await waitFor(() => expect(select).toHaveValue('reading'));
 
     fireEvent.click(within(dialog).getByRole('button', { name: 'Reset appearance' }));
 
-    await waitFor(() => expect(within(group).getByRole('radio', { name: 'Editor' })).toBeChecked());
+    await waitFor(() => expect(select).toHaveValue('last'));
+});
+
+it('treats an unknown stored open mode as Remember last used', async () => {
+    (settingsAdapter.getSettings as jest.Mock).mockResolvedValueOnce({
+        appearance: { openMode: 'viewer', readingWidth: 'page', mode: 'auto', theme: 'material' },
+        contentPrivacy: { remotePolicy: 'ask' },
+        markdown: {
+            bulletMarker: '-',
+            emphasisMarker: '*',
+            formatOnSave: false,
+            headingStyle: 'atx',
+            lintOnSave: false,
+            standard: 'gfm',
+        },
+    });
+    renderHarness();
+    const dialog = await openDialog();
+    expect(within(dialog).getByRole('combobox', { name: 'Default open mode' })).toHaveValue('last');
 });

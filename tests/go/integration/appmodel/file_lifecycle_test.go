@@ -79,7 +79,7 @@ func assertNewDocumentMetadata(t *testing.T, metadata apperr.DocumentMetadata) {
 func TestNewDocumentIgnoresTheReadingDefaultOpenMode(t *testing.T) {
 	clock := &fakeAutosaveClock{}
 	service := NewAppModelServiceForHost(WithEmitter(&recordingEmitter{}), AppModelOption{AutosaveTimer: clock})
-	service.SetDefaultOpenMode(OpenModeViewer)
+	service.SetDefaultOpenMode(OpenModeReading)
 
 	before, err := service.GetState(context.Background())
 	if err != nil {

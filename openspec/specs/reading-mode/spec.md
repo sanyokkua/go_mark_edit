@@ -228,41 +228,55 @@ while no workspace is open or while the window is 376 px wide or narrower.
 
 ### Requirement: Reading mode is not stored
 
-The system SHALL keep Reading mode only for the running window. It SHALL NOT be stored per document or across
-restarts, and each window SHALL have its own Reading mode.
+The system SHALL keep Reading mode only for the running window and SHALL NOT store it per document: it SHALL NOT change a document's saved arrangement. Each window SHALL have its own Reading mode. The only trace it leaves is the global last used open mode, which the editor capability's Open mode requirement defines and which the Remember last used choice reads; it starts the next opened file in Reading mode, not the window.
 
 #### Scenario: Restart
 
 - **WHEN** the application is quit in Reading mode and started again
 - **THEN** it starts in the normal window and the documents' saved arrangements are unchanged
 
+#### Scenario: Last used Reading survives restart
+
+- **WHEN** the default open mode is Remember last used, the application is quit in Reading mode, started again and `notes.md` is opened
+- **THEN** `notes.md` is shown in Reading mode, and leaving it shows the arrangement `notes.md` had
+
 ### Requirement: Reading mode on open
 
-WHEN the default open mode is Reading (Viewer) and a file is opened through the Open dialog, a Recent list, Reopen Last,
-the workspace tree, a preview link, drag and drop, the operating system or a command-line argument (also into a window
-showing the launcher), the system SHALL show it in Reading mode. A file created with New File in the workspace tree
-SHALL open without Reading mode and SHALL leave it if active. Opening a file SHALL NOT otherwise change whether Reading
-mode is active.
+WHEN the open mode resolves to Reading (the default open mode is Reading, or Remember last used with Reading last used) and a file is opened by any route (Open dialog, Recent list, Reopen Last, workspace tree, preview link, drag and drop, operating system or command-line argument, also into a window showing the launcher), the system SHALL show it in Reading mode; otherwise it SHALL open without it, leaving Reading mode if it was active.
 
 #### Scenario: Open into an empty window
 
-- **WHEN** the default open mode is Reading (Viewer), the window shows the launcher and the user opens `notes.md`
+- **WHEN** the default open mode is Reading, the window shows the launcher and the user opens `notes.md`
 - **THEN** the window shows `notes.md` in Reading mode
 
 #### Scenario: Editor default
 
 - **WHEN** the default open mode is Editor and the user opens `notes.md` last closed in Split
-- **THEN** it opens in Split without Reading mode
+- **THEN** it opens in Editor without Reading mode
+
+#### Scenario: Fixed mode while Reading is active
+
+- **WHEN** Reading mode is active, the default open mode is Split and the user opens `notes.md` from the sidebar overlay
+- **THEN** Reading mode is left and `notes.md` is shown in Split
+
+#### Scenario: Remember last used after Reading
+
+- **WHEN** the default open mode is Remember last used, Reading mode was last used and the user opens `notes.md`
+- **THEN** the window shows `notes.md` in Reading mode
+
+### Requirement: Reading mode kept or left on open
+
+A file created with New File in the workspace tree SHALL open without Reading mode and SHALL leave it if active. Opening a file SHALL NOT otherwise change whether Reading mode is active, except as stated in "Reading mode on open"; focusing an already open file, a refused open and a cancelled open never change it.
 
 #### Scenario: Already open document
 
-- **WHEN** the default open mode is Reading (Viewer), the window is not in Reading mode and the user opens a file that
+- **WHEN** the default open mode is Reading, the window is not in Reading mode and the user opens a file that
   is already open in a background tab
 - **THEN** that tab becomes active and Reading mode is not entered
 
 #### Scenario: File created in the workspace tree
 
-- **WHEN** the default open mode is Reading (Viewer) and the user creates `draft.md` with New File in the workspace tree
+- **WHEN** the default open mode is Reading and the user creates `draft.md` with New File in the workspace tree
 - **THEN** `draft.md` opens without Reading mode
 
 #### Scenario: File created from the sidebar overlay
@@ -272,18 +286,18 @@ mode is active.
 
 #### Scenario: Opened from the operating system
 
-- **WHEN** the default open mode is Reading (Viewer), a GoMarkEdit window shows `a.md` and the user double-clicks
+- **WHEN** the default open mode is Reading, a GoMarkEdit window shows `a.md` and the user double-clicks
   `notes.md` in the file manager
 - **THEN** a new window opens and shows `notes.md` in Reading mode
 
 #### Scenario: Command-line argument
 
-- **WHEN** the default open mode is Reading (Viewer) and the application is started with `notes.md` as its argument
+- **WHEN** the default open mode is Reading and the application is started with `notes.md` as its argument
 - **THEN** the window shows `notes.md` in Reading mode
 
 #### Scenario: Folder argument
 
-- **WHEN** the default open mode is Reading (Viewer) and the application is started with a folder as its argument
+- **WHEN** the default open mode is Reading and the application is started with a folder as its argument
 - **THEN** the folder opens as the workspace and Reading mode is not entered
 
 ### Requirement: Reading mode focus

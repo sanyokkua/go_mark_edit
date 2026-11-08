@@ -285,7 +285,7 @@ func TestSplitRatioRestoresWhileDefaultOpenModeIsViewer(t *testing.T) {
 		t.Fatal(err)
 	}
 	service := appmodel.NewAppModelServiceForHost(appmodel.AppModelOption{FileMetadataRepository: repository}, appmodel.WithEmitter(&recordingEmitter{}))
-	service.SetDefaultOpenMode(appmodel.OpenModeViewer)
+	service.SetDefaultOpenMode(appmodel.OpenModeReading)
 	opened := service.OpenPath(ctx, path, 0)
 	if opened.DocumentID == "" {
 		t.Fatalf("open: %+v", opened)

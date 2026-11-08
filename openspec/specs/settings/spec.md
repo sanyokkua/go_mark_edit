@@ -8,7 +8,7 @@ Defines the user settings catalogue with its defaults and allowed values, how se
 
 ### Requirement: Settings catalogue and defaults
 
-The system SHALL provide these settings with these defaults: theme Material; mode Auto; default open mode Editor; reading width Page; PDF appearance Styled; Markdown standard Full; heading style ATX; bullet marker "-"; emphasis marker "_"; format on save off; lint on save on; remote image policy Ask; line numbers on; word wrap off; scroll sync on; editor font size 14; autosave on.
+The system SHALL provide these settings with these defaults: theme Material; mode Auto; default open mode Remember last used; reading width Page; PDF appearance Styled; Markdown standard Full; heading style ATX; bullet marker "-"; emphasis marker "_"; format on save off; lint on save on; remote image policy Ask; line numbers on; word wrap off; scroll sync on; editor font size 14; autosave on.
 
 #### Scenario: Fresh install
 
@@ -17,7 +17,7 @@ The system SHALL provide these settings with these defaults: theme Material; mod
 
 ### Requirement: Allowed values
 
-The system SHALL accept only these values: theme Glass, Material or Minimal; mode Auto, Light or Dark; default open mode Editor or Viewer; reading width Page or Full width; PDF appearance Styled or Clean; Markdown standard Minimal, GFM or Full; bullet marker `-`, `*` or `+`; emphasis marker `_` or `*`; heading style ATX or Setext; remote image policy Ask, Allow or Block; font size 13, 14 or 16. A write with any other value SHALL be refused and nothing SHALL be stored.
+The system SHALL accept only these values: theme Glass, Material or Minimal; mode Auto, Light or Dark; default open mode Reading, Editor, Split, Preview or Last; reading width Page or Full width; PDF appearance Styled or Clean; Markdown standard Minimal, GFM or Full; bullet marker `-`, `*` or `+`; emphasis marker `_` or `*`; heading style ATX or Setext; remote image policy Ask, Allow or Block; font size 13, 14 or 16. A write with any other value SHALL be refused and nothing SHALL be stored.
 
 #### Scenario: Invalid write
 
@@ -152,38 +152,58 @@ The system SHALL remember window width (at least 375), height (at least 480) and
 
 ### Requirement: Default open mode choice
 
-The Settings dialog's Appearance section SHALL let the user choose the default open mode, Editor or Reading (Viewer),
-with the description "How files open from the file system (association, drag-and-drop, tree, Open dialog)", and SHALL
-show the stored choice as selected. The Settings menu SHALL NOT offer it.
+The Settings dialog's Appearance section SHALL let the user choose the default open mode from a drop-down offering
+Reading, Editor, Split, Preview and Remember last used, with the description "How files open: in Reading mode, a fixed
+layout, or the mode you used last", and SHALL show the stored choice as selected. The Settings menu
+SHALL NOT offer it.
 
 #### Scenario: Choose Reading
 
-- **WHEN** the user selects Reading (Viewer) in the Settings dialog and restarts the application
-- **THEN** the Settings dialog shows Reading (Viewer) selected
+- **WHEN** the user selects Reading in the Settings dialog and restarts the application
+- **THEN** the Settings dialog shows Reading selected
 
 #### Scenario: Choose in the dialog
 
-- **WHEN** Reading (Viewer) is selected and the user opens the Settings dialog and selects Editor
-- **THEN** the Settings dialog shows Editor selected and the choice is stored
+- **WHEN** Reading is selected and the user opens the Settings dialog and selects Split
+- **THEN** the Settings dialog shows Split selected and the choice is stored
 
 #### Scenario: Applies to the next open
 
-- **WHEN** the user selects Reading (Viewer) in the Settings dialog, closes it and opens `notes.md` with Open File
+- **WHEN** the user selects Reading in the Settings dialog, closes it and opens `notes.md` with Open File
 - **THEN** `notes.md` is shown in Reading mode
 
 #### Scenario: Reset
 
-- **WHEN** Reading (Viewer) is selected and the user activates Reset appearance
-- **THEN** Editor is selected
+- **WHEN** Reading is selected and the user activates Reset appearance
+- **THEN** Remember last used is selected
+
+### Requirement: Default open mode storage
+
+The system SHALL store the default open mode under `view.openMode` as `reading`, `editor`, `split`, `preview` or `last`. WHILE that key has never been written, an earlier `view.defaultOpenMode` of `viewer` SHALL read as Reading. In every other case without a valid `view.openMode` the choice SHALL read as Remember last used. The earlier key SHALL be left in place and ignored once `view.openMode` is written.
+
+#### Scenario: Earlier Viewer choice
+
+- **WHEN** an earlier version stored `viewer` under `view.defaultOpenMode` and the Settings dialog opens
+- **THEN** it shows Reading selected
+
+#### Scenario: Earlier Editor choice
+
+- **WHEN** an earlier version stored `editor` under `view.defaultOpenMode` and the Settings dialog opens
+- **THEN** it shows Remember last used selected
+
+#### Scenario: Unrecognised stored value
+
+- **WHEN** `view.openMode` holds a value that is not one of the five choices
+- **THEN** the Settings dialog shows Remember last used selected
 
 ### Requirement: Default open mode application
 
-A new default open mode choice SHALL apply to the next file opened, without a restart, and Reset appearance SHALL restore Editor. How each choice opens a file is defined by the editor capability's Open mode requirement.
+A new default open mode choice SHALL apply to the next file opened, without a restart, and Reset appearance SHALL restore Remember last used. How each choice opens a file is defined by the editor capability's Open mode requirement.
 
-#### Scenario: Reset restores Editor
+#### Scenario: Reset restores Remember last used
 
-- **WHEN** Reading (Viewer) is selected and the user activates Reset appearance
-- **THEN** Editor is selected, and the next file opened uses Editor
+- **WHEN** Reading is selected and the user activates Reset appearance
+- **THEN** Remember last used is selected, and the next file opened uses the last used mode
 
 ### Requirement: Reading width choice
 
@@ -306,13 +326,13 @@ The Settings dialog SHALL show a header with the title "Settings" and a Close bu
 
 ### Requirement: Settings dialog sections
 
-The Settings dialog SHALL show these sections and rows, in this order: Appearance (Theme, Color mode, Default open mode, Reading width, Reset appearance); Editor (Autosave, Line numbers, Word wrap, Scroll sync, Font size); Markdown (Standard, Format on save, Lint on save, Bullet marker, Emphasis, Heading style); Workspace (Show hidden folders); Export (PDF appearance). Two- or three-value choices SHALL be segmented controls, on/off settings switches and Font size a drop-down.
+The Settings dialog SHALL show these sections and rows, in this order: Appearance (Theme, Color mode, Default open mode, Reading width, Reset appearance); Editor (Autosave, Line numbers, Word wrap, Scroll sync, Font size); Markdown (Standard, Format on save, Lint on save, Bullet marker, Emphasis, Heading style); Workspace (Show hidden folders); Export (PDF appearance). Two- or three-value choices SHALL be segmented controls, on/off settings switches, Default open mode and Font size drop-downs.
 
 #### Scenario: Appearance section
 
 - **WHEN** the Settings dialog opens
 - **THEN** the Appearance section shows Theme (Liquid Glass, Material, Minimal), Color mode (Auto, Light, Dark),
-  Default open mode (Reading (Viewer), Editor), Reading width (Page, Full width) and a Reset appearance button
+  Default open mode (a drop-down offering Reading, Editor, Split, Preview, Remember last used), Reading width (Page, Full width) and a Reset appearance button
 
 #### Scenario: Editor section
 

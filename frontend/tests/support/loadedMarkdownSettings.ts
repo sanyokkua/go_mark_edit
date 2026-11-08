@@ -2,7 +2,7 @@ import type { Settings } from '../../src/logic/adapter/settingsTypes';
 
 export const loadedMarkdownSettings: Settings = {
     appearance: {
-        defaultOpenMode: 'editor',
+        openMode: 'editor',
         readingWidth: 'page',
         pdfAppearance: 'styled',
         mode: 'auto',

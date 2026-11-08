@@ -110,6 +110,7 @@ jest.mock('../../src/logic/adapter', () => ({
         flushBuffer: jest.fn(() => Promise.resolve()),
         flushDocView: jest.fn(() => Promise.resolve()),
         setDocView: jest.fn(() => Promise.resolve()),
+        setReadingActive: async () => ({}),
         setUILayout: jest.fn(() => Promise.resolve()),
         subscribeAcceptedBuffers: jest.fn(() => jest.fn()),
         updateBuffer: jest.fn(() => Promise.resolve()),
@@ -118,7 +119,7 @@ jest.mock('../../src/logic/adapter', () => ({
     settingsAdapter: {
         getSettings: jest.fn(() =>
             Promise.resolve({
-                appearance: { defaultOpenMode: 'editor', readingWidth: 'page', mode: 'light', theme: 'material' },
+                appearance: { openMode: 'editor', readingWidth: 'page', mode: 'light', theme: 'material' },
             }),
         ),
         updateAppearance: jest.fn(() => Promise.resolve()),

@@ -12,7 +12,7 @@ const settings: Settings = {
     appearance: {
         theme: 'minimal',
         mode: 'dark',
-        defaultOpenMode: 'editor',
+        openMode: 'editor',
         readingWidth: 'page',
         pdfAppearance: 'styled',
     },
@@ -80,7 +80,7 @@ it('projects the stored reading width, reading anything but full as page', () =>
     expect(settingsReducer(undefined, hydrateSettings(withWidth('full'))).readingWidth).toBe('full');
     expect(settingsReducer(undefined, hydrateSettings(withWidth('page'))).readingWidth).toBe('page');
     expect(settingsReducer(undefined, hydrateSettings(withWidth('wide'))).readingWidth).toBe('page');
-    const missing = { ...settings, appearance: { theme: 'minimal', mode: 'dark', defaultOpenMode: 'editor' } };
+    const missing = { ...settings, appearance: { theme: 'minimal', mode: 'dark', openMode: 'editor' } };
     expect(settingsReducer(undefined, hydrateSettings(missing as Settings)).readingWidth).toBe('page');
 });
 

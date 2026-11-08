@@ -25,7 +25,7 @@ it('opens on Appearance with the delivered rows, a Close button and a focus trap
     expect(within(dialog).getByRole('tabpanel', { name: 'Appearance' })).toBeInTheDocument();
     expect(screen.getByRole('radiogroup', { name: 'Theme' })).toBeInTheDocument();
     expect(screen.getByRole('radiogroup', { name: 'Color mode' })).toBeInTheDocument();
-    expect(screen.getByRole('radiogroup', { name: 'Default open mode' })).toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: 'Default open mode' })).toBeInTheDocument();
     expect(screen.getByRole('radiogroup', { name: 'Reading width' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Reset appearance' })).toBeInTheDocument();
     expect(screen.queryByRole('radiogroup', { name: 'PDF appearance' })).toBeNull();
@@ -332,4 +332,45 @@ it('shows Show hidden folders off and disabled when no value or handler is suppl
     const toggle = screen.getByRole('switch', { name: 'Show hidden folders' });
     expect(toggle).not.toBeChecked();
     expect(toggle).toBeDisabled();
+});
+
+it('offers Reading, Editor, Split, Preview and Remember last used for the default open mode, and reports each choice', () => {
+    const onOpenModeChange = jest.fn<void, [string]>();
+    render(
+        <SettingsDialog
+            mode="auto"
+            openMode="last"
+            onModeChange={jest.fn()}
+            onOpenChange={jest.fn()}
+            onOpenModeChange={onOpenModeChange}
+            onReset={jest.fn()}
+            onThemeChange={jest.fn()}
+            open
+            theme="material"
+        />,
+    );
+
+    const select = screen.getByRole('combobox', { name: 'Default open mode' });
+    expect(
+        within(select)
+            .getAllByRole('option')
+            .map((option) => option.textContent),
+    ).toEqual(['Reading', 'Editor', 'Split', 'Preview', 'Remember last used']);
+    expect(select).toHaveValue('last');
+
+    for (const [label, value] of [
+        ['Reading', 'reading'],
+        ['Editor', 'editor'],
+        ['Split', 'split'],
+        ['Preview', 'preview'],
+    ] as const) {
+        fireEvent.change(select, { target: { value } });
+        expect(onOpenModeChange).toHaveBeenLastCalledWith(value);
+        expect(within(select).getByRole('option', { name: label })).toBeInTheDocument();
+    }
+});
+
+it('disables the default open mode control when no change handler is provided', () => {
+    renderDialog();
+    expect(screen.getByRole('combobox', { name: 'Default open mode' })).toBeDisabled();
 });

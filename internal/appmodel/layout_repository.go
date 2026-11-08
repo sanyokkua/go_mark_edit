@@ -9,6 +9,7 @@ const (
 	LayoutWorkspaceWidth         = "workspace.width"
 	LayoutWorkspaceHiddenFolders = "workspace.showHiddenFolders"
 	LayoutArrangementBackup      = "document.arrangementFallback"
+	LayoutLastOpenMode           = "document.lastOpenMode"
 )
 
 // VersionedLayoutValue is the durable, per-field layout envelope. Its identity

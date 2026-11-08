@@ -105,6 +105,7 @@ it('separates live cursor display from restorable view synchronization', async (
                 return Promise.resolve({});
             },
             setDocView,
+            setReadingActive: async () => ({}),
             setUILayout: (layout: unknown): Promise<object> => {
                 void layout;
                 return Promise.resolve({});
@@ -163,6 +164,7 @@ it('omits the split ratio from editor cursor synchronization after reading the c
                 return {};
             },
             setDocView,
+            setReadingActive: async () => ({}),
             setUILayout: async (layout: unknown): Promise<object> => {
                 void layout;
                 return {};
@@ -203,6 +205,7 @@ it('does not publish a queued view update after the editor session unmounts', as
             }),
             updateBuffer: async (): Promise<object> => ({}),
             setDocView,
+            setReadingActive: async () => ({}),
             setUILayout: async (): Promise<object> => ({}),
         },
         { eventsOn: (): (() => void) => (): void => undefined },
@@ -266,6 +269,7 @@ it('starts a new editor session for an external replacement only', () => {
                 void docView;
                 return {};
             },
+            setReadingActive: async () => ({}),
             setUILayout: async (layout: unknown) => {
                 void layout;
                 return {};
@@ -415,6 +419,7 @@ it('resends the editor text on the current revision after the backend reports it
             }),
             updateBuffer,
             setDocView: async (): Promise<object> => ({}),
+            setReadingActive: async () => ({}),
             setUILayout: async (): Promise<object> => ({}),
         },
         { eventsOn: (): (() => void) => (): void => undefined },

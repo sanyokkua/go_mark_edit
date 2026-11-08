@@ -6,16 +6,16 @@ import type {
     ReadingWidth,
 } from '../../../logic/adapter/settingsTypes';
 import type { AppearanceChoice, Theme } from '../../../logic/theme/theme';
-import type { DefaultOpenMode } from '../appearanceSettingsContext';
+import type { OpenMode } from '../appearanceSettingsContext';
 
 /** Everything the Settings dialog shows and the writers it calls. A missing handler disables its control. */
 export interface SettingsDialogProps {
-    defaultOpenMode?: DefaultOpenMode;
+    openMode?: OpenMode;
     editorSettings?: EditorSettings;
     fileSettings?: FileSettings;
     markdownSettings?: MarkdownSettings;
     mode: AppearanceChoice;
-    onDefaultOpenModeChange?: (defaultOpenMode: DefaultOpenMode) => void;
+    onOpenModeChange?: (openMode: OpenMode) => void;
     onEditorSettingsChange?: (patch: Partial<EditorSettings>) => void;
     onFileSettingsChange?: (patch: Partial<FileSettings>) => void;
     onMarkdownSettingsChange?: (patch: Partial<MarkdownSettings>) => void;

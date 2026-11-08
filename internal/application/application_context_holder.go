@@ -287,17 +287,17 @@ func (holder *ApplicationContextHolder) applyPersistedAutosavePreference(ctx con
 
 // applyPersistedDefaultOpenMode pushes the stored preference into the document
 // model once at startup. The observer alone only fires when the setting is
-// written, so a stored preference of Reading would silently come back as Editor
+// written, so a stored preference of Reading would silently come back as the default
 // at every launch. Applying the stored value during bootstrap keeps the initial
 // document mode consistent with the preference before any observer fires.
 //
-// An unreadable store leaves the documented default of Editor in place.
+// An unreadable store leaves the documented default of Last in place.
 func (holder *ApplicationContextHolder) applyPersistedDefaultOpenMode(ctx context.Context) {
 	stored, err := holder.SettingsService.Get(ctx)
 	if err != nil {
 		return
 	}
-	holder.AppModelService.SetDefaultOpenMode(stored.Appearance.DefaultOpenMode)
+	holder.AppModelService.SetDefaultOpenMode(stored.Appearance.OpenMode)
 }
 
 func (holder *ApplicationContextHolder) RetryStartup(ctx context.Context) error {
@@ -327,7 +327,7 @@ func (holder *ApplicationContextHolder) refreshPersistedSettings(ctx context.Con
 		return err
 	}
 	holder.AppModelService.SetAutosaveEnabled(stored.File.Autosave)
-	holder.AppModelService.SetDefaultOpenMode(stored.Appearance.DefaultOpenMode)
+	holder.AppModelService.SetDefaultOpenMode(stored.Appearance.OpenMode)
 	holder.mu.Lock()
 	holder.startupErr = nil
 	holder.mu.Unlock()

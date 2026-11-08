@@ -4,7 +4,7 @@ import { bootstrapSettingsProjection, disposeSettingsProjection } from '../../sr
 
 const settings: Settings = {
     appearance: {
-        defaultOpenMode: 'editor',
+        openMode: 'editor',
         readingWidth: 'page',
         pdfAppearance: 'styled',
         mode: 'auto',

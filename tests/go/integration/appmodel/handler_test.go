@@ -408,6 +408,8 @@ func (service *fakeAppModelService) SetDocView(_ context.Context, _ string, _ ap
 	return nil
 }
 
+func (service *fakeAppModelService) SetReadingActive(context.Context, bool) error { return nil }
+
 func (service *fakeAppModelService) SetUILayout(_ context.Context, _ apperr.UILayout) error {
 	if service.panicOn == "SetUILayout" {
 		panic("service panic")

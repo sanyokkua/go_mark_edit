@@ -19,6 +19,7 @@ const mockAdapter = {
     flushDocView: jest.fn(async (): Promise<void> => undefined),
     getState: jest.fn(),
     setDocView: mockSetDocView,
+    setReadingActive: async () => ({}),
     setUILayout: jest.fn(async (): Promise<void> => undefined),
     subscribeAcceptedBuffers: jest.fn((): (() => void) => jest.fn()),
     subscribeStatePatches: jest.fn((): (() => void) => jest.fn()),

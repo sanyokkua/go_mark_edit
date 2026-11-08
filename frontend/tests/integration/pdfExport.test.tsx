@@ -33,7 +33,7 @@ jest.mock('../../src/logic/adapter', () => ({
     },
     settingsAdapter: {
         getSettings: jest.fn(async () => ({
-            appearance: { defaultOpenMode: 'editor', readingWidth: 'page', mode: 'auto', theme: 'material' },
+            appearance: { openMode: 'editor', readingWidth: 'page', mode: 'auto', theme: 'material' },
         })),
         updateAppearance: jest.fn(async () => undefined),
     },
@@ -225,7 +225,7 @@ describe('Export to PDF with a document open', () => {
     ])('marks the print copy %s while the on-screen application keeps its dark theme', async (stored, expected) => {
         (settingsAdapter.getSettings as jest.Mock).mockResolvedValueOnce({
             appearance: {
-                defaultOpenMode: 'editor',
+                openMode: 'editor',
                 readingWidth: 'page',
                 pdfAppearance: stored,
                 mode: 'dark',

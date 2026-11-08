@@ -89,6 +89,7 @@ function createAdapter(getState: () => Promise<AppModelState>): AppModelAdapter 
         updateDocView: jest.fn(),
         updateLocalDocView: jest.fn(),
         flushDocView: jest.fn<Promise<void>, [string]>(),
+        setReadingActive: async (): Promise<void> => undefined,
         setUILayout: jest.fn(),
         reconcileCommittedWrite: jest.fn(),
         subscribeBufferSyncErrors: jest.fn(() => jest.fn()),

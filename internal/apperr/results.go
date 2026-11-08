@@ -8,11 +8,11 @@ import (
 
 // AppearanceSettings contains the persisted appearance settings.
 type AppearanceSettings struct {
-	Theme           string `json:"theme"`
-	Mode            string `json:"mode"`
-	DefaultOpenMode string `json:"defaultOpenMode"`
-	ReadingWidth    string `json:"readingWidth"`
-	PdfAppearance   string `json:"pdfAppearance"`
+	Theme         string `json:"theme"`
+	Mode          string `json:"mode"`
+	OpenMode      string `json:"openMode"`
+	ReadingWidth  string `json:"readingWidth"`
+	PdfAppearance string `json:"pdfAppearance"`
 }
 
 // MarkdownSettings contains the persisted Markdown and canonical-style settings.
@@ -719,7 +719,7 @@ type OpenResult struct {
 	TreePath           string                       `json:"treePath,omitempty"`
 	ProjectionRevision uint64                       `json:"projectionRevision,omitempty"`
 	ActiveBuffer       *ActiveBufferAcknowledgement `json:"activeBuffer,omitempty"`
-	// ReadingMode is true only for an opened file while the default open mode is Reading (Viewer).
+	// ReadingMode is true only for an opened file when the open mode resolves to Reading.
 	ReadingMode bool             `json:"readingMode,omitempty"`
 	Error       *ClassifiedError `json:"error,omitempty"`
 }

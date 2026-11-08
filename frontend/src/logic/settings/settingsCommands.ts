@@ -14,7 +14,7 @@ type SettingsDispatch = (
 ) => unknown;
 
 export const defaultAppearanceSettings = {
-    defaultOpenMode: 'editor',
+    openMode: 'last',
     readingWidth: 'page',
     pdfAppearance: 'styled',
     mode: 'auto',

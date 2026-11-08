@@ -13,7 +13,7 @@ import SettingsMenu from '../../src/ui/widgets/Menubar/SettingsMenu';
 jest.mock('../../src/logic/adapter', () => ({
     settingsAdapter: {
         getSettings: jest.fn(async () => ({
-            appearance: { defaultOpenMode: 'editor', readingWidth: 'page', mode: 'auto', theme: 'material' },
+            appearance: { openMode: 'editor', readingWidth: 'page', mode: 'auto', theme: 'material' },
             contentPrivacy: { remotePolicy: 'ask' },
             markdown: {
                 bulletMarker: '-',
@@ -87,7 +87,7 @@ it('shows Page selected in the dialog and sends full when Full width is chosen',
 
     await waitFor(() =>
         expect(updateAppearance).toHaveBeenCalledWith({
-            defaultOpenMode: 'editor',
+            openMode: 'editor',
             readingWidth: 'full',
             pdfAppearance: 'styled',
             mode: 'auto',

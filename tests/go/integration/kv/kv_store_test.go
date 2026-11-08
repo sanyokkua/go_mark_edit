@@ -127,9 +127,9 @@ func TestSettingsUpdateLeavesForeignRowsByteForByteUntouched(t *testing.T) {
 	}
 
 	if err := settings.NewSqliteSettingsRepository(database).UpdateAppearance(ctx, apperr.AppearanceSettings{
-		Theme:           settings.ThemeGlass,
-		Mode:            settings.ModeDark,
-		DefaultOpenMode: settings.OpenModeViewer,
+		Theme:    settings.ThemeGlass,
+		Mode:     settings.ModeDark,
+		OpenMode: settings.OpenModeReading,
 	}); err != nil {
 		t.Fatalf("update owned appearance rows: %v", err)
 	}

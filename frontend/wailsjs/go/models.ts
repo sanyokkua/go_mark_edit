@@ -425,7 +425,7 @@ export namespace apperr {
 	export class AppearanceSettings {
 	    theme: string;
 	    mode: string;
-	    defaultOpenMode: string;
+	    openMode: string;
 	    readingWidth: string;
 	    pdfAppearance: string;
 	
@@ -437,7 +437,7 @@ export namespace apperr {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.theme = source["theme"];
 	        this.mode = source["mode"];
-	        this.defaultOpenMode = source["defaultOpenMode"];
+	        this.openMode = source["openMode"];
 	        this.readingWidth = source["readingWidth"];
 	        this.pdfAppearance = source["pdfAppearance"];
 	    }

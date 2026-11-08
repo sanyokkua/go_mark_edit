@@ -3,10 +3,10 @@ import { createContext, useContext } from 'react';
 import type { PdfAppearance, ReadingWidth } from '../../logic/adapter/settingsTypes';
 import type { AppearanceChoice, Theme } from '../../logic/theme/theme';
 
-export type DefaultOpenMode = 'viewer' | 'editor';
+export type OpenMode = 'reading' | 'editor' | 'split' | 'preview' | 'last';
 
 export interface AppearanceState {
-    defaultOpenMode: string;
+    openMode: OpenMode;
     mode: AppearanceChoice;
     pdfAppearance: PdfAppearance;
     readingWidth: ReadingWidth;
@@ -17,7 +17,7 @@ export interface AppearanceSettingsController {
     appearance: AppearanceState;
     open: boolean;
     onOpenChange: (open: boolean) => void;
-    onDefaultOpenModeChange: (defaultOpenMode: DefaultOpenMode) => void;
+    onOpenModeChange: (openMode: OpenMode) => void;
     onReadingWidthChange: (readingWidth: ReadingWidth) => void;
     onPdfAppearanceChange: (pdfAppearance: PdfAppearance) => void;
     onModeChange: (mode: AppearanceChoice) => void;

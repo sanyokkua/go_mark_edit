@@ -4,6 +4,7 @@ const mockSetUILayout = jest.fn<Promise<void>, [UILayout]>(async (): Promise<voi
 
 jest.mock('../../../src/logic/adapter', () => ({
     appModelAdapter: {
+        setReadingActive: async () => ({}),
         setUILayout: mockSetUILayout,
     },
 }));

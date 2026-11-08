@@ -41,21 +41,56 @@ The system SHALL offer Editor, Split and Preview arrangements per document, stac
 
 ### Requirement: Open mode
 
-The system SHALL open a file in the arrangement last saved for that file, falling back to the window's current
-arrangement and then to Split, whatever the default open mode is. WHEN the default open mode is Reading (Viewer), the
-system SHALL additionally show the file in Reading mode as the reading-mode capability defines, and leaving Reading
-mode SHALL show that arrangement.
+The default open mode SHALL win over a file's saved arrangement. Editor, Split and Preview SHALL open every file in that arrangement; Reading SHALL open it in Reading mode over its saved arrangement, else the window's, else Split; Remember last used SHALL use the mode last used, including Reading, else Split. A saved split ratio SHALL still apply, and Reopen Last File follows these rules. New documents and New File in the tree SHALL always open in Editor.
 
-#### Scenario: Viewer mode
+#### Scenario: Reading mode
 
-- **WHEN** the default open mode is Reading (Viewer) and the user opens a Markdown file last closed in the Editor
-  arrangement
+- **WHEN** the default open mode is Reading and the user opens a Markdown file last closed in the Editor arrangement
 - **THEN** the file is shown in Reading mode, and leaving Reading mode shows the Editor arrangement
 
-#### Scenario: Editor mode with saved arrangement
+#### Scenario: Setting wins over the saved arrangement
 
-- **WHEN** the default open mode is editor and the file was last closed in Editor arrangement
+- **WHEN** the default open mode is Split and the user opens a file last closed in the Editor arrangement
+- **THEN** the file opens in the Split arrangement without Reading mode
+
+#### Scenario: Editor and Preview
+
+- **WHEN** the default open mode is Preview and the user opens `notes.md`, then the default open mode is changed to Editor and the user opens `other.md`
+- **THEN** `notes.md` opens in the Preview arrangement and `other.md` in the Editor arrangement
+
+#### Scenario: Remember last used
+
+- **WHEN** the default open mode is Remember last used, the user switches a document to Preview and then opens `notes.md`
+- **THEN** `notes.md` opens in the Preview arrangement
+
+#### Scenario: Remember last used includes Reading
+
+- **WHEN** the default open mode is Remember last used, the user enters Reading mode, restarts the application and opens `notes.md`
+- **THEN** `notes.md` is shown in Reading mode
+
+#### Scenario: Remember last used with nothing recorded
+
+- **WHEN** the default open mode is Remember last used, no mode has ever been recorded and the user opens `notes.md`
+- **THEN** it opens in the Split arrangement
+
+#### Scenario: Reopen Last File
+
+- **WHEN** the default open mode is Editor and the user closes a file that was in Preview and chooses Reopen Last File
 - **THEN** the file reopens in the Editor arrangement
+
+#### Scenario: New document
+
+- **WHEN** the default open mode is Reading and the user creates a new document
+- **THEN** it opens in the Editor arrangement without Reading mode
+
+### Requirement: Last used open mode
+
+The system SHALL record the mode last used when a document's arrangement changes while Reading mode is not active, when Reading mode is entered and when it is left (then as the arrangement it uncovers). It SHALL store the mode with the window layout, so it survives a restart.
+
+#### Scenario: Recorded when Reading is left
+
+- **WHEN** a document is in the Preview arrangement, the user enters and leaves Reading mode and the default open mode is Remember last used
+- **THEN** the next file opened uses the Preview arrangement
 
 ### Requirement: Formatting actions
 

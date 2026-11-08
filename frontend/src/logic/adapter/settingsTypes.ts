@@ -6,7 +6,7 @@ export type PdfAppearance = 'styled' | 'clean';
 export interface AppearanceSettings {
     theme: string;
     mode: string;
-    defaultOpenMode: string;
+    openMode: string;
     readingWidth: string;
     pdfAppearance: string;
 }
