@@ -10,11 +10,9 @@ async function chooseViewerDefault(page: Page): Promise<void> {
     await page.getByRole('button', { name: 'Settings', exact: true }).click();
     await page.getByRole('menuitem', { name: 'All settings…', exact: true }).click();
     const dialog = page.getByRole('dialog', { name: 'Settings' });
-    const viewer = dialog
-        .getByRole('radiogroup', { name: 'Default open mode' })
-        .getByRole('radio', { name: 'Reading (Viewer)', exact: true });
-    await viewer.click();
-    await expect(viewer).toHaveAttribute('aria-checked', 'true');
+    const openMode = dialog.getByRole('combobox', { name: 'Default open mode' });
+    await openMode.selectOption({ label: 'Reading' });
+    await expect(openMode).toHaveValue('reading');
     await page.keyboard.press('Escape');
     await expect(dialog).toBeHidden();
 }
@@ -78,7 +76,7 @@ test('a launched file is first in Recent Items', async ({ app }) => {
     await expect(recents.nth(1)).toHaveAccessibleName('earlier.md');
 });
 
-test('with the Viewer default a file argument starts in Reading mode', async ({ app }) => {
+test('with the Reading default a file argument starts in Reading mode', async ({ app }) => {
     const file = await app.writeDocument('viewer.md', '# Viewer\n\nBody paragraph.\n');
     await app.launch([file]);
     const { page } = app;
@@ -92,7 +90,7 @@ test('with the Viewer default a file argument starts in Reading mode', async ({ 
     await expect(page.locator('section[aria-label="Preview pane"]')).toContainText('Body paragraph.');
 });
 
-test('with the Viewer default a folder argument opens the tree without Reading mode', async ({ app }) => {
+test('with the Reading default a folder argument opens the tree without Reading mode', async ({ app }) => {
     const folder = join(app.documentDirectory, 'viewer-folder');
     await mkdir(folder);
     await app.writeDocument('viewer-folder/chapter.md', '# Chapter\n');

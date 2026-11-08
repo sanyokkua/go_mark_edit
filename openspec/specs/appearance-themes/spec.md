@@ -50,7 +50,7 @@ WHEN the user picks a theme or mode in the Settings menu or the Settings dialog,
 
 ### Requirement: Reset appearance
 
-WHEN the user chooses "Reset appearance" in the Settings dialog's Appearance section, the system SHALL restore the theme to Material, the mode to Auto, the default open mode to Editor, the reading width to Page and the PDF appearance to Styled, and SHALL apply them immediately.
+WHEN the user chooses "Reset appearance" in the Settings dialog's Appearance section, the system SHALL restore the theme to Material, the mode to Auto, the default open mode to Remember last used, the reading width to Page and the PDF appearance to Styled, and SHALL apply them immediately.
 
 #### Scenario: Reset
 

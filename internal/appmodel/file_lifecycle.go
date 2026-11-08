@@ -16,8 +16,14 @@ const openTabSetChangedMessage = "The tab set changed; Open must be retried."
 const maxOpenDocuments = 40
 
 const (
+	// The open modes are the persisted Appearance "open mode" values. Reading,
+	// Editor, Split and Preview open every file that way; Last reuses the mode the
+	// user last worked in.
+	OpenModeReading     = "reading"
 	OpenModeEditor      = "editor"
-	OpenModeViewer      = "viewer"
+	OpenModeSplit       = "split"
+	OpenModePreview     = "preview"
+	OpenModeLast        = "last"
 	OpenStatusCancelled = apperr.OpenStatusCancelled
 	OpenStatusFocused   = apperr.OpenStatusFocused
 	OpenStatusOpened    = apperr.OpenStatusOpened
@@ -144,6 +150,7 @@ func (service *AppModelService) PrepareOpen(ctx context.Context, path string, ex
 	if service.state.ui.ViewArrangement != nil {
 		fallbackArrangement = *service.state.ui.ViewArrangement
 	}
+	arrangementOverride, readingMode := resolveOpenMode(service.openMode, service.lastOpenMode)
 	service.mu.RUnlock()
 
 	stable, readErr := file.ReadClassifiedStable(path, file.MaxClassifiedReadBytes)
@@ -170,6 +177,9 @@ func (service *AppModelService) PrepareOpen(ctx context.Context, path string, ex
 		return OpenPreparation{}, read.Error
 	}
 	arrangement, splitRatio := service.openViewSettings(ctx, metadataRepository, read.CanonicalPath.Path, fallbackArrangement)
+	if arrangementOverride != "" {
+		arrangement = arrangementOverride
+	}
 
 	service.mu.Lock()
 	defer service.mu.Unlock()
@@ -188,7 +198,7 @@ func (service *AppModelService) PrepareOpen(ctx context.Context, path string, ex
 	reservationID := mintDocumentID()
 	service.reservations[reservationID] = &openReservation{
 		id: reservationID, identity: identity, expectedTabRevision: expectedTabSetRevision,
-		canonical: read.CanonicalPath, read: read, version: stable.Version, rawHash: stable.RawHash, existingDocumentID: existingDocumentID, arrangement: arrangement, splitRatio: splitRatio,
+		canonical: read.CanonicalPath, read: read, version: stable.Version, rawHash: stable.RawHash, existingDocumentID: existingDocumentID, arrangement: arrangement, splitRatio: splitRatio, explicitArrangement: arrangementOverride != "", readingMode: readingMode,
 	}
 	return OpenPreparation{ReservationID: reservationID}, nil
 }
@@ -262,7 +272,7 @@ func (service *AppModelService) CommitPreparedOpen(ctx context.Context, reservat
 	service.updateCanReopenLastFileLocked()
 	if !changed {
 		result := openOutcomeForDocument(status, documentID, service.state.revision, service.state.documents[documentID])
-		result.ReadingMode = service.readingModeForOpenLocked(status)
+		result.ReadingMode = reservation.readingMode && status == apperr.OpenStatusOpened
 		result.Error = promotionWarning
 		result.Failure = bridge.FailureFromClassified(promotionWarning)
 		service.mu.Unlock()
@@ -288,7 +298,7 @@ func (service *AppModelService) CommitPreparedOpen(ctx context.Context, reservat
 		return bridge.FromClassified[apperr.OpenOutcome](classified, apperr.OpenStatusRefused)
 	}
 	result := openOutcomeForDocument(status, documentID, service.state.revision, service.state.documents[documentID])
-	result.ReadingMode = service.readingModeForOpenLocked(status)
+	result.ReadingMode = reservation.readingMode && status == apperr.OpenStatusOpened
 	result.Error = promotionWarning
 	result.Failure = bridge.FailureFromClassified(promotionWarning)
 	service.mu.Unlock()
@@ -311,6 +321,9 @@ func (service *AppModelService) applyPreparedOpenLocked(reservation *openReserva
 	} else {
 		documentID = mintDocumentID()
 		document := documentFromClassifiedRead(documentID, reservation.read, reservation.arrangement, reservation.splitRatio, reservation.version, reservation.rawHash)
+		// An arrangement chosen by the open mode must not be replaced by the window
+		// fallback that effectiveDocumentMetadataLocked applies to unsaved views.
+		document.hasSavedView = reservation.explicitArrangement
 		removedID = service.replaceEmptyPlaceholderLocked(documentID)
 		service.state.documents[documentID] = document
 		service.state.activeDocumentID = documentID
@@ -403,9 +416,19 @@ func (service *AppModelService) ReopenLastFile(ctx context.Context, expectedTabS
 		return result
 	}
 	if result.DocumentID != "" {
+		editorVisible, previewVisible := entry.view.EditorVisible, entry.view.PreviewVisible
+		if result.Status == apperr.OpenStatusOpened {
+			// The open mode, not the closed tab's panes, chooses a reopened file's arrangement.
+			service.mu.RLock()
+			opened := service.state.documents[result.DocumentID]
+			service.mu.RUnlock()
+			if opened != nil {
+				editorVisible, previewVisible = opened.metadata.View.EditorVisible, opened.metadata.View.PreviewVisible
+			}
+		}
 		viewErr := service.SetDocView(ctx, result.DocumentID, apperr.DocViewInput{
-			EditorVisible:  entry.view.EditorVisible,
-			PreviewVisible: entry.view.PreviewVisible,
+			EditorVisible:  editorVisible,
+			PreviewVisible: previewVisible,
 			SplitRatio:     &entry.view.SplitRatio,
 			Cursor:         entry.view.Cursor,
 			Selection:      entry.view.Selection,
@@ -505,9 +528,28 @@ func (state applicationState) recentItemsChanged(before []apperr.RecentItem) boo
 	return false
 }
 
-// readingModeForOpenLocked reports whether the frontend should enter Reading mode for an open result.
-func (service *AppModelService) readingModeForOpenLocked(status apperr.OpenStatus) bool {
-	return status == apperr.OpenStatusOpened && service.defaultOpenMode == OpenModeViewer
+// resolveOpenMode turns the open-mode setting into what an opened file shows.
+// arrangement is the pane layout the setting dictates ("" keeps the per-file
+// saved view, else the window's last, else Split) and reading says whether the
+// frontend enters Reading mode. For Last, lastMode is the remembered mode;
+// before any has been recorded it is Split without Reading.
+func resolveOpenMode(mode, lastMode string) (arrangement string, reading bool) {
+	if mode == OpenModeLast {
+		mode = lastMode
+		if mode == "" {
+			mode = OpenModeSplit
+		}
+	}
+	switch mode {
+	case OpenModeReading:
+		return "", true
+	case OpenModeEditor:
+		return ArrangementEditor, false
+	case OpenModePreview:
+		return ArrangementPreview, false
+	default:
+		return ArrangementSplit, false
+	}
 }
 
 func openOutcomeForDocument(status apperr.OpenStatus, documentID string, projectionRevision uint64, document *openDocument) apperr.OpenOutcome {

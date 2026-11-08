@@ -89,13 +89,37 @@ describe.each(entryPoints)('%s', (_name, method, invoke) => {
         expect(store.getState().reading.active).toBe(true);
     });
 
-    it('does not enter Reading mode without the flag and never clears an active one', async () => {
+    it('leaves an active Reading mode when the open resolves to a fixed mode (no readingMode)', async () => {
         adapter[method].mockResolvedValue({ ...opened, readingMode: undefined });
         const { result } = renderCommands();
         await act(async (): Promise<void> => {
             await invoke(result);
         });
         expect(store.getState().reading.active).toBe(false);
+        act((): void => {
+            store.dispatch(enterReading());
+        });
+        await act(async (): Promise<void> => {
+            await invoke(result);
+        });
+        expect(store.getState().reading.active).toBe(false);
+    });
+
+    it('stays in Reading mode when the open resolves to Reading (Remember last used after Reading)', async () => {
+        adapter[method].mockResolvedValue(opened);
+        const { result } = renderCommands();
+        act((): void => {
+            store.dispatch(enterReading());
+        });
+        await act(async (): Promise<void> => {
+            await invoke(result);
+        });
+        expect(store.getState().reading.active).toBe(true);
+    });
+
+    it.each(['focused', 'refused', 'cancelled'])('keeps an active Reading mode for a %s result', async (status) => {
+        adapter[method].mockResolvedValue({ status, documentId: status === 'focused' ? 'doc-2' : undefined });
+        const { result } = renderCommands();
         act((): void => {
             store.dispatch(enterReading());
         });
@@ -126,6 +150,26 @@ it('waits for the projection to make the opened document active before entering 
 
     act((): void => projectActive('doc-2'));
     expect(store.getState().reading.active).toBe(true);
+});
+
+describe.each(entryPoints)('%s with each default open mode', (_name, method, invoke) => {
+    // The backend resolves the setting; readingMode is true only when the resolved mode is Reading.
+    it.each([
+        ['Reading', true, true],
+        ['Editor', undefined, false],
+        ['Split', undefined, false],
+        ['Preview', undefined, false],
+        ['Remember last used, last Reading', true, true],
+        ['Remember last used, last Split', undefined, false],
+    ])('%s: Reading mode is %s on the opened document', async (_mode, readingMode, expected) => {
+        adapter[method].mockResolvedValue({ ...opened, readingMode });
+        const { result } = renderCommands();
+        await act(async (): Promise<void> => {
+            await invoke(result);
+        });
+        expect(store.getState().reading.active).toBe(expected);
+        expect(store.getState().documents.activeDocumentId).toBe('doc-2');
+    });
 });
 
 describe('tree New File', () => {

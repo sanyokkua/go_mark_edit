@@ -273,7 +273,7 @@ it('projects an acknowledged autosave-on setting into status details', () => {
             appearance: {
                 theme: 'glass',
                 mode: 'light',
-                defaultOpenMode: 'split',
+                openMode: 'split',
                 readingWidth: 'page',
                 pdfAppearance: 'styled',
             },
@@ -310,7 +310,7 @@ it('projects an acknowledged autosave-on setting into status details', () => {
                 appearance: {
                     theme: 'glass',
                     mode: 'light',
-                    defaultOpenMode: 'split',
+                    openMode: 'split',
                     readingWidth: 'page',
                     pdfAppearance: 'styled',
                 },

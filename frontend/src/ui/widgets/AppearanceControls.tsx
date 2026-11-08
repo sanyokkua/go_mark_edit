@@ -21,7 +21,7 @@ import {
     useAppearanceSettings,
     type AppearanceSettingsController,
     type AppearanceState,
-    type DefaultOpenMode,
+    type OpenMode,
 } from './appearanceSettingsContext';
 
 export interface AppearanceSettingsProviderProps {
@@ -32,6 +32,12 @@ export interface AppearanceSettingsProviderProps {
 
 function normalizeReadingWidth(value: string): ReadingWidth {
     return value === 'full' ? 'full' : 'page';
+}
+
+const openModes: readonly OpenMode[] = ['reading', 'editor', 'split', 'preview', 'last'];
+
+function normalizeOpenMode(value: string): OpenMode {
+    return openModes.find((mode) => mode === value) ?? 'last';
 }
 
 function normalizePdfAppearance(value: string): PdfAppearance {
@@ -85,7 +91,7 @@ export const AppearanceSettingsProvider: React.FC<AppearanceSettingsProviderProp
                 if (appearanceWriteSucceeded.current) return;
 
                 const next = {
-                    defaultOpenMode: settings.appearance.defaultOpenMode,
+                    openMode: normalizeOpenMode(settings.appearance.openMode),
                     mode: normalizeAppearance(settings.appearance.mode),
                     pdfAppearance: normalizePdfAppearance(settings.appearance.pdfAppearance),
                     readingWidth: normalizeReadingWidth(settings.appearance.readingWidth),
@@ -126,9 +132,7 @@ export const AppearanceSettingsProvider: React.FC<AppearanceSettingsProviderProp
 
     const persist = useCallback(
         (
-            patch: Partial<
-                Pick<AppearanceState, 'defaultOpenMode' | 'mode' | 'pdfAppearance' | 'readingWidth' | 'theme'>
-            >,
+            patch: Partial<Pick<AppearanceState, 'openMode' | 'mode' | 'pdfAppearance' | 'readingWidth' | 'theme'>>,
         ): void => {
             appearanceWriteStarted.current = true;
             const next = { ...desiredAppearance.current, ...patch };
@@ -137,7 +141,7 @@ export const AppearanceSettingsProvider: React.FC<AppearanceSettingsProviderProp
                 .updateAppearance(next, {}, (acknowledged): void => {
                     appearanceWriteSucceeded.current = true;
                     const acknowledgedState: AppearanceState = {
-                        defaultOpenMode: acknowledged.defaultOpenMode,
+                        openMode: normalizeOpenMode(acknowledged.openMode),
                         mode: normalizeAppearance(acknowledged.mode),
                         pdfAppearance: normalizePdfAppearance(acknowledged.pdfAppearance),
                         readingWidth: normalizeReadingWidth(acknowledged.readingWidth),
@@ -162,7 +166,7 @@ export const AppearanceSettingsProvider: React.FC<AppearanceSettingsProviderProp
             .resetAppearance((acknowledged): void => {
                 appearanceWriteSucceeded.current = true;
                 const acknowledgedState: AppearanceState = {
-                    defaultOpenMode: acknowledged.defaultOpenMode,
+                    openMode: normalizeOpenMode(acknowledged.openMode),
                     mode: normalizeAppearance(acknowledged.mode),
                     pdfAppearance: normalizePdfAppearance(acknowledged.pdfAppearance),
                     readingWidth: normalizeReadingWidth(acknowledged.readingWidth),
@@ -193,7 +197,7 @@ export const AppearanceSettingsProvider: React.FC<AppearanceSettingsProviderProp
     const controller = useMemo<AppearanceSettingsController>(
         () => ({
             appearance,
-            onDefaultOpenModeChange: (defaultOpenMode): void => persist({ defaultOpenMode }),
+            onOpenModeChange: (openMode): void => persist({ openMode }),
             onModeChange: (mode): void => persist({ mode }),
             onOpenAppearance,
             onOpenChange: setOpen,
@@ -228,7 +232,7 @@ export const AppearanceControlsContent: React.FC<AppearanceControlsContentProps>
         <>
             {children}
             <SettingsDialog
-                defaultOpenMode={controller.appearance.defaultOpenMode as DefaultOpenMode}
+                openMode={controller.appearance.openMode}
                 editorSettings={editor.settings}
                 fileSettings={editor.fileSettings}
                 markdownSettings={editor.markdownSettings}
@@ -239,7 +243,7 @@ export const AppearanceControlsContent: React.FC<AppearanceControlsContentProps>
                 returnFocusTo={controller.returnFocusTo}
                 showHiddenFolders={showHiddenFolders}
                 theme={controller.appearance.theme}
-                onDefaultOpenModeChange={controller.onDefaultOpenModeChange}
+                onOpenModeChange={controller.onOpenModeChange}
                 onModeChange={controller.onModeChange}
                 onPdfAppearanceChange={controller.onPdfAppearanceChange}
                 onReadingWidthChange={controller.onReadingWidthChange}

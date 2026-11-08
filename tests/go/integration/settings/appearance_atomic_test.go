@@ -18,8 +18,8 @@ func TestAppearanceUpdateRollsBackEveryFieldWhenTheSecondUpdateFails(t *testing.
 		t.Fatalf("open database: %v", err)
 	}
 
-	old := apperr.AppearanceSettings{Theme: settings.ThemeMinimal, Mode: settings.ModeDark, DefaultOpenMode: settings.OpenModeViewer, ReadingWidth: settings.ReadingWidthFull, PdfAppearance: settings.PdfAppearanceClean}
-	newValue := apperr.AppearanceSettings{Theme: settings.ThemeGlass, Mode: settings.ModeLight, DefaultOpenMode: settings.OpenModeEditor, ReadingWidth: settings.ReadingWidthPage, PdfAppearance: settings.PdfAppearanceStyled}
+	old := apperr.AppearanceSettings{Theme: settings.ThemeMinimal, Mode: settings.ModeDark, OpenMode: settings.OpenModeReading, ReadingWidth: settings.ReadingWidthFull, PdfAppearance: settings.PdfAppearanceClean}
+	newValue := apperr.AppearanceSettings{Theme: settings.ThemeGlass, Mode: settings.ModeLight, OpenMode: settings.OpenModeEditor, ReadingWidth: settings.ReadingWidthPage, PdfAppearance: settings.PdfAppearanceStyled}
 	repository := settings.NewSqliteSettingsRepository(database)
 	if err := repository.UpdateAppearance(ctx, old); err != nil {
 		_ = database.Close()

@@ -22,7 +22,7 @@ jest.mock('../../../src/logic/adapter', () => ({
     settingsAdapter: {
         getSettings: jest.fn(async () => ({
             appearance: {
-                defaultOpenMode: 'editor',
+                openMode: 'editor',
                 readingWidth: 'page',
                 pdfAppearance: 'styled',
                 mode: 'auto',
@@ -148,7 +148,7 @@ it('changes appearance from keyboard reachable controls after a successful write
     });
     expect(document.documentElement).toHaveAttribute('data-mode', 'dark');
     expect(updateAppearance).toHaveBeenCalledWith({
-        defaultOpenMode: 'editor',
+        openMode: 'editor',
         readingWidth: 'page',
         pdfAppearance: 'styled',
         mode: 'dark',
@@ -186,7 +186,7 @@ it('shows six Markdown preferences from hydration and applies each dialog change
     store.dispatch(
         hydrateSettings({
             appearance: {
-                defaultOpenMode: 'editor',
+                openMode: 'editor',
                 readingWidth: 'page',
                 pdfAppearance: 'styled',
                 mode: 'auto',
@@ -259,7 +259,7 @@ it('keeps acknowledged Markdown values on rejection and reports one error', asyn
     store.dispatch(
         hydrateSettings({
             appearance: {
-                defaultOpenMode: 'editor',
+                openMode: 'editor',
                 readingWidth: 'page',
                 pdfAppearance: 'styled',
                 mode: 'auto',
@@ -293,7 +293,7 @@ it('uses arrows and Space to change described Markdown controls', async () => {
     store.dispatch(
         hydrateSettings({
             appearance: {
-                defaultOpenMode: 'editor',
+                openMode: 'editor',
                 readingWidth: 'page',
                 pdfAppearance: 'styled',
                 mode: 'auto',
@@ -333,7 +333,7 @@ it('merges a dialog change with a pending popup change and keeps both surfaces s
     store.dispatch(
         hydrateSettings({
             appearance: {
-                defaultOpenMode: 'editor',
+                openMode: 'editor',
                 readingWidth: 'page',
                 pdfAppearance: 'styled',
                 mode: 'auto',
@@ -424,7 +424,7 @@ it('serializes rapid changes using the complete latest appearance choice', async
 
     await waitFor((): void => {
         expect(updateAppearance).toHaveBeenCalledWith({
-            defaultOpenMode: 'editor',
+            openMode: 'editor',
             readingWidth: 'page',
             pdfAppearance: 'styled',
             mode: 'auto',
@@ -435,7 +435,7 @@ it('serializes rapid changes using the complete latest appearance choice', async
 
     await waitFor((): void => {
         expect(updateAppearance).toHaveBeenLastCalledWith({
-            defaultOpenMode: 'editor',
+            openMode: 'editor',
             readingWidth: 'page',
             pdfAppearance: 'styled',
             mode: 'dark',
@@ -467,7 +467,7 @@ it('keeps an acknowledged appearance when the startup read resolves stale', asyn
     await act(async (): Promise<void> => {
         resolveSettings?.({
             appearance: {
-                defaultOpenMode: 'editor',
+                openMode: 'editor',
                 readingWidth: 'page',
                 pdfAppearance: 'styled',
                 mode: 'auto',
@@ -493,7 +493,7 @@ it('keeps an acknowledged appearance when the startup read resolves stale', asyn
 it('normalizes invalid persisted values before exposing controls or root attributes', async (): Promise<void> => {
     getSettings.mockResolvedValueOnce({
         appearance: {
-            defaultOpenMode: 'editor',
+            openMode: 'editor',
             readingWidth: 'page',
             pdfAppearance: 'sepia',
             mode: 'future',
@@ -559,7 +559,7 @@ it('owns one Auto listener, ignores a later system change while pinned, and stay
 it('updates synchronized quick and modal Appearance only after reset is acknowledged', async () => {
     getSettings.mockResolvedValueOnce({
         appearance: {
-            defaultOpenMode: 'viewer',
+            openMode: 'reading',
             readingWidth: 'page',
             pdfAppearance: 'styled',
             mode: 'dark',
@@ -608,7 +608,7 @@ it('updates synchronized quick and modal Appearance only after reset is acknowle
 it('retains acknowledged Appearance when the transactional reset is rejected', async () => {
     getSettings.mockResolvedValueOnce({
         appearance: {
-            defaultOpenMode: 'viewer',
+            openMode: 'reading',
             readingWidth: 'page',
             pdfAppearance: 'styled',
             mode: 'dark',
@@ -642,7 +642,7 @@ it('retains acknowledged Appearance when the transactional reset is rejected', a
 it('does not broadcast a reset into another mounted acknowledged Appearance projection', async () => {
     const persisted: Awaited<ReturnType<typeof settingsAdapter.getSettings>> = {
         appearance: {
-            defaultOpenMode: 'viewer',
+            openMode: 'reading',
             readingWidth: 'page',
             pdfAppearance: 'styled',
             mode: 'dark',

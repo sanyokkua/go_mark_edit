@@ -12,7 +12,7 @@ it('hydrates Redux settings once from the acknowledged adapter authority', async
             appearance: {
                 theme: 'material',
                 mode: 'auto',
-                defaultOpenMode: 'editor',
+                openMode: 'editor',
                 readingWidth: 'page',
                 pdfAppearance: 'styled',
             },

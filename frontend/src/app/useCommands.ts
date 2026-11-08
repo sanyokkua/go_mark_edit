@@ -114,7 +114,13 @@ export function useCommands(
     const enterReadingForOpen = useCallback(
         (result: OpenResult | undefined, generation: number): void => {
             const documentId = result?.documentId;
-            if (result?.readingMode !== true || documentId === undefined) return;
+            if (documentId === undefined) return;
+            // An opened file whose mode resolved to a fixed arrangement leaves Reading mode: the setting wins.
+            // Focused, refused and cancelled results never change the mode.
+            if (result?.readingMode !== true) {
+                if (result?.status === 'opened' && activation.isCurrent(generation)) dispatch(leaveReading());
+                return;
+            }
             let settled = false;
             const tryEnter = (): void => {
                 if (settled) return;

@@ -6,7 +6,7 @@ import {
 } from '../../../src/logic/settings/settingsCommands';
 
 const current: AppearanceSettings = {
-    defaultOpenMode: 'editor',
+    openMode: 'last',
     readingWidth: 'page',
     pdfAppearance: 'styled',
     mode: 'auto',
@@ -59,7 +59,7 @@ it('applies the default appearance only after reset is acknowledged', async () =
     await resetAppearanceSettings(adapter, acknowledge);
 
     expect(acknowledge).toHaveBeenCalledWith({
-        defaultOpenMode: 'editor',
+        openMode: 'last',
         readingWidth: 'page',
         pdfAppearance: 'styled',
         mode: 'auto',

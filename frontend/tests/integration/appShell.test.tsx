@@ -12,6 +12,7 @@ import * as problemsSummary from '../../src/logic/operations/problemsSummary';
 
 jest.mock('../../src/logic/adapter', () => ({
     appModelAdapter: {
+        setReadingActive: async () => ({}),
         setUILayout: jest.fn(async (): Promise<void> => undefined),
     },
 }));

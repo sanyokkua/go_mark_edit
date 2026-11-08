@@ -1,8 +1,9 @@
 import { t } from '../../../i18n';
 import type { ReadingWidth } from '../../../logic/adapter/settingsTypes';
 import type { AppearanceChoice, Theme } from '../../../logic/theme/theme';
-import type { DefaultOpenMode } from '../appearanceSettingsContext';
+import type { OpenMode } from '../appearanceSettingsContext';
 import Button from '../../primitives/Button';
+import Select, { type SelectOption } from '../../primitives/Select';
 import Segmented, { type SegmentedOption } from '../../primitives/Segmented';
 import SettingsRow, { descriptionId } from './SettingsRow';
 import type { SettingsDialogProps } from './settingsDialogTypes';
@@ -20,9 +21,12 @@ const modeOptions: readonly SegmentedOption<AppearanceChoice>[] = [
     { label: t('appearance.mode.short.dark'), value: 'dark' },
 ];
 
-const openModeOptions: readonly SegmentedOption<DefaultOpenMode>[] = [
-    { label: t('settings.openMode.reading'), value: 'viewer' },
+const openModeOptions: readonly SelectOption<OpenMode>[] = [
+    { label: t('settings.openMode.reading'), value: 'reading' },
     { label: t('settings.openMode.editor'), value: 'editor' },
+    { label: t('settings.openMode.split'), value: 'split' },
+    { label: t('settings.openMode.preview'), value: 'preview' },
+    { label: t('settings.openMode.last'), value: 'last' },
 ];
 
 const readingWidthOptions: readonly SegmentedOption<ReadingWidth>[] = [
@@ -31,9 +35,9 @@ const readingWidthOptions: readonly SegmentedOption<ReadingWidth>[] = [
 ];
 
 const AppearanceSection: React.FC<SettingsDialogProps> = ({
-    defaultOpenMode,
+    openMode,
     mode,
-    onDefaultOpenModeChange,
+    onOpenModeChange,
     onModeChange,
     onReadingWidthChange,
     onReset,
@@ -58,13 +62,13 @@ const AppearanceSection: React.FC<SettingsDialogProps> = ({
             id="settings-open-mode"
             label={t('settings.openMode')}
         >
-            <Segmented
-                ariaDescribedBy={descriptionId('settings-open-mode')}
-                ariaLabel={t('settings.openMode')}
-                disabled={onDefaultOpenModeChange === undefined}
+            <Select
+                describedBy={descriptionId('settings-open-mode')}
+                disabled={onOpenModeChange === undefined}
+                label={t('settings.openMode')}
                 options={openModeOptions}
-                value={defaultOpenMode}
-                onChange={(next): void => onDefaultOpenModeChange?.(next)}
+                value={openMode ?? 'last'}
+                onChange={(next): void => onOpenModeChange?.(next)}
             />
         </SettingsRow>
         <SettingsRow

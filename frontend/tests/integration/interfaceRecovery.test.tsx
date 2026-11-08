@@ -85,6 +85,7 @@ it('retains real queued editor text through crash cleanup', async () => {
                 return {};
             },
             setDocView: async () => ({}),
+            setReadingActive: async () => ({}),
             setUILayout: async () => ({}),
         },
         { eventsOn: () => () => undefined },
@@ -277,6 +278,7 @@ it('keeps a newer queued edit behind an older in-flight delivery across a real c
                 return {};
             },
             setDocView: async () => ({}),
+            setReadingActive: async () => ({}),
             setUILayout: async () => ({}),
         },
         { eventsOn: () => () => undefined },
@@ -661,6 +663,7 @@ it('keeps the real shutdown listener alive after an editor subtree crashes', asy
             getState: async () => ({ data: state(pendingClose) }),
             updateBuffer: async () => ({}),
             setDocView: async () => ({}),
+            setReadingActive: async () => ({}),
             setUILayout: async () => ({}),
         },
         { eventsOn: () => () => undefined },

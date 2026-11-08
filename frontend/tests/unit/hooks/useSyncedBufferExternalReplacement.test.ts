@@ -34,6 +34,7 @@ function adapterRecordingBuffers(sent: string[], bases: number[] = []) {
                 void docView;
                 return Promise.resolve({});
             },
+            setReadingActive: async () => ({}),
             setUILayout: (layout: unknown): Promise<object> => {
                 void layout;
                 return Promise.resolve({});

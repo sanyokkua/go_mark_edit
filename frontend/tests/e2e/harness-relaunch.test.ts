@@ -8,10 +8,7 @@ test('relaunch retires the old document while its backend is alive and preserves
     await page.getByRole('button', { name: 'Settings', exact: true }).click();
     await page.getByRole('menuitem', { name: 'All settings…' }).click();
     const dialog = page.getByRole('dialog', { name: 'Settings' });
-    await dialog
-        .getByRole('radiogroup', { name: 'Default open mode' })
-        .getByRole('radio', { name: 'Reading (Viewer)' })
-        .click();
+    await dialog.getByRole('combobox', { name: 'Default open mode' }).selectOption({ label: 'Reading' });
     await page.keyboard.press('Escape');
 
     const pid = app.appChildPid;
@@ -34,7 +31,5 @@ test('relaunch retires the old document while its backend is alive and preserves
     await expect(page.getByTestId('document-launcher')).toBeVisible();
     await page.getByRole('button', { name: 'Settings', exact: true }).click();
     await page.getByRole('menuitem', { name: 'All settings…' }).click();
-    await expect(
-        dialog.getByRole('radiogroup', { name: 'Default open mode' }).getByRole('radio', { name: 'Reading (Viewer)' }),
-    ).toHaveAttribute('aria-checked', 'true');
+    await expect(dialog.getByRole('combobox', { name: 'Default open mode' })).toHaveValue('reading');
 });

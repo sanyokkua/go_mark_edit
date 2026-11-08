@@ -77,7 +77,7 @@ func TestNewDocumentKeepsAnOpenedFileAndUsesEditorDefaults(t *testing.T) {
 
 func TestOpeningInViewerModeKeepsTheArrangementAndReportsReadingMode(t *testing.T) {
 	service := NewAppModelServiceForHost(WithEmitter(&recordingEmitter{}))
-	service.SetDefaultOpenMode(OpenModeViewer)
+	service.SetDefaultOpenMode(OpenModeReading)
 	path := filepath.Join(t.TempDir(), "viewer.md")
 	if err := os.WriteFile(path, []byte("preview\n"), 0o640); err != nil {
 		t.Fatalf("write fixture: %v", err)

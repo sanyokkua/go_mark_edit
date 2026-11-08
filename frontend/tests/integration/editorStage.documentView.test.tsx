@@ -33,6 +33,7 @@ jest.mock('../../src/logic/adapter', () => ({
         flushDocView: jest.fn(async (): Promise<void> => undefined),
         getState: jest.fn(),
         setDocView: mockSetDocView,
+        setReadingActive: async () => ({}),
         setUILayout: jest.fn(async (): Promise<void> => undefined),
         subscribeAcceptedBuffers: jest.fn((): (() => void) => jest.fn()),
         subscribeStatePatches: jest.fn(
@@ -607,7 +608,7 @@ function appearanceSettings(
     theme: 'glass' | 'material' | 'minimal',
     mode: 'light' | 'dark',
 ): {
-    appearance: { defaultOpenMode: string; mode: string; readingWidth: string; theme: string };
+    appearance: { openMode: string; mode: string; readingWidth: string; theme: string };
     contentPrivacy: { remotePolicy: string };
     markdown: {
         bulletMarker: string;
@@ -619,7 +620,7 @@ function appearanceSettings(
     };
 } {
     return {
-        appearance: { defaultOpenMode: 'editor', readingWidth: 'page', mode, theme },
+        appearance: { openMode: 'editor', readingWidth: 'page', mode, theme },
         contentPrivacy: { remotePolicy: 'ask' },
         markdown: {
             bulletMarker: '-',
@@ -1025,6 +1026,7 @@ it('renders accepted GFM within the debounce target', async () => {
             }),
             updateBuffer,
             setDocView: async (): Promise<VoidResult> => ({}),
+            setReadingActive: async () => ({}),
             setUILayout: async (): Promise<VoidResult> => ({}),
         },
         runtime,

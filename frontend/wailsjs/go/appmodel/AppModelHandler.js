@@ -134,6 +134,10 @@ export function SetDocView(arg1, arg2, arg3) {
   return window['go']['appmodel']['AppModelHandler']['SetDocView'](arg1, arg2, arg3);
 }
 
+export function SetReadingActive(arg1, arg2) {
+  return window['go']['appmodel']['AppModelHandler']['SetReadingActive'](arg1, arg2);
+}
+
 export function SetUILayout(arg1, arg2) {
   return window['go']['appmodel']['AppModelHandler']['SetUILayout'](arg1, arg2);
 }

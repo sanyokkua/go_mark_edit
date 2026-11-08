@@ -172,7 +172,7 @@ func (service *SettingsService) UpdateAppearance(ctx context.Context, appearance
 	// Only after the write succeeds, for the same reason as UpdateFile: a
 	// preference that failed to persist must not change what the document model
 	// does.
-	service.notifyDefaultOpenMode(appearance.DefaultOpenMode)
+	service.notifyDefaultOpenMode(appearance.OpenMode)
 	return nil
 }
 
@@ -192,7 +192,7 @@ func (service *SettingsService) ResetAppearance(ctx context.Context) error {
 	if err != nil {
 		return apperr.IO("read reset appearance", err)
 	}
-	service.notifyDefaultOpenMode(restored.DefaultOpenMode)
+	service.notifyDefaultOpenMode(restored.OpenMode)
 	return nil
 }
 
@@ -253,8 +253,8 @@ func normalizeAppearance(appearance apperr.AppearanceSettings) apperr.Appearance
 	if !isMode(appearance.Mode) {
 		appearance.Mode = defaults.Mode
 	}
-	if !isOpenMode(appearance.DefaultOpenMode) {
-		appearance.DefaultOpenMode = defaults.DefaultOpenMode
+	if !isOpenMode(appearance.OpenMode) {
+		appearance.OpenMode = defaults.OpenMode
 	}
 	if !isReadingWidth(appearance.ReadingWidth) {
 		appearance.ReadingWidth = defaults.ReadingWidth
@@ -308,8 +308,8 @@ func validateAppearance(appearance apperr.AppearanceSettings) error {
 	if !isMode(appearance.Mode) {
 		return apperr.Validation("appearance.mode", "auto, light, or dark", appearance.Mode)
 	}
-	if !isOpenMode(appearance.DefaultOpenMode) {
-		return apperr.Validation("view.defaultOpenMode", "editor or viewer", appearance.DefaultOpenMode)
+	if !isOpenMode(appearance.OpenMode) {
+		return apperr.Validation("view.openMode", "reading, editor, split, preview, or last", appearance.OpenMode)
 	}
 	if !isReadingWidth(appearance.ReadingWidth) {
 		return apperr.Validation("view.readingWidth", "page or full", appearance.ReadingWidth)
@@ -367,7 +367,11 @@ func isReadingWidth(value string) bool {
 }
 
 func isOpenMode(value string) bool {
-	return value == OpenModeEditor || value == OpenModeViewer
+	switch value {
+	case OpenModeReading, OpenModeEditor, OpenModeSplit, OpenModePreview, OpenModeLast:
+		return true
+	}
+	return false
 }
 
 func isMarkdownStandard(value string) bool {

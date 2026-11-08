@@ -30,37 +30,45 @@ func TestUpdateAppearancePropagatesDefaultOpenModeToDocumentModel(t *testing.T) 
 	holder := NewApplicationContextHolderWithOptions(&fakeFileUtils{databasePath: filepath.Join(t.TempDir(), "settings.db")}, nil, ApplicationContextOptions{
 		AppModelOptions: []appmodel.AppModelOption{appmodel.WithEmitter(discardingLifecycleEmitter{})},
 	})
-	holder.SettingsService.SetRepository(&stubOpenModeSettingsRepository{defaultOpenMode: settings.OpenModeEditor})
+	holder.SettingsService.SetRepository(&stubOpenModeSettingsRepository{defaultOpenMode: settings.OpenModeLast})
 
-	assertNextOpenReadingMode(t, holder, false)
+	assertNextOpen(t, holder, appmodel.ArrangementSplit, false)
 
-	appearance := apperr.AppearanceSettings{Theme: "material", Mode: "auto", DefaultOpenMode: settings.OpenModeViewer, ReadingWidth: settings.ReadingWidthPage, PdfAppearance: settings.PdfAppearanceStyled}
+	appearance := apperr.AppearanceSettings{Theme: "material", Mode: "auto", OpenMode: settings.OpenModeReading, ReadingWidth: settings.ReadingWidthPage, PdfAppearance: settings.PdfAppearanceStyled}
 	if err := holder.SettingsService.UpdateAppearance(context.Background(), appearance); err != nil {
 		t.Fatalf("UpdateAppearance(viewer): %v", err)
 	}
-	assertNextOpenReadingMode(t, holder, true)
+	assertNextOpen(t, holder, appmodel.ArrangementSplit, true)
 
-	appearance.DefaultOpenMode = settings.OpenModeEditor
+	appearance.OpenMode = settings.OpenModeEditor
 	if err := holder.SettingsService.UpdateAppearance(context.Background(), appearance); err != nil {
 		t.Fatalf("UpdateAppearance(editor): %v", err)
 	}
-	assertNextOpenReadingMode(t, holder, false)
+	assertNextOpen(t, holder, appmodel.ArrangementEditor, false)
+
+	for mode, want := range map[string]string{settings.OpenModeSplit: appmodel.ArrangementSplit, settings.OpenModePreview: appmodel.ArrangementPreview} {
+		appearance.OpenMode = mode
+		if err := holder.SettingsService.UpdateAppearance(context.Background(), appearance); err != nil {
+			t.Fatalf("UpdateAppearance(%s): %v", mode, err)
+		}
+		assertNextOpen(t, holder, want, false)
+	}
 }
 
-func TestResetAppearanceReturnsTheDocumentModelToEditor(t *testing.T) {
+func TestResetAppearanceReturnsTheDocumentModelToLast(t *testing.T) {
 	// A reset that leaves the document model on the old value is the same class
 	// of gap as no observer at all: the store and the model disagree, and only
 	// the store is visible in the interface.
 	holder := NewApplicationContextHolderWithOptions(nil, nil, ApplicationContextOptions{
 		AppModelOptions: []appmodel.AppModelOption{appmodel.WithEmitter(discardingLifecycleEmitter{})},
 	})
-	holder.SettingsService.SetRepository(&stubOpenModeSettingsRepository{defaultOpenMode: settings.OpenModeViewer})
-	holder.AppModelService.SetDefaultOpenMode(appmodel.OpenModeViewer)
+	holder.SettingsService.SetRepository(&stubOpenModeSettingsRepository{defaultOpenMode: settings.OpenModeReading})
+	holder.AppModelService.SetDefaultOpenMode(appmodel.OpenModeReading)
 
 	if err := holder.SettingsService.ResetAppearance(context.Background()); err != nil {
 		t.Fatalf("ResetAppearance: %v", err)
 	}
-	assertNextOpenReadingMode(t, holder, false)
+	assertNextOpen(t, holder, appmodel.ArrangementSplit, false)
 }
 
 // The test that actually proves the defect.
@@ -80,17 +88,17 @@ func TestPersistedDefaultOpenModeSurvivesRestart(t *testing.T) {
 	if err := first.Init(ctx); err != nil {
 		t.Fatalf("first Init: %v", err)
 	}
-	assertNextOpenReadingMode(t, first, false)
+	assertNextOpen(t, first, appmodel.ArrangementSplit, false)
 	stored, err := first.SettingsService.Get(ctx)
 	if err != nil {
 		t.Fatalf("read settings: %v", err)
 	}
 	appearance := stored.Appearance
-	appearance.DefaultOpenMode = settings.OpenModeViewer
+	appearance.OpenMode = settings.OpenModeReading
 	if err := first.SettingsService.UpdateAppearance(ctx, appearance); err != nil {
-		t.Fatalf("persist defaultOpenMode=viewer: %v", err)
+		t.Fatalf("persist openMode=reading: %v", err)
 	}
-	assertNextOpenReadingMode(t, first, true)
+	assertNextOpen(t, first, appmodel.ArrangementSplit, true)
 	if first.DB != nil {
 		if err := first.DB.Close(); err != nil {
 			t.Fatalf("close first database: %v", err)
@@ -109,10 +117,10 @@ func TestPersistedDefaultOpenModeSurvivesRestart(t *testing.T) {
 		}
 	}()
 
-	assertNextOpenReadingMode(t, second, true)
+	assertNextOpen(t, second, appmodel.ArrangementSplit, true)
 }
 
-func TestStartupLeavesDefaultOpenModeAtEditorWhenTheStoreCannotBeRead(t *testing.T) {
+func TestStartupLeavesDefaultOpenModeAtLastWhenTheStoreCannotBeRead(t *testing.T) {
 	holder := NewApplicationContextHolderWithOptions(&fakeFileUtils{databasePath: filepath.Join(t.TempDir(), "settings.db")}, nil, ApplicationContextOptions{
 		SettingsRepository: failingDefaultOpenModeSettingsRepository{},
 		AppModelOptions:    []appmodel.AppModelOption{appmodel.WithEmitter(discardingLifecycleEmitter{})},
@@ -124,7 +132,7 @@ func TestStartupLeavesDefaultOpenModeAtEditorWhenTheStoreCannotBeRead(t *testing
 	}
 	t.Cleanup(func() { _ = holder.Close() })
 
-	assertNextOpenReadingMode(t, holder, false)
+	assertNextOpen(t, holder, appmodel.ArrangementSplit, false)
 }
 
 type failingDefaultOpenModeSettingsRepository struct{}
@@ -161,7 +169,7 @@ func (failingDefaultOpenModeSettingsRepository) UpdateFile(context.Context, appe
 	return nil
 }
 
-func assertNextOpenReadingMode(t *testing.T, holder *ApplicationContextHolder, wantReading bool) {
+func assertNextOpen(t *testing.T, holder *ApplicationContextHolder, wantArrangement string, wantReading bool) {
 	t.Helper()
 	path := filepath.Join(t.TempDir(), "notes.md")
 	if err := os.WriteFile(path, []byte("# notes\n"), 0o644); err != nil {
@@ -183,8 +191,8 @@ func assertNextOpenReadingMode(t *testing.T, holder *ApplicationContextHolder, w
 	if opened.ReadingMode != wantReading {
 		t.Fatalf("opened readingMode = %v, want %v", opened.ReadingMode, wantReading)
 	}
-	if document.View.Arrangement != appmodel.ArrangementSplit {
-		t.Fatalf("opened arrangement = %q, want the saved or default Split in both modes", document.View.Arrangement)
+	if document.View.Arrangement != wantArrangement {
+		t.Fatalf("opened arrangement = %q, want %q", document.View.Arrangement, wantArrangement)
 	}
 }
 
@@ -193,16 +201,16 @@ type stubOpenModeSettingsRepository struct {
 }
 
 func (repository *stubOpenModeSettingsRepository) GetAppearance(context.Context) (apperr.AppearanceSettings, error) {
-	return apperr.AppearanceSettings{Theme: "material", Mode: "auto", DefaultOpenMode: repository.defaultOpenMode, ReadingWidth: settings.ReadingWidthPage}, nil
+	return apperr.AppearanceSettings{Theme: "material", Mode: "auto", OpenMode: repository.defaultOpenMode, ReadingWidth: settings.ReadingWidthPage}, nil
 }
 
 func (repository *stubOpenModeSettingsRepository) UpdateAppearance(_ context.Context, appearance apperr.AppearanceSettings) error {
-	repository.defaultOpenMode = appearance.DefaultOpenMode
+	repository.defaultOpenMode = appearance.OpenMode
 	return nil
 }
 
 func (repository *stubOpenModeSettingsRepository) ResetAppearance(context.Context) error {
-	repository.defaultOpenMode = settings.OpenModeEditor
+	repository.defaultOpenMode = settings.OpenModeLast
 	return nil
 }
 

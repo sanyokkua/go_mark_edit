@@ -19,6 +19,11 @@ type openReservation struct {
 	existingDocumentID  string
 	arrangement         string
 	splitRatio          float64
+	// explicitArrangement is true when the open mode, not the per-file saved
+	// view or the window fallback, chose the arrangement.
+	explicitArrangement bool
+	// readingMode is the open mode's Reading decision, fixed when the open is prepared.
+	readingMode bool
 }
 
 func countNovelReservations(reservations map[string]*openReservation) int {

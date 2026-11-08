@@ -69,6 +69,8 @@ export function SaveAs(arg1:bridge.Request,arg2:string,arg3:number,arg4:string):
 
 export function SetDocView(arg1:bridge.Request,arg2:string,arg3:apperr.DocViewInput):Promise<apperr.VoidResult>;
 
+export function SetReadingActive(arg1:bridge.Request,arg2:boolean):Promise<apperr.VoidResult>;
+
 export function SetUILayout(arg1:bridge.Request,arg2:apperr.UILayout):Promise<apperr.VoidResult>;
 
 export function SetWorkspaceHiddenFolders(arg1:bridge.Request,arg2:boolean):Promise<apperr.WorkspaceResult>;

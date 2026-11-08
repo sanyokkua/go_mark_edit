@@ -42,12 +42,13 @@ jest.mock('../../src/logic/adapter', () => ({
         chooseWorkspaceFolder: jest.fn(),
         openWorkspace: jest.fn(),
         openPreviewLink: jest.fn(),
+        setReadingActive: async () => ({}),
         setUILayout: jest.fn(),
     },
     settingsAdapter: {
         getSettings: jest.fn(async () => ({
             appearance: {
-                defaultOpenMode: 'editor',
+                openMode: 'editor',
                 readingWidth: 'page',
                 mode: 'auto',
                 theme: 'material',

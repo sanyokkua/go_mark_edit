@@ -146,7 +146,7 @@ test('Ctrl+Enter inside the editor Find input does not enter Reading mode', asyn
     await expect(widget).toBeVisible();
 });
 
-test('starts in the normal window after relaunch from Reading mode and keeps the saved arrangement', async ({
+test('starts in the normal window after relaunch from Reading mode, reopens the file in Reading mode by default and keeps the saved arrangement behind it', async ({
     app,
 }) => {
     const source = await app.writeDocument('reading-restart.md', '# Restart\n\nPersisted arrangement.\n');
@@ -168,8 +168,14 @@ test('starts in the normal window after relaunch from Reading mode and keeps the
     await expect(page.getByTestId('application-shell')).toBeVisible();
     await expect(page.locator(SHELL)).not.toHaveAttribute('data-reading', /.*/u);
     await expect(page.getByRole('menubar')).toBeVisible();
-    await openRecentFromLauncher(page, 'reading-restart.md');
-    await expect(page.locator(SHELL)).not.toHaveAttribute('data-reading', /.*/u);
+    // The default open mode, Remember last used, reopens in the mode used last: Reading.
+    await page
+        .getByTestId('document-launcher')
+        .getByRole('button', { name: 'reading-restart.md', exact: true })
+        .click();
+    await expectReading(page);
+    await page.keyboard.press('ControlOrMeta+Enter');
+    await expectNormal(page);
     await expect(
         page.getByRole('radiogroup', { name: 'View arrangement' }).getByRole('radio', { name: 'Split' }),
     ).toBeChecked();
@@ -618,19 +624,16 @@ test('Full width through the Ctrl+, Settings dialog widens the document in Readi
     app.expectNoForeignRequests();
 });
 
-async function chooseDefaultOpenMode(page: Page, name: 'Editor' | 'Reading (Viewer)'): Promise<void> {
+async function chooseDefaultOpenMode(page: Page, name: 'Editor' | 'Reading'): Promise<void> {
     await page.getByRole('button', { name: 'Settings', exact: true }).click();
     await page.getByRole('menuitem', { name: 'All settings…', exact: true }).click();
     const dialog = page.getByRole('dialog', { name: 'Settings' });
-    await dialog
-        .getByRole('radiogroup', { name: 'Default open mode' })
-        .getByRole('radio', { name, exact: true })
-        .click();
+    await dialog.getByRole('combobox', { name: 'Default open mode' }).selectOption({ label: name });
     await page.keyboard.press('Escape');
     await expect(dialog).toBeHidden();
 }
 
-test('opening a file from the launcher with Reading (Viewer) shows Reading mode and exit shows the saved arrangement', async ({
+test('opening a file from the launcher with Reading shows Reading mode and exit shows the saved arrangement', async ({
     app,
 }) => {
     const source = await app.writeDocument('on-open.md', '# On open\n\nOpen body.\n');
@@ -638,7 +641,7 @@ test('opening a file from the launcher with Reading (Viewer) shows Reading mode 
     await app.launch();
     const { page } = app;
     await page.setViewportSize({ width: 1280, height: 720 });
-    await chooseDefaultOpenMode(page, 'Reading (Viewer)');
+    await chooseDefaultOpenMode(page, 'Reading');
     await page.getByTestId('document-launcher').getByRole('button', { name: 'on-open.md', exact: true }).click();
     await expectReading(page);
     await expect(page.locator(PREVIEW)).toContainText('Open body.');
@@ -657,7 +660,7 @@ test('opening a file with the Editor default does not show Reading mode', async 
     await expectNormal(page);
 });
 
-test('opening an already open file with Reading (Viewer) focuses it without entering Reading mode', async ({ app }) => {
+test('opening an already open file with Reading focuses it without entering Reading mode', async ({ app }) => {
     const root = join(app.documentDirectory, 'on-open-notes');
     const first = await app.writeDocument('on-open-notes/first.md', '# First\n\nFirst body.\n');
     await app.writeDocument('on-open-notes/second.md', '# Second\n\nSecond body.\n');
@@ -666,7 +669,7 @@ test('opening an already open file with Reading (Viewer) focuses it without ente
     await app.openWorkspace(root);
     const { page } = app;
     await page.setViewportSize({ width: 1280, height: 720 });
-    await chooseDefaultOpenMode(page, 'Reading (Viewer)');
+    await chooseDefaultOpenMode(page, 'Reading');
     const tree = page.getByRole('tree');
     await tree.getByRole('treeitem', { name: 'first.md' }).click();
     await expect(page.locator(SHELL)).toHaveAttribute('data-reading', 'true');

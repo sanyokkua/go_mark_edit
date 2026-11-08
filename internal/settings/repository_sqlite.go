@@ -11,25 +11,26 @@ import (
 )
 
 const (
-	appearanceThemeKey     = "appearance.theme"
-	appearanceModeKey      = "appearance.mode"
-	defaultOpenModeKey     = "view.defaultOpenMode"
-	readingWidthKey        = "view.readingWidth"
-	pdfAppearanceKey       = "export.pdfAppearance"
-	markdownStandardKey    = "markdown.standard"
-	formatOnSaveKey        = "format.onSave"
-	lintOnSaveKey          = "lint.onSave"
-	formatBulletMarkerKey  = "format.bulletMarker"
-	formatEmphasisKey      = "format.emphasisMarker"
-	formatHeadingStyleKey  = "format.headingStyle"
-	contentRemotePolicyKey = "content.remotePolicy"
-	editorLineNumbersKey   = "editor.lineNumbers"
-	editorWordWrapKey      = "editor.wordWrap"
-	editorScrollSyncKey    = "editor.scrollSync"
-	editorFontSizeKey      = "editor.fontSize"
-	fileAutosaveKey        = "file.autosave"
-	settingTypeString      = "string"
-	settingTypeBool        = "bool"
+	appearanceThemeKey       = "appearance.theme"
+	appearanceModeKey        = "appearance.mode"
+	openModeKey              = "view.openMode"
+	legacyDefaultOpenModeKey = "view.defaultOpenMode"
+	readingWidthKey          = "view.readingWidth"
+	pdfAppearanceKey         = "export.pdfAppearance"
+	markdownStandardKey      = "markdown.standard"
+	formatOnSaveKey          = "format.onSave"
+	lintOnSaveKey            = "lint.onSave"
+	formatBulletMarkerKey    = "format.bulletMarker"
+	formatEmphasisKey        = "format.emphasisMarker"
+	formatHeadingStyleKey    = "format.headingStyle"
+	contentRemotePolicyKey   = "content.remotePolicy"
+	editorLineNumbersKey     = "editor.lineNumbers"
+	editorWordWrapKey        = "editor.wordWrap"
+	editorScrollSyncKey      = "editor.scrollSync"
+	editorFontSizeKey        = "editor.fontSize"
+	fileAutosaveKey          = "file.autosave"
+	settingTypeString        = "string"
+	settingTypeBool          = "bool"
 )
 
 // SqliteSettingsRepository persists typed groups through the generic settings
@@ -58,7 +59,7 @@ func (repository *SqliteSettingsRepository) GetAppearance(ctx context.Context) (
 	if err != nil {
 		return apperr.AppearanceSettings{}, err
 	}
-	defaultOpenMode, err := repository.getString(ctx, defaultOpenModeKey, defaults.DefaultOpenMode)
+	openMode, err := repository.getOpenMode(ctx, defaults.OpenMode)
 	if err != nil {
 		return apperr.AppearanceSettings{}, err
 	}
@@ -70,7 +71,7 @@ func (repository *SqliteSettingsRepository) GetAppearance(ctx context.Context) (
 	if err != nil {
 		return apperr.AppearanceSettings{}, err
 	}
-	return apperr.AppearanceSettings{Theme: theme, Mode: mode, DefaultOpenMode: defaultOpenMode, ReadingWidth: readingWidth, PdfAppearance: pdfAppearance}, nil
+	return apperr.AppearanceSettings{Theme: theme, Mode: mode, OpenMode: openMode, ReadingWidth: readingWidth, PdfAppearance: pdfAppearance}, nil
 }
 
 // GetMarkdown reads the persisted Markdown group with scalar defaults.
@@ -156,7 +157,7 @@ func (repository *SqliteSettingsRepository) UpdateAppearance(ctx context.Context
 	return repository.updateGroup(ctx, []kv.KVEntry{
 		{Key: appearanceThemeKey, Value: appearance.Theme, Type: settingTypeString},
 		{Key: appearanceModeKey, Value: appearance.Mode, Type: settingTypeString},
-		{Key: defaultOpenModeKey, Value: appearance.DefaultOpenMode, Type: settingTypeString},
+		{Key: openModeKey, Value: appearance.OpenMode, Type: settingTypeString},
 		{Key: readingWidthKey, Value: appearance.ReadingWidth, Type: settingTypeString},
 		{Key: pdfAppearanceKey, Value: appearance.PdfAppearance, Type: settingTypeString},
 	})
@@ -169,7 +170,7 @@ func (repository *SqliteSettingsRepository) ResetAppearance(ctx context.Context)
 	return repository.updateGroup(ctx, []kv.KVEntry{
 		{Key: appearanceThemeKey, Value: defaults.Theme, Type: settingTypeString},
 		{Key: appearanceModeKey, Value: defaults.Mode, Type: settingTypeString},
-		{Key: defaultOpenModeKey, Value: defaults.DefaultOpenMode, Type: settingTypeString},
+		{Key: openModeKey, Value: defaults.OpenMode, Type: settingTypeString},
 		{Key: readingWidthKey, Value: defaults.ReadingWidth, Type: settingTypeString},
 		{Key: pdfAppearanceKey, Value: defaults.PdfAppearance, Type: settingTypeString},
 	})
@@ -216,6 +217,25 @@ func (repository *SqliteSettingsRepository) getString(ctx context.Context, key, 
 		return defaultValue, nil
 	}
 	return entry.Value, nil
+}
+
+// getOpenMode reads view.openMode. Only while that key has never been written
+// does the retired view.defaultOpenMode apply: its "viewer" is Reading, and its
+// "editor" meant "restore the remembered arrangement", which is Last.
+func (repository *SqliteSettingsRepository) getOpenMode(ctx context.Context, defaultValue string) (string, error) {
+	if _, found, err := repository.store.Get(ctx, openModeKey); err != nil {
+		return "", err
+	} else if found {
+		return repository.getString(ctx, openModeKey, defaultValue)
+	}
+	legacy, err := repository.getString(ctx, legacyDefaultOpenModeKey, "")
+	if err != nil {
+		return "", err
+	}
+	if legacy == "viewer" {
+		return OpenModeReading, nil
+	}
+	return defaultValue, nil
 }
 
 func (repository *SqliteSettingsRepository) getBool(ctx context.Context, key string, defaultValue bool) (bool, error) {

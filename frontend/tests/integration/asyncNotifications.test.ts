@@ -24,6 +24,7 @@ async function subscribeErrors(): Promise<(payload: unknown) => void> {
                 }),
             updateBuffer: () => Promise.resolve({}),
             setDocView: () => Promise.resolve({}),
+            setReadingActive: async () => ({}),
             setUILayout: () => Promise.resolve({}),
         },
         {

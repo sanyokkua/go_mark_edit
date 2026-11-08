@@ -14,7 +14,7 @@ jest.mock('../../src/logic/adapter', () => ({
     settingsAdapter: {
         getSettings: jest.fn(async () => ({
             appearance: {
-                defaultOpenMode: 'editor',
+                openMode: 'editor',
                 readingWidth: 'page',
                 pdfAppearance: 'styled',
                 mode: 'auto',
@@ -94,7 +94,7 @@ it('shows Styled selected and sends clean when Clean is chosen in the dialog', a
 
     await waitFor(() =>
         expect(updateAppearance).toHaveBeenCalledWith({
-            defaultOpenMode: 'editor',
+            openMode: 'editor',
             readingWidth: 'page',
             pdfAppearance: 'clean',
             mode: 'auto',
@@ -107,7 +107,7 @@ it('shows Styled selected and sends clean when Clean is chosen in the dialog', a
 it('shows the stored Clean choice in the dialog after startup', async () => {
     (settingsAdapter.getSettings as jest.Mock).mockResolvedValueOnce({
         appearance: {
-            defaultOpenMode: 'editor',
+            openMode: 'editor',
             readingWidth: 'page',
             pdfAppearance: 'clean',
             mode: 'auto',
@@ -145,7 +145,7 @@ it('is reachable by keyboard in the dialog and restores Styled on Reset appearan
     fireEvent.keyDown(styled, { key: 'ArrowRight' });
     await waitFor(() => expect(within(group).getByRole('radio', { name: 'Clean' })).toBeChecked());
     expect(updateAppearance).toHaveBeenLastCalledWith({
-        defaultOpenMode: 'editor',
+        openMode: 'editor',
         readingWidth: 'page',
         pdfAppearance: 'clean',
         mode: 'auto',

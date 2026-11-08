@@ -33,11 +33,11 @@ func TestCompleteStageOneDefaultsFromEmptyKV(t *testing.T) {
 	}
 	want := apperr.Settings{
 		Appearance: apperr.AppearanceSettings{
-			Theme:           ThemeMaterial,
-			Mode:            ModeAuto,
-			DefaultOpenMode: OpenModeEditor,
-			ReadingWidth:    ReadingWidthPage,
-			PdfAppearance:   PdfAppearanceStyled,
+			Theme:         ThemeMaterial,
+			Mode:          ModeAuto,
+			OpenMode:      OpenModeLast,
+			ReadingWidth:  ReadingWidthPage,
+			PdfAppearance: PdfAppearanceStyled,
 		},
 		Markdown: apperr.MarkdownSettings{
 			Standard:       MarkdownFull,
@@ -72,11 +72,11 @@ func TestAppearanceAndMarkdownGroupsRoundTripDottedTypedKV(t *testing.T) {
 
 	service := NewSettingsService(NewSqliteSettingsRepository(database))
 	wantAppearance := apperr.AppearanceSettings{
-		Theme:           ThemeGlass,
-		Mode:            ModeDark,
-		DefaultOpenMode: OpenModeViewer,
-		ReadingWidth:    ReadingWidthFull,
-		PdfAppearance:   PdfAppearanceClean,
+		Theme:         ThemeGlass,
+		Mode:          ModeDark,
+		OpenMode:      OpenModeReading,
+		ReadingWidth:  ReadingWidthFull,
+		PdfAppearance: PdfAppearanceClean,
 	}
 	wantMarkdown := apperr.MarkdownSettings{
 		Standard:       MarkdownMinimal,
@@ -139,7 +139,7 @@ func TestStoredSettingsFallbackMatrix(t *testing.T) {
 	editorValid.ScrollSync = false
 
 	valid := apperr.Settings{
-		Appearance: apperr.AppearanceSettings{Theme: ThemeGlass, Mode: ModeDark, DefaultOpenMode: OpenModeViewer, ReadingWidth: ReadingWidthFull, PdfAppearance: PdfAppearanceClean},
+		Appearance: apperr.AppearanceSettings{Theme: ThemeGlass, Mode: ModeDark, OpenMode: OpenModeReading, ReadingWidth: ReadingWidthFull, PdfAppearance: PdfAppearanceClean},
 		Markdown: apperr.MarkdownSettings{
 			Standard:       MarkdownFull,
 			FormatOnSave:   true,
@@ -160,9 +160,9 @@ func TestStoredSettingsFallbackMatrix(t *testing.T) {
 		{name: "missing color mode", key: "appearance.mode", omit: true},
 		{name: "unsupported color mode", key: "appearance.mode", value: "midnight", type_: "string"},
 		{name: "color mode type mismatch", key: "appearance.mode", value: ModeLight, type_: "bool"},
-		{name: "missing default open mode", key: "view.defaultOpenMode", omit: true},
-		{name: "unsupported default open mode", key: "view.defaultOpenMode", value: "split", type_: "string"},
-		{name: "default open mode type mismatch", key: "view.defaultOpenMode", value: OpenModeEditor, type_: "bool"},
+		{name: "missing default open mode", key: "view.openMode", omit: true},
+		{name: "unsupported default open mode", key: "view.openMode", value: "viewer", type_: "string"},
+		{name: "default open mode type mismatch", key: "view.openMode", value: OpenModeEditor, type_: "bool"},
 		{name: "missing reading width", key: "view.readingWidth", omit: true},
 		{name: "unsupported reading width", key: "view.readingWidth", value: "wide", type_: "string"},
 		{name: "reading width type mismatch", key: "view.readingWidth", value: ReadingWidthFull, type_: "bool"},
@@ -225,7 +225,7 @@ func TestSettingsRegistryAddsTypedScalarWithoutSchemaChange(t *testing.T) {
 	repository := NewSqliteSettingsRepository(database)
 	service := NewSettingsService(repository)
 	existing := apperr.Settings{
-		Appearance: apperr.AppearanceSettings{Theme: ThemeMinimal, Mode: ModeLight, DefaultOpenMode: OpenModeViewer, ReadingWidth: ReadingWidthFull, PdfAppearance: PdfAppearanceClean},
+		Appearance: apperr.AppearanceSettings{Theme: ThemeMinimal, Mode: ModeLight, OpenMode: OpenModeReading, ReadingWidth: ReadingWidthFull, PdfAppearance: PdfAppearanceClean},
 		Markdown: apperr.MarkdownSettings{
 			Standard:       MarkdownMinimal,
 			FormatOnSave:   true,
@@ -461,7 +461,7 @@ func settingsKVRows(settings apperr.Settings) []kv.KVEntry {
 	return []kv.KVEntry{
 		{Key: "appearance.theme", Value: settings.Appearance.Theme, Type: "string"},
 		{Key: "appearance.mode", Value: settings.Appearance.Mode, Type: "string"},
-		{Key: "view.defaultOpenMode", Value: settings.Appearance.DefaultOpenMode, Type: "string"},
+		{Key: "view.openMode", Value: settings.Appearance.OpenMode, Type: "string"},
 		{Key: "view.readingWidth", Value: settings.Appearance.ReadingWidth, Type: "string"},
 		{Key: "export.pdfAppearance", Value: settings.Appearance.PdfAppearance, Type: "string"},
 		{Key: "markdown.standard", Value: settings.Markdown.Standard, Type: "string"},
@@ -511,8 +511,8 @@ func setSettingsScalar(t *testing.T, settings *apperr.Settings, key, value strin
 		settings.Appearance.Theme = value
 	case "appearance.mode":
 		settings.Appearance.Mode = value
-	case "view.defaultOpenMode":
-		settings.Appearance.DefaultOpenMode = value
+	case "view.openMode":
+		settings.Appearance.OpenMode = value
 	case "view.readingWidth":
 		settings.Appearance.ReadingWidth = value
 	case "export.pdfAppearance":
@@ -564,7 +564,7 @@ func TestResetAppearanceChangesOnlyDeliveredAppearanceKeys(t *testing.T) {
 	before := map[string]kv.KVEntry{
 		"appearance.theme":       {Key: "appearance.theme", Value: ThemeMinimal, Type: "string"},
 		"appearance.mode":        {Key: "appearance.mode", Value: ModeDark, Type: "string"},
-		"view.defaultOpenMode":   {Key: "view.defaultOpenMode", Value: OpenModeViewer, Type: "string"},
+		"view.openMode":          {Key: "view.openMode", Value: OpenModeReading, Type: "string"},
 		"view.readingWidth":      {Key: "view.readingWidth", Value: ReadingWidthFull, Type: "string"},
 		"export.pdfAppearance":   {Key: "export.pdfAppearance", Value: PdfAppearanceClean, Type: "string"},
 		"markdown.standard":      {Key: "markdown.standard", Value: MarkdownFull, Type: "string"},
@@ -586,7 +586,7 @@ func TestResetAppearanceChangesOnlyDeliveredAppearanceKeys(t *testing.T) {
 	wantAppearance := map[string]string{
 		"appearance.theme":     ThemeMaterial,
 		"appearance.mode":      ModeAuto,
-		"view.defaultOpenMode": OpenModeEditor,
+		"view.openMode":        OpenModeLast,
 		"view.readingWidth":    ReadingWidthPage,
 		"export.pdfAppearance": PdfAppearanceStyled,
 	}
@@ -622,7 +622,7 @@ func TestResetAppearanceRollsBackEveryValueOnFailure(t *testing.T) {
 			t.Errorf("close rollback database: %v", closeErr)
 		}
 	})
-	original := apperr.AppearanceSettings{Theme: ThemeMinimal, Mode: ModeDark, DefaultOpenMode: OpenModeViewer, ReadingWidth: ReadingWidthFull, PdfAppearance: PdfAppearanceClean}
+	original := apperr.AppearanceSettings{Theme: ThemeMinimal, Mode: ModeDark, OpenMode: OpenModeReading, ReadingWidth: ReadingWidthFull, PdfAppearance: PdfAppearanceClean}
 	if err := NewSqliteSettingsRepository(database).UpdateAppearance(ctx, original); err != nil {
 		t.Fatalf("seed appearance before rollback: %v", err)
 	}
@@ -786,7 +786,7 @@ func assertRoundTripKVEntries(t *testing.T, ctx context.Context, database *db.Da
 	for key, want := range map[string]kv.KVEntry{
 		"appearance.theme":      {Key: "appearance.theme", Value: ThemeGlass, Type: "string"},
 		"appearance.mode":       {Key: "appearance.mode", Value: ModeDark, Type: "string"},
-		"view.defaultOpenMode":  {Key: "view.defaultOpenMode", Value: OpenModeViewer, Type: "string"},
+		"view.openMode":         {Key: "view.openMode", Value: OpenModeReading, Type: "string"},
 		"view.readingWidth":     {Key: "view.readingWidth", Value: ReadingWidthFull, Type: "string"},
 		"export.pdfAppearance":  {Key: "export.pdfAppearance", Value: PdfAppearanceClean, Type: "string"},
 		"markdown.standard":     {Key: "markdown.standard", Value: MarkdownMinimal, Type: "string"},

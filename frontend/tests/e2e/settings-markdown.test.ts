@@ -437,9 +437,7 @@ test('the Markdown controls remain visible and keyboard usable in all six palett
         await page.keyboard.press('Tab');
         await expect(appearanceMode.getByRole('radio', { checked: true })).toBeFocused();
         await page.keyboard.press('Tab');
-        await expect(
-            dialog.getByRole('radiogroup', { name: 'Default open mode' }).getByRole('radio', { checked: true }),
-        ).toBeFocused();
+        await expect(dialog.getByRole('combobox', { name: 'Default open mode' })).toBeFocused();
         await page.keyboard.press('Tab');
         await expect(
             dialog.getByRole('radiogroup', { name: 'Reading width' }).getByRole('radio', { checked: true }),

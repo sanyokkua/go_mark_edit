@@ -13,7 +13,7 @@ it('keeps EditorSettings DTO and binding arity parity', async () => {
                 appearance: {
                     theme: 'material',
                     mode: 'auto',
-                    defaultOpenMode: 'editor',
+                    openMode: 'editor',
                     readingWidth: 'page',
                     pdfAppearance: 'styled',
                 },

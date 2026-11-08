@@ -12,8 +12,11 @@ const (
 	ModeLight = "light"
 	ModeDark  = "dark"
 
-	OpenModeEditor = "editor"
-	OpenModeViewer = "viewer"
+	OpenModeReading = "reading"
+	OpenModeEditor  = "editor"
+	OpenModeSplit   = "split"
+	OpenModePreview = "preview"
+	OpenModeLast    = "last"
 
 	ReadingWidthPage = "page"
 	ReadingWidthFull = "full"
@@ -51,11 +54,11 @@ const (
 func DefaultSettings() apperr.Settings {
 	return apperr.Settings{
 		Appearance: apperr.AppearanceSettings{
-			Theme:           ThemeMaterial,
-			Mode:            ModeAuto,
-			DefaultOpenMode: OpenModeEditor,
-			ReadingWidth:    ReadingWidthPage,
-			PdfAppearance:   PdfAppearanceStyled,
+			Theme:         ThemeMaterial,
+			Mode:          ModeAuto,
+			OpenMode:      OpenModeLast,
+			ReadingWidth:  ReadingWidthPage,
+			PdfAppearance: PdfAppearanceStyled,
 		},
 		Markdown: apperr.MarkdownSettings{
 			Standard:       MarkdownFull,
